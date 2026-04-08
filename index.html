@@ -67,6 +67,7 @@
                 <button onclick="switchTab('inventory')" id="tab-inventory" class="px-6 py-2 text-slate-500 hover:text-purple-700 transition-all text-sm">库存管理</button>
             </nav>
             <div class="flex gap-3">
+                <div id="github-sync-root" class="flex items-center"></div>
                 <button onclick="toggleLanguage()" id="btn-lang" class="text-sm bg-slate-100 text-slate-700 px-4 py-2 rounded-xl hover:bg-slate-200 transition-colors font-bold border border-slate-200">
                     中 / EN
                 </button>
@@ -1004,6 +1005,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { initGitHubSync } from "./github-sync/bootstrap.js";
 
         // --- 数据持久化 ---
         let products = [];
@@ -1059,6 +1061,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
 
         loadSubcategoryIndex();
 
+        let suppressGitHubSync = false;
         function saveToLocal() {
             localStorage.setItem('minova_products', JSON.stringify(products));
             localStorage.setItem('minova_inventory', JSON.stringify(inventory));
@@ -1071,6 +1074,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
             updatePickerFilters();
             renderPicker();
             updateDatalists();
+            try { if (!suppressGitHubSync) window.__minovaSync?.enqueueSnapshot('state update'); } catch (e) {}
         }
 
         let quoteRows = [{ id: Date.now(), description: '', spec: '', batchNo: '', quantity: 1, price: 0, cost: 0 }];
@@ -2793,6 +2797,36 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                 if (cableEl && Number.isFinite(parseFloat(d?.cable))) cableEl.value = String(d.cable);
             }
         } catch (e) {}
+
+        window.__minovaSync = initGitHubSync({
+            getLocalState: () => ({
+                products,
+                inventory,
+                inventoryHistory,
+                subcategoriesByCategory
+            }),
+            applyRemoteState: (data) => {
+                suppressGitHubSync = true;
+                products = Array.isArray(data?.products) ? data.products : [];
+                inventory = Array.isArray(data?.inventory) ? data.inventory : [];
+                inventoryHistory = Array.isArray(data?.inventoryHistory) ? data.inventoryHistory : [];
+                if (inventoryHistory.length > 1000) inventoryHistory = inventoryHistory.slice(inventoryHistory.length - 1000);
+                subcategoriesByCategory = data?.subcategoriesByCategory && typeof data.subcategoriesByCategory === 'object' ? data.subcategoriesByCategory : {};
+                try {
+                    localStorage.setItem('minova_products', JSON.stringify(products));
+                    localStorage.setItem('minova_inventory', JSON.stringify(inventory));
+                    localStorage.setItem('minova_inventory_history', JSON.stringify(inventoryHistory));
+                    localStorage.setItem('minova_subcategories_v1', JSON.stringify(subcategoriesByCategory));
+                } catch (e) {}
+                renderDb();
+                renderInventory();
+                renderInventoryHistory();
+                updatePickerFilters();
+                renderPicker();
+                updateDatalists();
+                suppressGitHubSync = false;
+            }
+        });
         renderDb();
         renderInventory();
         renderInventoryHistory();

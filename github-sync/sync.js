@@ -29,7 +29,7 @@ function safeJsonParse(raw, fallback) {
 
 export function createGitHubSync({ getLocalState, applyRemoteState }) {
   const storage = createStorage()
-  const limiter = createRateLimiter({ minIntervalMs: 350 })
+  const limiter = createRateLimiter({ minIntervalMs: 800 })
 
   let unlockedToken = null
   let config = safeJsonParse(storage.get(KEY.config), {
@@ -119,6 +119,9 @@ export function createGitHubSync({ getLocalState, applyRemoteState }) {
   }
 
   function enqueueSnapshot(reason) {
+    const keep = queue.items.filter((x) => x.type !== 'snapshot')
+    queue.clear()
+    for (const it of keep) queue.enqueue(it)
     queue.enqueue({ id: uuid(), at: nowIso(), type: 'snapshot', reason })
     void flush()
   }
@@ -151,4 +154,3 @@ export function createGitHubSync({ getLocalState, applyRemoteState }) {
     flush
   }
 }
-

@@ -58,15 +58,26 @@ export function mountGitHubSyncUi({ sync }) {
   const deviceBtn = el('button', { class: 'mt-3 bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-black', text: '打开 GitHub 授权页' })
   deviceBox.append(deviceText, deviceHint, deviceBtn)
 
+  function formatErr(e) {
+    const msg = String(e?.message || e || '')
+    const reset = e?.rateLimit?.reset
+    if (reset) {
+      const at = new Date(parseInt(reset, 10) * 1000).toLocaleString()
+      return `${msg}\n可用次数耗尽，预计恢复时间：${at}`
+    }
+    return msg
+  }
+
   const footer = el('div', { class: 'mt-6 flex flex-col md:flex-row gap-3 justify-end' })
   const btnClose = el('button', { class: 'px-4 py-2 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50', text: '关闭' })
   const btnSave = el('button', { class: 'px-4 py-2 rounded-xl bg-purple-700 text-white font-bold hover:bg-purple-800', text: '保存配置' })
   const btnConnect = el('button', { class: 'px-4 py-2 rounded-xl bg-slate-900 text-white font-bold hover:bg-black', text: '连接 GitHub' })
+  const btnUnlock = el('button', { class: 'px-4 py-2 rounded-xl bg-slate-900 text-white font-bold hover:bg-black', text: '解锁已保存 Token' })
   const btnPull = el('button', { class: 'px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 border border-slate-200', text: '拉取' })
   const btnPush = el('button', { class: 'px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 border border-slate-200', text: '立即提交' })
   const btnDisconnect = el('button', { class: 'px-4 py-2 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700', text: '断开' })
 
-  footer.append(btnPull, btnPush, btnDisconnect, btnSave, btnConnect, btnClose)
+  footer.append(btnPull, btnPush, btnDisconnect, btnSave, btnUnlock, btnConnect, btnClose)
 
   const msg = el('div', { class: 'mt-3 text-xs text-slate-500' })
 
@@ -75,6 +86,7 @@ export function mountGitHubSyncUi({ sync }) {
   const refresh = () => {
     const s = state()
     statusText.textContent = s.connected ? `GitHub 已连接 | 队列 ${s.queueSize}` : `GitHub 未连接${s.hasTokenStored ? '（有已保存 token）' : ''}`
+    btnUnlock.style.display = s.hasTokenStored && !s.connected ? '' : 'none'
   }
 
   btn.onclick = () => {
@@ -109,7 +121,7 @@ export function mountGitHubSyncUi({ sync }) {
       await sync.pull()
       msg.textContent = '已拉取并覆盖本地数据'
     } catch (e) {
-      msg.textContent = String(e?.message || e)
+      msg.textContent = formatErr(e)
     }
     refresh()
   }
@@ -119,7 +131,25 @@ export function mountGitHubSyncUi({ sync }) {
       await sync.enqueueSnapshot('manual sync')
       msg.textContent = '已入队提交'
     } catch (e) {
-      msg.textContent = String(e?.message || e)
+      msg.textContent = formatErr(e)
+    }
+    refresh()
+  }
+
+  btnUnlock.onclick = async () => {
+    if (!passphrase.value) {
+      msg.textContent = '请填写加密口令'
+      return
+    }
+    try {
+      const ok = await sync.unlock(passphrase.value)
+      if (!ok) {
+        msg.textContent = '未找到已保存 token'
+      } else {
+        msg.textContent = '已解锁并连接'
+      }
+    } catch (e) {
+      msg.textContent = formatErr(e)
     }
     refresh()
   }
@@ -146,7 +176,7 @@ export function mountGitHubSyncUi({ sync }) {
       await sync.storeToken(passphrase.value, token.access_token)
       msg.textContent = '连接成功'
     } catch (e) {
-      msg.textContent = String(e?.message || e)
+      msg.textContent = formatErr(e)
     }
     refresh()
   }
@@ -155,4 +185,3 @@ export function mountGitHubSyncUi({ sync }) {
   document.body.append(modal)
   refresh()
 }
-

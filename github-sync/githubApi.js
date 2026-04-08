@@ -9,16 +9,13 @@ export function createGitHubApi({ tokenProvider, limiter }) {
     const headers = new Headers(init?.headers || {})
     headers.set('Accept', 'application/vnd.github+json')
     headers.set('X-GitHub-Api-Version', '2022-11-28')
-    if (token) headers.set('Authorization', `Bearer ${token}`)
+    if (token) headers.set('Authorization', `token ${token}`)
     if (!headers.has('Content-Type') && init?.body) headers.set('Content-Type', 'application/json')
 
     const res = await fetch(url, { ...init, headers })
     const remaining = res.headers.get('x-ratelimit-remaining')
     const reset = res.headers.get('x-ratelimit-reset')
-    if (remaining === '0' && reset) {
-      const waitMs = Math.max(0, parseInt(reset, 10) * 1000 - Date.now())
-      await sleep(Math.min(waitMs, 60_000))
-    }
+    const resetMs = reset ? Math.max(0, parseInt(reset, 10) * 1000 - Date.now()) : 0
 
     if (res.status === 429 || res.status === 500 || res.status === 502 || res.status === 503 || res.status === 504) {
       if (attempt < 4) {
@@ -37,10 +34,20 @@ export function createGitHubApi({ tokenProvider, limiter }) {
       data = text
     }
 
+    if (res.status === 403) {
+      const msg = typeof data === 'string' ? data : data?.message
+      const isRateLimited = typeof msg === 'string' && msg.toLowerCase().includes('rate limit exceeded')
+      if ((isRateLimited || remaining === '0') && resetMs > 0 && attempt < 2) {
+        await sleep(Math.min(resetMs, 5 * 60_000))
+        return request(url, init, attempt + 1)
+      }
+    }
+
     if (!res.ok) {
       const err = new Error(`GitHub API ${res.status}: ${typeof data === 'string' ? data : JSON.stringify(data)}`)
       err.status = res.status
       err.data = data
+      err.rateLimit = { remaining, reset }
       throw err
     }
     return data
@@ -53,7 +60,7 @@ export function createGitHubApi({ tokenProvider, limiter }) {
   }
 }
 
-export function createRateLimiter({ minIntervalMs = 350 }) {
+export function createRateLimiter({ minIntervalMs = 800 }) {
   let lastAt = 0
   let chain = Promise.resolve()
   const wait = () => {
@@ -67,4 +74,3 @@ export function createRateLimiter({ minIntervalMs = 350 }) {
   }
   return { wait }
 }
-

@@ -8,16 +8,23 @@ function fromBase64Utf8(b64) {
   return decodeURIComponent(escape(atob(b64)))
 }
 
+function encodeContentPath(path) {
+  return String(path || '')
+    .split('/')
+    .map((s) => encodeURIComponent(s))
+    .join('/')
+}
+
 export function createRepoStore({ api }) {
   async function getFile({ owner, repo, path, branch }) {
     const ref = branch ? `?ref=${encodeURIComponent(branch)}` : ''
-    const data = await api.get(`/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}${ref}`)
+    const data = await api.get(`/repos/${owner}/${repo}/contents/${encodeContentPath(path)}${ref}`)
     const content = data?.content ? fromBase64Utf8(data.content.replaceAll('\n', '')) : ''
     return { sha: data?.sha || null, content, raw: data }
   }
 
   async function putFile({ owner, repo, path, branch, message, content, sha }) {
-    return api.put(`/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}`, {
+    return api.put(`/repos/${owner}/${repo}/contents/${encodeContentPath(path)}`, {
       message,
       content: toBase64Utf8(content),
       sha: sha || undefined,
@@ -79,4 +86,3 @@ export function createRepoStore({ api }) {
 
   return { getFile, upsertJson }
 }
-

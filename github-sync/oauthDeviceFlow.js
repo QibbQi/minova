@@ -10,6 +10,8 @@ export async function startDeviceFlow({ clientId, scope }) {
   const res = await fetch('https://github.com/login/device/code', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+    mode: 'cors',
+    credentials: 'omit',
     body
   })
   const data = await res.json()
@@ -29,6 +31,8 @@ export async function pollDeviceFlow({ clientId, deviceCode, interval }) {
     const res = await fetch('https://github.com/login/oauth/access_token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+      mode: 'cors',
+      credentials: 'omit',
       body
     })
     const data = await res.json()
@@ -38,4 +42,3 @@ export async function pollDeviceFlow({ clientId, deviceCode, interval }) {
     return data
   }
 }
-

@@ -35,6 +35,7 @@ export function mountGitHubSyncUi({ sync }) {
   const branch = el('input', { class: 'w-full border border-slate-200 rounded-xl p-3 text-sm outline-none', placeholder: 'branch (main)', value: 'main' })
   const path = el('input', { class: 'w-full border border-slate-200 rounded-xl p-3 text-sm outline-none md:col-span-2', placeholder: 'path (minova-data/state.json)', value: 'minova-data/state.json' })
   const passphrase = el('input', { class: 'w-full border border-slate-200 rounded-xl p-3 text-sm outline-none md:col-span-2', placeholder: '本地加密口令（用于加密 token）', type: 'password' })
+  const pat = el('input', { class: 'w-full border border-slate-200 rounded-xl p-3 text-sm outline-none md:col-span-2', placeholder: '可选：粘贴 GitHub PAT（fine-grained，仓库Contents读写）', type: 'password' })
 
   const cfg = state().config
   clientId.value = cfg.clientId || ''
@@ -49,7 +50,8 @@ export function mountGitHubSyncUi({ sync }) {
     el('div', {}, [el('div', { class: 'text-[10px] font-black text-slate-400 uppercase mb-1', text: 'Repo' }), repo]),
     el('div', {}, [el('div', { class: 'text-[10px] font-black text-slate-400 uppercase mb-1', text: 'Branch' }), branch]),
     el('div', { class: 'md:col-span-2' }, [el('div', { class: 'text-[10px] font-black text-slate-400 uppercase mb-1', text: 'Path' }), path]),
-    el('div', { class: 'md:col-span-2' }, [el('div', { class: 'text-[10px] font-black text-slate-400 uppercase mb-1', text: 'Passphrase' }), passphrase])
+    el('div', { class: 'md:col-span-2' }, [el('div', { class: 'text-[10px] font-black text-slate-400 uppercase mb-1', text: 'Passphrase' }), passphrase]),
+    el('div', { class: 'md:col-span-2' }, [el('div', { class: 'text-[10px] font-black text-slate-400 uppercase mb-1', text: 'PAT (optional)' }), pat])
   )
 
   const deviceBox = el('div', { class: 'mt-4 hidden rounded-xl border border-slate-200 p-4 bg-slate-50' })
@@ -74,11 +76,12 @@ export function mountGitHubSyncUi({ sync }) {
   const btnConnect = el('button', { class: 'px-4 py-2 rounded-xl bg-slate-900 text-white font-bold hover:bg-black', text: '连接 GitHub' })
   const btnUnlock = el('button', { class: 'px-4 py-2 rounded-xl bg-slate-900 text-white font-bold hover:bg-black', text: '解锁已保存 Token' })
   const btnCheck = el('button', { class: 'px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 border border-slate-200', text: '连接自检' })
+  const btnConnectPat = el('button', { class: 'px-4 py-2 rounded-xl bg-slate-900 text-white font-bold hover:bg-black', text: '使用 PAT 连接' })
   const btnPull = el('button', { class: 'px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 border border-slate-200', text: '拉取' })
   const btnPush = el('button', { class: 'px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 border border-slate-200', text: '立即提交' })
   const btnDisconnect = el('button', { class: 'px-4 py-2 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700', text: '断开' })
 
-  footer.append(btnCheck, btnPull, btnPush, btnDisconnect, btnSave, btnUnlock, btnConnect, btnClose)
+  footer.append(btnCheck, btnPull, btnPush, btnDisconnect, btnSave, btnUnlock, btnConnectPat, btnConnect, btnClose)
 
   const msg = el('div', { class: 'mt-3 text-xs text-slate-500' })
 
@@ -177,6 +180,27 @@ export function mountGitHubSyncUi({ sync }) {
       const token = await pollDeviceFlow({ clientId: cfgNow.clientId, deviceCode: flow.device_code, interval: flow.interval })
       await sync.storeToken(passphrase.value, token.access_token)
       msg.textContent = '连接成功'
+    } catch (e) {
+      msg.textContent = formatErr(e)
+    }
+    refresh()
+  }
+
+  btnConnectPat.onclick = async () => {
+    if (!passphrase.value) {
+      msg.textContent = '请填写加密口令'
+      return
+    }
+    const token = pat.value.trim()
+    if (!token) {
+      msg.textContent = '请粘贴 PAT'
+      return
+    }
+    try {
+      await sync.storeToken(passphrase.value, token)
+      const s = await sync.selfCheck()
+      const reset = s?.rateLimit?.reset ? new Date(parseInt(s.rateLimit.reset, 10) * 1000).toLocaleString() : '-'
+      msg.textContent = `已使用 PAT 连接：${s.login || '-'} | RateLimit ${s.rateLimit.remaining}/${s.rateLimit.limit}，重置：${reset}`
     } catch (e) {
       msg.textContent = formatErr(e)
     }

@@ -1,6 +1,6 @@
 {
   "v": 1,
-  "updatedAt": "2026-04-08T09:48:56.018Z",
+  "updatedAt": "2026-04-08T09:58:54.648Z",
   "data": {
     "products": [
       {
@@ -240,14 +240,15 @@
       "工商储": [
         "储能柜"
       ]
-    }
+    },
+    "settings": {}
   },
   "audit": [
     {
-      "id": "49f4c046-6f63-4b82-8986-3f705c2092b7",
-      "at": "2026-04-08T09:48:56.018Z",
+      "id": "86fe0768-3f67-48d4-a9e5-3746baa78a2f",
+      "at": "2026-04-08T09:58:54.648Z",
       "action": "snapshot",
-      "detail": "state update"
+      "detail": "manual sync"
     }
   ]
 }

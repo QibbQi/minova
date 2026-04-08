@@ -999,6 +999,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
         </div>
     </div>
 
+        <script id="minova-embedded-state" type="application/json"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script type="module">
@@ -1012,6 +1013,28 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
         let inventory = [];
         let inventoryHistory = [];
         let inventoryHistoryPage = 1;
+        let subcategoriesByCategory = {};
+        try {
+            const el = document.getElementById('minova-embedded-state');
+            const raw = el?.textContent ? el.textContent.trim() : '';
+            if (raw) {
+                const embedded = JSON.parse(raw);
+                const embeddedAt = embedded?.updatedAt ? Date.parse(embedded.updatedAt) : 0;
+                const localAt = parseInt(localStorage.getItem('minova_embedded_updatedAt') || '0', 10) || 0;
+                if (embeddedAt && embeddedAt > localAt && embedded?.data) {
+                    products = Array.isArray(embedded.data.products) ? embedded.data.products : [];
+                    inventory = Array.isArray(embedded.data.inventory) ? embedded.data.inventory : [];
+                    inventoryHistory = Array.isArray(embedded.data.inventoryHistory) ? embedded.data.inventoryHistory : [];
+                    if (inventoryHistory.length > 1000) inventoryHistory = inventoryHistory.slice(inventoryHistory.length - 1000);
+                    subcategoriesByCategory = embedded.data.subcategoriesByCategory && typeof embedded.data.subcategoriesByCategory === 'object' ? embedded.data.subcategoriesByCategory : {};
+                    localStorage.setItem('minova_embedded_updatedAt', String(embeddedAt));
+                    localStorage.setItem('minova_products', JSON.stringify(products));
+                    localStorage.setItem('minova_inventory', JSON.stringify(inventory));
+                    localStorage.setItem('minova_inventory_history', JSON.stringify(inventoryHistory));
+                    localStorage.setItem('minova_subcategories_v1', JSON.stringify(subcategoriesByCategory));
+                }
+            }
+        } catch (e) {}
         try {
             const savedProducts = localStorage.getItem('minova_products');
             if (savedProducts) products = JSON.parse(savedProducts);
@@ -1022,8 +1045,6 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
             if (savedHistory) inventoryHistory = JSON.parse(savedHistory);
             if (inventoryHistory.length > 1000) inventoryHistory = inventoryHistory.slice(inventoryHistory.length - 1000);
         } catch (e) { console.error("Load data failed:", e); }
-
-        let subcategoriesByCategory = {};
         function rebuildSubcategoryIndexFromProducts() {
             const map = {};
             products.forEach(p => {
@@ -2813,6 +2834,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                 if (inventoryHistory.length > 1000) inventoryHistory = inventoryHistory.slice(inventoryHistory.length - 1000);
                 subcategoriesByCategory = data?.subcategoriesByCategory && typeof data.subcategoriesByCategory === 'object' ? data.subcategoriesByCategory : {};
                 try {
+                    localStorage.setItem('minova_embedded_updatedAt', String(Date.now()));
                     localStorage.setItem('minova_products', JSON.stringify(products));
                     localStorage.setItem('minova_inventory', JSON.stringify(inventory));
                     localStorage.setItem('minova_inventory_history', JSON.stringify(inventoryHistory));
@@ -2827,6 +2849,47 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                 suppressGitHubSync = false;
             }
         });
+
+        window.buildUpdatedHtml = () => {
+            const snapshot = {
+                v: 1,
+                updatedAt: new Date().toISOString(),
+                data: {
+                    products,
+                    inventory,
+                    inventoryHistory,
+                    subcategoriesByCategory
+                }
+            };
+            const json = JSON.stringify(snapshot).replaceAll('<', '\\u003c');
+            const doc = `<!doctype html>\n${document.documentElement.outerHTML}`;
+            const marker = /<script id="minova-embedded-state" type="application\/json">[\s\S]*?<\/script>/;
+            if (marker.test(doc)) {
+                return doc.replace(marker, `<script id="minova-embedded-state" type="application/json">${json}</script>`);
+            }
+            return doc.replace('</body>', `<script id="minova-embedded-state" type="application/json">${json}</script></body>`);
+        };
+
+        window.downloadUpdatedHtml = () => {
+            const html = window.buildUpdatedHtml();
+            const now = new Date();
+            const y = now.getFullYear();
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            const d = String(now.getDate()).padStart(2, '0');
+            const hh = String(now.getHours()).padStart(2, '0');
+            const mm = String(now.getMinutes()).padStart(2, '0');
+            const ss = String(now.getSeconds()).padStart(2, '0');
+            const filename = `当前页面的更新版本_${y}${m}${d}_${hh}${mm}${ss}.html`;
+            const blob = new Blob([html], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        };
         renderDb();
         renderInventory();
         renderInventoryHistory();

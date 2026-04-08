@@ -77,11 +77,13 @@ export function mountGitHubSyncUi({ sync }) {
   const btnUnlock = el('button', { class: 'px-4 py-2 rounded-xl bg-slate-900 text-white font-bold hover:bg-black', text: '解锁已保存 Token' })
   const btnCheck = el('button', { class: 'px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 border border-slate-200', text: '连接自检' })
   const btnConnectPat = el('button', { class: 'px-4 py-2 rounded-xl bg-slate-900 text-white font-bold hover:bg-black', text: '使用 PAT 连接' })
+  const btnDownloadHtml = el('button', { class: 'px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 border border-slate-200', text: '生成更新HTML' })
+  const btnPublish = el('button', { class: 'px-4 py-2 rounded-xl bg-purple-700 text-white font-bold hover:bg-purple-800', text: '发布到 Pages' })
   const btnPull = el('button', { class: 'px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 border border-slate-200', text: '拉取' })
   const btnPush = el('button', { class: 'px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 border border-slate-200', text: '立即提交' })
   const btnDisconnect = el('button', { class: 'px-4 py-2 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700', text: '断开' })
 
-  footer.append(btnCheck, btnPull, btnPush, btnDisconnect, btnSave, btnUnlock, btnConnectPat, btnConnect, btnClose)
+  footer.append(btnCheck, btnPull, btnPush, btnDownloadHtml, btnPublish, btnDisconnect, btnSave, btnUnlock, btnConnectPat, btnConnect, btnClose)
 
   const msg = el('div', { class: 'mt-3 text-xs text-slate-500' })
 
@@ -92,6 +94,7 @@ export function mountGitHubSyncUi({ sync }) {
     statusText.textContent = s.connected ? `GitHub 已连接 | 队列 ${s.queueSize}` : `GitHub 未连接${s.hasTokenStored ? '（有已保存 token）' : ''}`
     btnUnlock.style.display = s.hasTokenStored && !s.connected ? '' : 'none'
     btnCheck.style.display = s.connected ? '' : 'none'
+    btnPublish.style.display = s.connected ? '' : 'none'
   }
 
   btn.onclick = () => {
@@ -212,6 +215,31 @@ export function mountGitHubSyncUi({ sync }) {
       const s = await sync.selfCheck()
       const reset = s?.rateLimit?.reset ? new Date(parseInt(s.rateLimit.reset, 10) * 1000).toLocaleString() : '-'
       msg.textContent = `已认证：${s.login || '-'}\nRateLimit(Core)：${s.rateLimit.remaining}/${s.rateLimit.limit}，重置：${reset}`
+    } catch (e) {
+      msg.textContent = formatErr(e)
+    }
+    refresh()
+  }
+
+  btnDownloadHtml.onclick = () => {
+    try {
+      window.downloadUpdatedHtml?.()
+      msg.textContent = '已生成下载（更新版本.html）'
+    } catch (e) {
+      msg.textContent = formatErr(e)
+    }
+    refresh()
+  }
+
+  btnPublish.onclick = async () => {
+    try {
+      const html = window.buildUpdatedHtml?.()
+      if (!html) {
+        msg.textContent = '生成 HTML 失败'
+        return
+      }
+      await sync.publishIndexHtml(html)
+      msg.textContent = '已发布：index.html 已覆盖（等待 Pages 重新部署）'
     } catch (e) {
       msg.textContent = formatErr(e)
     }

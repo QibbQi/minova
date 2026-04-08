@@ -112,6 +112,21 @@ export function createGitHubSync({ getLocalState, applyRemoteState }) {
     }
   }
 
+  async function publishIndexHtml(html) {
+    if (!unlockedToken) throw new Error('Not connected')
+    const { owner, repo: repoName, branch } = config
+    if (!owner || !repoName) throw new Error('Missing repo config')
+    await repo.upsertText({
+      owner,
+      repo: repoName,
+      branch,
+      path: 'index.html',
+      message: `minova: publish index.html (${new Date().toLocaleString()})`,
+      content: html
+    })
+    appendAudit('publish', `${owner}/${repoName}:index.html`)
+  }
+
   async function pushSnapshot(reason) {
     const { owner, repo: repoName, branch, path } = config
     if (!owner || !repoName || !path) throw new Error('Missing repo config')
@@ -167,6 +182,7 @@ export function createGitHubSync({ getLocalState, applyRemoteState }) {
     enqueueSnapshot,
     pull,
     selfCheck,
+    publishIndexHtml,
     flush
   }
 }

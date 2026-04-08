@@ -84,5 +84,40 @@ export function createRepoStore({ api }) {
     }
   }
 
-  return { getFile, upsertJson }
+  async function upsertText({ owner, repo, path, branch, message, content }) {
+    let remote = { sha: null }
+    try {
+      remote = await getFile({ owner, repo, path, branch })
+    } catch (e) {
+      if (e?.status !== 404) throw e
+    }
+
+    try {
+      return await putFile({
+        owner,
+        repo,
+        path,
+        branch,
+        message,
+        content,
+        sha: remote.sha
+      })
+    } catch (e) {
+      if (e?.status === 409) {
+        const latest = await getFile({ owner, repo, path, branch })
+        return putFile({
+          owner,
+          repo,
+          path,
+          branch,
+          message: `${message} (retry)`,
+          content,
+          sha: latest.sha
+        })
+      }
+      throw e
+    }
+  }
+
+  return { getFile, upsertJson, upsertText }
 }

@@ -1,0 +1,2806 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 智能报价管理系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --print-font-size: 12pt;
+        }
+
+        @media print {
+            .no-print { display: none !important; }
+            body { background-color: white; padding: 0; margin: 0; }
+            .print-container { 
+                box-shadow: none !important; 
+                border: none !important; 
+                width: 100% !important; 
+                max-width: none !important;
+                padding: 0 !important;
+            }
+            .print-only { display: block !important; }
+            .price-input { border: none !important; padding: 0 !important; background: transparent !important; }
+            input[type="number"] { -moz-appearance: textfield; }
+            input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        }
+
+        .tab-active { border-bottom: 2px solid #582C83; color: #582C83; font-weight: bold; }
+        
+        /* Brand Colors */
+        .text-brand-purple { color: #582C83; }
+        .bg-brand-purple { background-color: #582C83; }
+        .border-brand-purple { border-color: #582C83; }
+        .text-brand-yellow { color: #FFC107; }
+        .bg-brand-yellow { background-color: #FFC107; }
+        
+        @media print {
+            input, textarea { border: none !important; outline: none !important; resize: none !important; }
+            #section-after-details[data-split-enabled="true"] { page-break-before: always !important; break-before: page !important; }
+        }
+
+        .shimmer {
+            background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+            background-size: 200% 100%;
+            animation: shimmer 2s infinite;
+        }
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800">
+
+    <div class="max-w-6xl mx-auto py-6 px-4 no-print">
+        <header class="mb-6 flex justify-between items-center bg-white p-3 rounded-2xl shadow-sm border border-slate-200">
+            <div class="flex items-center gap-2 pl-4">
+                <div class="w-8 h-8 bg-purple-700 rounded-lg flex items-center justify-center text-white font-bold">Q</div>
+                <h1 class="font-bold text-slate-700">Minova后台管理系统</h1>
+            </div>
+            <nav class="flex">
+                <button onclick="switchTab('quotation')" id="tab-quotation" class="px-6 py-2 tab-active transition-all text-sm">报价生成</button>
+                <button onclick="switchTab('pvcalc')" id="tab-pvcalc" class="px-6 py-2 text-slate-500 hover:text-purple-700 transition-all text-sm">光储计算</button>
+                <button onclick="switchTab('costcalc')" id="tab-costcalc" class="px-6 py-2 text-slate-500 hover:text-purple-700 transition-all text-sm">成本报价核算</button>
+                <button onclick="switchTab('database')" id="tab-database" class="px-6 py-2 text-slate-500 hover:text-purple-700 transition-all text-sm">产品清单</button>
+                <button onclick="switchTab('inventory')" id="tab-inventory" class="px-6 py-2 text-slate-500 hover:text-purple-700 transition-all text-sm">库存管理</button>
+            </nav>
+            <div class="flex gap-3">
+                <button onclick="toggleLanguage()" id="btn-lang" class="text-sm bg-slate-100 text-slate-700 px-4 py-2 rounded-xl hover:bg-slate-200 transition-colors font-bold border border-slate-200">
+                    中 / EN
+                </button>
+                <button onclick="toggleCurrency()" id="btn-currency" class="text-sm bg-slate-100 text-slate-700 px-4 py-2 rounded-xl hover:bg-slate-200 transition-colors font-bold border border-slate-200">
+                    ¥ / RM
+                </button>
+                <button onclick="generateQuotationPDF()" class="text-sm bg-slate-900 text-white px-5 py-2 rounded-xl hover:bg-black transition-all shadow-lg shadow-slate-200">
+                    生成报价单 (PDF)
+                </button>
+            </div>
+        </header>
+
+        </div>
+    </div>
+
+    <main id="view-quotation" class="max-w-5xl mx-auto px-4 mb-20">
+        <div class="bg-white shadow-2xl rounded-sm print-container min-h-[1050px] flex flex-col p-12 md:p-16 border border-slate-100">
+            <div class="flex justify-between items-start mb-12 border-b-4 border-slate-1000 pb-8">
+                <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-4 mb-4">
+                <svg width="200" height="60" viewBox="0 0 200 60" xmlns="http://www.w3.org/2000/svg" class="h-12 w-auto">
+                    <defs>
+                        <style>
+                            .logo-m { fill: none; stroke: #582C83; stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; }
+                            .logo-dot { fill: #FFC107; }
+                            .logo-text { fill: #582C83; font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif; font-weight: 900; font-size: 32px; letter-spacing: -1px; }
+                        </style>
+                    </defs>
+                    <path d="M10 45 L25 15 L40 45" class="logo-m" />
+                    <circle cx="25" cy="6" r="5" class="logo-dot" />
+                    <text x="55" y="45" class="logo-text">MINOVA</text>
+                </svg>
+            </div>
+            <div class="space-y-1 text-sm text-slate-500 font-medium">
+                <p class="uppercase tracking-[0.2em] text-[10px] font-bold text-purple-800/60 mb-2">Solar System Solution | Storage Battery</p>
+                        <textarea id="company-address" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'" class="block w-full outline-none resize-none overflow-hidden leading-tight bg-transparent">Add：Tiong Nam Industrial Park, 12A, JIn 51/203A, 
+Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
+                        <input type="text" value="Tel：+60 (11) 1258-0513" class="block w-full outline-none">
+                        <input id="company-web" type="text" value="Web：minovasolar.com" class="text-sm text-slate-500 font-medium outline-none flex-1 min-w-0">
+                    </div>
+                </div>
+                <div class="flex-shrink-0 text-right pl-8">
+                    <h2 class="font-thin text-slate-300 tracking-wider uppercase mb-5" style="font-size:36px; line-height:1;" id="lbl-title">Quotation</h2>
+                    <div class="space-y-1 text-xs text-slate-500">
+                        <p><span id="lbl-quote-no">单据编号:</span> <input type="text" id="quote-no" class="text-right font-bold text-slate-700 w-40 outline-none"></p>
+                        <p><span id="lbl-quote-date">报价日期:</span> <input type="date" id="currentDate" class="text-right w-40 outline-none" onchange="generateQuoteNo()"></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 gap-12 mb-12">
+                <div class="border-l-4 border-purple-700 pl-4">
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-2">
+                        <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0" id="lbl-to-customer">致客户：</h3>
+                        <button type="button" id="validity-badge" onclick="enterValidityEdit()" class="self-end md:self-auto bg-[#582C83] text-white rounded-lg px-3 py-1 text-xs font-black transition-all hover:bg-[#4B236F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-300 focus-visible:ring-offset-2">
+                            <span id="validity-badge-label">报价有效期</span>
+                            <span class="mx-1">·</span>
+                            <span id="validity-badge-value">30天</span>
+                        </button>
+                    </div>
+                    <div class="flex items-baseline gap-3">
+                        <input id="input-customer-name" type="text" placeholder="输入客户公司" class="text-xl font-bold block flex-1 min-w-0 outline-none">
+                        <input id="input-customer-contact" type="text" placeholder="联系人/职位" class="text-sm text-slate-500 block w-56 outline-none">
+                    </div>
+                    <div class="mt-2 flex items-center gap-2">
+                        <span id="lbl-site-address" class="text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Site Address：</span>
+                        <input id="input-site-address" type="text" placeholder="填写现场地址" class="text-sm text-slate-700 block w-full border-none bg-slate-50/60 rounded-lg px-2 py-1 shadow-sm shadow-purple-100 outline-none transition-all focus:bg-white focus-visible:ring-2 focus-visible:ring-purple-300 focus-visible:ring-offset-1">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Estimated Timeline & Payment Terms -->
+            <div class="grid grid-cols-2 gap-12 mb-8">
+                <!-- Timeline Section -->
+                <div>
+                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3" id="lbl-timeline">Estimated Timeline</h3>
+                    <div class="space-y-2">
+                        <div class="flex items-center gap-3 bg-slate-50/50 p-2 rounded-lg border border-slate-100">
+                            <span class="flex-shrink-0 w-5 h-5 bg-purple-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">1</span>
+                            <span class="text-xs font-bold text-slate-700 flex-grow" id="val-step1">Site Survey</span>
+                            <div class="flex items-center gap-1">
+                                <span class="text-xs font-bold text-purple-600 mr-0.5">≈</span>
+                                <input type="number" class="w-12 text-xs font-bold text-purple-600 bg-transparent outline-none text-right border-b border-purple-200" placeholder="0">
+                                <span class="text-[10px] font-bold text-slate-400 unit-days">天</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 bg-slate-50/50 p-2 rounded-lg border border-slate-100">
+                            <span class="flex-shrink-0 w-5 h-5 bg-purple-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">2</span>
+                            <span class="text-xs font-bold text-slate-700 flex-grow" id="val-step2">Material Procurement & Installation Planning</span>
+                            <div class="flex items-center gap-1">
+                                <span class="text-xs font-bold text-purple-600 mr-0.5">≈</span>
+                                <input type="number" class="w-12 text-xs font-bold text-purple-600 bg-transparent outline-none text-right border-b border-purple-200" placeholder="0">
+                                <span class="text-[10px] font-bold text-slate-400 unit-days">天</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 bg-slate-50/50 p-2 rounded-lg border border-slate-100">
+                            <span class="flex-shrink-0 w-5 h-5 bg-purple-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">3</span>
+                            <span class="text-xs font-bold text-slate-700 flex-grow" id="val-step3">Installation</span>
+                            <div class="flex items-center gap-1">
+                                <span class="text-xs font-bold text-purple-600 mr-0.5">≈</span>
+                                <input type="number" class="w-12 text-xs font-bold text-purple-600 bg-transparent outline-none text-right border-b border-purple-200" placeholder="0">
+                                <span class="text-[10px] font-bold text-slate-400 unit-days">天</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payment Terms Section -->
+                <div>
+                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3" id="lbl-payment-terms">Payment Terms</h3>
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center p-2 bg-purple-900 text-white rounded-lg mb-2">
+                            <span class="text-[10px] font-bold uppercase tracking-wider" id="lbl-total-payable">核算总价</span>
+                            <span class="text-xs font-black"><span class="currency-symbol mr-1"></span><span id="payment-grand-total">0.00</span></span>
+                        </div>
+                        <div class="grid grid-cols-1 gap-1.5">
+                            <div class="flex justify-between items-center p-2 bg-slate-50 rounded-lg border border-slate-100 group/pay">
+                                <span class="text-[10px] font-bold text-slate-500 uppercase" id="lbl-confirmation">Upon Confirmation</span>
+                                <div class="flex items-center gap-1">
+                                    <input type="number" id="payment-confirmation-percent" value="30" oninput="onPaymentPercentInput()" onchange="onPaymentPercentInput()" class="w-10 text-xs font-bold text-purple-600 bg-transparent outline-none text-right border-b border-purple-200">
+                                    <span class="text-[10px] font-bold text-slate-400">%</span>
+                                    <button onclick="confirmPaymentTerms()" class="p-1 bg-purple-100 text-purple-600 rounded-md hover:bg-purple-600 hover:text-white transition-all no-print opacity-0 group-hover/pay:opacity-100" title="确认修改">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd" /></svg>
+                                    </button>
+                                    <span class="text-xs font-bold text-slate-700 w-24 text-right"><span class="currency-symbol mr-1"></span><span id="payment-confirmation">0.00</span></span>
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-center p-2 bg-slate-50 rounded-lg border border-slate-100 group/pay">
+                                <span class="text-[10px] font-bold text-slate-500 uppercase" id="lbl-installation">Upon Installation</span>
+                                <div class="flex items-center gap-1">
+                                    <input type="number" id="payment-installation-percent" value="40" oninput="onPaymentPercentInput()" onchange="onPaymentPercentInput()" class="w-10 text-xs font-bold text-purple-600 bg-transparent outline-none text-right border-b border-purple-200">
+                                    <span class="text-[10px] font-bold text-slate-400">%</span>
+                                    <button onclick="confirmPaymentTerms()" class="p-1 bg-purple-100 text-purple-600 rounded-md hover:bg-purple-600 hover:text-white transition-all no-print opacity-0 group-hover/pay:opacity-100" title="确认修改">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd" /></svg>
+                                    </button>
+                                    <span class="text-xs font-bold text-slate-700 w-24 text-right"><span class="currency-symbol mr-1"></span><span id="payment-installation">0.00</span></span>
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-center p-2 bg-slate-50 rounded-lg border border-slate-100 group/pay">
+                                <span class="text-[10px] font-bold text-slate-500 uppercase" id="lbl-testing">Upon Testing & Commissioning</span>
+                                <div class="flex items-center gap-1">
+                                    <input type="number" id="payment-testing-percent" value="30" oninput="onPaymentPercentInput()" onchange="onPaymentPercentInput()" class="w-10 text-xs font-bold text-purple-600 bg-transparent outline-none text-right border-b border-purple-200">
+                                    <span class="text-[10px] font-bold text-slate-400">%</span>
+                                    <button onclick="confirmPaymentTerms()" class="p-1 bg-purple-100 text-purple-600 rounded-md hover:bg-purple-600 hover:text-white transition-all no-print opacity-0 group-hover/pay:opacity-100" title="确认修改">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd" /></svg>
+                                    </button>
+                                    <span class="text-xs font-bold text-slate-700 w-24 text-right"><span class="currency-symbol mr-1"></span><span id="payment-testing">0.00</span></span>
+                                </div>
+                            </div>
+                        </div>
+                        <p id="payment-warning" class="hidden text-[10px] font-bold text-red-500 mt-2 bg-red-50 p-2 rounded-lg border border-red-100 animate-pulse"></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex-grow">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="border-b-2 border-purple-900 text-[10px] font-black uppercase text-slate-400">
+                            <th class="py-3 px-2 w-10">#</th>
+                            <th class="py-3 px-2" id="th-desc">产品/服务</th>
+                            <th class="py-3 px-2 w-32" id="th-spec">规格型号</th>
+                            <th class="py-3 px-2 w-32 no-print" id="th-batch">采购批次</th>
+                            <th class="py-3 px-2 w-20 text-center" id="th-qty">数量</th>
+                            <th class="py-3 px-2 w-32 text-right" id="th-price">单价 (¥)</th>
+                            <th class="no-print py-3 px-2 w-24 text-center" id="th-margin">毛利%</th>
+                            <th class="py-3 px-2 w-32 text-right" id="th-amount">小计 (¥)</th>
+                            <th class="no-print py-3 px-2 w-10"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="quote-body"></tbody>
+                </table>
+
+                <div class="no-print mt-6 flex gap-3">
+                    <div class="relative group">
+                        <button class="text-xs bg-purple-700 hover:bg-purple-800 text-white px-4 py-2 rounded-lg font-bold shadow-lg shadow-purple-100 transition-all flex items-center gap-1">
+                            📦 从库选择 ↓
+                        </button>
+                        <div class="absolute left-0 mt-2 w-96 bg-white shadow-2xl border border-slate-200 rounded-xl hidden group-hover:block z-50">
+                            <div class="p-3 border-b bg-slate-50 rounded-t-xl flex flex-col gap-2">
+                                <span class="text-[10px] font-black text-slate-400">产品目录筛选</span>
+                                <div class="flex gap-2">
+                                    <select id="picker-vendor" onchange="renderPicker()" class="text-xs p-1.5 border border-slate-200 rounded outline-none focus:border-blue-400 flex-1 bg-white cursor-pointer">
+                                        <option value="">全部供应商</option>
+                                    </select>
+                                    <select id="picker-category" onchange="renderPicker()" class="text-xs p-1.5 border border-slate-200 rounded outline-none focus:border-blue-400 flex-1 bg-white cursor-pointer">
+                                        <option value="">全部类目</option>
+                                    </select>
+                                </div>
+                                <input type="text" id="picker-search" placeholder="搜索产品名称或关键字..." oninput="renderPicker()" class="text-xs p-1.5 px-2 border border-slate-200 rounded outline-none focus:border-blue-400 w-full">
+                            </div>
+                            <div id="picker-list" class="max-h-80 overflow-y-auto divide-y divide-slate-50"></div>
+                        </div>
+                    </div>
+                    <button id="btn-split" onclick="toggleQuoteSplit()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded-lg font-bold transition-all border border-slate-200 flex items-center gap-1" title="在报价明细与备注条款之间插入分割线，并在打印/PDF中分页">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-slate-500"><path d="M3 5.75A.75.75 0 0 1 3.75 5h12.5a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 5.75Z"/><path d="M3 14.25a.75.75 0 0 1 .75-.75h12.5a.75.75 0 0 1 0 1.5H3.75a.75.75 0 0 1-.75-.75Z"/><path d="M4.5 10a.75.75 0 0 1 .75-.75h.5a.75.75 0 0 1 0 1.5h-.5A.75.75 0 0 1 4.5 10Zm3 0a.75.75 0 0 1 .75-.75h.5a.75.75 0 0 1 0 1.5h-.5A.75.75 0 0 1 7.5 10Zm3 0a.75.75 0 0 1 .75-.75h.5a.75.75 0 0 1 0 1.5h-.5A.75.75 0 0 1 10.5 10Zm3 0a.75.75 0 0 1 .75-.75h.5a.75.75 0 0 1 0 1.5h-.5A.75.75 0 0 1 13.5 10Z"/></svg>
+                        <span id="btn-split-label">从此分割</span>
+                    </button>
+                    <div class="flex items-center gap-2">
+                        <select id="blank-row-count" class="text-xs p-2 border border-slate-200 rounded-lg outline-none bg-white text-slate-600 font-bold">
+                            <option value="1" selected>1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                            <option value="6">6</option>
+                            <option value="7">7</option>
+                            <option value="8">8</option>
+                            <option value="9">9</option>
+                            <option value="10">10</option>
+                        </select>
+                        <button onclick="addBlankRowsFromUI()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded-lg font-bold transition-all border border-slate-200 flex items-center gap-1" title="新增空白行（最多10行）">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-slate-500"><path d="M10 3.5a.75.75 0 0 1 .75.75v5h5a.75.75 0 0 1 0 1.5h-5v5a.75.75 0 0 1-1.5 0v-5h-5a.75.75 0 0 1 0-1.5h5v-5A.75.75 0 0 1 10 3.5Z"/></svg>
+                            <span>新增空白行</span>
+                        </button>
+                    </div>
+                    
+                </div>
+            </div>
+
+            <div class="mt-10 mb-12 grid grid-cols-1 md:grid-cols-[1.2fr_1fr] gap-6 items-start w-full">
+                <div class="p-4 rounded-xl bg-gradient-to-br from-purple-50 to-yellow-50 border border-purple-100">
+                    <div class="space-y-4">
+                        <div>
+                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2" id="lbl-proposed-size">Proposed System Size</p>
+                            <div class="flex items-baseline">
+                                <input id="input-proposed-size" type="number" min="1" step="1" inputmode="numeric" oninput="sanitizePositiveInt(this)" class="w-20 text-sm font-black text-purple-700 bg-transparent outline-none text-right border-b border-purple-200">
+                                <span class="text-sm font-black text-slate-500 ml-1">kWp</span>
+                            </div>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2" id="lbl-solar-program">Solar Program</p>
+                            <div class="flex items-center gap-2">
+                                <select id="select-solar-program" onchange="updateSolarProgramIcon()" class="text-xs p-2 border border-slate-200 rounded-lg outline-none bg-white text-slate-600 font-bold flex-1">
+                                    <option value="offgrid">Off-Grid System</option>
+                                    <option value="gridtied">Grid-Tied System</option>
+                                    <option value="hybrid">Hybrid System</option>
+                                    <option value="directdrive">Direct-Drive System</option>
+                                    <option value="microgrid">Microgrid</option>
+                                </select>
+                                <span id="solar-program-icon" class="w-4 h-4"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="w-full grand-total-container">
+                    <div class="space-y-3 p-4 rounded-xl bg-gradient-to-br from-purple-50 to-yellow-50 border border-purple-100">
+                        <div class="flex justify-between text-slate-400 text-sm">
+                            <span id="lbl-total-items">项目总数</span>
+                            <span id="stat-count">0</span>
+                        </div>
+                        <div class="no-print flex justify-between text-slate-400 text-sm">
+                            <span id="lbl-avg-margin">平均毛利率</span>
+                            <span id="stat-avg-margin">0%</span>
+                        </div>
+                        <div class="flex justify-between items-center text-slate-400 text-sm">
+                            <span id="lbl-shipping-handling">Shipping &amp; Handling</span>
+                            <input type="text" id="val-shipping-handling" value="已包含" oninput="this.dataset.dirty='true'" class="text-right font-bold text-slate-700 w-40 bg-transparent outline-none">
+                        </div>
+                        <div class="w-full">
+                            <div class="grid grid-cols-2 w-full rounded overflow-hidden total-pill">
+                                <div class="bg-yellow-400 text-purple-900 text-xs font-black uppercase px-3 py-2 flex items-center"> <span id="lbl-grand-total">应付总额</span></div>
+                                <div class="bg-purple-800 text-white text-xs font-black px-3 py-2 flex items-center justify-end gap-1">
+                                    <span class="currency-symbol">¥</span>
+                                    <span id="grand-total">0.00</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="section-after-details" class="mt-12 border-t pt-16 relative">
+                <div id="split-preview" class="no-print hidden absolute left-0 -mt-6 text-[10px] font-black text-purple-700 bg-purple-50 border border-purple-100 px-3 py-1 rounded-full">打印/PDF 将从此处分页</div>
+                <div class="terms-container">
+                    <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3" id="lbl-terms">备注与条款：</h4>
+                    <textarea id="val-terms" oninput="this.dataset.dirty='true'; this.style.height = ''; this.style.height = this.scrollHeight + 'px'" class="w-full min-h-[240px] text-sm text-slate-500 bg-transparent border-none outline-none leading-relaxed italic resize-none overflow-hidden">条款：
+本报价以现场全面勘察为准。如需采用非标准安装方式（包括但不限于额外开槽/破拆、布线、线槽/桥架、定制加工或任何超出标准安装范围的工作），费用可能调整。
+
+确认：
+本人/本公司（签署人）确认接受“光伏+电池+逆变器系统”及上述价格、规格、条款与条件，并同意由 Minova Holdings Sdn. Bhd. 开始进行系统设计、采购与安装。</textarea>
+                </div>
+            </div>
+
+            <div class="mt-10 bg-purple-50 rounded-xl p-6 border border-purple-100 signature-container">
+                <div class="grid grid-cols-2 gap-x-8 gap-y-4">
+                    <div>
+                        <p class="text-[10px] font-black text-purple-900/70 uppercase tracking-widest mb-2" id="lbl-signature">Signature</p>
+                        <div class="border-b border-purple-200 h-12 flex items-end">
+                            <input type="text" class="w-full bg-transparent outline-none text-sm font-bold text-slate-700 pb-1">
+                        </div>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-black text-purple-900/70 uppercase tracking-widest mb-2" id="lbl-email">Email</p>
+                        <div class="border-b border-purple-200 h-12 flex items-end">
+                            <input type="text" class="w-full bg-transparent outline-none text-sm font-bold text-slate-700 pb-1">
+                        </div>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-black text-purple-900/70 uppercase tracking-widest mb-2" id="lbl-full-name">Full Name</p>
+                        <div class="border-b border-purple-200 h-12 flex items-end">
+                            <input type="text" class="w-full bg-transparent outline-none text-sm font-bold text-slate-700 pb-1">
+                        </div>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-black text-purple-900/70 uppercase tracking-widest mb-2" id="lbl-nric-passport">NRIC/Passport</p>
+                        <div class="border-b border-purple-200 h-12 flex items-end">
+                            <input type="text" class="w-full bg-transparent outline-none text-sm font-bold text-slate-700 pb-1">
+                        </div>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-black text-purple-900/70 uppercase tracking-widest mb-2" id="lbl-contact-number">Contact Number</p>
+                        <div class="border-b border-purple-200 h-12 flex items-end">
+                            <input type="text" class="w-full bg-transparent outline-none text-sm font-bold text-slate-700 pb-1">
+                        </div>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-black text-purple-900/70 uppercase tracking-widest mb-2" id="lbl-signature-date">Date</p>
+                        <div class="border-b border-purple-200 h-12 flex items-end">
+                            <input type="date" class="w-full bg-transparent outline-none text-sm font-bold text-slate-700 pb-1">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hidden print-only mt-20 flex justify-between px-10">
+                <div class="text-center">
+                    <div class="w-48 border-b border-slate-300 h-12 mb-2"></div>
+                    <p class="text-xs text-slate-400 uppercase" id="lbl-auth-sign">批准人签名</p>
+                </div>
+                <div class="text-center">
+                    <div class="w-48 border-b border-slate-300 h-12 mb-2"></div>
+                    <p class="text-xs text-slate-400 uppercase" id="lbl-sign-date">日期</p>
+                </div>
+            </div>
+
+            <div class="hidden print-only mt-20 flex justify-between px-10">
+                <div class="text-center">
+                    <div class="w-48 border-b border-slate-300 h-12 mb-2"></div>
+                    <p class="text-xs text-slate-400 uppercase">批准人签名</p>
+                </div>
+                <div class="text-center">
+                    <div class="w-48 border-b border-slate-300 h-12 mb-2"></div>
+                    <p class="text-xs text-slate-400 uppercase">日期</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <main id="view-inventory" class="max-w-6xl mx-auto px-4 hidden mb-20">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="p-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-800">库存管理</h2>
+                    <p class="text-xs text-slate-400 mt-1">记录产品入库出库及批次采购价格</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="openInventoryModal('in')" class="bg-purple-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-purple-100 hover:bg-purple-800 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" /></svg>
+                        <span>新增入库</span>
+                    </button>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left whitespace-nowrap">
+                    <thead class="bg-slate-50/50">
+                        <tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                            <th class="py-4 px-4">产品编号</th>
+                            <th class="py-4 px-4">产品全称</th>
+                            <th class="py-4 px-4">类目</th>
+                            <th class="py-4 px-4">采购入库时间</th>
+                            <th class="py-4 px-4 text-center">库存数量</th>
+                            <th class="py-4 px-4">采购批次</th>
+                            <th class="py-4 px-4 text-right">批次采购价格(¥)</th>
+                            <th class="py-4 px-4 text-right">规格</th>
+                            <th class="py-4 px-4 text-right">单位采购价(¥)</th>
+                            <th class="py-4 px-4 text-right">采购总价(¥)</th>
+                            <th class="py-4 px-4 text-right">运费比率</th>
+                            <th class="py-4 px-4 text-right">国内税率</th>
+                            <th class="py-4 px-4 text-right">运费(¥)</th>
+                            <th class="py-4 px-4 text-right">国内税(¥)</th>
+                            <th class="py-4 px-4 text-right">总成本(¥)</th>
+                            <th class="py-4 px-4 text-right">总库存平均成本(¥)</th>
+                            <th class="py-4 px-4 text-right">建议零售价(¥)</th>
+                            <th class="py-4 px-4 text-right">建议工程价(¥)</th>
+                            <th class="py-4 px-4">存放位置</th>
+                            <th class="py-4 px-4 text-center">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventory-list" class="divide-y divide-slate-50"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="mt-8 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="p-6 border-b border-slate-100">
+                <h3 class="text-lg font-bold text-slate-800">海外安装商报价</h3>
+                <p class="text-xs text-slate-400 mt-1">合计安装报价（RM）= 人工 + 支架 + 线缆；合计安装报价（RMB）使用“成本报价核算”的实时汇率换算</p>
+            </div>
+            <div class="p-6 grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
+                <div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">人工 (RM)</label>
+                    <input type="number" id="installer-labor" value="0.25" step="0.01" oninput="recalcInstallerQuote()" onchange="recalcInstallerQuote()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-600">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">支架 (RM)</label>
+                    <input type="number" id="installer-bracket" value="0.24" step="0.01" oninput="recalcInstallerQuote()" onchange="recalcInstallerQuote()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-600">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">线缆 (RM)</label>
+                    <input type="number" id="installer-cable" value="0.06" step="0.01" oninput="recalcInstallerQuote()" onchange="recalcInstallerQuote()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-600">
+                </div>
+                <div class="md:col-span-1">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">合计安装报价 (RM)</label>
+                    <input type="text" id="installer-total-myr" readonly class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-slate-50 text-slate-700 font-bold text-right">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">合计安装报价 (RMB)</label>
+                    <input type="text" id="installer-total-cny" readonly class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-slate-50 text-slate-700 font-bold text-right">
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-8 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="p-6 border-b border-slate-100 flex items-center justify-between gap-4">
+                <h3 class="text-lg font-bold text-slate-800">历史操作记录</h3>
+                <div class="flex items-center gap-3">
+                    <button onclick="exportInventoryHistory()" class="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-slate-100 hover:bg-black flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M9.25 13.25a.75.75 0 0 0 1.5 0V9.06l1.22 1.22a.75.75 0 1 0 1.06-1.06L10.53 6.72a.75.75 0 0 0-1.06 0L6.97 9.22a.75.75 0 1 0 1.06 1.06l1.22-1.22v4.19Z"/><path d="M4.75 13.5a.75.75 0 0 1 .75.75v1c0 .69.56 1.25 1.25 1.25h6.5c.69 0 1.25-.56 1.25-1.25v-1a.75.75 0 0 1 1.5 0v1A2.75 2.75 0 0 1 13.25 18h-6.5A2.75 2.75 0 0 1 4 15.25v-1a.75.75 0 0 1 .75-.75Z"/></svg>
+                        <span>导出历史</span>
+                    </button>
+                </div>
+            </div>
+            <div class="overflow-x-auto max-h-[400px]">
+                <table class="w-full text-left whitespace-nowrap">
+                    <thead class="bg-slate-50/50">
+                        <tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                            <th class="py-4 px-4">操作时间</th>
+                            <th class="py-4 px-4">类型</th>
+                            <th class="py-4 px-4">产品编号</th>
+                            <th class="py-4 px-4">产品名称</th>
+                            <th class="py-4 px-4">数量</th>
+                            <th class="py-4 px-4">批次号</th>
+                            <th class="py-4 px-4">说明</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventory-history-list" class="divide-y divide-slate-50"></tbody>
+                </table>
+            </div>
+            <div class="p-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                <div id="inventory-history-summary"></div>
+                <div class="flex items-center gap-2">
+                    <button onclick="changeInventoryHistoryPage(-1)" class="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 font-bold">上一页</button>
+                    <span id="inventory-history-page"></span>
+                    <button onclick="changeInventoryHistoryPage(1)" class="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 font-bold">下一页</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <main id="view-database" class="max-w-6xl mx-auto px-4 hidden mb-20">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="p-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-800">后台产品清单</h2>
+                    <p class="text-xs text-slate-400 mt-1">管理产品成本与销售基准价</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="bg-slate-100 p-1 rounded-xl flex">
+                        <button onclick="setDbGroup('category')" id="btn-group-category" class="px-4 py-1.5 text-xs font-bold rounded-lg transition-all bg-white shadow-sm text-blue-600">按类目</button>
+                        <button onclick="setDbGroup('vendor')" id="btn-group-vendor" class="px-4 py-1.5 text-xs font-bold rounded-lg transition-all text-slate-500">按供应商</button>
+                    </div>
+                    <button onclick="openImportModal()" class="bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-green-100 hover:bg-green-700 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M9.25 13.25a.75.75 0 0 0 1.5 0V4.636l2.955 3.129a.75.75 0 0 0 1.09-1.03l-4.25-4.5a.75.75 0 0 0-1.09 0l-4.25 4.5a.75.75 0 1 0 1.09 1.03L9.25 4.636v8.614Z" /><path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z" /></svg>
+                        <span>批量导入</span>
+                    </button>
+                    <button onclick="openModal()" class="bg-purple-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-purple-100 hover:bg-purple-800 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" /></svg>
+                        <span>入库新产品</span>
+                    </button>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left whitespace-nowrap">
+                    <thead class="bg-slate-50/50">
+                        <tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                            <th class="py-4 px-4">产品编号</th>
+                            <th class="py-4 px-4">产品全称</th>
+                            <th class="py-4 px-4">规格型号</th>
+                            <th class="py-4 px-4">类目 ↕</th>
+                            <th class="py-4 px-4">子类目</th>
+                            <th class="py-4 px-4 text-center">质保(年/次)</th>
+                            <th class="py-4 px-4">供货周期</th>
+                            <th class="py-4 px-4">供应商 ↕</th>
+                            <th class="py-4 px-4">联系人</th>
+                            <th class="py-4 px-4 text-right">基准采购价(¥)</th>
+                            <th class="py-4 px-4 text-right">基准售价(¥)</th>
+                            <th class="py-4 px-4 text-right">毛利</th>
+                            <th class="py-4 px-4 text-center">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="db-list" class="divide-y divide-slate-50"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <main id="view-pvcalc" class="max-w-6xl mx-auto px-4 hidden mb-20">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-10">
+            <div class="mb-8 border-b border-slate-100 pb-4">
+                <h2 class="text-2xl font-black text-slate-800 tracking-tight">光伏与电池系统测算</h2>
+                <p class="text-sm text-slate-400 mt-1">输入基础参数，自动计算系统容量与硬件配比</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-10">
+                <!-- 左侧：参数输入区 -->
+                <div class="md:col-span-5 space-y-6">
+                    <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                        <h3 class="text-sm font-bold text-slate-700 mb-5 flex items-center gap-2">
+                            <span class="text-xl">☀️</span> 光伏系统参数
+                        </h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">屋顶面积 (m²)</label>
+                                <input type="number" id="pv-area" oninput="calculatePV()" placeholder="请输入实际面积，如: 100" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all bg-white">
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">屋顶利用率</label>
+                                    <input type="number" id="pv-util" value="0.75" step="0.05" oninput="calculatePV()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500 bg-white">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">每平米容量 (W)</label>
+                                    <input type="number" id="pv-cap-sqm" value="220" oninput="calculatePV()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500 bg-white">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">光伏板规格 (W)</label>
+                                <input type="number" id="pv-panel" value="550" oninput="calculatePV()" placeholder="单块面板瓦数" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 bg-white">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                        <h3 class="text-sm font-bold text-slate-700 mb-5 flex items-center gap-2">
+                            <span class="text-xl">🔋</span> 电池系统参数
+                        </h3>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">日均发电小时数 (h)</label>
+                            <input type="number" id="pv-hours" value="3.5" step="0.1" oninput="calculatePV()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 bg-white">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右侧：计算结果呈现 -->
+                <div class="md:col-span-7 flex flex-col">
+                    <div class="flex-1 bg-white p-2 rounded-2xl border border-slate-200 shadow-xl overflow-hidden relative flex flex-col">
+                        <div class="p-6 pb-4 bg-slate-50/50 border-b border-slate-100">
+                            <h3 class="text-sm font-black text-slate-700 uppercase tracking-widest">系统配比分析表</h3>
+                        </div>
+                        
+                        <div class="flex-1 p-6">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="text-[10px] font-black uppercase text-slate-400 border-b border-slate-200">
+                                        <th class="py-3 px-2 w-1/3">核心指标</th>
+                                        <th class="py-3 px-2 text-right">计算结果</th>
+                                        <th class="py-3 px-2 text-center w-20">单位</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 text-sm">
+                                    <tr class="hover:bg-slate-50 transition-colors">
+                                        <td class="py-4 px-2 font-medium text-slate-600">总装机容量</td>
+                                        <td class="py-4 px-2 text-right font-mono text-slate-800" id="res-kw">0.00</td>
+                                        <td class="py-4 px-2 text-center text-slate-400">kW</td>
+                                    </tr>
+                                    <tr class="bg-blue-50/60 border-l-4 border-blue-500 shadow-sm relative z-10">
+                                        <td class="py-5 px-2 font-black text-blue-800 flex items-center gap-2">⭐ 光伏板数量</td>
+                                        <td class="py-5 px-2 text-right font-black text-purple-700 text-2xl tracking-tighter" id="res-panels">0</td>
+                        <td class="py-5 px-2 text-center font-bold text-purple-400">块</td>
+                                    </tr>
+                                    <tr class="hover:bg-slate-50 transition-colors">
+                                        <td class="py-4 px-2 font-medium text-slate-600">每日发电量</td>
+                                        <td class="py-4 px-2 text-right font-mono text-slate-800" id="res-kwh-day">0.00</td>
+                                        <td class="py-4 px-2 text-center text-slate-400">kWh</td>
+                                    </tr>
+                                    <tr class="bg-green-50/60 border-l-4 border-green-500 shadow-sm relative z-10">
+                                        <td class="py-5 px-2 font-black text-green-800 flex items-center gap-2">⭐ 电池容量</td>
+                                        <td class="py-5 px-2 text-right font-black text-green-600 text-2xl tracking-tighter" id="res-battery">0.00</td>
+                                        <td class="py-5 px-2 text-center font-bold text-green-400">kWh</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- 关键数据总结浮窗效果 -->
+                        <div class="mx-6 mb-6 p-5 bg-gradient-to-r from-slate-900 to-slate-800 rounded-xl flex justify-between items-center shadow-2xl">
+                            <div class="text-white">
+                                <p class="text-[10px] text-slate-400 uppercase tracking-widest mb-1">采购指导</p>
+                                <p class="text-sm font-medium">推荐硬件关键参数</p>
+                            </div>
+                            <div class="text-right flex gap-8">
+                                <div class="text-center">
+                                    <p class="text-[10px] text-blue-300 uppercase font-bold mb-1">需采购光伏板</p>
+                                    <p class="text-2xl font-black text-white"><span id="summary-panels">0</span></p>
+                                </div>
+                                <div class="w-px bg-slate-700"></div>
+                                <div class="text-center">
+                                    <p class="text-[10px] text-green-300 uppercase font-bold mb-1">推荐储能规格</p>
+                                    <p class="text-2xl font-black text-white"><span id="summary-battery">0.00</span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <main id="view-costcalc" class="max-w-6xl mx-auto px-4 hidden mb-20">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <div>
+                    <h2 class="text-2xl font-black text-slate-800 tracking-tight">光储项目主辅材报价核算</h2>
+                    <p class="text-sm text-slate-500 mt-1">输入成本税率参数，自动核算利润并转换为马币 (RM) 报价</p>
+                </div>
+                <div class="flex items-center gap-3 bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                    <div class="text-right">
+                        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">实时汇率 (MYR兑CNY)</span>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span class="text-sm font-bold text-slate-600">1 RM =</span>
+                            <input type="number" id="rate-myr-cny" value="1.5300" step="0.01" oninput="renderCostCalcUI()" class="w-20 border border-slate-200 rounded p-1 text-sm font-bold text-blue-600 outline-none text-center bg-slate-50 focus:bg-white focus:border-blue-400">
+                            <span class="text-sm font-bold text-slate-600">RMB</span>
+                        </div>
+                    </div>
+                    <!-- 添加了 id="btn-fetch-rate" 以便通过 JS 触发 -->
+                    <button id="btn-fetch-rate" onclick="fetchLiveRate(this)" class="bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-2 rounded-lg text-xs font-bold transition-colors shadow-sm">
+                        🔄 联网获取
+                    </button>
+                </div>
+            </div>
+            
+            <div class="p-6 space-y-8">
+                <!-- 光伏项目 -->
+                <div>
+                    <h3 class="text-lg font-bold text-slate-700 mb-3 flex items-center gap-2"><span class="text-xl">☀️</span> 光伏项目</h3>
+                    <div class="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
+                        <table class="w-full text-left whitespace-nowrap">
+                            <thead class="bg-slate-50">
+                                <tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                    <th class="py-3 px-4 border-b border-slate-200">项目名称</th>
+                                    <th class="py-3 px-4 text-right border-b border-slate-200">采购单价(¥)</th>
+                                    <th class="py-3 px-4 text-right border-b border-slate-200">运费(%)</th>
+                                    <th class="py-3 px-4 text-right border-b border-slate-200">进口税(%)</th>
+                                    <th class="py-3 px-4 text-right border-b border-slate-200">SST(%)</th>
+                                    <th class="py-3 px-4 text-right bg-slate-100 border-b border-slate-200">总成本(¥)</th>
+                                    <th class="py-3 px-4 text-right border-b border-slate-200">利润倍数</th>
+                                    <th class="py-3 px-4 text-right bg-blue-50 text-blue-700 border-b border-blue-100">报价(RMB)</th>
+                                    <th class="py-3 px-4 text-right bg-green-50 text-green-700 border-b border-green-100">报价(RM)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cost-pv-body" class="divide-y divide-slate-100 text-sm"></tbody>
+                            <tfoot class="bg-slate-50 font-bold border-t-2 border-slate-200" id="cost-pv-foot"></tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 电池项目 -->
+                <div>
+                    <h3 class="text-lg font-bold text-slate-700 mb-3 flex items-center gap-2"><span class="text-xl">🔋</span> 电池项目</h3>
+                    <div class="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
+                        <table class="w-full text-left whitespace-nowrap">
+                            <thead class="bg-slate-50">
+                                <tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                    <th class="py-3 px-4 border-b border-slate-200">项目名称</th>
+                                    <th class="py-3 px-4 text-right border-b border-slate-200">采购单价(¥)</th>
+                                    <th class="py-3 px-4 text-right border-b border-slate-200">运费(%)</th>
+                                    <th class="py-3 px-4 text-right border-b border-slate-200">进口税(%)</th>
+                                    <th class="py-3 px-4 text-right border-b border-slate-200">SST(%)</th>
+                                    <th class="py-3 px-4 text-right bg-slate-100 border-b border-slate-200">总成本(¥)</th>
+                                    <th class="py-3 px-4 text-right border-b border-slate-200">利润倍数</th>
+                                    <th class="py-3 px-4 text-right bg-blue-50 text-blue-700 border-b border-blue-100">报价(RMB)</th>
+                                    <th class="py-3 px-4 text-right bg-green-50 text-green-700 border-b border-green-100">报价(RM)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cost-bat-body" class="divide-y divide-slate-100 text-sm"></tbody>
+                            <tfoot class="bg-slate-50 font-bold border-t-2 border-slate-200" id="cost-bat-foot"></tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center z-[200] p-4">
+        <!-- 为了容纳更多字段，弹窗宽度由 max-w-lg 增加到了 max-w-2xl -->
+        <div class="bg-white rounded-3xl p-8 w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-bold text-slate-800 mb-6">编辑产品档案</h3>
+            <div class="space-y-5">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="col-span-2">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">产品全称 <span class="text-red-500">*</span></label>
+                        <div class="relative">
+                            <input type="text" id="m-name" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 pr-12">
+                            <button onclick="aiImproveName()" class="absolute right-3 top-2.5 p-1 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100" title="AI 润色">✨</button>
+                        </div>
+                    </div>
+                    <div class="col-span-1">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">类目</label>
+                        <input type="text" id="m-category" list="cat-suggestions" oninput="updateSubcatSuggestions()" onchange="updateSubcatSuggestions()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50">
+                        <datalist id="cat-suggestions"></datalist>
+                    </div>
+                    <div class="col-span-1">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">供应商</label>
+                        <input type="text" id="m-vendor" list="vendor-suggestions" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50">
+                        <datalist id="vendor-suggestions"></datalist>
+                    </div>
+                    
+                    <!-- 新增字段区段 -->
+                    <div class="col-span-1">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">规格型号</label>
+                        <input type="text" id="m-spec" placeholder="如: 550W/48V" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                    </div>
+                    <div class="col-span-1">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">子类目</label>
+                        <input type="text" id="m-scenario" list="subcat-suggestions" placeholder="如: 户外屋顶/工商业储能" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                        <datalist id="subcat-suggestions"></datalist>
+                    </div>
+                    
+                    <div class="col-span-1 grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">质保年限</label>
+                            <input type="number" id="m-warranty-years" placeholder="年" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">循环次数</label>
+                            <input type="number" id="m-warranty-cycles" placeholder="次" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                        </div>
+                    </div>
+                    <div class="col-span-1">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">供货周期</label>
+                        <input type="text" id="m-lead-time" placeholder="如: 15天 / 2周" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                    </div>
+
+                    <div class="col-span-1">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">联系人</label>
+                        <input type="text" id="m-contact" placeholder="姓名/职位" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                    </div>
+                    <div class="col-span-1">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">联系方式 (隐藏悬浮显示)</label>
+                        <input type="text" id="m-contact-info" placeholder="电话/微信/邮箱" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                    </div>
+
+                    <!-- 价格核算 -->
+                    <div class="col-span-2 border-t border-slate-100 my-2 pt-4 grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">基准采购价 (¥)</label>
+                            <input type="number" id="m-cost" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">基准售价 (¥)</label>
+                            <input type="number" id="m-price" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-500 font-bold text-purple-700">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-8 flex gap-3">
+                <button onclick="closeModal()" class="flex-1 py-3 text-slate-400 font-bold hover:bg-slate-50 rounded-2xl transition-colors border border-slate-200">取消</button>
+                <button onclick="saveProduct()" class="flex-1 py-3 bg-slate-900 text-white rounded-2xl font-bold shadow-lg hover:bg-black transition-all">保存入库</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 库存管理弹窗 -->
+    <div id="inventory-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center z-[200] p-4">
+        <div class="bg-white rounded-3xl p-8 w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
+            <h3 id="inv-title" class="text-xl font-bold text-slate-800 mb-6">产品入库</h3>
+            <div class="space-y-5">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="md:col-span-2">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">选择产品</label>
+                        <input type="text" id="inv-product-id" list="inv-product-suggestions" oninput="onInventoryProductChange()" onchange="onInventoryProductChange()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                        <datalist id="inv-product-suggestions"></datalist>
+                    </div>
+                    <div id="inv-purchase-date-container">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">采购入库时间</label>
+                        <input type="date" id="inv-purchase-date" onchange="onInventoryPurchaseDateChange()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                    </div>
+                    <div id="inv-batchno-container">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">采购批次号</label>
+                        <input type="text" id="inv-batch-no" readonly class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-slate-50 text-slate-600">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">采购数量</label>
+                        <input type="number" id="inv-quantity" oninput="recalcInventoryCosts()" onchange="recalcInventoryCosts()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                    </div>
+                    <div id="inv-spec-container">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">规格</label>
+                        <input type="number" id="inv-spec" step="0.01" value="1" oninput="recalcInventoryCosts()" onchange="recalcInventoryCosts()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                    </div>
+                    <div id="inv-price-container">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">批次采购价格 (¥)</label>
+                        <input type="number" id="inv-price" step="0.01" oninput="recalcInventoryCosts()" onchange="recalcInventoryCosts()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">单位采购价 (¥)</label>
+                        <input type="number" id="inv-unit-price" readonly class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-slate-50 text-slate-600">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">采购总价 (¥)</label>
+                        <input type="number" id="inv-purchase-total" readonly class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-slate-50 text-slate-600">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">运费比率 (%)</label>
+                        <input type="number" id="inv-shipping-rate" value="8" step="0.1" oninput="recalcInventoryCosts()" onchange="recalcInventoryCosts()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">国内税率 (%)</label>
+                        <input type="number" id="inv-domestic-tax-rate" step="0.1" oninput="recalcInventoryCosts()" onchange="recalcInventoryCosts()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">运费 (¥)</label>
+                        <input type="number" id="inv-shipping-cost" readonly class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-slate-50 text-slate-600">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">国内税 (¥)</label>
+                        <input type="number" id="inv-domestic-tax" readonly class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-slate-50 text-slate-600">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">总库存平均成本 (¥)</label>
+                        <input type="number" id="inv-avg-cost" readonly class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-slate-50 text-slate-600 font-bold">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">总成本 (¥)</label>
+                        <input type="number" id="inv-total-cost" readonly class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-slate-50 text-slate-600 font-bold">
+                    </div>
+                    <div id="inv-location-container" class="md:col-span-2">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">存放位置</label>
+                        <input type="text" id="inv-location" list="location-suggestions" placeholder="如: A仓库-01架" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                        <datalist id="location-suggestions"></datalist>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-8 flex gap-3">
+                <button onclick="closeInventoryModal()" class="flex-1 py-3 text-slate-400 font-bold hover:bg-slate-50 rounded-2xl transition-colors border border-slate-200">取消</button>
+                <button onclick="saveInventory()" class="flex-1 py-3 bg-blue-600 text-white rounded-2xl font-bold shadow-lg hover:bg-blue-700 transition-all">确认提交</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 全局浮窗容器 -->
+    <div id="global-tooltip" class="fixed hidden p-3 bg-slate-800 text-white text-xs rounded-lg shadow-xl z-[9999] pointer-events-none w-64 whitespace-normal"></div>
+
+    <!-- 库存价格编辑弹窗 -->
+    <div id="inventory-edit-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center z-[200] p-4">
+        <div class="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl">
+            <h3 class="text-xl font-bold text-slate-800 mb-6">编辑建议售价</h3>
+            <div class="space-y-5">
+                <div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">建议零售价 (¥)</label>
+                    <input type="number" id="edit-inv-srp" step="0.01" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">建议工程价 (¥)</label>
+                    <input type="number" id="edit-inv-spp" step="0.01" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                </div>
+            </div>
+            <div class="mt-8 flex gap-3">
+                <button onclick="closeInventoryEditModal()" class="flex-1 py-3 text-slate-400 font-bold hover:bg-slate-50 rounded-2xl transition-colors border border-slate-200">取消</button>
+                <button onclick="updateInventoryPrices()" class="flex-1 py-3 bg-blue-600 text-white rounded-2xl font-bold shadow-lg hover:bg-blue-700 transition-all">保存修改</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 批量导入弹窗 -->
+    <div id="import-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center z-[200] p-4">
+        <div class="bg-white rounded-3xl p-8 w-full max-w-2xl shadow-2xl max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-slate-800">批量导入产品</h3>
+                <button onclick="closeImportModal()" class="text-slate-400 hover:text-slate-600 text-2xl">×</button>
+            </div>
+            <div class="flex-grow overflow-y-auto space-y-6">
+                <!-- 步骤一：上传文件 -->
+                <div id="import-step-1">
+                    <p class="text-sm text-slate-600 mb-4">请下载当前库存模板，按格式修改后上传。系统将根据 <strong class="text-red-500">产品编号</strong> 自动匹配更新现有产品。</p>
+                    <div class="bg-slate-50 border border-dashed border-slate-300 rounded-2xl p-8 text-center">
+                        <div class="mb-6">
+                            <button onclick="downloadTemplate()" class="bg-white border border-blue-200 text-blue-600 px-6 py-3 rounded-xl font-bold hover:bg-blue-50 transition-all flex items-center gap-2 mx-auto shadow-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M10.75 2.75a.75.75 0 0 0-1.5 0v8.614L6.295 8.235a.75.75 0 1 0-1.09 1.03l4.25 4.5a.75.75 0 0 0 1.09 0l4.25-4.5a.75.75 0 0 0-1.09-1.03l-2.955 3.129V2.75Z" /><path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z" /></svg>
+                                下载当前产品清单模板
+                            </button>
+                            <p class="text-[10px] text-slate-400 mt-2">包含本地已有的全部产品数据</p>
+                        </div>
+                        
+                        <div class="pt-6 border-t border-slate-200">
+                            <input type="file" id="excel-file-input" class="hidden" accept=".xlsx, .xls" onchange="handleFileSelect(this.files)">
+                            <label for="excel-file-input" class="cursor-pointer bg-purple-700 text-white px-8 py-3 rounded-xl font-bold hover:bg-purple-800 transition-all shadow-lg shadow-purple-100 inline-flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M9.25 13.25a.75.75 0 0 0 1.5 0V4.636l2.955 3.129a.75.75 0 0 0 1.09-1.03l-4.25-4.5a.75.75 0 0 0-1.09 0l-4.25 4.5a.75.75 0 1 0 1.09 1.03L9.25 4.636v8.614Z" /><path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z" /></svg>
+                                上传修改后的文件
+                            </label>
+                            <p id="file-name-display" class="text-xs text-slate-500 mt-3"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 步骤二：预览与映射 -->
+                <div id="import-step-2" class="hidden">
+                    <p class="text-sm text-slate-600 mb-4">请核对字段映射关系是否正确，并预览数据。系统将自动跳过表头。</p>
+                    <div id="field-mapping-container" class="grid grid-cols-3 gap-4 mb-4 text-sm"></div>
+                    <h4 class="text-sm font-bold text-slate-700 mt-6 mb-2">数据预览 (前10条)</h4>
+                    <div class="overflow-x-auto border border-slate-200 rounded-lg">
+                        <table class="w-full text-left text-xs whitespace-nowrap">
+                            <thead id="preview-header" class="bg-slate-50 text-[10px] uppercase text-slate-500"></thead>
+                            <tbody id="preview-body" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 步骤三：导入结果 -->
+                <div id="import-step-3" class="hidden">
+                    <h4 class="text-lg font-bold text-slate-800 mb-2">导入完成</h4>
+                    <div id="import-log" class="text-sm space-y-2"></div>
+                </div>
+            </div>
+            <div class="mt-8 flex gap-3 pt-4 border-t border-slate-200">
+                <button onclick="closeImportModal()" class="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-100 rounded-2xl transition-colors border border-slate-200">取消</button>
+                <button id="import-next-btn" onclick="goToStep(2)" class="flex-1 py-3 bg-green-600 text-white rounded-2xl font-bold shadow-lg hover:bg-green-700 transition-all disabled:bg-slate-300" disabled>下一步</button>
+            </div>
+        </div>
+    </div>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- 数据持久化 ---
+        let products = [];
+        let inventory = [];
+        let inventoryHistory = [];
+        let inventoryHistoryPage = 1;
+        try {
+            const savedProducts = localStorage.getItem('minova_products');
+            if (savedProducts) products = JSON.parse(savedProducts);
+            // 清空旧记录，并从本地加载
+            const savedInventory = localStorage.getItem('minova_inventory');
+            if (savedInventory) inventory = JSON.parse(savedInventory);
+            const savedHistory = localStorage.getItem('minova_inventory_history');
+            if (savedHistory) inventoryHistory = JSON.parse(savedHistory);
+            if (inventoryHistory.length > 1000) inventoryHistory = inventoryHistory.slice(inventoryHistory.length - 1000);
+        } catch (e) { console.error("Load data failed:", e); }
+
+        let subcategoriesByCategory = {};
+        function rebuildSubcategoryIndexFromProducts() {
+            const map = {};
+            products.forEach(p => {
+                const cat = (p.category || '').trim() || '未分类';
+                const sub = (p.scenario || '').trim();
+                if (!map[cat]) map[cat] = [];
+                if (sub && !map[cat].includes(sub)) map[cat].push(sub);
+            });
+            subcategoriesByCategory = map;
+        }
+        function saveSubcategoryIndex() {
+            try { localStorage.setItem('minova_subcategories_v1', JSON.stringify(subcategoriesByCategory)); } catch (e) {}
+        }
+        function loadSubcategoryIndex() {
+            try {
+                const raw = localStorage.getItem('minova_subcategories_v1');
+                if (raw) {
+                    subcategoriesByCategory = JSON.parse(raw) || {};
+                    return;
+                }
+            } catch (e) {}
+            rebuildSubcategoryIndexFromProducts();
+            saveSubcategoryIndex();
+        }
+        window.updateSubcatSuggestions = () => {
+            const list = document.getElementById('subcat-suggestions');
+            const catEl = document.getElementById('m-category');
+            if (!list) return;
+            const cat = (catEl?.value || '').trim();
+            const subs = cat
+                ? (subcategoriesByCategory[cat] || [])
+                : Array.from(new Set(Object.values(subcategoriesByCategory).flat()));
+            list.innerHTML = subs.filter(Boolean).sort((a, b) => String(a).localeCompare(String(b))).map(s => `<option value="${String(s).replaceAll('"', '&quot;')}">`).join('');
+        };
+
+        loadSubcategoryIndex();
+
+        function saveToLocal() {
+            localStorage.setItem('minova_products', JSON.stringify(products));
+            localStorage.setItem('minova_inventory', JSON.stringify(inventory));
+            localStorage.setItem('minova_inventory_history', JSON.stringify(inventoryHistory));
+            rebuildSubcategoryIndexFromProducts();
+            saveSubcategoryIndex();
+            renderDb();
+            renderInventory();
+            renderInventoryHistory();
+            updatePickerFilters();
+            renderPicker();
+            updateDatalists();
+        }
+
+        let quoteRows = [{ id: Date.now(), description: '', spec: '', batchNo: '', quantity: 1, price: 0, cost: 0 }];
+        let dbGroupMode = 'category';
+        let currentLang = 'zh';
+        let currentCurrency = 'CNY';
+        let paymentTermsConfirmed = true;
+        let quoteSplit = { enabled: false, afterRowId: null };
+        let validityDays = 30;
+        const apiKey = ""; 
+        try {
+            const savedSplit = localStorage.getItem('minova_quote_split');
+            if (savedSplit) {
+                const parsed = JSON.parse(savedSplit);
+                quoteSplit = { enabled: !!parsed.enabled, afterRowId: parsed.afterRowId ?? null };
+            }
+        } catch (e) {}
+
+        const i18n = {
+            zh: {
+                title: "报价单", toCustomer: "致客户：", quoteNo: "单据编号:", quoteDate: "报价日期:",
+                thDesc: "产品", thSpec: "规格型号", thBatch: "采购批次", thQty: "数量", thPrice: "单价", thMargin: "毛利%", thAmount: "小计",
+                terms: "备注与条款：", totalItems: "项目总数", avgMargin: "平均毛利率", grandTotal: "应付总额",
+                authSign: "批准人签名", signDate: "日期",
+                termPlaceholder: "1. 报价有效期自即日起30天。\n2. 款项请汇至：XX银行 XXXX...",
+                timeline: "预计时间表",
+                step1: "现场勘测",
+                step2: "材料采购与安装规划",
+                step3: "安装",
+                paymentTerms: "支付条款",
+                totalPayable: "核算总价",
+                confirmation: "确认后",
+                installation: "安装后",
+                testing: "测试与调试后",
+                daysUnit: "天",
+                paymentWarning: "⚠️ 支付比例总和必须等于 100%（当前：{total}%）",
+                shippingHandling: "运输与装卸",
+                included: "已包含",
+                customerNamePlaceholder: "输入客户公司",
+                customerContactPlaceholder: "联系人/职位",
+                siteAddressLabel: "Site Address：",
+                siteAddressPlaceholder: "填写现场地址",
+                validityLabel: "报价有效期：",
+                validityUnit: "天",
+                validityError: "请输入 1-999 之间的整数",
+                signature: "签名",
+                fullName: "姓名",
+                contactNumber: "联系电话",
+                email: "邮箱",
+                nricPassport: "身份证/护照",
+                signatureDate: "日期",
+                termsDefault: "条款：\n本报价以现场全面勘察为准。如需采用非标准安装方式（包括但不限于额外开槽/破拆、布线、线槽/桥架、定制加工或任何超出标准安装范围的工作），费用可能调整。\n\n确认：\n本人/本公司（签署人）确认接受“光伏+电池+逆变器系统”及上述价格、规格、条款与条件，并同意由 Minova Holdings Sdn. Bhd. 开始进行系统设计、采购与安装。"
+            },
+            en: {
+                title: "QUOTATION", toCustomer: "To Customer:", quoteNo: "Quote No.:", quoteDate: "Date:",
+                thDesc: "Description", thSpec: "Specification", thBatch: "Batch", thQty: "Qty", thPrice: "Unit Price", thMargin: "Margin%", thAmount: "Amount",
+                terms: "Terms & Conditions:", totalItems: "Total Items", avgMargin: "Avg Margin", grandTotal: "Grand Total",
+                authSign: "Authorized Signature", signDate: "Date",
+                termPlaceholder: "1. Quotation valid for 30 days.\n2. Please remit to: Bank XX, Acct...",
+                timeline: "Estimated Timeline",
+                step1: "Site Survey",
+                step2: "Material Procurement & Installation Planning",
+                step3: "Installation",
+                paymentTerms: "Payment Terms",
+                totalPayable: "Total Payable",
+                confirmation: "Upon Confirmation",
+                installation: "Upon Installation",
+                testing: "Upon Testing & Commissioning",
+                daysUnit: "Days",
+                paymentWarning: "⚠️ Total payment percentage must equal 100% (Current: {total}%)",
+                shippingHandling: "Shipping & Handling",
+                included: "Included",
+                customerNamePlaceholder: "Customer Company / Name",
+                customerContactPlaceholder: "Contact Person / Title",
+                siteAddressLabel: "Site Address:",
+                siteAddressPlaceholder: "Site Address",
+                validityLabel: "Quote Validity:",
+                validityUnit: "Days",
+                validityError: "Please enter an integer between 1 and 999.",
+                signature: "Signature",
+                fullName: "Full Name",
+                contactNumber: "Contact Number",
+                email: "Email",
+                nricPassport: "NRIC/Passport",
+                signatureDate: "Date",
+                termsDefault: "Conditions:\nThis quotation is subject to a thorough site assessment. The cost may vary if non-standard installation is applied which require additional hacking, cabling, trunking, customization, or any other out of our standard installation.\n\nConfirmation:\nI / We, the undersigned hereby accept the Solar PV with Battery + Inverter System and the aforementioned price, specification, terms and conditions and would like to commence with the design, procurement and installation of the system by Minova Holdings. Sdn. Bhd."
+            }
+        };
+
+        // --- Core UI Logic ---
+        window.switchTab = (tab) => {
+            const tabs = ['quotation', 'database', 'pvcalc', 'costcalc', 'inventory'];
+            tabs.forEach(t => {
+                const el = document.getElementById(`view-${t}`);
+                if (el) {
+                    if (t === tab) {
+                        el.classList.remove('hidden');
+                        el.style.display = 'block';
+                    } else {
+                        el.classList.add('hidden');
+                        el.style.display = 'none';
+                    }
+                }
+                const btn = document.getElementById(`tab-${t}`);
+                if (btn) {
+                    if (t === tab) {
+                        btn.classList.add('tab-active');
+                        btn.classList.remove('text-slate-500', 'hover:text-blue-600');
+                    } else {
+                        btn.classList.remove('tab-active');
+                        btn.classList.add('text-slate-500', 'hover:text-blue-600');
+                    }
+                }
+            });
+            if(tab === 'costcalc') {
+                renderCostCalcUI();
+                const rateBtn = document.getElementById('btn-fetch-rate');
+                if(rateBtn) fetchLiveRate(rateBtn);
+            }
+            if(tab === 'inventory') {
+                renderInventory();
+            }
+        };
+
+        window.generateQuotationPDF = () => {
+            const element = document.querySelector('.print-container');
+            const quoteNo = document.getElementById('quote-no').value || 'Quotation';
+            
+            const opt = {
+                margin:       0,
+                filename:     `${quoteNo}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                pagebreak:    { mode: ['css', 'legacy'] },
+                html2canvas:  { 
+                    scale: 3,
+                    useCORS: true,
+                    letterRendering: true,
+                    scrollX: 0,
+                    scrollY: 0,
+                    backgroundColor: '#ffffff',
+                    onclone: (clonedDoc) => {
+                        const container = clonedDoc.querySelector('.print-container');
+                        clonedDoc.documentElement.style.margin = '0';
+                        clonedDoc.documentElement.style.padding = '0';
+                        clonedDoc.body.style.margin = '0';
+                        clonedDoc.body.style.padding = '0';
+                        clonedDoc.body.style.width = '210mm';
+                        clonedDoc.body.style.maxWidth = '210mm';
+                        if (container) {
+                            container.style.boxShadow = 'none';
+                            container.style.border = 'none';
+                            container.style.padding = '0';
+                            container.style.margin = '0';
+                            container.style.borderRadius = '0';
+                            container.style.minHeight = 'auto';
+                            container.style.height = 'auto';
+                            container.style.overflow = 'visible';
+                            container.style.width = '210mm';
+                            container.style.maxWidth = '210mm';
+                        }
+                        clonedDoc.querySelectorAll('.no-print').forEach(el => el.style.display = 'none');
+
+                        const style = clonedDoc.createElement('style');
+                        style.innerHTML = `
+                            @page { size: A4; margin: 0; }
+                            tr, h1, h2, h3, h4, h5, h6 { page-break-inside: avoid !important; break-inside: avoid !important; }
+                            .grand-total-container, .grand-total-container * { page-break-inside: avoid !important; break-inside: avoid !important; }
+                            .total-pill { page-break-inside: avoid !important; break-inside: avoid !important; }
+                            .signature-container { page-break-inside: avoid !important; break-inside: avoid !important; margin-bottom: 0 !important; }
+                            .terms-container { page-break-inside: auto !important; }
+                            .pdf-page-break { page-break-before: always !important; break-before: page !important; }
+                            .header-item-p {
+                                display: flex;
+                                justify-content: space-between;
+                                width: 100%;
+                            }
+                        `;
+                        clonedDoc.head.appendChild(style);
+
+                        clonedDoc.getElementById('quote-no').parentElement.classList.add('header-item-p');
+                        clonedDoc.getElementById('currentDate').parentElement.classList.add('header-item-p');
+                        const afterDetailsSection = clonedDoc.getElementById('section-after-details');
+                        if (afterDetailsSection?.dataset?.splitEnabled === 'true') afterDetailsSection.classList.add('pdf-page-break');
+                        const signature = clonedDoc.querySelector('.signature-container');
+                        if (signature && signature.parentElement) {
+                            let n = signature.nextElementSibling;
+                            while (n) {
+                                const next = n.nextElementSibling;
+                                n.remove();
+                                n = next;
+                            }
+                        }
+
+                        clonedDoc.querySelectorAll('textarea, input').forEach(el => {
+                            const replacement = clonedDoc.createElement('span');
+                            replacement.innerText = el.value;
+                            
+                            const classesToCopy = ['font-bold', 'text-slate-700', 'uppercase', 'tracking-tighter', 'font-black', 'text-slate-900', 'text-sm', 'text-slate-500'];
+                            el.classList.forEach(c => {
+                                if(classesToCopy.some(prefix => c.startsWith(prefix))) {
+                                    replacement.classList.add(c);
+                                }
+                            });
+
+                            if (el.classList.contains('text-right')) {
+                                replacement.style.textAlign = 'right';
+                            }
+                            if (el.classList.contains('text-center')) {
+                                replacement.style.textAlign = 'center';
+                            }
+                            const inTable = !!el.closest('table');
+                            replacement.style.width = inTable ? '100%' : 'auto';
+                            if (inTable) replacement.style.display = 'block';
+                            if (!inTable && (el.classList.contains('block') || el.classList.contains('w-full'))) {
+                                replacement.style.display = 'block';
+                                replacement.style.width = '100%';
+                            }
+                            if (el.tagName === 'TEXTAREA') {
+                                replacement.style.whiteSpace = 'pre-wrap';
+                                replacement.style.display = 'block';
+                                replacement.style.width = '100%';
+                            }
+
+                            el.parentNode.replaceChild(replacement, el);
+                        });
+                    }
+                },
+                jsPDF:        { unit: 'mm', format: [210, 297], orientation: 'portrait' }
+            };
+
+            html2pdf().set(opt).from(element).toPdf().get('pdf').then((pdf) => {
+                const total = pdf.internal.getNumberOfPages();
+                const last = pdf.internal.pages?.[total];
+                if (last && last.length <= 1) pdf.deletePage(total);
+            }).save();
+        };
+
+        window.toggleCurrency = () => {
+            currentCurrency = currentCurrency === 'CNY' ? 'MYR' : 'CNY';
+            document.getElementById('btn-currency').textContent = currentCurrency === 'CNY' ? '¥ / RM' : 'RM / ¥';
+            renderQuote();
+        };
+
+        window.toggleLanguage = () => {
+            currentLang = currentLang === 'zh' ? 'en' : 'zh';
+            updateLanguageLabels();
+        };
+
+        window.onPaymentPercentInput = () => {
+            paymentTermsConfirmed = false;
+            calculateQuote();
+        };
+
+        window.confirmPaymentTerms = () => {
+            paymentTermsConfirmed = true;
+            calculateQuote();
+        };
+
+        function renderValidityBadge() {
+            const labelEl = document.getElementById('validity-badge-label');
+            const valueEl = document.getElementById('validity-badge-value');
+            const t = i18n[currentLang];
+            if (labelEl) labelEl.textContent = t.validityLabel.replace(':', '').replace('：', '');
+            if (valueEl) valueEl.textContent = currentLang === 'zh' ? `${validityDays}${t.validityUnit}` : `${validityDays} ${t.validityUnit}`;
+        }
+
+        window.enterValidityEdit = () => {
+            const badge = document.getElementById('validity-badge');
+            const valueEl = document.getElementById('validity-badge-value');
+            if (!badge || !valueEl) return;
+            const existing = badge.querySelector('input');
+            if (existing) return;
+
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.min = '1';
+            input.max = '999';
+            input.step = '1';
+            input.inputMode = 'numeric';
+            input.value = String(validityDays);
+            input.className = 'w-14 bg-transparent outline-none text-white text-xs font-black text-right border-b border-white/50 focus:border-white';
+            valueEl.replaceWith(input);
+            input.focus();
+            input.select();
+
+            const commit = () => {
+                const v = String(input.value ?? '').trim();
+                const n = parseInt(v, 10);
+                const ok = v !== '' && Number.isInteger(n) && String(n) === v && n >= 1 && n <= 999;
+                const nextValueEl = document.createElement('span');
+                nextValueEl.id = 'validity-badge-value';
+                if (ok) {
+                    validityDays = n;
+                    try { localStorage.setItem('minova_validityDays', String(n)); } catch (e) {}
+                    badge.classList.remove('ring-2', 'ring-red-200');
+                } else {
+                    badge.classList.add('ring-2', 'ring-red-200');
+                }
+                nextValueEl.textContent = currentLang === 'zh' ? `${validityDays}${i18n[currentLang].validityUnit}` : `${validityDays} ${i18n[currentLang].validityUnit}`;
+                input.replaceWith(nextValueEl);
+            };
+
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); commit(); }
+                if (e.key === 'Escape') { e.preventDefault(); commit(); }
+            });
+            input.addEventListener('blur', commit);
+        };
+
+        function isQuoteEffectivelyEmpty() {
+            return quoteRows.length === 0 || quoteRows.every(r => {
+                const desc = (r.description || '').trim();
+                const spec = (r.spec || '').trim();
+                const batch = (r.batchNo || '').trim();
+                const price = parseFloat(r.price) || 0;
+                return !desc && !spec && !batch && price === 0;
+            });
+        }
+
+        function saveQuoteSplit() {
+            localStorage.setItem('minova_quote_split', JSON.stringify(quoteSplit));
+        }
+
+        function normalizeQuoteSplit() {
+            if (!quoteSplit.enabled) return;
+            if (isQuoteEffectivelyEmpty()) { quoteSplit.enabled = false; quoteSplit.afterRowId = null; saveQuoteSplit(); return; }
+            if (!quoteSplit.afterRowId || !quoteRows.some(r => r.id === quoteSplit.afterRowId)) {
+                quoteSplit.afterRowId = quoteRows[quoteRows.length - 1].id;
+                saveQuoteSplit();
+            }
+        }
+
+        function updateQuoteSplitUI() {
+            const btn = document.getElementById('btn-split');
+            const lbl = document.getElementById('btn-split-label');
+            const preview = document.getElementById('split-preview');
+            const afterDetails = document.getElementById('section-after-details');
+
+            const disabled = isQuoteEffectivelyEmpty();
+            if (btn) {
+                btn.disabled = disabled;
+                btn.className = disabled
+                    ? 'text-xs bg-slate-50 text-slate-300 px-4 py-2 rounded-lg font-bold transition-all border border-slate-200 flex items-center gap-1 cursor-not-allowed'
+                    : 'text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded-lg font-bold transition-all border border-slate-200 flex items-center gap-1';
+                btn.title = disabled ? '报价明细为空，无法分割' : '在报价明细与备注条款之间插入分割线，并在打印/PDF中分页';
+            }
+
+            if (lbl) lbl.textContent = quoteSplit.enabled ? '取消分割' : '从此分割';
+            if (preview) preview.classList.toggle('hidden', !quoteSplit.enabled);
+            if (afterDetails) afterDetails.dataset.splitEnabled = quoteSplit.enabled ? 'true' : 'false';
+        }
+
+        window.toggleQuoteSplit = () => {
+            if (isQuoteEffectivelyEmpty()) return alert('报价明细为空，无法分割。请先添加报价内容。');
+            if (!quoteSplit.enabled) {
+                if (!confirm('确定在报价明细与备注条款之间插入分割线，并在打印/PDF中从新页开始显示下方内容吗？')) return;
+                quoteSplit.enabled = true;
+                quoteSplit.afterRowId = quoteRows[quoteRows.length - 1]?.id || null;
+                saveQuoteSplit();
+                normalizeQuoteSplit();
+                renderQuote();
+                updateQuoteSplitUI();
+                return;
+            }
+            if (!confirm('确定取消分割线吗？')) return;
+            quoteSplit.enabled = false;
+            quoteSplit.afterRowId = null;
+            saveQuoteSplit();
+            renderQuote();
+            updateQuoteSplitUI();
+        };
+
+        window.moveQuoteSplit = (dir) => {
+            if (!quoteSplit.enabled) return;
+            const idx = quoteRows.findIndex(r => r.id === quoteSplit.afterRowId);
+            if (idx === -1) return;
+            const nextIdx = Math.min(Math.max(idx + dir, 0), quoteRows.length - 1);
+            quoteSplit.afterRowId = quoteRows[nextIdx].id;
+            saveQuoteSplit();
+            renderQuote();
+            updateQuoteSplitUI();
+        };
+
+        const updateLanguageLabels = () => {
+            const t = i18n[currentLang];
+            document.getElementById('lbl-title').textContent = t.title;
+            const titleEl = document.getElementById('lbl-title');
+            if (titleEl) {
+                if (currentLang === 'zh') {
+                    titleEl.classList.remove('tracking-wider', 'uppercase');
+                    titleEl.classList.add('tracking-normal', 'whitespace-nowrap');
+                } else {
+                    titleEl.classList.add('tracking-wider', 'uppercase');
+                    titleEl.classList.remove('tracking-normal', 'whitespace-nowrap');
+                }
+            }
+            document.getElementById('lbl-to-customer').textContent = t.toCustomer;
+            const customerNameEl = document.getElementById('input-customer-name');
+            if (customerNameEl) customerNameEl.placeholder = t.customerNamePlaceholder;
+            const siteAddressLabelEl = document.getElementById('lbl-site-address');
+            if (siteAddressLabelEl) siteAddressLabelEl.textContent = t.siteAddressLabel;
+            const siteAddressInputEl = document.getElementById('input-site-address');
+            if (siteAddressInputEl) siteAddressInputEl.placeholder = t.siteAddressPlaceholder;
+            const customerContactEl = document.getElementById('input-customer-contact');
+            if (customerContactEl) customerContactEl.placeholder = t.customerContactPlaceholder;
+            document.getElementById('lbl-quote-no').textContent = t.quoteNo;
+            document.getElementById('lbl-quote-date').textContent = t.quoteDate;
+            const validityLabelEl = document.getElementById('lbl-quote-validity');
+            if (validityLabelEl) validityLabelEl.textContent = t.validityLabel;
+            const validityUnitEl = document.getElementById('lbl-validity-unit');
+            if (validityUnitEl) validityUnitEl.textContent = t.validityUnit;
+            document.getElementById('th-desc').textContent = t.thDesc;
+            document.getElementById('th-spec').textContent = t.thSpec;
+            document.getElementById('th-batch').textContent = t.thBatch;
+            document.getElementById('th-qty').textContent = t.thQty;
+            document.getElementById('th-price').textContent = `${t.thPrice} (${currentCurrency === 'CNY' ? '¥' : 'RM'})`;
+            document.getElementById('th-margin').textContent = t.thMargin;
+            document.getElementById('th-amount').textContent = `${t.thAmount} (${currentCurrency === 'CNY' ? '¥' : 'RM'})`;
+            document.getElementById('lbl-terms').textContent = t.terms;
+            document.getElementById('val-terms').placeholder = t.termPlaceholder;
+            document.getElementById('lbl-total-items').textContent = t.totalItems;
+            document.getElementById('lbl-avg-margin').textContent = t.avgMargin;
+            document.getElementById('lbl-grand-total').textContent = t.grandTotal;
+            document.getElementById('lbl-auth-sign').textContent = t.authSign;
+            document.getElementById('lbl-sign-date').textContent = t.signDate;
+ 
+            document.getElementById('lbl-timeline').textContent = t.timeline;
+            document.getElementById('val-step1').textContent = t.step1;
+            document.getElementById('val-step2').textContent = t.step2;
+            document.getElementById('val-step3').textContent = t.step3;
+            document.getElementById('lbl-payment-terms').textContent = t.paymentTerms;
+            document.getElementById('lbl-total-payable').textContent = t.totalPayable;
+            document.getElementById('lbl-confirmation').textContent = t.confirmation;
+            document.getElementById('lbl-installation').textContent = t.installation;
+            document.getElementById('lbl-testing').textContent = t.testing;
+            document.getElementById('lbl-shipping-handling').textContent = t.shippingHandling;
+            document.getElementById('lbl-signature').textContent = t.signature;
+            document.getElementById('lbl-full-name').textContent = t.fullName;
+            document.getElementById('lbl-contact-number').textContent = t.contactNumber;
+            document.getElementById('lbl-email').textContent = t.email;
+            document.getElementById('lbl-nric-passport').textContent = t.nricPassport;
+            document.getElementById('lbl-signature-date').textContent = t.signatureDate;
+
+            const termsEl = document.getElementById('val-terms');
+            if (termsEl) {
+                try {
+                    const prevLang = termsEl.dataset.lang || currentLang;
+                    localStorage.setItem(`minova_terms_text_${prevLang}`, termsEl.value);
+                    const nextVal = localStorage.getItem(`minova_terms_text_${currentLang}`) ?? t.termsDefault;
+                    termsEl.value = nextVal;
+                } catch (e) {
+                    termsEl.value = t.termsDefault;
+                }
+                termsEl.dataset.lang = currentLang;
+                termsEl.dataset.dirty = 'false';
+                termsEl.style.height = '';
+                termsEl.style.height = termsEl.scrollHeight + 'px';
+            }
+
+            const shipEl = document.getElementById('val-shipping-handling');
+            if (shipEl) {
+                try {
+                    const prevLang = shipEl.dataset.lang || currentLang;
+                    localStorage.setItem(`minova_shipping_${prevLang}`, shipEl.value);
+                    shipEl.value = localStorage.getItem(`minova_shipping_${currentLang}`) ?? t.included;
+                } catch (e) {
+                    shipEl.value = t.included;
+                }
+                shipEl.dataset.lang = currentLang;
+                shipEl.dataset.dirty = 'false';
+            }
+
+            renderValidityBadge();
+            calculateQuote();
+
+            document.querySelectorAll('.unit-days').forEach(el => el.textContent = t.daysUnit);
+
+            document.getElementById('btn-lang').textContent = currentLang === 'zh' ? '中 / EN' : 'EN / 中';
+            renderQuote();
+        };
+
+        // --- 报价单逻辑 ---
+        window.removeRow = (id) => {
+            quoteRows = quoteRows.filter(r => r.id !== id);
+            if(quoteRows.length === 0) quoteRows.push({ id: Date.now(), description: '', spec: '', batchNo: '', quantity: 1, price: 0, cost: 0 });
+            renderQuote();
+        };
+        window.moveRow = (id, dir) => {
+            const idx = quoteRows.findIndex(r => r.id === id);
+            if (idx === -1) return;
+            const nextIdx = Math.min(Math.max(idx + dir, 0), quoteRows.length - 1);
+            if (nextIdx === idx) return;
+            const copy = [...quoteRows];
+            const [item] = copy.splice(idx, 1);
+            copy.splice(nextIdx, 0, item);
+            quoteRows = copy;
+            renderQuote();
+        };
+        window.addBlankRowsFromUI = () => {
+            const n = Math.min(Math.max(parseInt(document.getElementById('blank-row-count')?.value || '1', 10) || 1, 1), 10);
+            for (let i = 0; i < n; i++) {
+                quoteRows.push({ id: Date.now() + i, description: '', spec: '', batchNo: '', quantity: 0, price: 0, cost: 0, isBlank: true });
+            }
+            renderQuote();
+        };
+        window.updateRow = (id, field, val) => {
+            const row = quoteRows.find(r => r.id === id);
+            if(!row) return;
+
+            if (field === 'price') {
+                const rate = parseFloat(document.getElementById('rate-myr-cny').value) || 1.53;
+                row.price = currentCurrency === 'MYR' ? (parseFloat(val) || 0) * rate : parseFloat(val) || 0;
+            } else if (field === 'description' || field === 'spec' || field === 'batchNo') {
+                row[field] = val;
+            } else {
+                row[field] = parseFloat(val) || 0;
+            }
+            calculateQuote();
+        };
+        function calculateQuote() {
+            let total = 0, totalCost = 0;
+            const rate = parseFloat(document.getElementById('rate-myr-cny').value) || 1.53;
+
+            quoteRows.forEach(r => {
+                if (r.isBlank) return;
+                const priceInCurrentCurrency = currentCurrency === 'MYR' ? r.price / rate : r.price;
+                const sub = r.quantity * priceInCurrentCurrency;
+                total += sub;
+                totalCost += r.quantity * r.cost;
+                const subEl = document.getElementById(`sub-${r.id}`);
+                const marginEl = document.getElementById(`margin-${r.id}`);
+                if(subEl) subEl.textContent = sub.toFixed(2);
+                if(marginEl) {
+                    // 更新计算公式：(售价 - 成本) / 成本
+                    const margin = r.cost > 0 ? ((r.price - r.cost) / r.cost * 100) : 0;
+                    marginEl.textContent = margin.toFixed(1) + '%';
+                    marginEl.className = `no-print py-4 px-2 text-center text-[10px] font-bold ${margin < 15 ? 'text-red-500 bg-red-50 rounded-lg animate-pulse' : 'text-slate-400'}`;
+                }
+            });
+            const currencySymbol = currentCurrency === 'CNY' ? '¥' : 'RM';
+            const formattedTotal = total.toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('grand-total').textContent = formattedTotal;
+            document.getElementById('payment-grand-total').textContent = formattedTotal;
+
+            const confirmationPercent = parseFloat(document.getElementById('payment-confirmation-percent').value) || 0;
+            const installationPercent = parseFloat(document.getElementById('payment-installation-percent').value) || 0;
+            const testingPercent = parseFloat(document.getElementById('payment-testing-percent').value) || 0;
+
+            const totalPercent = confirmationPercent + installationPercent + testingPercent;
+            const warningEl = document.getElementById('payment-warning');
+            const percentInputs = ['payment-confirmation-percent', 'payment-installation-percent', 'payment-testing-percent'];
+            const t = i18n[currentLang];
+
+            if (!paymentTermsConfirmed) {
+                warningEl.classList.add('hidden');
+                percentInputs.forEach(id => {
+                    document.getElementById(id).classList.remove('text-red-500', 'border-red-500');
+                    document.getElementById(id).classList.add('text-purple-600', 'border-purple-200');
+                });
+                document.getElementById('payment-confirmation').textContent = '---';
+                document.getElementById('payment-installation').textContent = '---';
+                document.getElementById('payment-testing').textContent = '---';
+            } else if (totalPercent !== 100) {
+                warningEl.classList.remove('hidden');
+                warningEl.textContent = t.paymentWarning.replace('{total}', totalPercent);
+                percentInputs.forEach(id => {
+                    document.getElementById(id).classList.add('text-red-500', 'border-red-500');
+                    document.getElementById(id).classList.remove('text-purple-600', 'border-purple-200');
+                });
+                document.getElementById('payment-confirmation').textContent = '---';
+                document.getElementById('payment-installation').textContent = '---';
+                document.getElementById('payment-testing').textContent = '---';
+            } else {
+                warningEl.classList.add('hidden');
+                percentInputs.forEach(id => {
+                    document.getElementById(id).classList.remove('text-red-500', 'border-red-500');
+                    document.getElementById(id).classList.add('text-purple-600', 'border-purple-200');
+                });
+                document.getElementById('payment-confirmation').textContent = (total * confirmationPercent / 100).toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                document.getElementById('payment-installation').textContent = (total * installationPercent / 100).toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                document.getElementById('payment-testing').textContent = (total * testingPercent / 100).toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            }
+
+            document.querySelectorAll('.currency-symbol').forEach(el => el.textContent = currencySymbol);
+            const itemCount = quoteRows.filter(r => !r.isBlank && (((r.description || '').trim()) || ((r.spec || '').trim()) || ((r.batchNo || '').trim()) || (parseFloat(r.quantity) || 0) > 0 || (parseFloat(r.price) || 0) > 0)).length;
+            document.getElementById('stat-count').textContent = itemCount;
+            const avgMargin = totalCost > 0 ? ((total * (currentCurrency === 'MYR' ? rate : 1) - totalCost) / totalCost * 100) : 0;
+            document.getElementById('stat-avg-margin').textContent = avgMargin.toFixed(1) + '%';
+        }
+        function renderQuote() {
+            const container = document.getElementById('quote-body');
+            const rate = parseFloat(document.getElementById('rate-myr-cny').value) || 1.53;
+            const t = i18n[currentLang];
+            document.getElementById('th-price').textContent = `${t.thPrice} (${currentCurrency === 'CNY' ? '¥' : 'RM'})`;
+            document.getElementById('th-amount').textContent = `${t.thAmount} (${currentCurrency === 'CNY' ? '¥' : 'RM'})`;
+
+            normalizeQuoteSplit();
+            const splitAfterId = quoteSplit.enabled ? quoteSplit.afterRowId : null;
+            let displayIndex = 0;
+            const isCountedRow = (r) => {
+                if (r.isBlank) return false;
+                const desc = (r.description || '').trim();
+                const spec = (r.spec || '').trim();
+                const batch = (r.batchNo || '').trim();
+                const qty = parseFloat(r.quantity) || 0;
+                const price = parseFloat(r.price) || 0;
+                return !!(desc || spec || batch || qty > 0 || price > 0);
+            };
+
+            container.innerHTML = quoteRows.map((r, idx) => {
+                const priceInCurrentCurrency = currentCurrency === 'MYR' ? r.price / rate : r.price;
+                const displayNo = isCountedRow(r) ? (++displayIndex) : '';
+                const rowHtml = r.isBlank ? `
+                <tr class="group transition-colors hover:bg-slate-50/50">
+                    <td class="py-6 px-2 text-center text-[10px] font-mono text-slate-200"></td>
+                    <td class="py-6 px-2 select-none">&nbsp;</td>
+                    <td class="py-6 px-2 select-none">&nbsp;</td>
+                    <td class="py-6 px-2 no-print select-none">&nbsp;</td>
+                    <td class="py-6 px-2 text-center select-none">&nbsp;</td>
+                    <td class="py-6 px-2 text-right select-none">&nbsp;</td>
+                    <td class="no-print py-6 px-2 text-center select-none">&nbsp;</td>
+                    <td class="py-6 px-2 text-right select-none">&nbsp;</td>
+                    <td class="no-print py-6 px-2 text-center">
+                        <div class="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                            <button onclick="moveRow(${r.id}, -1)" class="px-2 py-1 text-[10px] font-black text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-md border border-slate-200" title="上移">↑</button>
+                            <button onclick="moveRow(${r.id}, 1)" class="px-2 py-1 text-[10px] font-black text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-md border border-slate-200" title="下移">↓</button>
+                            <button onclick="removeRow(${r.id})" class="px-2 py-1 text-[10px] font-black text-red-500 bg-red-50 hover:bg-red-100 rounded-md border border-red-200" title="删除">✕</button>
+                        </div>
+                    </td>
+                </tr>
+                ` : `
+                <tr class="border-b border-slate-50 group transition-colors hover:bg-slate-50/50">
+                    <td class="py-4 px-2 text-center text-[10px] font-mono text-slate-300">${displayNo}</td>
+                    <td class="py-4 px-2"><input type="text" value="${r.description}" oninput="updateRow(${r.id}, 'description', this.value)" class="w-full bg-transparent outline-none text-sm font-medium focus:text-blue-600" placeholder="${currentLang === 'en' ? 'Description' : '描述'}"></td>
+                    <td class="py-4 px-2"><input type="text" value="${r.spec}" oninput="updateRow(${r.id}, 'spec', this.value)" class="w-full bg-transparent outline-none text-sm focus:text-blue-600" placeholder="${currentLang === 'en' ? 'Spec' : '规格'}"></td>
+                    <td class="py-4 px-2 no-print"><input type="text" value="${r.batchNo}" oninput="updateRow(${r.id}, 'batchNo', this.value)" class="w-full bg-transparent outline-none text-sm focus:text-blue-600" placeholder="${currentLang === 'en' ? 'Batch' : '采购批次'}"></td>
+                    <td class="py-4 px-2"><input type="number" value="${r.quantity}" oninput="updateRow(${r.id}, 'quantity', this.value)" class="w-full bg-transparent outline-none text-center text-sm"></td>
+                    <td class="py-4 px-2 whitespace-nowrap"><input type="number" step="0.01" value="${priceInCurrentCurrency.toFixed(2)}" oninput="updateRow(${r.id}, 'price', this.value)" class="w-full bg-transparent outline-none text-right text-sm font-bold"></td>
+                    <td id="margin-${r.id}" class="no-print py-4 px-2 text-center text-[10px] font-bold text-slate-400">0%</td>
+                    <td class="py-4 px-2 text-right font-black text-slate-700 text-sm whitespace-nowrap"><span class="currency-symbol mr-1"></span><span id="sub-${r.id}">0.00</span></td>
+                    <td class="no-print py-4 px-2 text-center">
+                        <div class="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                            <button onclick="moveRow(${r.id}, -1)" class="px-2 py-1 text-[10px] font-black text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-md border border-slate-200" title="上移">↑</button>
+                            <button onclick="moveRow(${r.id}, 1)" class="px-2 py-1 text-[10px] font-black text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-md border border-slate-200" title="下移">↓</button>
+                            <button onclick="removeRow(${r.id})" class="px-2 py-1 text-[10px] font-black text-red-500 bg-red-50 hover:bg-red-100 rounded-md border border-red-200" title="删除">✕</button>
+                        </div>
+                    </td>
+                </tr>
+                `;
+
+                const splitHtml = (quoteSplit.enabled && r.id === splitAfterId) ? `
+                <tr id="quote-split-row" class="quote-split-row">
+                    <td colspan="9" class="py-4 px-2">
+                        <div class="flex items-center gap-3">
+                            <div class="flex-grow border-t border-dashed border-purple-200"></div>
+                            <div class="no-print flex items-center gap-1">
+                                <button onclick="moveQuoteSplit(-1)" class="px-2 py-1 text-[10px] font-black text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-md border border-slate-200" title="上移">↑</button>
+                                <button onclick="moveQuoteSplit(1)" class="px-2 py-1 text-[10px] font-black text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-md border border-slate-200" title="下移">↓</button>
+                                <button onclick="toggleQuoteSplit()" class="px-2 py-1 text-[10px] font-black text-red-500 bg-red-50 hover:bg-red-100 rounded-md border border-red-200" title="删除">✕</button>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                ` : '';
+
+                return rowHtml + splitHtml;
+            }).join('');
+            calculateQuote();
+            updateQuoteSplitUI();
+        }
+
+        // --- 库管理逻辑 ---
+        window.setDbGroup = (mode) => {
+            dbGroupMode = mode;
+            document.getElementById('btn-group-category').className = mode === 'category' ? 'px-4 py-1.5 text-xs font-bold rounded-lg transition-all bg-white shadow-sm text-purple-700' : 'px-4 py-1.5 text-xs font-bold rounded-lg transition-all text-slate-500';
+            document.getElementById('btn-group-vendor').className = mode === 'vendor' ? 'px-4 py-1.5 text-xs font-bold rounded-lg transition-all bg-white shadow-sm text-purple-700' : 'px-4 py-1.5 text-xs font-bold rounded-lg transition-all text-slate-500';
+            renderDb();
+        };
+        window.renderDb = () => {
+            const list = document.getElementById('db-list');
+            if(products.length === 0) {
+                list.innerHTML = `<tr><td colspan="12" class="py-20 text-center text-slate-400 text-sm">暂无入库产品...</td></tr>`;
+                return;
+            }
+            const sorted = [...products].sort((a,b) => (a[dbGroupMode] || '').localeCompare(b[dbGroupMode] || ''));
+            list.innerHTML = sorted.map(p => {
+                const margin = p.price > 0 ? ((p.price - p.cost) / p.price * 100).toFixed(1) : 0;
+                const warrantyY = p.warrantyYears ? `${p.warrantyYears}年` : '-';
+                const warrantyC = p.warrantyCycles ? `${p.warrantyCycles}次` : '-';
+                const contactHtml = p.contact ? `<div class="relative group inline-block cursor-help"><span class="${p.contactInfo ? 'border-b border-dashed border-blue-400 text-blue-600' : ''}">${p.contact}</span>${p.contactInfo ? `<div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block px-3 py-2 bg-slate-800 text-white text-xs rounded-lg z-50 whitespace-nowrap">📞 ${p.contactInfo}</div>` : ''}</div>` : '-';
+                return `
+                    <tr class="hover:bg-slate-50 transition-colors group">
+                        <td class="py-4 px-4 text-xs font-mono text-slate-500">${p.id || '-'}</td>
+                        <td class="py-4 px-4 font-bold text-slate-700 text-sm max-w-[200px] truncate" title="${p.name}">${p.name}</td>
+                        <td class="py-4 px-4 text-xs text-slate-600">${p.spec || '-'}</td>
+                        <td class="py-4 px-4 text-xs text-slate-500 uppercase tracking-tighter">${p.category}</td>
+                        <td class="py-4 px-4 text-xs text-slate-600">${p.scenario || '-'}</td>
+                        <td class="py-4 px-4 text-xs text-slate-500 text-center">${warrantyY} / ${warrantyC}</td>
+                        <td class="py-4 px-4 text-xs text-slate-600">${p.leadTime || '-'}</td>
+                        <td class="py-4 px-4 text-xs text-slate-500">${p.vendor}</td>
+                        <td class="py-4 px-4 text-xs">${contactHtml}</td>
+                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-400">¥${(p.cost||0).toFixed(2)}</td>
+                        <td class="py-4 px-4 text-right text-sm font-bold text-purple-700">¥${(p.price||0).toFixed(2)}</td>
+                        <td class="py-4 px-4 text-right"><span class="text-[10px] font-black px-2 py-1 rounded ${margin > 30 ? 'bg-green-50 text-green-600' : 'bg-slate-50 text-slate-400'}">${margin}%</span></td>
+                        <td class="py-4 px-4 text-center">
+                            <div class="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                                <button onclick="editProduct('${p.id}')" class="text-purple-700 hover:bg-purple-50 p-1 rounded">✎</button>
+                                <button onclick="deleteProduct('${p.id}')" class="text-red-300 hover:text-red-500 p-1 rounded">🗑</button>
+                            </div>
+                        </td>
+                    </tr>`;
+            }).join('');
+        };
+
+        window.renderInventory = () => {
+            const list = document.getElementById('inventory-list');
+            if(inventory.length === 0) {
+                list.innerHTML = `<tr><td colspan="20" class="py-20 text-center text-slate-400 text-sm">暂无库存记录...</td></tr>`;
+                return;
+            }
+            list.innerHTML = inventory.map(item => {
+                const product = products.find(p => p.id === item.productId) || {};
+                
+                // 使用存储的价格或默认计算
+                const unitPrice = item.unitPurchasePrice || ((item.purchasePrice || 0) * (item.spec || 1));
+                const srp = item.suggestedRetailPrice || (unitPrice * 1.3);
+                const spp = item.suggestedProjectPrice || (unitPrice * 1.2);
+                const purchaseDate = item.purchaseDate ? String(item.purchaseDate) : '-';
+                const spec = Number.isFinite(parseFloat(item.spec)) ? parseFloat(item.spec) : 1;
+                const purchaseTotal = item.purchaseTotal || (unitPrice * (item.quantity || 0));
+                const shippingRatePct = ((item.shippingRate ?? 0.08) * 100);
+                const taxRatePct = ((item.domesticTaxRate ?? 0.06) * 100);
+                const shippingCost = item.shippingCost ?? (purchaseTotal * (shippingRatePct / 100));
+                const domesticTax = item.domesticTax ?? (purchaseTotal * (taxRatePct / 100));
+                const totalCost = item.totalCost ?? (purchaseTotal + shippingCost + domesticTax);
+                const avgCost = getAverageInventoryCostPerSpec(item.productId, spec);
+
+                return `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="py-4 px-4 text-xs font-mono text-slate-500 cursor-help" 
+                            onmouseenter="showInventoryTooltip(event, '${item.productId}')" 
+                            onmouseleave="hideInventoryTooltip()">
+                            ${item.productId}
+                        </td>
+                        <td class="py-4 px-4 font-bold text-slate-700 text-sm">${product.name || '未知产品'}</td>
+                        <td class="py-4 px-4 text-xs text-slate-500 uppercase tracking-tighter">${product.category || '-'}</td>
+                        <td class="py-4 px-4 text-xs text-slate-600">${purchaseDate}</td>
+                        <td class="py-4 px-4 text-center font-bold text-green-600">${item.quantity}</td>
+                        <td class="py-4 px-4 text-xs text-slate-600">${item.batchNo || '-'}</td>
+                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">¥${(item.purchasePrice || 0).toFixed(2)}</td>
+                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">${spec}</td>
+                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">¥${unitPrice.toFixed(2)}</td>
+                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">¥${purchaseTotal.toFixed(2)}</td>
+                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">${shippingRatePct.toFixed(1)}%</td>
+                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">${taxRatePct.toFixed(1)}%</td>
+                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">¥${shippingCost.toFixed(2)}</td>
+                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">¥${domesticTax.toFixed(2)}</td>
+                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-900 font-bold">¥${totalCost.toFixed(2)}</td>
+                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-700">¥${avgCost.toFixed(2)}</td>
+                        <td class="py-4 px-4 text-right text-sm font-mono text-purple-700">¥${srp.toFixed(2)}</td>
+                        <td class="py-4 px-4 text-right text-sm font-mono text-indigo-700">¥${spp.toFixed(2)}</td>
+                        <td class="py-4 px-4 text-xs text-slate-600">${item.location || '-'}</td>
+                        <td class="py-4 px-4 text-center">
+                            <div class="flex items-center justify-center gap-2">
+                                <button onclick="openInventoryEditModal('${item.id}')" class="text-purple-700 hover:bg-purple-50 p-1 rounded text-xs">编辑</button>
+                                <button onclick="openInventoryModal('out', '${item.id}')" class="text-orange-500 hover:bg-orange-50 p-1 rounded text-xs">出库</button>
+                                <button onclick="deleteInventoryItem('${item.id}')" class="text-red-300 hover:text-red-500 p-1 rounded">🗑</button>
+                            </div>
+                        </td>
+                    </tr>`;
+            }).join('');
+        };
+
+        // --- 全局浮窗逻辑 ---
+        window.showInventoryTooltip = (e, productId) => {
+            const summary = getInventorySummary(productId);
+            const tooltip = document.getElementById('global-tooltip');
+            
+            tooltip.innerHTML = `
+                <p class="font-bold text-base mb-2 border-b border-slate-600 pb-1">库存汇总: ${productId}</p>
+                <div class="space-y-1">
+                    <p class="flex justify-between"><span>总数量:</span> <span class="font-bold text-green-400">${summary.totalQuantity}</span></p>
+                    <p class="flex justify-between"><span>平均采购价:</span> <span class="font-bold text-blue-400">¥${summary.avgPrice.toFixed(2)}</span></p>
+                    <div class="pt-2">
+                        <p class="font-bold text-slate-400 mb-1">位置分布:</p>
+                        ${Object.entries(summary.locations).map(([loc, qty]) => 
+                            `<p class="flex justify-between text-[10px]"><span>${loc}:</span> <span>${qty}</span></p>`
+                        ).join('') || '<p class="italic text-slate-500 text-[10px]">无位置信息</p>'}
+                    </div>
+                </div>
+            `;
+            
+            tooltip.classList.remove('hidden');
+            
+            // 计算位置：尽量显示在指针上方，防止超出边界
+            const x = e.clientX + 15;
+            const y = e.clientY - tooltip.offsetHeight - 15;
+            
+            tooltip.style.left = `${x}px`;
+            tooltip.style.top = `${y > 10 ? y : e.clientY + 15}px`;
+        };
+
+        window.hideInventoryTooltip = () => {
+            document.getElementById('global-tooltip').classList.add('hidden');
+        };
+
+        // --- 库存价格编辑逻辑 ---
+        window.openInventoryEditModal = (id) => {
+            const item = inventory.find(i => i.id === id);
+            if (!item) return;
+            window.editingInvId = id;
+            document.getElementById('edit-inv-srp').value = (item.suggestedRetailPrice || (item.purchasePrice * 1.3)).toFixed(2);
+            document.getElementById('edit-inv-spp').value = (item.suggestedProjectPrice || (item.purchasePrice * 1.2)).toFixed(2);
+            document.getElementById('inventory-edit-modal').classList.remove('hidden');
+        };
+
+        window.closeInventoryEditModal = () => {
+            document.getElementById('inventory-edit-modal').classList.add('hidden');
+        };
+
+        window.updateInventoryPrices = () => {
+            const item = inventory.find(i => i.id === window.editingInvId);
+            if (!item) return;
+            
+            const newSrp = parseFloat(document.getElementById('edit-inv-srp').value) || 0;
+            const newSpp = parseFloat(document.getElementById('edit-inv-spp').value) || 0;
+            
+            const oldSrp = item.suggestedRetailPrice || 0;
+            const oldSpp = item.suggestedProjectPrice || 0;
+            item.suggestedRetailPrice = newSrp;
+            item.suggestedProjectPrice = newSpp;
+
+            const product = products.find(p => p.id === item.productId) || {};
+            pushInventoryHistory({
+                ts: Date.now(),
+                type: 'edit',
+                productId: item.productId,
+                productName: product.name || '未知产品',
+                quantity: item.quantity,
+                batchNo: item.batchNo,
+                note: `编辑建议售价 SRP:${oldSrp.toFixed(2)}→${newSrp.toFixed(2)} SPP:${oldSpp.toFixed(2)}→${newSpp.toFixed(2)}`
+            });
+            
+            saveToLocal();
+            closeInventoryEditModal();
+        };
+
+        function pushInventoryHistory(entry) {
+            inventoryHistory.push(entry);
+            if (inventoryHistory.length > 1000) inventoryHistory = inventoryHistory.slice(inventoryHistory.length - 1000);
+        }
+
+        function formatYmd(dateStr) {
+            if (!dateStr) return '';
+            return String(dateStr).replaceAll('-', '');
+        }
+
+        function getDefaultDomesticTaxRatePercent(category) {
+            const c = String(category || '');
+            if (c.includes('光伏组件')) return 13;
+            if (c.includes('光伏') && (c.includes('组件') || c.includes('板'))) return 13;
+            if (c.includes('一体机')) return 0;
+            if (c.includes('电池')) return 6;
+            if (c.includes('逆变器')) return 6;
+            if (c.includes('配件')) return 6;
+            return 6;
+        }
+
+        function generateNextBatchNoForDate(ymd) {
+            const prefix = `${ymd}-`;
+            const used = new Set(inventory.map(i => String(i.batchNo || '')).filter(Boolean));
+            let maxSeq = 0;
+            inventory.forEach(i => {
+                const b = String(i.batchNo || '');
+                if (!b.startsWith(prefix)) return;
+                const tail = b.slice(prefix.length);
+                const n = parseInt(tail, 10);
+                if (Number.isFinite(n) && n > maxSeq) maxSeq = n;
+            });
+            let seq = maxSeq + 1;
+            while (seq <= 999) {
+                const next = `${prefix}${String(seq).padStart(3, '0')}`;
+                if (!used.has(next)) return next;
+                seq++;
+            }
+            return `${prefix}${String(Date.now()).slice(-3)}`;
+        }
+
+        window.onInventoryPurchaseDateChange = () => {
+            const d = document.getElementById('inv-purchase-date')?.value || '';
+            const ymd = formatYmd(d);
+            const el = document.getElementById('inv-batch-no');
+            if (el && ymd) el.value = generateNextBatchNoForDate(ymd);
+        };
+
+        window.onInventoryProductChange = () => {
+            const productId = document.getElementById('inv-product-id')?.value || '';
+            const p = products.find(x => x.id === productId);
+            if (p) {
+                const priceEl = document.getElementById('inv-price');
+                if (priceEl && !priceEl.value) priceEl.value = String(parseFloat(p.cost || 0).toFixed(2));
+                const taxEl = document.getElementById('inv-domestic-tax-rate');
+                if (taxEl && !taxEl.value) taxEl.value = String(getDefaultDomesticTaxRatePercent(p.category));
+            }
+            recalcInventoryCosts();
+        };
+
+        window.recalcInventoryCosts = () => {
+            const qty = parseFloat(document.getElementById('inv-quantity')?.value) || 0;
+            const spec = parseFloat(document.getElementById('inv-spec')?.value) || 0;
+            const batchPrice = parseFloat(document.getElementById('inv-price')?.value) || 0;
+            const shippingRatePct = parseFloat(document.getElementById('inv-shipping-rate')?.value) || 0;
+            const taxRatePct = parseFloat(document.getElementById('inv-domestic-tax-rate')?.value) || 0;
+
+            const unitPrice = batchPrice * (spec || 0);
+            const purchaseTotal = unitPrice * qty;
+            const shippingCost = purchaseTotal * (shippingRatePct / 100);
+            const domesticTax = purchaseTotal * (taxRatePct / 100);
+            const totalCost = purchaseTotal + shippingCost + domesticTax;
+
+            const unitEl = document.getElementById('inv-unit-price');
+            const totalEl = document.getElementById('inv-purchase-total');
+            const shipEl = document.getElementById('inv-shipping-cost');
+            const taxEl = document.getElementById('inv-domestic-tax');
+            const allEl = document.getElementById('inv-total-cost');
+            const avgEl = document.getElementById('inv-avg-cost');
+            if (unitEl) unitEl.value = unitPrice ? unitPrice.toFixed(2) : '0.00';
+            if (totalEl) totalEl.value = purchaseTotal ? purchaseTotal.toFixed(2) : '0.00';
+            if (shipEl) shipEl.value = shippingCost ? shippingCost.toFixed(2) : '0.00';
+            if (taxEl) taxEl.value = domesticTax ? domesticTax.toFixed(2) : '0.00';
+            if (allEl) allEl.value = totalCost ? totalCost.toFixed(2) : '0.00';
+            if (avgEl) {
+                const productId = document.getElementById('inv-product-id')?.value || '';
+                const avg = getAverageInventoryCostPerSpec(productId, spec || 1);
+                avgEl.value = avg ? avg.toFixed(2) : '0.00';
+            }
+        };
+
+        function getItemTotalCost(item) {
+            const qty = parseFloat(item.quantity) || 0;
+            const unitPrice = item.unitPurchasePrice || ((parseFloat(item.purchasePrice) || 0) * (parseFloat(item.spec) || 1));
+            const purchaseTotal = item.purchaseTotal ?? (unitPrice * qty);
+            const shippingRatePct = ((item.shippingRate ?? 0.08) * 100);
+            const taxRatePct = ((item.domesticTaxRate ?? 0.06) * 100);
+            const shippingCost = item.shippingCost ?? (purchaseTotal * (shippingRatePct / 100));
+            const domesticTax = item.domesticTax ?? (purchaseTotal * (taxRatePct / 100));
+            return item.totalCost ?? (purchaseTotal + shippingCost + domesticTax);
+        }
+
+        function getAverageInventoryCostPerSpec(productId, spec) {
+            const id = String(productId || '').trim();
+            if (!id) return 0;
+            const s = parseFloat(spec) || 1;
+            const items = inventory.filter(i => i.productId === id);
+            const totalQty = items.reduce((sum, i) => sum + (parseFloat(i.quantity) || 0), 0);
+            if (totalQty <= 0) return 0;
+            const totalCost = items.reduce((sum, i) => sum + (getItemTotalCost(i) || 0), 0);
+            return (totalCost / totalQty) / s;
+        }
+
+        window.recalcInstallerQuote = () => {
+            const labor = parseFloat(document.getElementById('installer-labor')?.value) || 0;
+            const bracket = parseFloat(document.getElementById('installer-bracket')?.value) || 0;
+            const cable = parseFloat(document.getElementById('installer-cable')?.value) || 0;
+            const totalMyr = labor + bracket + cable;
+            const rate = parseFloat(document.getElementById('rate-myr-cny')?.value) || 1.53;
+            const totalCny = totalMyr * rate;
+
+            const myrEl = document.getElementById('installer-total-myr');
+            const cnyEl = document.getElementById('installer-total-cny');
+            if (myrEl) myrEl.value = totalMyr.toFixed(4);
+            if (cnyEl) cnyEl.value = totalCny.toFixed(4);
+            try {
+                localStorage.setItem('minova_installer_quote_v1', JSON.stringify({ labor, bracket, cable }));
+            } catch (e) {}
+        };
+
+        window.changeInventoryHistoryPage = (delta) => {
+            const per = 10;
+            const totalPages = Math.max(1, Math.min(100, Math.ceil(inventoryHistory.length / per)));
+            inventoryHistoryPage = Math.min(Math.max(inventoryHistoryPage + delta, 1), totalPages);
+            renderInventoryHistory();
+        };
+
+        window.exportInventoryHistory = () => {
+            const rows = [...inventoryHistory].reverse().map(h => ({
+                操作时间: new Date(h.ts).toLocaleString(),
+                类型: h.type,
+                产品编号: h.productId,
+                产品名称: h.productName,
+                数量: h.quantity,
+                批次号: h.batchNo || '',
+                说明: h.note || ''
+            }));
+            const ws = XLSX.utils.json_to_sheet(rows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, '历史操作记录');
+            XLSX.writeFile(wb, '库存历史操作记录.xlsx');
+        };
+
+        window.renderInventoryHistory = () => {
+            const list = document.getElementById('inventory-history-list');
+            if(!list) return;
+            const per = 10;
+            const totalPages = Math.max(1, Math.min(100, Math.ceil(inventoryHistory.length / per)));
+            if (inventoryHistoryPage > totalPages) inventoryHistoryPage = totalPages;
+            const start = (inventoryHistoryPage - 1) * per;
+            const slice = [...inventoryHistory].reverse().slice(start, start + per);
+            if(inventoryHistory.length === 0) {
+                list.innerHTML = `<tr><td colspan="7" class="py-10 text-center text-slate-400 text-sm">暂无操作记录...</td></tr>`;
+                const pageEl = document.getElementById('inventory-history-page');
+                if (pageEl) pageEl.textContent = `1 / 1`;
+                const sumEl = document.getElementById('inventory-history-summary');
+                if (sumEl) sumEl.textContent = `共 0 条`;
+                return;
+            }
+            const pageEl = document.getElementById('inventory-history-page');
+            if (pageEl) pageEl.textContent = `${inventoryHistoryPage} / ${totalPages}`;
+            const sumEl = document.getElementById('inventory-history-summary');
+            if (sumEl) sumEl.textContent = `共 ${inventoryHistory.length} 条（每页 10 条，最多保留 1000 条）`;
+
+            list.innerHTML = slice.map(h => `
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="py-3 px-4 text-xs text-slate-500">${new Date(h.ts).toLocaleString()}</td>
+                    <td class="py-3 px-4 text-xs font-bold ${h.type === 'in' ? 'text-green-600' : h.type === 'out' ? 'text-orange-600' : h.type === 'edit' ? 'text-purple-600' : 'text-red-600'}">${h.type === 'in' ? '入库' : h.type === 'out' ? '出库' : h.type === 'edit' ? '编辑' : '删除'}</td>
+                    <td class="py-3 px-4 text-xs font-mono text-slate-500">${h.productId}</td>
+                    <td class="py-3 px-4 text-xs text-slate-700">${h.productName}</td>
+                    <td class="py-3 px-4 text-xs font-bold">${h.type === 'in' ? '+' : h.type === 'out' ? '-' : ''}${h.quantity ?? ''}</td>
+                    <td class="py-3 px-4 text-xs text-slate-500">${h.batchNo || '-'}</td>
+                    <td class="py-3 px-4 text-xs text-slate-500 truncate max-w-[150px]" title="${h.note || ''}">${h.note || '-'}</td>
+                </tr>
+            `).join('');
+        };
+
+        function getInventorySummary(productId) {
+            const items = inventory.filter(i => i.productId === productId);
+            const totalQuantity = items.reduce((sum, i) => sum + i.quantity, 0);
+            const totalCost = items.reduce((sum, i) => sum + i.quantity * (i.unitPurchasePrice || i.purchasePrice || 0), 0);
+            const avgPrice = totalQuantity > 0 ? totalCost / totalQuantity : 0;
+            const locations = items.reduce((acc, i) => {
+                if(i.location) acc[i.location] = (acc[i.location] || 0) + i.quantity;
+                return acc;
+            }, {});
+            return { totalQuantity, avgPrice, locations };
+        }
+
+        window.openInventoryModal = (type, targetId = '') => {
+            const modal = document.getElementById('inventory-modal');
+            modal.classList.remove('hidden');
+            window.inventoryType = type;
+            window.inventoryTargetId = targetId; // 记录是针对哪个批次的出库
+
+            if(type === 'in') {
+                document.getElementById('inv-title').innerText = '产品入库';
+                document.getElementById('inv-product-id').value = targetId; // 这里targetId传的是productId
+                document.getElementById('inv-quantity').value = '';
+                document.getElementById('inv-spec').value = '1';
+                document.getElementById('inv-price').value = '';
+                document.getElementById('inv-location').value = '';
+                document.getElementById('inv-shipping-rate').value = '8';
+                document.getElementById('inv-domestic-tax-rate').value = '';
+
+                const today = new Date();
+                const d = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                document.getElementById('inv-purchase-date').value = d;
+                onInventoryPurchaseDateChange();
+
+                const showEls = [
+                    'inv-purchase-date-container',
+                    'inv-batchno-container',
+                    'inv-spec-container',
+                    'inv-price-container',
+                    'inv-location-container'
+                ];
+                showEls.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'block'; });
+                [
+                    'inv-unit-price',
+                    'inv-purchase-total',
+                    'inv-shipping-rate',
+                    'inv-domestic-tax-rate',
+                    'inv-shipping-cost',
+                    'inv-domestic-tax',
+                    'inv-avg-cost',
+                    'inv-total-cost'
+                ].forEach(id => { const el = document.getElementById(id); if (el?.parentElement) el.parentElement.style.display = 'block'; });
+
+                onInventoryProductChange();
+            } else {
+                document.getElementById('inv-title').innerText = '产品出库';
+                const item = inventory.find(i => i.id === targetId);
+                if(item) {
+                    document.getElementById('inv-product-id').value = item.productId;
+                    document.getElementById('inv-quantity').value = '';
+                    document.getElementById('inv-price').value = item.purchasePrice;
+                    document.getElementById('inv-location').value = item.location;
+                }
+                const hideEls = [
+                    'inv-purchase-date-container',
+                    'inv-batchno-container',
+                    'inv-spec-container',
+                    'inv-price-container',
+                    'inv-location-container'
+                ];
+                hideEls.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+                [
+                    'inv-unit-price',
+                    'inv-purchase-total',
+                    'inv-shipping-rate',
+                    'inv-domestic-tax-rate',
+                    'inv-shipping-cost',
+                    'inv-domestic-tax',
+                    'inv-avg-cost',
+                    'inv-total-cost'
+                ].forEach(id => { const el = document.getElementById(id); if (el?.parentElement) el.parentElement.style.display = 'none'; });
+            }
+        };
+
+        window.closeInventoryModal = () => document.getElementById('inventory-modal').classList.add('hidden');
+
+        window.saveInventory = () => {
+            const productId = document.getElementById('inv-product-id').value;
+            const quantity = parseInt(document.getElementById('inv-quantity').value) || 0;
+            const purchasePrice = parseFloat(document.getElementById('inv-price').value) || 0;
+            const location = document.getElementById('inv-location').value;
+
+            if(!productId) return alert("请选择或输入产品编号！");
+            if(quantity <= 0) return alert("请输入有效数量！");
+
+            const product = products.find(p => p.id === productId);
+            const productName = product ? product.name : '未知产品';
+
+            if(window.inventoryType === 'in') {
+                const purchaseDate = document.getElementById('inv-purchase-date').value;
+                if (!purchaseDate) return alert("请选择采购入库时间！");
+                const ymd = formatYmd(purchaseDate);
+                let newBatchNo = document.getElementById('inv-batch-no').value || generateNextBatchNoForDate(ymd);
+                if (inventory.some(i => String(i.batchNo || '') === newBatchNo)) {
+                    newBatchNo = generateNextBatchNoForDate(ymd);
+                    document.getElementById('inv-batch-no').value = newBatchNo;
+                }
+
+                const spec = parseFloat(document.getElementById('inv-spec').value) || 0;
+                const shippingRatePct = parseFloat(document.getElementById('inv-shipping-rate').value) || 0;
+                const domesticTaxRatePct = parseFloat(document.getElementById('inv-domestic-tax-rate').value) || 0;
+                const unitPurchasePrice = purchasePrice * spec;
+                const purchaseTotal = unitPurchasePrice * quantity;
+                const shippingCost = purchaseTotal * (shippingRatePct / 100);
+                const domesticTax = purchaseTotal * (domesticTaxRatePct / 100);
+                const totalCost = purchaseTotal + shippingCost + domesticTax;
+
+                const newId = `inv_${Date.now()}`;
+                inventory.push({ 
+                    id: newId,
+                    productId, 
+                    quantity, 
+                    batchNo: newBatchNo, 
+                    purchaseDate,
+                    purchasePrice,
+                    spec,
+                    unitPurchasePrice,
+                    purchaseTotal,
+                    shippingRate: shippingRatePct / 100,
+                    domesticTaxRate: domesticTaxRatePct / 100,
+                    shippingCost,
+                    domesticTax,
+                    totalCost,
+                    location 
+                });
+
+                pushInventoryHistory({
+                    ts: Date.now(),
+                    type: 'in',
+                    productId,
+                    productName,
+                    quantity,
+                    batchNo: newBatchNo,
+                    note: `采购入库 ${purchaseDate} | 入库到 ${location || '未指定位置'} | 总成本¥${totalCost.toFixed(2)}`
+                });
+            } else {
+                const item = inventory.find(i => i.id === window.inventoryTargetId);
+                if(!item || item.quantity < quantity) return alert("该批次库存不足！");
+                item.quantity -= quantity;
+
+                pushInventoryHistory({
+                    ts: Date.now(),
+                    type: 'out',
+                    productId,
+                    productName,
+                    quantity,
+                    batchNo: item.batchNo,
+                    note: `从 ${item.location || '未指定位置'} 出库`
+                });
+
+                // 如果数量为0且不是最后一个批次，可以选择保留或删除，这里选择保留记录但显示0
+            }
+            
+            saveToLocal();
+            closeInventoryModal();
+        };
+
+        window.deleteInventoryItem = (id) => {
+            const item = inventory.find(i => i.id === id);
+            if(!item) return;
+            if(confirm('确定删除该入库记录吗？删除会记录在历史中。')) {
+                const product = products.find(p => p.id === item.productId) || {};
+                pushInventoryHistory({
+                    ts: Date.now(),
+                    type: 'delete',
+                    productId: item.productId,
+                    productName: product.name || '未知产品',
+                    quantity: item.quantity,
+                    batchNo: item.batchNo,
+                    note: `删除入库记录 | 批次 ${item.batchNo || '-'}`
+                });
+                inventory = inventory.filter(i => i.id !== id);
+                saveToLocal();
+            }
+        };
+        window.openModal = () => {
+            updateSubcatSuggestions();
+            document.getElementById('modal').classList.remove('hidden');
+        };
+        window.closeModal = () => {
+            document.getElementById('modal').classList.add('hidden');
+            window.editId = null;
+            ['m-name', 'm-category', 'm-vendor', 'm-spec', 'm-scenario', 'm-warranty-years', 'm-warranty-cycles', 'm-lead-time', 'm-contact', 'm-contact-info', 'm-cost', 'm-price'].forEach(id => document.getElementById(id).value = '');
+        };
+        window.saveProduct = () => {
+            const category = document.getElementById('m-category').value || '未分类';
+            const data = {
+                id: window.editId || generateNextId(category),
+                name: document.getElementById('m-name').value,
+                category: category,
+                vendor: document.getElementById('m-vendor').value || '通用',
+                spec: document.getElementById('m-spec').value,
+                scenario: document.getElementById('m-scenario').value,
+                warrantyYears: document.getElementById('m-warranty-years').value,
+                warrantyCycles: document.getElementById('m-warranty-cycles').value,
+                leadTime: document.getElementById('m-lead-time').value,
+                contact: document.getElementById('m-contact').value,
+                contactInfo: document.getElementById('m-contact-info').value,
+                cost: parseFloat(document.getElementById('m-cost').value) || 0,
+                price: parseFloat(document.getElementById('m-price').value) || 0,
+                ts: Date.now()
+            };
+            if(!data.name) return alert("请输入产品全称！");
+            const sub = (data.scenario || '').trim();
+            const cat = (data.category || '').trim() || '未分类';
+            if (!subcategoriesByCategory[cat]) subcategoriesByCategory[cat] = [];
+            if (sub && !subcategoriesByCategory[cat].includes(sub)) {
+                subcategoriesByCategory[cat].push(sub);
+                saveSubcategoryIndex();
+            }
+            const idx = products.findIndex(p => p.id === data.id);
+            if(idx !== -1) products[idx] = data; else products.push(data);
+            saveToLocal(); closeModal();
+        };
+        window.editProduct = (id) => {
+            const p = products.find(prod => prod.id === id);
+            if(!p) return;
+            window.editId = id;
+            document.getElementById('m-name').value = p.name || '';
+            document.getElementById('m-category').value = p.category || '';
+            document.getElementById('m-vendor').value = p.vendor || '';
+            document.getElementById('m-spec').value = p.spec || '';
+            updateSubcatSuggestions();
+            document.getElementById('m-scenario').value = p.scenario || '';
+            document.getElementById('m-warranty-years').value = p.warrantyYears || '';
+            document.getElementById('m-warranty-cycles').value = p.warrantyCycles || '';
+            document.getElementById('m-lead-time').value = p.leadTime || '';
+            document.getElementById('m-contact').value = p.contact || '';
+            document.getElementById('m-contact-info').value = p.contactInfo || '';
+            document.getElementById('m-cost').value = p.cost || 0;
+            document.getElementById('m-price').value = p.price || 0;
+            openModal();
+        };
+        window.deleteProduct = (id) => {
+            if(confirm('确定删除该产品档案吗？')) { products = products.filter(p => p.id !== id); saveToLocal(); }
+        };
+
+        // --- 批量导入逻辑 ---
+        let importStep = 1;
+        let importData = [];
+        let importHeaders = [];
+        const systemFields = {
+            id: '产品编号',
+            name: '产品全称',
+            category: '类目',
+            vendor: '供应商',
+            spec: '规格型号',
+            scenario: '子类目',
+            warrantyYears: '质保年限',
+            warrantyCycles: '循环次数',
+            leadTime: '供货周期',
+            contact: '联系人',
+            contactInfo: '联系方式',
+            cost: '基准采购价',
+            price: '基准售价'
+        };
+
+        // 获取拼音首字母的简易映射
+        function getPinyinInitials(str) {
+            if (!str) return 'PROD';
+            const dict = {
+                '光': 'G', '伏': 'F', '板': 'B', '电': 'D', '池': 'C', '储': 'C', '能': 'N', '逆': 'N', '变': 'B', '器': 'Q',
+                '支': 'Z', '架': 'J', '缆': 'L', '线': 'X', '辅': 'F', '材': 'C', '安': 'A', '装': 'Z', '组': 'Z', '件': 'J',
+                '系': 'X', '统': 'T', '监': 'J', '控': 'K', '柜': 'G', '箱': 'X'
+            };
+            let initials = '';
+            for (let char of str) {
+                initials += dict[char] || char.charAt(0).toUpperCase();
+            }
+            return initials.replace(/[^A-Z]/g, '') || 'PROD';
+        }
+
+        function generateNextId(category) {
+            const prefix = getPinyinInitials(category);
+            const regex = new RegExp(`^${prefix}(\\d+)$`);
+            let maxNum = 0;
+            products.forEach(p => {
+                const match = String(p.id).match(regex);
+                if (match) {
+                    const num = parseInt(match[1]);
+                    if (num > maxNum) maxNum = num;
+                }
+            });
+            return `${prefix}${String(maxNum + 1).padStart(3, '0')}`;
+        }
+
+        window.openImportModal = () => document.getElementById('import-modal').classList.remove('hidden');
+        window.closeImportModal = () => {
+            document.getElementById('import-modal').classList.add('hidden');
+            // 重置状态
+            goToStep(1, true);
+            document.getElementById('excel-file-input').value = '';
+            document.getElementById('file-name-display').textContent = '';
+        };
+
+        window.goToStep = (step, isReset = false) => {
+            if (!isReset && step === 2 && !validateFile()) return;
+            if (!isReset && step === 3) {
+                processImport();
+                return;
+            }
+
+            importStep = step;
+            document.getElementById('import-step-1').style.display = step === 1 ? 'block' : 'none';
+            document.getElementById('import-step-2').style.display = step === 2 ? 'block' : 'none';
+            document.getElementById('import-step-3').style.display = step === 3 ? 'block' : 'none';
+
+            const nextBtn = document.getElementById('import-next-btn');
+            if (step === 1) {
+                nextBtn.textContent = '下一步';
+                nextBtn.onclick = () => goToStep(2);
+                nextBtn.disabled = !document.getElementById('excel-file-input').files.length;
+            } else if (step === 2) {
+                nextBtn.textContent = '确认导入';
+                nextBtn.onclick = () => goToStep(3);
+                nextBtn.disabled = false;
+            } else if (step === 3) {
+                nextBtn.textContent = '完成';
+                nextBtn.onclick = closeImportModal;
+            }
+        };
+
+        window.handleFileSelect = (files) => {
+            if (files.length === 0) return;
+            const file = files[0];
+            document.getElementById('file-name-display').textContent = `已选择: ${file.name}`;
+            document.getElementById('import-next-btn').disabled = false;
+            parseExcel(file);
+        };
+
+        function validateFile() {
+            const fileInput = document.getElementById('excel-file-input');
+            if (fileInput.files.length === 0) {
+                alert('请选择一个文件');
+                return false;
+            }
+            const file = fileInput.files[0];
+            if (file.size > 10 * 1024 * 1024) {
+                alert('文件大小不能超过 10MB');
+                return false;
+            }
+            return true;
+        }
+
+        function parseExcel(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array', cellDates: true});
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                
+                if (json.length < 2) {
+                    alert('Excel 文件为空或没有数据');
+                    return;
+                }
+
+                importHeaders = json[0];
+                importData = json.slice(1).map(row => {
+                    let obj = {};
+                    importHeaders.forEach((h, i) => obj[h] = row[i]);
+                    return obj;
+                });
+
+                if (importData.length > 1000) {
+                    alert('单次最多导入1000条记录');
+                    importData = importData.slice(0, 1000);
+                }
+
+                renderFieldMapping();
+                renderPreview();
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function renderFieldMapping() {
+            const container = document.getElementById('field-mapping-container');
+            const aliases = { scenario: ['子类目', '应用场景'] };
+            container.innerHTML = Object.keys(systemFields).map(key => `
+                <div class="flex items-center">
+                    <label class="w-28 font-bold text-slate-600">${systemFields[key]}:</label>
+                    <select id="map-${key}" class="flex-1 border border-slate-300 rounded-md p-1.5 outline-none focus:border-blue-500 bg-white">
+                        <option value="">- 忽略此列 -</option>
+                        ${importHeaders.map(h => {
+                            const preferred = (aliases[key] || [systemFields[key]]).find(a => importHeaders.includes(a));
+                            return `<option value="${h}" ${h === preferred ? 'selected' : ''}>${h}</option>`;
+                        }).join('')}
+                    </select>
+                </div>
+            `).join('');
+        }
+
+        function renderPreview() {
+            const header = document.getElementById('preview-header');
+            const body = document.getElementById('preview-body');
+            const previewData = importData.slice(0, 10);
+
+            header.innerHTML = `<tr>${importHeaders.map(h => `<th class="py-2 px-3">${h}</th>`).join('')}</tr>`;
+            body.innerHTML = previewData.map(row => 
+                `<tr>${importHeaders.map(h => `<td class="py-2 px-3">${row[h] || ''}</td>`).join('')}</tr>`
+            ).join('');
+        }
+
+        function processImport() {
+            let successCount = 0;
+            let failCount = 0;
+            let log = [];
+
+            const mapping = {};
+            Object.keys(systemFields).forEach(key => {
+                const select = document.getElementById(`map-${key}`);
+                if (select.value) mapping[key] = select.value;
+            });
+
+            importData.forEach((row, i) => {
+                const newProduct = {};
+                for (const key in mapping) {
+                    newProduct[key] = row[mapping[key]];
+                }
+
+                // 如果没填产品全称，跳过
+                if (!newProduct.name) {
+                    failCount++;
+                    log.push(`<p class="text-red-500">第 ${i + 2} 行: 导入失败，产品全称不能为空。</p>`);
+                    return;
+                }
+
+                // 如果没填编号，则自动生成
+                if (!newProduct.id) {
+                    newProduct.id = generateNextId(newProduct.category || '通用');
+                } else {
+                    newProduct.id = String(newProduct.id);
+                }
+
+                const existingIndex = products.findIndex(p => p.id === newProduct.id);
+                if (existingIndex !== -1) {
+                    products[existingIndex] = { ...products[existingIndex], ...newProduct, ts: Date.now() };
+                } else {
+                    products.push({ ...newProduct, ts: Date.now() });
+                }
+                successCount++;
+            });
+
+            saveToLocal();
+            renderImportLog(successCount, failCount, log);
+            goToStep(3);
+        }
+
+        function renderImportLog(success, failed, details) {
+            const logContainer = document.getElementById('import-log');
+            let summary = `<p>导入成功: <strong class="text-green-600">${success}</strong> 条</p>`;
+            if (failed > 0) {
+                summary += `<p>导入失败: <strong class="text-red-600">${failed}</strong> 条</p>`;
+            }
+            logContainer.innerHTML = summary + '<div class="mt-4 text-xs max-h-60 overflow-y-auto border p-2 rounded-md">' + details.join('') + '</div>';
+        }
+
+        window.downloadTemplate = () => {
+            const headers = ['产品编号', '产品全称', '类目', '供应商', '规格型号', '子类目', '质保年限', '循环次数', '供货周期', '联系人', '联系方式', '基准采购价', '基准售价'];
+            const data = products.map(p => [
+                p.id || '',
+                p.name || '',
+                p.category || '',
+                p.vendor || '',
+                p.spec || '',
+                p.scenario || '',
+                p.warrantyYears || '',
+                p.warrantyCycles || '',
+                p.leadTime || '',
+                p.contact || '',
+                p.contactInfo || '',
+                p.cost || 0,
+                p.price || 0
+            ]);
+            
+            // 如果没数据，加一行示例
+            if (data.length === 0) {
+                data.push(['GFB001', '示例产品', '光伏板', '通用供应商', '550W', '屋顶', '10', '0', '15天', '张经理', '13800138000', 500, 650]);
+            }
+
+            const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, '产品清单');
+            XLSX.writeFile(workbook, '库管理产品清单.xlsx');
+        };
+
+        // --- 选择器逻辑 ---
+        window.renderPicker = () => {
+            const query = (document.getElementById('picker-search')?.value || '').toLowerCase();
+            const vendor = document.getElementById('picker-vendor')?.value || '';
+            const category = document.getElementById('picker-category')?.value || '';
+            const list = document.getElementById('picker-list');
+            if(!list) return;
+
+            // 过滤逻辑：必须在库存中有记录且数量 > 0
+            const availableBatches = inventory.filter(i => i.quantity > 0);
+
+            const filtered = availableBatches.filter(item => {
+                const p = products.find(prod => prod.id === item.productId);
+                if (!p) return false;
+
+                return (!vendor || p.vendor === vendor) && 
+                       (!category || p.category === category) && 
+                       (!query || p.name.toLowerCase().includes(query) || p.category.toLowerCase().includes(query));
+            });
+
+            if(filtered.length === 0) { list.innerHTML = `<div class="p-8 text-center text-xs text-slate-400 italic">未找到有库存的产品...</div>`; return; }
+            
+            list.innerHTML = filtered.map(item => {
+                const p = products.find(prod => prod.id === item.productId);
+                const retailPrice = (item.suggestedRetailPrice || (item.purchasePrice * 1.3)).toFixed(2);
+                const projectPrice = (item.suggestedProjectPrice || (item.purchasePrice * 1.2)).toFixed(2);
+                return `
+                <div class="p-3 hover:bg-purple-50 transition-colors group border-b border-slate-50">
+                    <div class="flex justify-between items-start">
+                        <span class="text-sm font-bold text-slate-700">${p.name}</span>
+                        <div class="text-right">
+                            <span class="text-[10px] text-slate-400 block">库存: ${item.quantity} | 批次: ${item.batchNo}</span>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center mt-2">
+                        <div class="flex gap-2">
+                            <span class="text-[9px] uppercase px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded">${p.category}</span>
+                            <span class="text-[9px] uppercase px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded">${p.vendor}</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="pickProduct('${item.id}', 'retail')" class="px-3 py-1 bg-purple-700 text-white text-[10px] font-bold rounded-lg hover:bg-purple-800 transition-all shadow-sm">零售价 ¥${retailPrice}</button>
+                            <button onclick="pickProduct('${item.id}', 'project')" class="px-3 py-1 bg-indigo-700 text-white text-[10px] font-bold rounded-lg hover:bg-indigo-800 transition-all shadow-sm">工程价 ¥${projectPrice}</button>
+                        </div>
+                    </div>
+                </div>`}).join('');
+        };
+        window.pickProduct = (inventoryId, priceType) => {
+            const item = inventory.find(i => i.id === inventoryId); if(!item) return;
+            const p = products.find(prod => prod.id === item.productId); if(!p) return;
+            
+            const cost = item.purchasePrice || 0;
+            let price = 0;
+            if (priceType === 'retail') {
+                price = item.suggestedRetailPrice || (cost * 1.3);
+            } else {
+                price = item.suggestedProjectPrice || (cost * 1.2);
+            }
+
+            const firstBlankIdx = quoteRows.findIndex(r => r.isBlank);
+            const insertIdx = firstBlankIdx === -1 ? quoteRows.length : firstBlankIdx;
+            const candidateIdx = Math.min(Math.max(insertIdx - 1, 0), quoteRows.length - 1);
+            const candidate = quoteRows[candidateIdx];
+
+            if (candidate && !candidate.isBlank && !candidate.description && candidate.price === 0) {
+                candidate.description = p.name;
+                candidate.spec = p.spec || '';
+                candidate.batchNo = item.batchNo;
+                candidate.price = price;
+                candidate.cost = cost;
+            } else {
+                quoteRows.splice(insertIdx, 0, { id: Date.now(), description: p.name, spec: p.spec || '', batchNo: item.batchNo, quantity: 1, price: price, cost: cost });
+            }
+            renderQuote();
+        };
+
+        // --- 其他工具 ---
+        function updatePickerFilters() {
+            const vendors = [...new Set(products.map(p => p.vendor).filter(Boolean))];
+            const categories = [...new Set(products.map(p => p.category).filter(Boolean))];
+            const vS = document.getElementById('picker-vendor'), cS = document.getElementById('picker-category');
+            if(vS) vS.innerHTML = `<option value="">全部供应商</option>` + vendors.map(v => `<option value="${v}">${v}</option>`).join('');
+            if(cS) cS.innerHTML = `<option value="">全部类目</option>` + categories.map(c => `<option value="${c}">${c}</option>`).join('');
+        }
+        function updateDatalists() {
+            const cats = [...new Set(products.map(p => p.category))];
+            document.getElementById('cat-suggestions').innerHTML = cats.map(c => `<option value="${c}">`).join('');
+            const vendors = [...new Set(products.map(p => p.vendor))];
+            document.getElementById('vendor-suggestions').innerHTML = vendors.map(v => `<option value="${v}">`).join('');
+            updateSubcatSuggestions();
+            
+            const invProds = products.map(p => `<option value="${p.id}">${p.name} (${p.vendor})</option>`).join('');
+            document.getElementById('inv-product-suggestions').innerHTML = invProds;
+
+            const locations = [...new Set(inventory.map(i => i.location).filter(Boolean))];
+            document.getElementById('location-suggestions').innerHTML = locations.map(l => `<option value="${l}">`).join('');
+        }
+        window.aiImproveName = async () => {
+            const nameEl = document.getElementById('m-name'); if(!nameEl.value) return;
+            try {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                    method: 'POST', body: JSON.stringify({ contents: [{ parts: [{ text: `将以下产品名称润色得更专业（15字内）：${nameEl.value}` }] }] })
+                });
+                const d = await res.json(); nameEl.value = d.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || nameEl.value;
+            } catch(e) {}
+        };
+
+        // --- 计算器逻辑 ---
+        window.calculatePV = () => {
+            const area = parseFloat(document.getElementById('pv-area').value) || 0, util = parseFloat(document.getElementById('pv-util').value) || 0, capSqm = parseFloat(document.getElementById('pv-cap-sqm').value) || 0, panelSpec = parseFloat(document.getElementById('pv-panel').value) || 0, hours = parseFloat(document.getElementById('pv-hours').value) || 0;
+            const totalKW = (area * util * capSqm) / 1000, panelCount = panelSpec > 0 ? Math.ceil((totalKW * 1000) / panelSpec) : 0, dailyKwh = totalKW * hours, batteryCap = totalKW * 2;
+            document.getElementById('res-kw').textContent = totalKW.toFixed(2); document.getElementById('res-kwh-day').textContent = dailyKwh.toFixed(2);
+            document.getElementById('res-panels').textContent = panelCount; document.getElementById('summary-panels').textContent = panelCount;
+            document.getElementById('res-battery').textContent = batteryCap.toFixed(2); document.getElementById('summary-battery').textContent = batteryCap.toFixed(2);
+        };
+        let costData = {
+            pv: [{ name: '光伏板', price: 1, freight: 5, importTax: 0, sst: 10, profit: 1.1 }, { name: '支架', price: 0.4, freight: 5, importTax: 0, sst: 10, profit: 1.1 }, { name: '逆变器', price: 0.275, freight: 5, importTax: 0, sst: 10, profit: 1.1 }, { name: '辅材', price: 0.2, freight: 5, importTax: 0, sst: 10, profit: 1.1 }, { name: '并网柜', price: 0.1, freight: 5, importTax: 0, sst: 10, profit: 1.1 }, { name: '安装管理费', price: 0.3, freight: 0, importTax: 0, sst: 0, profit: 1.1 }, { name: '其他管理费', price: 0.1, freight: 0, importTax: 0, sst: 0, profit: 1.1 }, { name: '安装费', price: 0.4, freight: 0, importTax: 0, sst: 0, profit: 1.1 }],
+            bat: [{ name: '纯电池', price: 0.55, freight: 5, importTax: 20, sst: 10, profit: 1.2 }, { name: '并机柜防逆流', price: 0.2, freight: 5, importTax: 0, sst: 10, profit: 1.2 }, { name: '其他材料', price: 0.15, freight: 5, importTax: 0, sst: 10, profit: 1.2 }]
+        };
+        window.updateCostData = (group, index, field, value) => { costData[group][index][field] = parseFloat(value) || 0; renderCostCalcUI(); };
+        window.renderCostCalcUI = () => {
+            const rate = parseFloat(document.getElementById('rate-myr-cny').value) || 1.53;
+            const renderG = (g, tBId, tFId) => {
+                const tB = document.getElementById(tBId), tF = document.getElementById(tFId); if(!tB || !tF) return;
+                let sTC = 0, sQRmb = 0, sQRm = 0;
+                tB.innerHTML = costData[g].map((item, idx) => {
+                    const tC = item.price * (1 + item.importTax / 100 + item.sst / 100 + item.freight / 100), qRmb = tC * item.profit, qRm = qRmb / rate;
+                    sTC += tC; sQRmb += qRmb; sQRm += qRm;
+                    return `<tr><td class="py-3 px-4 font-medium text-slate-700">${item.name}</td><td class="py-3 px-4 text-right"><input type="number" step="0.01" value="${item.price}" oninput="updateCostData('${g}', ${idx}, 'price', this.value)" class="w-16 text-right bg-transparent border-b border-dashed border-slate-300 outline-none text-blue-600 font-bold"></td><td class="py-3 px-4 text-right"><input type="number" value="${item.freight}" oninput="updateCostData('${g}', ${idx}, 'freight', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right"><input type="number" value="${item.importTax}" oninput="updateCostData('${g}', ${idx}, 'importTax', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right"><input type="number" value="${item.sst}" oninput="updateCostData('${g}', ${idx}, 'sst', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right bg-slate-100/50 font-mono text-slate-600">${tC.toFixed(4)}</td><td class="py-3 px-4 text-right"><input type="number" step="0.1" value="${item.profit}" oninput="updateCostData('${g}', ${idx}, 'profit', this.value)" class="w-16 text-right bg-transparent border-b border-dashed border-slate-300 outline-none font-bold"></td><td class="py-3 px-4 text-right bg-blue-50/50 font-black text-blue-700">${qRmb.toFixed(4)}</td><td class="py-3 px-4 text-right bg-green-50/50 font-black text-green-700">${qRm.toFixed(4)}</td></tr>`;
+                }).join('');
+                tF.innerHTML = `<tr><td colspan="5" class="py-4 px-4 text-right text-slate-500">合计：</td><td class="py-4 px-4 text-right bg-slate-200/50 font-mono text-slate-800">${sTC.toFixed(4)}</td><td class="py-4 px-4"></td><td class="py-4 px-4 text-right bg-blue-100/50 font-black text-blue-800 text-lg">${sQRmb.toFixed(4)}</td><td class="py-4 px-4 text-right bg-green-100/50 font-black text-green-800 text-lg">${sQRm.toFixed(4)}</td></tr>`;
+            };
+            renderG('pv', 'cost-pv-body', 'cost-pv-foot'); renderG('bat', 'cost-bat-body', 'cost-bat-foot');
+            recalcInstallerQuote();
+        };
+        window.fetchLiveRate = async (btn) => {
+            if(!btn) return; const oT = btn.innerHTML; btn.innerHTML = '获取中...'; btn.disabled = true;
+            try { const res = await fetch('https://api.exchangerate-api.com/v4/latest/MYR'); const data = await res.json(); if(data?.rates?.CNY) { document.getElementById('rate-myr-cny').value = data.rates.CNY.toFixed(4); renderCostCalcUI(); } }
+            catch(e) { console.error('获取汇率失败:', e); } finally { btn.innerHTML = oT; btn.disabled = false; }
+        };
+        window.generateQuoteNo = () => {
+            const dateVal = document.getElementById('currentDate').value; if(!dateVal) return;
+            const date = new Date(dateVal), yyyy = date.getFullYear(), mm = String(date.getMonth() + 1).padStart(2, '0'), dd = String(date.getDate()).padStart(2, '0');
+            const currentNo = document.getElementById('quote-no').value; let suffix = '01';
+            if(currentNo && currentNo.startsWith(`QT-${yyyy}${mm}${dd}`)) { const parts = currentNo.split('-'); if(parts.length === 3) suffix = parts[2]; }
+            document.getElementById('quote-no').value = `QT-${yyyy}${mm}${dd}-${suffix}`;
+        };
+
+        // --- 初始化启动 ---
+        // 清理旧数据的逻辑 (仅运行一次)
+        if (localStorage.getItem('minova_inventory_cleaned_v2') !== 'true') {
+            inventory = [];
+            inventoryHistory = [];
+            localStorage.setItem('minova_inventory', JSON.stringify([]));
+            localStorage.setItem('minova_inventory_history', JSON.stringify([]));
+            localStorage.setItem('minova_inventory_cleaned_v2', 'true');
+        }
+
+        document.getElementById('currentDate').valueAsDate = new Date();
+        generateQuoteNo();
+        try {
+            const savedValidity = localStorage.getItem('minova_validityDays');
+            const n = parseInt(savedValidity || '', 10);
+            if (Number.isInteger(n) && n >= 1 && n <= 999) validityDays = n;
+        } catch (e) {}
+        updateLanguageLabels();
+        const termsEl = document.getElementById('val-terms');
+        if (termsEl) { termsEl.style.height = ''; termsEl.style.height = termsEl.scrollHeight + 'px'; }
+        const addrEl = document.getElementById('company-address');
+        if (addrEl) { addrEl.style.height = ''; addrEl.style.height = addrEl.scrollHeight + 'px'; }
+        if (termsEl) {
+            termsEl.addEventListener('input', () => {
+                try { localStorage.setItem(`minova_terms_text_${currentLang}`, termsEl.value); } catch (e) {}
+            });
+        }
+        const shipEl = document.getElementById('val-shipping-handling');
+        if (shipEl) {
+            shipEl.addEventListener('input', () => {
+                try { localStorage.setItem(`minova_shipping_${currentLang}`, shipEl.value); } catch (e) {}
+            });
+        }
+        try {
+            const raw = localStorage.getItem('minova_installer_quote_v1');
+            if (raw) {
+                const d = JSON.parse(raw);
+                const laborEl = document.getElementById('installer-labor');
+                const bracketEl = document.getElementById('installer-bracket');
+                const cableEl = document.getElementById('installer-cable');
+                if (laborEl && Number.isFinite(parseFloat(d?.labor))) laborEl.value = String(d.labor);
+                if (bracketEl && Number.isFinite(parseFloat(d?.bracket))) bracketEl.value = String(d.bracket);
+                if (cableEl && Number.isFinite(parseFloat(d?.cable))) cableEl.value = String(d.cable);
+            }
+        } catch (e) {}
+        renderDb();
+        renderInventory();
+        renderInventoryHistory();
+        updatePickerFilters();
+        renderPicker();
+        updateDatalists();
+        calculatePV();
+        renderCostCalcUI();
+    </script>
+</body>
+</html>

@@ -73,11 +73,12 @@ export function mountGitHubSyncUi({ sync }) {
   const btnSave = el('button', { class: 'px-4 py-2 rounded-xl bg-purple-700 text-white font-bold hover:bg-purple-800', text: '保存配置' })
   const btnConnect = el('button', { class: 'px-4 py-2 rounded-xl bg-slate-900 text-white font-bold hover:bg-black', text: '连接 GitHub' })
   const btnUnlock = el('button', { class: 'px-4 py-2 rounded-xl bg-slate-900 text-white font-bold hover:bg-black', text: '解锁已保存 Token' })
+  const btnCheck = el('button', { class: 'px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 border border-slate-200', text: '连接自检' })
   const btnPull = el('button', { class: 'px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 border border-slate-200', text: '拉取' })
   const btnPush = el('button', { class: 'px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 border border-slate-200', text: '立即提交' })
   const btnDisconnect = el('button', { class: 'px-4 py-2 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700', text: '断开' })
 
-  footer.append(btnPull, btnPush, btnDisconnect, btnSave, btnUnlock, btnConnect, btnClose)
+  footer.append(btnCheck, btnPull, btnPush, btnDisconnect, btnSave, btnUnlock, btnConnect, btnClose)
 
   const msg = el('div', { class: 'mt-3 text-xs text-slate-500' })
 
@@ -87,6 +88,7 @@ export function mountGitHubSyncUi({ sync }) {
     const s = state()
     statusText.textContent = s.connected ? `GitHub 已连接 | 队列 ${s.queueSize}` : `GitHub 未连接${s.hasTokenStored ? '（有已保存 token）' : ''}`
     btnUnlock.style.display = s.hasTokenStored && !s.connected ? '' : 'none'
+    btnCheck.style.display = s.connected ? '' : 'none'
   }
 
   btn.onclick = () => {
@@ -175,6 +177,17 @@ export function mountGitHubSyncUi({ sync }) {
       const token = await pollDeviceFlow({ clientId: cfgNow.clientId, deviceCode: flow.device_code, interval: flow.interval })
       await sync.storeToken(passphrase.value, token.access_token)
       msg.textContent = '连接成功'
+    } catch (e) {
+      msg.textContent = formatErr(e)
+    }
+    refresh()
+  }
+
+  btnCheck.onclick = async () => {
+    try {
+      const s = await sync.selfCheck()
+      const reset = s?.rateLimit?.reset ? new Date(parseInt(s.rateLimit.reset, 10) * 1000).toLocaleString() : '-'
+      msg.textContent = `已认证：${s.login || '-'}\nRateLimit(Core)：${s.rateLimit.remaining}/${s.rateLimit.limit}，重置：${reset}`
     } catch (e) {
       msg.textContent = formatErr(e)
     }

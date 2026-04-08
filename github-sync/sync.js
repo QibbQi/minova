@@ -97,6 +97,21 @@ export function createGitHubSync({ getLocalState, applyRemoteState }) {
     return json
   }
 
+  async function selfCheck() {
+    if (!unlockedToken) throw new Error('Not connected')
+    const user = await api.get('/user')
+    const rate = await api.get('/rate_limit')
+    const core = rate?.resources?.core || {}
+    return {
+      login: user?.login || '',
+      rateLimit: {
+        remaining: core.remaining,
+        limit: core.limit,
+        reset: core.reset
+      }
+    }
+  }
+
   async function pushSnapshot(reason) {
     const { owner, repo: repoName, branch, path } = config
     if (!owner || !repoName || !path) throw new Error('Missing repo config')
@@ -151,6 +166,7 @@ export function createGitHubSync({ getLocalState, applyRemoteState }) {
     storeToken,
     enqueueSnapshot,
     pull,
+    selfCheck,
     flush
   }
 }

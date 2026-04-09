@@ -1006,7 +1006,487 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { initGitHubSync } from "./github-sync/bootstrap.js";
+
+        const initGitHubSync = (() => {
+            const KEY = {
+                config: 'minova_github_sync_config_v1',
+                token: 'minova_github_token_enc_v1',
+                queue: 'minova_github_sync_queue_v1',
+                audit: 'minova_github_sync_audit_v1'
+            };
+
+            function createStorage() {
+                const memory = new Map();
+                const hasLocalStorage = (() => {
+                    try {
+                        const k = '__minova_test__';
+                        localStorage.setItem(k, '1');
+                        localStorage.removeItem(k);
+                        return true;
+                    } catch {
+                        return false;
+                    }
+                })();
+
+                const get = (key) => {
+                    if (hasLocalStorage) return localStorage.getItem(key);
+                    return memory.get(key) ?? null;
+                };
+
+                const set = (key, value) => {
+                    if (hasLocalStorage) localStorage.setItem(key, value);
+                    else memory.set(key, value);
+                };
+
+                const remove = (key) => {
+                    if (hasLocalStorage) localStorage.removeItem(key);
+                    else memory.delete(key);
+                };
+
+                return { get, set, remove, hasLocalStorage };
+            }
+
+            function sleep(ms) {
+                return new Promise((r) => setTimeout(r, ms));
+            }
+
+            function utf8ToBytes(str) {
+                return new TextEncoder().encode(str);
+            }
+
+            function bytesToBase64(bytes) {
+                let bin = '';
+                for (const b of bytes) bin += String.fromCharCode(b);
+                return btoa(bin);
+            }
+
+            function base64ToBytes(b64) {
+                const bin = atob(b64);
+                const bytes = new Uint8Array(bin.length);
+                for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+                return bytes;
+            }
+
+            async function deriveKey(passphrase, salt) {
+                const baseKey = await crypto.subtle.importKey('raw', utf8ToBytes(passphrase), 'PBKDF2', false, ['deriveKey']);
+                return crypto.subtle.deriveKey(
+                    { name: 'PBKDF2', salt, iterations: 200000, hash: 'SHA-256' },
+                    baseKey,
+                    { name: 'AES-GCM', length: 256 },
+                    false,
+                    ['encrypt', 'decrypt']
+                );
+            }
+
+            async function encryptWithPassphrase(passphrase, plaintext) {
+                const salt = crypto.getRandomValues(new Uint8Array(16));
+                const iv = crypto.getRandomValues(new Uint8Array(12));
+                const key = await deriveKey(passphrase, salt);
+                const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, utf8ToBytes(plaintext));
+                return { v: 1, salt: bytesToBase64(salt), iv: bytesToBase64(iv), ct: bytesToBase64(new Uint8Array(ciphertext)) };
+            }
+
+            async function decryptWithPassphrase(passphrase, payload) {
+                const salt = base64ToBytes(payload.salt);
+                const iv = base64ToBytes(payload.iv);
+                const ct = base64ToBytes(payload.ct);
+                const key = await deriveKey(passphrase, salt);
+                const plaintextBytes = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+                return new TextDecoder().decode(new Uint8Array(plaintextBytes));
+            }
+
+            function createAsyncQueue({ storage, key }) {
+                let running = false;
+                let inMemory = [];
+
+                const load = () => {
+                    try {
+                        const raw = storage.get(key);
+                        inMemory = raw ? JSON.parse(raw) : [];
+                    } catch {
+                        inMemory = [];
+                    }
+                };
+
+                const persist = () => {
+                    storage.set(key, JSON.stringify(inMemory));
+                };
+
+                const enqueue = (item) => {
+                    inMemory.push(item);
+                    persist();
+                };
+
+                const clear = () => {
+                    inMemory = [];
+                    persist();
+                };
+
+                const run = async (fn) => {
+                    if (running) return;
+                    running = true;
+                    try {
+                        while (inMemory.length) {
+                            const next = inMemory[0];
+                            await fn(next);
+                            inMemory.shift();
+                            persist();
+                        }
+                    } finally {
+                        running = false;
+                    }
+                };
+
+                load();
+                return { enqueue, run, clear, get items() { return [...inMemory]; } };
+            }
+
+            function createRateLimiter({ minIntervalMs = 800 }) {
+                let lastAt = 0;
+                let chain = Promise.resolve();
+                const wait = () => {
+                    chain = chain.then(async () => {
+                        const now = Date.now();
+                        const diff = now - lastAt;
+                        if (diff < minIntervalMs) await sleep(minIntervalMs - diff);
+                        lastAt = Date.now();
+                    });
+                    return chain;
+                };
+                return { wait };
+            }
+
+            function createGitHubApi({ tokenProvider, limiter }) {
+                async function request(url, init, attempt = 0) {
+                    await limiter.wait();
+                    const token = await tokenProvider.getToken();
+                    const headers = new Headers(init?.headers || {});
+                    headers.set('Accept', 'application/vnd.github+json');
+                    headers.set('X-GitHub-Api-Version', '2022-11-28');
+                    headers.set('User-Agent', 'MinovaQuotation');
+                    if (token) headers.set('Authorization', `token ${token}`);
+                    if (!headers.has('Content-Type') && init?.body) headers.set('Content-Type', 'application/json');
+
+                    const res = await fetch(url, { ...init, headers });
+                    const remaining = res.headers.get('x-ratelimit-remaining');
+                    const reset = res.headers.get('x-ratelimit-reset');
+                    const resetMs = reset ? Math.max(0, parseInt(reset, 10) * 1000 - Date.now()) : 0;
+
+                    if (res.status === 429 || res.status === 500 || res.status === 502 || res.status === 503 || res.status === 504) {
+                        if (attempt < 4) {
+                            const retryAfter = res.headers.get('retry-after');
+                            const backoff = retryAfter ? parseInt(retryAfter, 10) * 1000 : (2 ** attempt) * 800;
+                            await sleep(backoff);
+                            return request(url, init, attempt + 1);
+                        }
+                    }
+
+                    const text = await res.text();
+                    let data;
+                    try {
+                        data = text ? JSON.parse(text) : null;
+                    } catch {
+                        data = text;
+                    }
+
+                    if (res.status === 403) {
+                        const msg = typeof data === 'string' ? data : data?.message;
+                        const isRateLimited = typeof msg === 'string' && msg.toLowerCase().includes('rate limit exceeded');
+                        if ((isRateLimited || remaining === '0') && resetMs > 0 && attempt < 2) {
+                            await sleep(Math.min(resetMs, 5 * 60 * 1000));
+                            return request(url, init, attempt + 1);
+                        }
+                    }
+
+                    if (!res.ok) {
+                        const err = new Error(`GitHub API ${res.status}: ${typeof data === 'string' ? data : JSON.stringify(data)}`);
+                        err.status = res.status;
+                        err.data = data;
+                        err.rateLimit = { remaining, reset };
+                        throw err;
+                    }
+                    return data;
+                }
+
+                return {
+                    get: (path) => request(`https://api.github.com${path}`, { method: 'GET' }),
+                    put: (path, body) => request(`https://api.github.com${path}`, { method: 'PUT', body: JSON.stringify(body) })
+                };
+            }
+
+            function encodeContentPath(path) {
+                return String(path || '').split('/').map((s) => encodeURIComponent(s)).join('/');
+            }
+
+            function toBase64Utf8(str) {
+                return btoa(unescape(encodeURIComponent(str)));
+            }
+
+            function fromBase64Utf8(b64) {
+                return decodeURIComponent(escape(atob(b64)));
+            }
+
+            function createRepoStore({ api }) {
+                async function getFile({ owner, repo, path, branch }) {
+                    const ref = branch ? `?ref=${encodeURIComponent(branch)}` : '';
+                    const data = await api.get(`/repos/${owner}/${repo}/contents/${encodeContentPath(path)}${ref}`);
+                    const content = data?.content ? fromBase64Utf8(data.content.replaceAll('\n', '')) : '';
+                    return { sha: data?.sha || null, content };
+                }
+
+                async function putFile({ owner, repo, path, branch, message, content, sha }) {
+                    return api.put(`/repos/${owner}/${repo}/contents/${encodeContentPath(path)}`, {
+                        message,
+                        content: toBase64Utf8(content),
+                        sha: sha || undefined,
+                        branch: branch || undefined
+                    });
+                }
+
+                async function upsertText({ owner, repo, path, branch, message, content }) {
+                    let remote = { sha: null };
+                    try {
+                        remote = await getFile({ owner, repo, path, branch });
+                    } catch (e) {
+                        if (e?.status !== 404) throw e;
+                    }
+
+                    try {
+                        return await putFile({ owner, repo, path, branch, message, content, sha: remote.sha });
+                    } catch (e) {
+                        if (e?.status === 409) {
+                            const latest = await getFile({ owner, repo, path, branch });
+                            return putFile({ owner, repo, path, branch, message: `${message} (retry)`, content, sha: latest.sha });
+                        }
+                        throw e;
+                    }
+                }
+
+                return { upsertText };
+            }
+
+            function nowIso() {
+                return new Date().toISOString();
+            }
+
+            function uuid() {
+                return crypto.randomUUID();
+            }
+
+            function safeJsonParse(raw, fallback) {
+                try {
+                    return raw ? JSON.parse(raw) : fallback;
+                } catch {
+                    return fallback;
+                }
+            }
+
+            function mountGitHubSyncUi({ sync }) {
+                const root = document.getElementById('github-sync-root');
+                if (!root) return;
+
+                const defaults = { owner: 'QibbQi', repo: 'minova', branch: 'main', path: 'minova-data/state.json' };
+                function ensureConfig() {
+                    const cfg = sync.getStatus().config || {};
+                    sync.saveConfig({
+                        owner: cfg.owner || defaults.owner,
+                        repo: cfg.repo || defaults.repo,
+                        branch: cfg.branch || defaults.branch,
+                        path: cfg.path || defaults.path
+                    });
+                }
+
+                const state = () => sync.getStatus();
+
+                const statusText = el('div', { class: 'text-[10px] text-slate-500 font-bold', text: '' });
+                const btn = el('button', { class: 'text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl font-bold border border-slate-200', text: 'GitHub 同步' });
+
+                root.innerHTML = '';
+                const existing = document.getElementById('github-sync-modal');
+                if (existing) existing.remove();
+
+                const modal = el('div', { id: 'github-sync-modal', class: 'fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-[300] p-4' });
+                const card = el('div', { class: 'bg-white rounded-2xl p-6 w-full max-w-xl shadow-2xl max-h-[90vh] overflow-y-auto' });
+                modal.append(card);
+
+                const title = el('div', { class: 'text-lg font-black text-slate-800', text: 'GitHub 数据同步' });
+                const tip = el('div', { class: 'text-xs text-slate-500 mt-1', text: '使用 PAT + 加密本地存储，将当前页面发布到 GitHub Pages（覆盖 index.html）。' });
+
+                const form = el('div', { class: 'mt-5 grid grid-cols-1 gap-4' });
+                const repoHint = el('div', { class: 'rounded-xl border border-slate-200 p-4 bg-slate-50 text-xs text-slate-600' });
+                const passphrase = el('input', { class: 'w-full border border-slate-200 rounded-xl p-3 text-sm outline-none', placeholder: '本地加密口令（用于加密 PAT）', type: 'password' });
+                const pat = el('input', { class: 'w-full border border-slate-200 rounded-xl p-3 text-sm outline-none', placeholder: '粘贴 GitHub PAT（fine-grained，限定 minova 仓库 Contents 读写）', type: 'password' });
+                form.append(repoHint, passphrase, pat);
+
+                const msg = el('div', { class: 'mt-3 text-xs text-slate-500 whitespace-pre-line' });
+
+                const footer = el('div', { class: 'mt-6 flex flex-wrap gap-3 justify-end' });
+                const btnClose = el('button', { class: 'px-4 py-2 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50', text: '关闭' });
+                const btnCheck = el('button', { class: 'px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 border border-slate-200', text: '连接自检' });
+                const btnConnectPat = el('button', { class: 'px-4 py-2 rounded-xl bg-slate-900 text-white font-bold hover:bg-black', text: '使用 PAT 连接' });
+                const btnPublish = el('button', { class: 'px-4 py-2 rounded-xl bg-purple-700 text-white font-bold hover:bg-purple-800', text: '发布到 Pages' });
+                const btnDisconnect = el('button', { class: 'px-4 py-2 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700', text: '断开' });
+
+                footer.append(btnConnectPat, btnPublish, btnCheck, btnDisconnect, btnClose);
+                card.append(title, tip, form, msg, footer);
+
+                function formatErr(e) {
+                    const m = String(e?.message || e || '');
+                    const reset = e?.rateLimit?.reset;
+                    if (reset) {
+                        const at = new Date(parseInt(reset, 10) * 1000).toLocaleString();
+                        return `${m}\n预计恢复时间：${at}`;
+                    }
+                    return m;
+                }
+
+                const refresh = () => {
+                    const s = state();
+                    statusText.textContent = s.connected ? `GitHub 已连接 | 队列 ${s.queueSize}` : `GitHub 未连接${s.hasTokenStored ? '（有已保存 token）' : ''}`;
+                    btnCheck.style.display = s.connected ? '' : 'none';
+                    btnPublish.style.display = s.connected ? '' : 'none';
+                    const cfg = s.config || {};
+                    repoHint.textContent = `目标仓库：${cfg.owner || defaults.owner}/${cfg.repo || defaults.repo}（分支：${cfg.branch || defaults.branch}）`;
+                };
+
+                btn.onclick = () => {
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex');
+                    refresh();
+                };
+                btnClose.onclick = () => {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                    msg.textContent = '';
+                };
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) btnClose.click();
+                });
+
+                btnDisconnect.onclick = async () => {
+                    await sync.lock();
+                    msg.textContent = '已断开（token 已从内存清除）';
+                    refresh();
+                };
+
+                btnConnectPat.onclick = async () => {
+                    if (!passphrase.value) { msg.textContent = '请填写加密口令'; return; }
+                    const token = pat.value.trim();
+                    if (!token) { msg.textContent = '请粘贴 PAT'; return; }
+                    try {
+                        ensureConfig();
+                        await sync.storeToken(passphrase.value, token);
+                        const s = await sync.selfCheck();
+                        const reset = s?.rateLimit?.reset ? new Date(parseInt(s.rateLimit.reset, 10) * 1000).toLocaleString() : '-';
+                        msg.textContent = `已使用 PAT 连接：${s.login || '-'}\nRateLimit(Core)：${s.rateLimit.remaining}/${s.rateLimit.limit}，重置：${reset}`;
+                    } catch (e) {
+                        msg.textContent = formatErr(e);
+                    }
+                    refresh();
+                };
+
+                btnCheck.onclick = async () => {
+                    try {
+                        const s = await sync.selfCheck();
+                        const reset = s?.rateLimit?.reset ? new Date(parseInt(s.rateLimit.reset, 10) * 1000).toLocaleString() : '-';
+                        msg.textContent = `已认证：${s.login || '-'}\nRateLimit(Core)：${s.rateLimit.remaining}/${s.rateLimit.limit}，重置：${reset}`;
+                    } catch (e) {
+                        msg.textContent = formatErr(e);
+                    }
+                    refresh();
+                };
+
+                btnPublish.onclick = async () => {
+                    try {
+                        ensureConfig();
+                        const html = window.buildUpdatedHtml?.();
+                        if (!html) { msg.textContent = '生成 HTML 失败'; return; }
+                        await sync.publishIndexHtml(html);
+                        msg.textContent = '已发布：index.html 已覆盖（等待 Pages 重新部署）';
+                    } catch (e) {
+                        msg.textContent = formatErr(e);
+                    }
+                    refresh();
+                };
+
+                root.append(el('div', { class: 'flex items-center gap-3' }, [btn, statusText]));
+                document.body.append(modal);
+                ensureConfig();
+                refresh();
+            }
+
+            return function initGitHubSync({ getLocalState, applyRemoteState }) {
+                const storage = createStorage();
+                const limiter = createRateLimiter({ minIntervalMs: 800 });
+
+                let unlockedToken = null;
+                let config = safeJsonParse(storage.get(KEY.config), {
+                    owner: 'QibbQi',
+                    repo: 'minova',
+                    branch: 'main',
+                    path: 'minova-data/state.json'
+                });
+
+                const audit = safeJsonParse(storage.get(KEY.audit), []);
+                const queue = createAsyncQueue({ storage, key: KEY.queue });
+
+                const tokenProvider = { async getToken() { return unlockedToken; } };
+                const api = createGitHubApi({ tokenProvider, limiter });
+                const repo = createRepoStore({ api });
+
+                function appendAudit(action, detail) {
+                    audit.unshift({ id: uuid(), at: nowIso(), action, detail });
+                    storage.set(KEY.audit, JSON.stringify(audit.slice(0, 2000)));
+                }
+
+                function saveConfig(next) {
+                    config = { ...config, ...next };
+                    storage.set(KEY.config, JSON.stringify(config));
+                }
+
+                async function lock() {
+                    unlockedToken = null;
+                    appendAudit('lock', 'token cleared from memory');
+                }
+
+                async function storeToken(passphrase, token) {
+                    const payload = await encryptWithPassphrase(passphrase, token);
+                    storage.set(KEY.token, JSON.stringify(payload));
+                    unlockedToken = token;
+                    appendAudit('store_token', 'token stored (encrypted)');
+                }
+
+                async function selfCheck() {
+                    if (!unlockedToken) throw new Error('Not connected');
+                    const user = await api.get('/user');
+                    const rate = await api.get('/rate_limit');
+                    const core = rate?.resources?.core || {};
+                    return { login: user?.login || '', rateLimit: { remaining: core.remaining, limit: core.limit, reset: core.reset } };
+                }
+
+                async function publishIndexHtml(html) {
+                    if (!unlockedToken) throw new Error('Not connected');
+                    const { owner, repo: repoName, branch } = config;
+                    await repo.upsertText({
+                        owner,
+                        repo: repoName,
+                        branch,
+                        path: 'index.html',
+                        message: `minova: publish index.html (${new Date().toLocaleString()})`,
+                        content: html
+                    });
+                    appendAudit('publish', `${owner}/${repoName}:index.html`);
+                }
+
+                function getStatus() {
+                    return { connected: !!unlockedToken, config, queueSize: queue.items.length, hasTokenStored: !!storage.get(KEY.token) };
+                }
+
+                const sync = { storage, getStatus, saveConfig, lock, storeToken, selfCheck, publishIndexHtml };
+                mountGitHubSyncUi({ sync });
+                return sync;
+            };
+        })();
 
         // --- 数据持久化 ---
         let products = [];

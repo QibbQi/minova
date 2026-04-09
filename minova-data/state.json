@@ -1,6 +1,6 @@
 {
   "v": 1,
-  "updatedAt": "2026-04-09T10:01:48.032Z",
+  "updatedAt": "2026-04-09T10:07:09.189Z",
   "data": {
     "products": [
       {
@@ -274,6 +274,22 @@
         "cost": 44444,
         "price": 55555,
         "ts": 1775728895936
+      },
+      {
+        "id": "GFZJ006",
+        "name": "吴彦祖",
+        "category": "光伏组件",
+        "vendor": "汉伏",
+        "spec": "670",
+        "scenario": "双面",
+        "warrantyYears": "",
+        "warrantyCycles": "",
+        "leadTime": "",
+        "contact": "",
+        "contactInfo": "",
+        "cost": 666,
+        "price": 6666,
+        "ts": 1775729216048
       }
     ],
     "inventory": [

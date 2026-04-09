@@ -1,6 +1,6 @@
 {
   "v": 1,
-  "updatedAt": "2026-04-09T09:58:34.661Z",
+  "updatedAt": "2026-04-09T10:01:48.032Z",
   "data": {
     "products": [
       {
@@ -258,6 +258,22 @@
         "cost": 5000,
         "price": 9998,
         "ts": 1775728706461
+      },
+      {
+        "id": "NBQ004",
+        "name": "123456789",
+        "category": "逆变器",
+        "vendor": "汉伏",
+        "spec": "5670",
+        "scenario": "堆叠式单相逆变器",
+        "warrantyYears": "",
+        "warrantyCycles": "",
+        "leadTime": "",
+        "contact": "",
+        "contactInfo": "",
+        "cost": 44444,
+        "price": 55555,
+        "ts": 1775728895936
       }
     ],
     "inventory": [

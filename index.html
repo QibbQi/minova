@@ -2862,12 +2862,22 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                 }
             };
             const json = JSON.stringify(snapshot).replaceAll('<', '\\u003c');
-            const doc = `<!doctype html>\n${document.documentElement.outerHTML}`;
-            const marker = /<script id="minova-embedded-state" type="application\/json">[\s\S]*?<\/script>/;
-            if (marker.test(doc)) {
-                return doc.replace(marker, `<script id="minova-embedded-state" type="application/json">${json}</script>`);
+            let el = document.getElementById('minova-embedded-state');
+            let prev = '';
+            let created = false;
+            if (!el) {
+                el = document.createElement('script');
+                el.id = 'minova-embedded-state';
+                el.type = 'application/json';
+                document.body.appendChild(el);
+                created = true;
+            } else {
+                prev = el.textContent || '';
             }
-            return doc.replace('</body>', `<script id="minova-embedded-state" type="application/json">${json}</script></body>`);
+            el.textContent = json;
+            const html = '<!doctype html>\n' + document.documentElement.outerHTML;
+            if (created) el.remove(); else el.textContent = prev;
+            return html;
         };
 
         window.downloadUpdatedHtml = () => {

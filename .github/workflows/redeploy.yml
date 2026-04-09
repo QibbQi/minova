@@ -1,8 +1,6 @@
-name: Deploy GitHub Pages
+name: Manual Redeploy Pages
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -15,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  rebuild:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,7 +23,7 @@ jobs:
           path: .
 
   deploy:
-    needs: build
+    needs: rebuild
     runs-on: ubuntu-latest
     environment:
       name: github-pages

@@ -56,7 +56,8 @@ export function createGitHubApi({ tokenProvider, limiter }) {
   return {
     get: (path) => request(`https://api.github.com${path}`, { method: 'GET' }),
     put: (path, body) => request(`https://api.github.com${path}`, { method: 'PUT', body: JSON.stringify(body) }),
-    post: (path, body, headers) => request(`https://api.github.com${path}`, { method: 'POST', body: body ? JSON.stringify(body) : undefined, headers })
+    post: (path, body, headers) => request(`https://api.github.com${path}`, { method: 'POST', body: body ? JSON.stringify(body) : undefined, headers }),
+    patch: (path, body) => request(`https://api.github.com${path}`, { method: 'PATCH', body: JSON.stringify(body) })
   }
 }
 

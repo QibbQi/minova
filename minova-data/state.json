@@ -1,6 +1,6 @@
 {
   "v": 1,
-  "updatedAt": "2026-04-09T10:07:09.189Z",
+  "updatedAt": "2026-04-10T11:02:15.007Z",
   "data": {
     "products": [
       {
@@ -162,134 +162,6 @@
         "cost": 0.65,
         "price": 1.82,
         "ts": 1775705274152
-      },
-      {
-        "id": "DC002",
-        "name": "lkjalfjl",
-        "category": "电池",
-        "vendor": "联塑 LESSO",
-        "spec": "610",
-        "scenario": "堆叠式家储",
-        "warrantyYears": "",
-        "warrantyCycles": "",
-        "leadTime": "",
-        "contact": "",
-        "contactInfo": "",
-        "cost": 600000,
-        "price": 900000,
-        "ts": 1775717042867
-      },
-      {
-        "id": "NBQ003",
-        "name": "jkadhkafhlakdhfa",
-        "category": "逆变器",
-        "vendor": "联塑 LESSO",
-        "spec": "89274982",
-        "scenario": "堆叠式单相逆变器",
-        "warrantyYears": "",
-        "warrantyCycles": "",
-        "leadTime": "",
-        "contact": "",
-        "contactInfo": "",
-        "cost": 188888,
-        "price": 2000000,
-        "ts": 1775718164646
-      },
-      {
-        "id": "J002",
-        "name": "100000lklfjaldkfj;",
-        "category": "配件",
-        "vendor": "汉伏",
-        "spec": "7368",
-        "scenario": "堆叠式产品配件",
-        "warrantyYears": "",
-        "warrantyCycles": "",
-        "leadTime": "",
-        "contact": "",
-        "contactInfo": "",
-        "cost": 70000,
-        "price": 887766,
-        "ts": 1775722324157
-      },
-      {
-        "id": "GFZJ003",
-        "name": "10948230784",
-        "category": "光伏组件",
-        "vendor": "联塑 LESSO",
-        "spec": "hfjkadh",
-        "scenario": "双面",
-        "warrantyYears": "",
-        "warrantyCycles": "",
-        "leadTime": "",
-        "contact": "",
-        "contactInfo": "",
-        "cost": 500,
-        "price": 3999,
-        "ts": 1775727209611
-      },
-      {
-        "id": "GFZJ004",
-        "name": "123321",
-        "category": "光伏组件",
-        "vendor": "汉伏",
-        "spec": "650",
-        "scenario": "双面",
-        "warrantyYears": "",
-        "warrantyCycles": "",
-        "leadTime": "",
-        "contact": "",
-        "contactInfo": "",
-        "cost": 1000000,
-        "price": 2999997,
-        "ts": 1775727269257
-      },
-      {
-        "id": "GFZJ005",
-        "name": "987654321",
-        "category": "光伏组件",
-        "vendor": "联塑 LESSO",
-        "spec": "768",
-        "scenario": "双面",
-        "warrantyYears": "",
-        "warrantyCycles": "",
-        "leadTime": "",
-        "contact": "",
-        "contactInfo": "",
-        "cost": 5000,
-        "price": 9998,
-        "ts": 1775728706461
-      },
-      {
-        "id": "NBQ004",
-        "name": "123456789",
-        "category": "逆变器",
-        "vendor": "汉伏",
-        "spec": "5670",
-        "scenario": "堆叠式单相逆变器",
-        "warrantyYears": "",
-        "warrantyCycles": "",
-        "leadTime": "",
-        "contact": "",
-        "contactInfo": "",
-        "cost": 44444,
-        "price": 55555,
-        "ts": 1775728895936
-      },
-      {
-        "id": "GFZJ006",
-        "name": "吴彦祖",
-        "category": "光伏组件",
-        "vendor": "汉伏",
-        "spec": "670",
-        "scenario": "双面",
-        "warrantyYears": "",
-        "warrantyCycles": "",
-        "leadTime": "",
-        "contact": "",
-        "contactInfo": "",
-        "cost": 666,
-        "price": 6666,
-        "ts": 1775729216048
       }
     ],
     "inventory": [
@@ -368,6 +240,71 @@
       "工商储": [
         "储能柜"
       ]
+    },
+    "profitSettings": {
+      "v": 1,
+      "companies": [
+        {
+          "id": "cn_parent",
+          "name": "中国母公司",
+          "locked": true
+        },
+        {
+          "id": "my_sub",
+          "name": "马来西亚子公司",
+          "locked": false
+        }
+      ],
+      "enabled": {
+        "电池": {
+          "123": true,
+          "堆叠式家储": true
+        },
+        "工商储": {
+          "储能柜": true
+        },
+        "光伏组件": {
+          "双面": true
+        },
+        "逆变器": {
+          "三相": true,
+          "堆叠式单相逆变器": true
+        },
+        "配件": {
+          "堆叠式产品配件": true
+        },
+        "一体机": {
+          "单相一体机": true
+        }
+      },
+      "categoryProfitPct": {
+        "cn_parent": {
+          "home": {},
+          "biz": {}
+        },
+        "my_sub": {
+          "home": {},
+          "biz": {}
+        }
+      },
+      "subcatProfitPct": {
+        "cn_parent": {
+          "home": {
+            "电池": {
+              "堆叠式家储": 0
+            }
+          },
+          "biz": {}
+        },
+        "my_sub": {
+          "home": {},
+          "biz": {}
+        }
+      }
+    },
+    "installerProfitSettings": {
+      "cnPct": 5,
+      "myPct": 15
     }
   }
 }

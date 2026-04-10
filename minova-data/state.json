@@ -1,6 +1,6 @@
 {
   "v": 1,
-  "updatedAt": "2026-04-10T04:12:18.700Z",
+  "updatedAt": "2026-04-10T04:16:06.335Z",
   "data": {
     "products": [
       {
@@ -322,6 +322,22 @@
         "cost": 111,
         "price": 222,
         "ts": 1775794333069
+      },
+      {
+        "id": "NBQ006",
+        "name": "风云@1234",
+        "category": "逆变器",
+        "vendor": "明匠",
+        "spec": "977",
+        "scenario": "堆叠式单相逆变器",
+        "warrantyYears": "",
+        "warrantyCycles": "",
+        "leadTime": "",
+        "contact": "",
+        "contactInfo": "",
+        "cost": 123,
+        "price": 321,
+        "ts": 1775794482327
       }
     ],
     "inventory": [

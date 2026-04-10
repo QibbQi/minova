@@ -1698,12 +1698,18 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
 
                 return {
                     get: (path) => request(`https://api.github.com${path}`, { method: 'GET' }),
-                    put: (path, body) => request(`https://api.github.com${path}`, { method: 'PUT', body: JSON.stringify(body) })
+                    put: (path, body) => request(`https://api.github.com${path}`, { method: 'PUT', body: JSON.stringify(body) }),
+                    post: (path, body) => request(`https://api.github.com${path}`, { method: 'POST', body: body ? JSON.stringify(body) : undefined }),
+                    patch: (path, body) => request(`https://api.github.com${path}`, { method: 'PATCH', body: JSON.stringify(body) })
                 };
             }
 
             function encodeContentPath(path) {
                 return String(path || '').split('/').map((s) => encodeURIComponent(s)).join('/');
+            }
+
+            function encodeRefPath(ref) {
+                return String(ref || '').split('/').map((s) => encodeURIComponent(s)).join('/');
             }
 
             function toBase64Utf8(str) {
@@ -1750,7 +1756,46 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                     }
                 }
 
-                return { upsertText };
+                async function commitTextFiles({ owner, repo, branch, message, files }) {
+                    const list = Array.isArray(files) ? files.filter((f) => f?.path) : [];
+                    if (!list.length) throw new Error('No files to commit');
+                    if (!branch) throw new Error('Missing branch');
+
+                    for (let attempt = 0; attempt < 3; attempt++) {
+                        const ref = await api.get(`/repos/${owner}/${repo}/git/ref/heads/${encodeRefPath(branch)}`);
+                        const headSha = ref?.object?.sha;
+                        if (!headSha) throw new Error('Unable to resolve branch head');
+
+                        const headCommit = await api.get(`/repos/${owner}/${repo}/git/commits/${headSha}`);
+                        const baseTreeSha = headCommit?.tree?.sha;
+                        if (!baseTreeSha) throw new Error('Unable to resolve base tree');
+
+                        const treeItems = [];
+                        for (const f of list) {
+                            const blob = await api.post(`/repos/${owner}/${repo}/git/blobs`, { content: String(f.content ?? ''), encoding: 'utf-8' });
+                            treeItems.push({ path: String(f.path), mode: '100644', type: 'blob', sha: blob?.sha });
+                        }
+
+                        const tree = await api.post(`/repos/${owner}/${repo}/git/trees`, { base_tree: baseTreeSha, tree: treeItems });
+                        const newTreeSha = tree?.sha;
+                        if (!newTreeSha) throw new Error('Unable to create tree');
+
+                        const commit = await api.post(`/repos/${owner}/${repo}/git/commits`, { message, tree: newTreeSha, parents: [headSha] });
+                        const newCommitSha = commit?.sha;
+                        if (!newCommitSha) throw new Error('Unable to create commit');
+
+                        try {
+                            await api.patch(`/repos/${owner}/${repo}/git/refs/heads/${encodeRefPath(branch)}`, { sha: newCommitSha, force: false });
+                            return commit;
+                        } catch (e) {
+                            if (e?.status === 422 && attempt < 2) continue;
+                            throw e;
+                        }
+                    }
+                    throw new Error('Failed to update branch ref');
+                }
+
+                return { upsertText, commitTextFiles };
             }
 
             function nowIso() {
@@ -1996,29 +2041,23 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                 async function publishIndexHtml(html) {
                     if (!unlockedToken) throw new Error('Not connected');
                     const { owner, repo: repoName, branch } = config;
-                    await repo.upsertText({
+                    const m = html.match(/<script id="minova-embedded-state" type="application\/json">([\s\S]*?)<\/script>/);
+                    const raw = m?.[1] ? m[1] : '';
+                    let stateJson = '';
+                    if (raw) {
+                        stateJson = raw;
+                        try { stateJson = JSON.stringify(JSON.parse(raw), null, 2); } catch (e) {}
+                    }
+                    const files = [{ path: 'index.html', content: html }];
+                    if (stateJson) files.push({ path: 'minova-data/state.json', content: stateJson });
+                    await repo.commitTextFiles({
                         owner,
                         repo: repoName,
                         branch,
-                        path: 'index.html',
-                        message: `minova: publish index.html (${new Date().toLocaleString()})`,
-                        content: html
+                        message: `minova: publish pages files (${new Date().toLocaleString()})`,
+                        files
                     });
-                    const m = html.match(/<script id="minova-embedded-state" type="application\/json">([\s\S]*?)<\/script>/);
-                    const raw = m?.[1] ? m[1] : '';
-                    if (raw) {
-                        let stateJson = raw;
-                        try { stateJson = JSON.stringify(JSON.parse(raw), null, 2); } catch (e) {}
-                        await repo.upsertText({
-                            owner,
-                            repo: repoName,
-                            branch,
-                            path: 'minova-data/state.json',
-                            message: `minova: publish state.json (${new Date().toLocaleString()})`,
-                            content: stateJson
-                        });
-                    }
-                    appendAudit('publish', `${owner}/${repoName}:index.html`);
+                    appendAudit('publish', `${owner}/${repoName}:${files.map((f) => f.path).join(',')}`);
                 }
 
                 function getStatus() {

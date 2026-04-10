@@ -15,6 +15,13 @@ function encodeContentPath(path) {
     .join('/')
 }
 
+function encodeRefPath(ref) {
+  return String(ref || '')
+    .split('/')
+    .map((s) => encodeURIComponent(s))
+    .join('/')
+}
+
 export function createRepoStore({ api }) {
   async function getFile({ owner, repo, path, branch }) {
     const ref = branch ? `?ref=${encodeURIComponent(branch)}` : ''
@@ -119,5 +126,44 @@ export function createRepoStore({ api }) {
     }
   }
 
-  return { getFile, upsertJson, upsertText }
+  async function commitTextFiles({ owner, repo, branch, message, files }) {
+    const list = Array.isArray(files) ? files.filter((f) => f?.path) : []
+    if (!list.length) throw new Error('No files to commit')
+    if (!branch) throw new Error('Missing branch')
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const ref = await api.get(`/repos/${owner}/${repo}/git/ref/heads/${encodeRefPath(branch)}`)
+      const headSha = ref?.object?.sha
+      if (!headSha) throw new Error('Unable to resolve branch head')
+
+      const headCommit = await api.get(`/repos/${owner}/${repo}/git/commits/${headSha}`)
+      const baseTreeSha = headCommit?.tree?.sha
+      if (!baseTreeSha) throw new Error('Unable to resolve base tree')
+
+      const treeItems = []
+      for (const f of list) {
+        const blob = await api.post(`/repos/${owner}/${repo}/git/blobs`, { content: String(f.content ?? ''), encoding: 'utf-8' })
+        treeItems.push({ path: String(f.path), mode: '100644', type: 'blob', sha: blob?.sha })
+      }
+
+      const tree = await api.post(`/repos/${owner}/${repo}/git/trees`, { base_tree: baseTreeSha, tree: treeItems })
+      const newTreeSha = tree?.sha
+      if (!newTreeSha) throw new Error('Unable to create tree')
+
+      const commit = await api.post(`/repos/${owner}/${repo}/git/commits`, { message, tree: newTreeSha, parents: [headSha] })
+      const newCommitSha = commit?.sha
+      if (!newCommitSha) throw new Error('Unable to create commit')
+
+      try {
+        await api.patch(`/repos/${owner}/${repo}/git/refs/heads/${encodeRefPath(branch)}`, { sha: newCommitSha, force: false })
+        return commit
+      } catch (e) {
+        if (e?.status === 422 && attempt < 2) continue
+        throw e
+      }
+    }
+    throw new Error('Failed to update branch ref')
+  }
+
+  return { getFile, upsertJson, upsertText, commitTextFiles }
 }

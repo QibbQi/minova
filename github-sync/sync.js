@@ -116,15 +116,25 @@ export function createGitHubSync({ getLocalState, applyRemoteState }) {
     if (!unlockedToken) throw new Error('Not connected')
     const { owner, repo: repoName, branch } = config
     if (!owner || !repoName) throw new Error('Missing repo config')
-    await repo.upsertText({
+    const m = String(html || '').match(/<script id="minova-embedded-state" type="application\/json">([\s\S]*?)<\/script>/)
+    const raw = m?.[1] ? m[1] : ''
+    let stateJson = ''
+    if (raw) {
+      stateJson = raw
+      try {
+        stateJson = JSON.stringify(JSON.parse(raw), null, 2)
+      } catch {}
+    }
+    const files = [{ path: 'index.html', content: html }]
+    if (stateJson) files.push({ path: 'minova-data/state.json', content: stateJson })
+    await repo.commitTextFiles({
       owner,
       repo: repoName,
       branch,
-      path: 'index.html',
-      message: `minova: publish index.html (${new Date().toLocaleString()})`,
-      content: html
+      message: `minova: publish pages files (${new Date().toLocaleString()})`,
+      files
     })
-    appendAudit('publish', `${owner}/${repoName}:index.html`)
+    appendAudit('publish', `${owner}/${repoName}:${files.map((f) => f.path).join(',')}`)
   }
 
   async function pushSnapshot(reason) {

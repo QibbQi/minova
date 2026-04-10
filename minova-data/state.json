@@ -1,6 +1,6 @@
 {
   "v": 1,
-  "updatedAt": "2026-04-10T04:10:21.066Z",
+  "updatedAt": "2026-04-10T04:12:18.700Z",
   "data": {
     "products": [
       {
@@ -306,6 +306,22 @@
         "cost": 4444,
         "price": 5551,
         "ts": 1775794215347
+      },
+      {
+        "id": "NBQ005",
+        "name": "张天赋",
+        "category": "逆变器",
+        "vendor": "汉伏",
+        "spec": "6764",
+        "scenario": "三相",
+        "warrantyYears": "",
+        "warrantyCycles": "",
+        "leadTime": "",
+        "contact": "",
+        "contactInfo": "",
+        "cost": 111,
+        "price": 222,
+        "ts": 1775794333069
       }
     ],
     "inventory": [

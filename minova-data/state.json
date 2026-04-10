@@ -1,6 +1,6 @@
 {
   "v": 1,
-  "updatedAt": "2026-04-10T11:12:52.481Z",
+  "updatedAt": "2026-04-10T11:27:39.784Z",
   "data": {
     "products": [
       {
@@ -166,38 +166,89 @@
     ],
     "inventory": [
       {
-        "id": "inv_1775614989154",
+        "id": "inv_1775819903003",
         "productId": "GFZJ001",
-        "quantity": 10,
-        "batchNo": "20260408-001",
-        "purchaseDate": "2026-04-08",
-        "purchasePrice": 0.8,
+        "quantity": 72,
+        "batchNo": "20250411-001",
+        "purchaseDate": "2025-04-11",
+        "purchasePrice": 0.65,
         "spec": 610,
-        "unitPurchasePrice": 488,
-        "purchaseTotal": 4880,
+        "unitPurchasePrice": 396.5,
+        "purchaseTotal": 28548,
         "shippingRate": 0.08,
         "domesticTaxRate": 0.13,
-        "shippingCost": 390.40000000000003,
-        "domesticTax": 634.4,
-        "totalCost": 5904.799999999999,
-        "location": "A 仓库"
+        "shippingCost": 2283.84,
+        "domesticTax": 3711.2400000000002,
+        "totalCost": 34543.08,
+        "location": "马来西亚仓库"
       },
       {
-        "id": "inv_1775641736013",
-        "productId": "GFZJ001",
-        "quantity": 100,
-        "batchNo": "20260408-002",
-        "purchaseDate": "2026-04-08",
-        "purchasePrice": 0.8,
-        "spec": 610,
-        "unitPurchasePrice": 488,
-        "purchaseTotal": 48800,
+        "id": "inv_1775820030632",
+        "productId": "DC001",
+        "quantity": 18,
+        "batchNo": "20250411-002",
+        "purchaseDate": "2025-04-11",
+        "purchasePrice": 660,
+        "spec": 5,
+        "unitPurchasePrice": 3300,
+        "purchaseTotal": 59400,
         "shippingRate": 0.08,
-        "domesticTaxRate": 0.13,
-        "shippingCost": 3904,
-        "domesticTax": 6344,
-        "totalCost": 59048,
-        "location": ""
+        "domesticTaxRate": 0.06,
+        "shippingCost": 4752,
+        "domesticTax": 3564,
+        "totalCost": 67716,
+        "location": "马来西亚仓库"
+      },
+      {
+        "id": "inv_1775820265501",
+        "productId": "NBQ002",
+        "quantity": 6,
+        "batchNo": "20250411-003",
+        "purchaseDate": "2025-04-11",
+        "purchasePrice": 350.04,
+        "spec": 5.5,
+        "unitPurchasePrice": 1925.22,
+        "purchaseTotal": 11551.32,
+        "shippingRate": 0.08,
+        "domesticTaxRate": 0.06,
+        "shippingCost": 924.1056,
+        "domesticTax": 693.0791999999999,
+        "totalCost": 13168.5048,
+        "location": "马来西亚仓库"
+      },
+      {
+        "id": "inv_1775820358973",
+        "productId": "J001",
+        "quantity": 3,
+        "batchNo": "20260410-001",
+        "purchaseDate": "2026-04-10",
+        "purchasePrice": 360,
+        "spec": 1,
+        "unitPurchasePrice": 360,
+        "purchaseTotal": 1080,
+        "shippingRate": 0.08,
+        "domesticTaxRate": 0.06,
+        "shippingCost": 86.4,
+        "domesticTax": 64.8,
+        "totalCost": 1231.2,
+        "location": "马来西亚仓库"
+      },
+      {
+        "id": "inv_1775820443415",
+        "productId": "PROD002",
+        "quantity": 1,
+        "batchNo": "20260410-002",
+        "purchaseDate": "2026-04-10",
+        "purchasePrice": 6750,
+        "spec": 1,
+        "unitPurchasePrice": 6750,
+        "purchaseTotal": 6750,
+        "shippingRate": 0.14800000000000002,
+        "domesticTaxRate": 0,
+        "shippingCost": 999.0000000000001,
+        "domesticTax": 0,
+        "totalCost": 7749,
+        "location": "马来西亚仓库"
       }
     ],
     "inventoryHistory": [
@@ -218,6 +269,78 @@
         "quantity": 100,
         "batchNo": "20260408-002",
         "note": "采购入库 2026-04-08 | 入库到 未指定位置 | 总成本¥59048.00"
+      },
+      {
+        "ts": 1775819767365,
+        "type": "delete",
+        "productId": "GFZJ001",
+        "productName": "210R N-type组件",
+        "quantity": 100,
+        "batchNo": "20260408-002",
+        "note": "删除入库记录 | 批次 20260408-002"
+      },
+      {
+        "ts": 1775819769507,
+        "type": "delete",
+        "productId": "GFZJ001",
+        "productName": "210R N-type组件",
+        "quantity": 10,
+        "batchNo": "20260408-001",
+        "note": "删除入库记录 | 批次 20260408-001"
+      },
+      {
+        "ts": 1775819903004,
+        "type": "in",
+        "productId": "GFZJ001",
+        "productName": "210R N-type组件",
+        "quantity": 72,
+        "batchNo": "20250411-001",
+        "note": "采购入库 2025-04-11 | 入库到 马来西亚仓库 | 总成本¥34543.08"
+      },
+      {
+        "ts": 1775820030632,
+        "type": "in",
+        "productId": "DC001",
+        "productName": "5kW 电池",
+        "quantity": 18,
+        "batchNo": "20250411-002",
+        "note": "采购入库 2025-04-11 | 入库到 马来西亚仓库 | 总成本¥67716.00"
+      },
+      {
+        "ts": 1775820265501,
+        "type": "in",
+        "productId": "NBQ002",
+        "productName": "5.5kW 逆变器",
+        "quantity": 6,
+        "batchNo": "20250411-003",
+        "note": "采购入库 2025-04-11 | 入库到 马来西亚仓库 | 总成本¥13168.50"
+      },
+      {
+        "ts": 1775820358973,
+        "type": "in",
+        "productId": "J001",
+        "productName": "堆叠式配件",
+        "quantity": 3,
+        "batchNo": "20260410-001",
+        "note": "采购入库 2026-04-10 | 入库到 未指定位置 | 总成本¥1231.20"
+      },
+      {
+        "ts": 1775820371031,
+        "type": "modify",
+        "productId": "J001",
+        "productName": "堆叠式配件",
+        "quantity": 3,
+        "batchNo": "20260410-001",
+        "note": "修改入库 2026-04-10 | 存放 马来西亚仓库 | 总成本¥1231.20"
+      },
+      {
+        "ts": 1775820443415,
+        "type": "in",
+        "productId": "PROD002",
+        "productName": "5.5kW-10kWh 一体机",
+        "quantity": 1,
+        "batchNo": "20260410-002",
+        "note": "采购入库 2026-04-10 | 入库到 马来西亚仓库 | 总成本¥7749.00"
       }
     ],
     "subcategoriesByCategory": {

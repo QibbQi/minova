@@ -309,6 +309,20 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                 </div></div>
                         </div>
                     </div>
+                    <div class="relative group">
+                        <button class="text-xs bg-slate-900 hover:bg-black text-white px-4 py-2 rounded-lg font-bold shadow-lg shadow-slate-200 transition-all flex items-center gap-1">
+                            🧰 施工安装 ↓
+                        </button>
+                        <div class="absolute left-0 mt-2 w-72 bg-white shadow-2xl border border-slate-200 rounded-xl hidden group-hover:block z-50">
+                            <div class="p-3 border-b bg-slate-50 rounded-t-xl">
+                                <div class="text-[10px] font-black text-slate-400 uppercase">添加到报价单</div>
+                            </div>
+                            <div class="p-3 grid grid-cols-2 gap-2">
+                                <button onclick="openInstallModal('overseas')" class="px-3 py-2 rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-xs font-black">海外施工费</button>
+                                <button onclick="openInstallModal('domestic')" class="px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black border border-slate-200">国内施工费</button>
+                            </div>
+                        </div>
+                    </div>
                     <button id="btn-split" onclick="toggleQuoteSplit()" class="text-xs bg-slate-50 text-slate-300 px-4 py-2 rounded-lg font-bold transition-all border border-slate-200 flex items-center gap-1 cursor-not-allowed" title="报价明细为空，无法分割" disabled="">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-slate-500"><path d="M3 5.75A.75.75 0 0 1 3.75 5h12.5a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 5.75Z"></path><path d="M3 14.25a.75.75 0 0 1 .75-.75h12.5a.75.75 0 0 1 0 1.5H3.75a.75.75 0 0 1-.75-.75Z"></path><path d="M4.5 10a.75.75 0 0 1 .75-.75h.5a.75.75 0 0 1 0 1.5h-.5A.75.75 0 0 1 4.5 10Zm3 0a.75.75 0 0 1 .75-.75h.5a.75.75 0 0 1 0 1.5h-.5A.75.75 0 0 1 7.5 10Zm3 0a.75.75 0 0 1 .75-.75h.5a.75.75 0 0 1 0 1.5h-.5A.75.75 0 0 1 10.5 10Zm3 0a.75.75 0 0 1 .75-.75h.5a.75.75 0 0 1 0 1.5h-.5A.75.75 0 0 1 13.5 10Z"></path></svg>
                         <span id="btn-split-label">从此分割</span>
@@ -501,103 +515,12 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                             <th class="py-4 px-4 text-right">国内税(¥)</th>
                             <th class="py-4 px-4 text-right">总成本(¥)</th>
                             <th class="py-4 px-4 text-right">总库存平均成本(¥)</th>
-                            <th class="py-4 px-4 text-right">建议零售价(¥)</th>
-                            <th class="py-4 px-4 text-right">建议工程价(¥)</th>
                             <th class="py-4 px-4">存放位置</th>
                             <th class="py-4 px-4 text-center">操作</th>
                         </tr>
                     </thead>
-                    <tbody id="inventory-list" class="divide-y divide-slate-50">
-                    <tr class="hover:bg-slate-50 transition-colors">
-                        <td class="py-4 px-4 text-xs font-mono text-slate-500 cursor-help" onmouseenter="showInventoryTooltip(event, 'GFZJ001')" onmouseleave="hideInventoryTooltip()">
-                            GFZJ001
-                        </td>
-                        <td class="py-4 px-4 font-bold text-slate-700 text-sm">210R N-type组件</td>
-                        <td class="py-4 px-4 text-xs text-slate-500 uppercase tracking-tighter">光伏组件</td>
-                        <td class="py-4 px-4 text-xs text-slate-600">2026-04-08</td>
-                        <td class="py-4 px-4 text-center font-bold text-green-600">10</td>
-                        <td class="py-4 px-4 text-xs text-slate-600">20260408-001</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">¥0.80</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">610</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">¥488.00</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">¥4880.00</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">8.0%</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">13.0%</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">¥390.40</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">¥634.40</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-900 font-bold">¥5904.80</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-700">¥0.97</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-purple-700">¥634.40</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-indigo-700">¥585.60</td>
-                        <td class="py-4 px-4 text-xs text-slate-600">A 仓库</td>
-                        <td class="py-4 px-4 text-center">
-                            <div class="flex items-center justify-center gap-2">
-                                <button onclick="openInventoryEditModal('inv_1775614989154')" class="text-purple-700 hover:bg-purple-50 p-1 rounded text-xs">编辑</button>
-                                <button onclick="openInventoryModal('out', 'inv_1775614989154')" class="text-orange-500 hover:bg-orange-50 p-1 rounded text-xs">出库</button>
-                                <button onclick="deleteInventoryItem('inv_1775614989154')" class="text-red-300 hover:text-red-500 p-1 rounded">🗑</button>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr class="hover:bg-slate-50 transition-colors">
-                        <td class="py-4 px-4 text-xs font-mono text-slate-500 cursor-help" onmouseenter="showInventoryTooltip(event, 'GFZJ001')" onmouseleave="hideInventoryTooltip()">
-                            GFZJ001
-                        </td>
-                        <td class="py-4 px-4 font-bold text-slate-700 text-sm">210R N-type组件</td>
-                        <td class="py-4 px-4 text-xs text-slate-500 uppercase tracking-tighter">光伏组件</td>
-                        <td class="py-4 px-4 text-xs text-slate-600">2026-04-08</td>
-                        <td class="py-4 px-4 text-center font-bold text-green-600">100</td>
-                        <td class="py-4 px-4 text-xs text-slate-600">20260408-002</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">¥0.80</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">610</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">¥488.00</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">¥48800.00</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">8.0%</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">13.0%</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">¥3904.00</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">¥6344.00</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-900 font-bold">¥59048.00</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-700">¥0.97</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-purple-700">¥634.40</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-indigo-700">¥585.60</td>
-                        <td class="py-4 px-4 text-xs text-slate-600">-</td>
-                        <td class="py-4 px-4 text-center">
-                            <div class="flex items-center justify-center gap-2">
-                                <button onclick="openInventoryEditModal('inv_1775641736013')" class="text-purple-700 hover:bg-purple-50 p-1 rounded text-xs">编辑</button>
-                                <button onclick="openInventoryModal('out', 'inv_1775641736013')" class="text-orange-500 hover:bg-orange-50 p-1 rounded text-xs">出库</button>
-                                <button onclick="deleteInventoryItem('inv_1775641736013')" class="text-red-300 hover:text-red-500 p-1 rounded">🗑</button>
-                            </div>
-                        </td>
-                    </tr></tbody>
+                    <tbody id="inventory-list" class="divide-y divide-slate-50"></tbody>
                 </table>
-            </div>
-        </div>
-
-        <div class="mt-8 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-            <div class="p-6 border-b border-slate-100">
-                <h3 class="text-lg font-bold text-slate-800">海外安装商报价</h3>
-                <p class="text-xs text-slate-400 mt-1">合计安装报价（RM）= 人工 + 支架 + 线缆；合计安装报价（RMB）使用“成本报价核算”的实时汇率换算</p>
-            </div>
-            <div class="p-6 grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
-                <div>
-                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">人工 (RM)</label>
-                    <input type="number" id="installer-labor" value="0.25" step="0.01" oninput="recalcInstallerQuote()" onchange="recalcInstallerQuote()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-600">
-                </div>
-                <div>
-                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">支架 (RM)</label>
-                    <input type="number" id="installer-bracket" value="0.24" step="0.01" oninput="recalcInstallerQuote()" onchange="recalcInstallerQuote()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-600">
-                </div>
-                <div>
-                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">线缆 (RM)</label>
-                    <input type="number" id="installer-cable" value="0.06" step="0.01" oninput="recalcInstallerQuote()" onchange="recalcInstallerQuote()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-600">
-                </div>
-                <div class="md:col-span-1">
-                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">合计安装报价 (RM)</label>
-                    <input type="text" id="installer-total-myr" readonly="" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-slate-50 text-slate-700 font-bold text-right">
-                </div>
-                <div class="md:col-span-2">
-                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">合计安装报价 (RMB)</label>
-                    <input type="text" id="installer-total-cny" readonly="" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-slate-50 text-slate-700 font-bold text-right">
-                </div>
             </div>
         </div>
 
@@ -1244,56 +1167,91 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                         </div>
                     </div>
                 </div>
-                <!-- 光伏项目 -->
-                <div>
-                    <h3 class="text-lg font-bold text-slate-700 mb-3 flex items-center gap-2"><span class="text-xl">☀️</span> 光伏项目</h3>
-                    <div class="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
-                        <table class="w-full text-left whitespace-nowrap">
-                            <thead class="bg-slate-50">
-                                <tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                    <th class="py-3 px-4 border-b border-slate-200">项目名称</th>
-                                    <th class="py-3 px-4 text-right border-b border-slate-200">采购单价(¥)</th>
-                                    <th class="py-3 px-4 text-right border-b border-slate-200">运费(%)</th>
-                                    <th class="py-3 px-4 text-right border-b border-slate-200">进口税(%)</th>
-                                    <th class="py-3 px-4 text-right border-b border-slate-200">SST(%)</th>
-                                    <th class="py-3 px-4 text-right bg-slate-100 border-b border-slate-200">总成本(¥)</th>
-                                    <th class="py-3 px-4 text-right border-b border-slate-200">利润倍数</th>
-                                    <th class="py-3 px-4 text-right bg-blue-50 text-blue-700 border-b border-blue-100">报价(RMB)</th>
-                                    <th class="py-3 px-4 text-right bg-green-50 text-green-700 border-b border-green-100">报价(RM)</th>
-                                </tr>
-                            </thead>
-                            <tbody id="cost-pv-body" class="divide-y divide-slate-100 text-sm"><tr><td class="py-3 px-4 font-medium text-slate-700">光伏板</td><td class="py-3 px-4 text-right"><input type="number" step="0.01" value="1" oninput="updateCostData('pv', 0, 'price', this.value)" class="w-16 text-right bg-transparent border-b border-dashed border-slate-300 outline-none text-blue-600 font-bold"></td><td class="py-3 px-4 text-right"><input type="number" value="5" oninput="updateCostData('pv', 0, 'freight', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right"><input type="number" value="0" oninput="updateCostData('pv', 0, 'importTax', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right"><input type="number" value="10" oninput="updateCostData('pv', 0, 'sst', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right bg-slate-100/50 font-mono text-slate-600">1.1500</td><td class="py-3 px-4 text-right"><input type="number" step="0.1" value="1.1" oninput="updateCostData('pv', 0, 'profit', this.value)" class="w-16 text-right bg-transparent border-b border-dashed border-slate-300 outline-none font-bold"></td><td class="py-3 px-4 text-right bg-blue-50/50 font-black text-blue-700">1.2650</td><td class="py-3 px-4 text-right bg-green-50/50 font-black text-green-700">0.8268</td></tr><tr><td class="py-3 px-4 font-medium text-slate-700">支架</td><td class="py-3 px-4 text-right"><input type="number" step="0.01" value="0.4" oninput="updateCostData('pv', 1, 'price', this.value)" class="w-16 text-right bg-transparent border-b border-dashed border-slate-300 outline-none text-blue-600 font-bold"></td><td class="py-3 px-4 text-right"><input type="number" value="5" oninput="updateCostData('pv', 1, 'freight', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right"><input type="number" value="0" oninput="updateCostData('pv', 1, 'importTax', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right"><input type="number" value="10" oninput="updateCostData('pv', 1, 'sst', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right bg-slate-100/50 font-mono text-slate-600">0.4600</td><td class="py-3 px-4 text-right"><input type="number" step="0.1" value="1.1" oninput="updateCostData('pv', 1, 'profit', this.value)" class="w-16 text-right bg-transparent border-b border-dashed border-slate-300 outline-none font-bold"></td><td class="py-3 px-4 text-right bg-blue-50/50 font-black text-blue-700">0.5060</td><td class="py-3 px-4 text-right bg-green-50/50 font-black text-green-700">0.3307</td></tr><tr><td class="py-3 px-4 font-medium text-slate-700">逆变器</td><td class="py-3 px-4 text-right"><input type="number" step="0.01" value="0.275" oninput="updateCostData('pv', 2, 'price', this.value)" class="w-16 text-right bg-transparent border-b border-dashed border-slate-300 outline-none text-blue-600 font-bold"></td><td class="py-3 px-4 text-right"><input type="number" value="5" oninput="updateCostData('pv', 2, 'freight', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right"><input type="number" value="0" oninput="updateCostData('pv', 2, 'importTax', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right"><input type="number" value="10" oninput="updateCostData('pv', 2, 'sst', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right bg-slate-100/50 font-mono text-slate-600">0.3163</td><td class="py-3 px-4 text-right"><input type="number" step="0.1" value="1.1" oninput="updateCostData('pv', 2, 'profit', this.value)" class="w-16 text-right bg-transparent border-b border-dashed border-slate-300 outline-none font-bold"></td><td class="py-3 px-4 text-right bg-blue-50/50 font-black text-blue-700">0.3479</td><td class="py-3 px-4 text-right bg-green-50/50 font-black text-green-700">0.2274</td></tr><tr><td class="py-3 px-4 font-medium text-slate-700">辅材</td><td class="py-3 px-4 text-right"><input type="number" step="0.01" value="0.2" oninput="updateCostData('pv', 3, 'price', this.value)" class="w-16 text-right bg-transparent border-b border-dashed border-slate-300 outline-none text-blue-600 font-bold"></td><td class="py-3 px-4 text-right"><input type="number" value="5" oninput="updateCostData('pv', 3, 'freight', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right"><input type="number" value="0" oninput="updateCostData('pv', 3, 'importTax', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right"><input type="number" value="10" oninput="updateCostData('pv', 3, 'sst', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right bg-slate-100/50 font-mono text-slate-600">0.2300</td><td class="py-3 px-4 text-right"><input type="number" step="0.1" value="1.1" oninput="updateCostData('pv', 3, 'profit', this.value)" class="w-16 text-right bg-transparent border-b border-dashed border-slate-300 outline-none font-bold"></td><td class="py-3 px-4 text-right bg-blue-50/50 font-black text-blue-700">0.2530</td><td class="py-3 px-4 text-right bg-green-50/50 font-black text-green-700">0.1654</td></tr><tr><td class="py-3 px-4 font-medium text-slate-700">并网柜</td><td class="py-3 px-4 text-right"><input type="number" step="0.01" value="0.1" oninput="updateCostData('pv', 4, 'price', this.value)" class="w-16 text-right bg-transparent border-b border-dashed border-slate-300 outline-none text-blue-600 font-bold"></td><td class="py-3 px-4 text-right"><input type="number" value="5" oninput="updateCostData('pv', 4, 'freight', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right"><input type="number" value="0" oninput="updateCostData('pv', 4, 'importTax', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right"><input type="number" value="10" oninput="updateCostData('pv', 4, 'sst', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right bg-slate-100/50 font-mono text-slate-600">0.1150</td><td class="py-3 px-4 text-right"><input type="number" step="0.1" value="1.1" oninput="updateCostData('pv', 4, 'profit', this.value)" class="w-16 text-right bg-transparent border-b border-dashed border-slate-300 outline-none font-bold"></td><td class="py-3 px-4 text-right bg-blue-50/50 font-black text-blue-700">0.1265</td><td class="py-3 px-4 text-right bg-green-50/50 font-black text-green-700">0.0827</td></tr><tr><td class="py-3 px-4 font-medium text-slate-700">安装管理费</td><td class="py-3 px-4 text-right"><input type="number" step="0.01" value="0.3" oninput="updateCostData('pv', 5, 'price', this.value)" class="w-16 text-right bg-transparent border-b border-dashed border-slate-300 outline-none text-blue-600 font-bold"></td><td class="py-3 px-4 text-right"><input type="number" value="0" oninput="updateCostData('pv', 5, 'freight', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right"><input type="number" value="0" oninput="updateCostData('pv', 5, 'importTax', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right"><input type="number" value="0" oninput="updateCostData('pv', 5, 'sst', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right bg-slate-100/50 font-mono text-slate-600">0.3000</td><td class="py-3 px-4 text-right"><input type="number" step="0.1" value="1.1" oninput="updateCostData('pv', 5, 'profit', this.value)" class="w-16 text-right bg-transparent border-b border-dashed border-slate-300 outline-none font-bold"></td><td class="py-3 px-4 text-right bg-blue-50/50 font-black text-blue-700">0.3300</td><td class="py-3 px-4 text-right bg-green-50/50 font-black text-green-700">0.2157</td></tr><tr><td class="py-3 px-4 font-medium text-slate-700">其他管理费</td><td class="py-3 px-4 text-right"><input type="number" step="0.01" value="0.1" oninput="updateCostData('pv', 6, 'price', this.value)" class="w-16 text-right bg-transparent border-b border-dashed border-slate-300 outline-none text-blue-600 font-bold"></td><td class="py-3 px-4 text-right"><input type="number" value="0" oninput="updateCostData('pv', 6, 'freight', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right"><input type="number" value="0" oninput="updateCostData('pv', 6, 'importTax', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right"><input type="number" value="0" oninput="updateCostData('pv', 6, 'sst', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right bg-slate-100/50 font-mono text-slate-600">0.1000</td><td class="py-3 px-4 text-right"><input type="number" step="0.1" value="1.1" oninput="updateCostData('pv', 6, 'profit', this.value)" class="w-16 text-right bg-transparent border-b border-dashed border-slate-300 outline-none font-bold"></td><td class="py-3 px-4 text-right bg-blue-50/50 font-black text-blue-700">0.1100</td><td class="py-3 px-4 text-right bg-green-50/50 font-black text-green-700">0.0719</td></tr><tr><td class="py-3 px-4 font-medium text-slate-700">安装费</td><td class="py-3 px-4 text-right"><input type="number" step="0.01" value="0.4" oninput="updateCostData('pv', 7, 'price', this.value)" class="w-16 text-right bg-transparent border-b border-dashed border-slate-300 outline-none text-blue-600 font-bold"></td><td class="py-3 px-4 text-right"><input type="number" value="0" oninput="updateCostData('pv', 7, 'freight', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right"><input type="number" value="0" oninput="updateCostData('pv', 7, 'importTax', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right"><input type="number" value="0" oninput="updateCostData('pv', 7, 'sst', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right bg-slate-100/50 font-mono text-slate-600">0.4000</td><td class="py-3 px-4 text-right"><input type="number" step="0.1" value="1.1" oninput="updateCostData('pv', 7, 'profit', this.value)" class="w-16 text-right bg-transparent border-b border-dashed border-slate-300 outline-none font-bold"></td><td class="py-3 px-4 text-right bg-blue-50/50 font-black text-blue-700">0.4400</td><td class="py-3 px-4 text-right bg-green-50/50 font-black text-green-700">0.2876</td></tr></tbody>
-                            <tfoot class="bg-slate-50 font-bold border-t-2 border-slate-200" id="cost-pv-foot"><tr><td colspan="5" class="py-4 px-4 text-right text-slate-500">合计：</td><td class="py-4 px-4 text-right bg-slate-200/50 font-mono text-slate-800">3.0713</td><td class="py-4 px-4"></td><td class="py-4 px-4 text-right bg-blue-100/50 font-black text-blue-800 text-lg">3.3784</td><td class="py-4 px-4 text-right bg-green-100/50 font-black text-green-800 text-lg">2.2081</td></tr></tfoot>
-                        </table>
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="p-6 border-b border-slate-100">
+                        <h3 class="text-lg font-bold text-slate-800">海外安装商报价</h3>
+                        <p class="text-xs text-slate-400 mt-1">合计安装报价（RM）= 人工 + 支架 + 线缆；合计安装报价（RMB）使用“成本报价核算”的实时汇率换算</p>
+                    </div>
+                    <div class="p-6 grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">人工 (RM)</label>
+                            <input type="number" id="installer-labor" value="0.25" step="0.01" oninput="recalcInstallerQuote()" onchange="recalcInstallerQuote()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-600">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">支架 (RM)</label>
+                            <input type="number" id="installer-bracket" value="0.24" step="0.01" oninput="recalcInstallerQuote()" onchange="recalcInstallerQuote()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-600">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">线缆 (RM)</label>
+                            <input type="number" id="installer-cable" value="0.06" step="0.01" oninput="recalcInstallerQuote()" onchange="recalcInstallerQuote()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-600">
+                        </div>
+                        <div class="md:col-span-1">
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">合计安装报价 (RM)</label>
+                            <input type="text" id="installer-total-myr" readonly="" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-slate-50 text-slate-700 font-bold text-right">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">合计安装报价 (RMB)</label>
+                            <input type="text" id="installer-total-cny" readonly="" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-slate-50 text-slate-700 font-bold text-right">
+                        </div>
                     </div>
                 </div>
-
-                <!-- 电池项目 -->
-                <div>
-                    <h3 class="text-lg font-bold text-slate-700 mb-3 flex items-center gap-2"><span class="text-xl">🔋</span> 电池项目</h3>
-                    <div class="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
-                        <table class="w-full text-left whitespace-nowrap">
-                            <thead class="bg-slate-50">
-                                <tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                    <th class="py-3 px-4 border-b border-slate-200">项目名称</th>
-                                    <th class="py-3 px-4 text-right border-b border-slate-200">采购单价(¥)</th>
-                                    <th class="py-3 px-4 text-right border-b border-slate-200">运费(%)</th>
-                                    <th class="py-3 px-4 text-right border-b border-slate-200">进口税(%)</th>
-                                    <th class="py-3 px-4 text-right border-b border-slate-200">SST(%)</th>
-                                    <th class="py-3 px-4 text-right bg-slate-100 border-b border-slate-200">总成本(¥)</th>
-                                    <th class="py-3 px-4 text-right border-b border-slate-200">利润倍数</th>
-                                    <th class="py-3 px-4 text-right bg-blue-50 text-blue-700 border-b border-blue-100">报价(RMB)</th>
-                                    <th class="py-3 px-4 text-right bg-green-50 text-green-700 border-b border-green-100">报价(RM)</th>
-                                </tr>
-                            </thead>
-                            <tbody id="cost-bat-body" class="divide-y divide-slate-100 text-sm"><tr><td class="py-3 px-4 font-medium text-slate-700">纯电池</td><td class="py-3 px-4 text-right"><input type="number" step="0.01" value="0.55" oninput="updateCostData('bat', 0, 'price', this.value)" class="w-16 text-right bg-transparent border-b border-dashed border-slate-300 outline-none text-blue-600 font-bold"></td><td class="py-3 px-4 text-right"><input type="number" value="5" oninput="updateCostData('bat', 0, 'freight', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right"><input type="number" value="20" oninput="updateCostData('bat', 0, 'importTax', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right"><input type="number" value="10" oninput="updateCostData('bat', 0, 'sst', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right bg-slate-100/50 font-mono text-slate-600">0.7425</td><td class="py-3 px-4 text-right"><input type="number" step="0.1" value="1.2" oninput="updateCostData('bat', 0, 'profit', this.value)" class="w-16 text-right bg-transparent border-b border-dashed border-slate-300 outline-none font-bold"></td><td class="py-3 px-4 text-right bg-blue-50/50 font-black text-blue-700">0.8910</td><td class="py-3 px-4 text-right bg-green-50/50 font-black text-green-700">0.5824</td></tr><tr><td class="py-3 px-4 font-medium text-slate-700">并机柜防逆流</td><td class="py-3 px-4 text-right"><input type="number" step="0.01" value="0.2" oninput="updateCostData('bat', 1, 'price', this.value)" class="w-16 text-right bg-transparent border-b border-dashed border-slate-300 outline-none text-blue-600 font-bold"></td><td class="py-3 px-4 text-right"><input type="number" value="5" oninput="updateCostData('bat', 1, 'freight', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right"><input type="number" value="0" oninput="updateCostData('bat', 1, 'importTax', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right"><input type="number" value="10" oninput="updateCostData('bat', 1, 'sst', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right bg-slate-100/50 font-mono text-slate-600">0.2300</td><td class="py-3 px-4 text-right"><input type="number" step="0.1" value="1.2" oninput="updateCostData('bat', 1, 'profit', this.value)" class="w-16 text-right bg-transparent border-b border-dashed border-slate-300 outline-none font-bold"></td><td class="py-3 px-4 text-right bg-blue-50/50 font-black text-blue-700">0.2760</td><td class="py-3 px-4 text-right bg-green-50/50 font-black text-green-700">0.1804</td></tr><tr><td class="py-3 px-4 font-medium text-slate-700">其他材料</td><td class="py-3 px-4 text-right"><input type="number" step="0.01" value="0.15" oninput="updateCostData('bat', 2, 'price', this.value)" class="w-16 text-right bg-transparent border-b border-dashed border-slate-300 outline-none text-blue-600 font-bold"></td><td class="py-3 px-4 text-right"><input type="number" value="5" oninput="updateCostData('bat', 2, 'freight', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right"><input type="number" value="0" oninput="updateCostData('bat', 2, 'importTax', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right"><input type="number" value="10" oninput="updateCostData('bat', 2, 'sst', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right bg-slate-100/50 font-mono text-slate-600">0.1725</td><td class="py-3 px-4 text-right"><input type="number" step="0.1" value="1.2" oninput="updateCostData('bat', 2, 'profit', this.value)" class="w-16 text-right bg-transparent border-b border-dashed border-slate-300 outline-none font-bold"></td><td class="py-3 px-4 text-right bg-blue-50/50 font-black text-blue-700">0.2070</td><td class="py-3 px-4 text-right bg-green-50/50 font-black text-green-700">0.1353</td></tr></tbody>
-                            <tfoot class="bg-slate-50 font-bold border-t-2 border-slate-200" id="cost-bat-foot"><tr><td colspan="5" class="py-4 px-4 text-right text-slate-500">合计：</td><td class="py-4 px-4 text-right bg-slate-200/50 font-mono text-slate-800">1.1450</td><td class="py-4 px-4"></td><td class="py-4 px-4 text-right bg-blue-100/50 font-black text-blue-800 text-lg">1.3740</td><td class="py-4 px-4 text-right bg-green-100/50 font-black text-green-800 text-lg">0.8980</td></tr></tfoot>
-                        </table>
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="p-6 border-b border-slate-100">
+                        <h3 class="text-lg font-bold text-slate-800">海外安装商利润设置</h3>
+                        <p class="text-xs text-slate-400 mt-1">海外施工安装费用（RMB）= 合计安装报价（RMB） × (1 + “安装_中国母公司利润%” + “安装_马来西亚子公司利润”)</p>
+                    </div>
+                    <div class="p-6 grid grid-cols-1 md:grid-cols-8 gap-4 items-end">
+                        <div class="md:col-span-2">
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">安装_中国母公司利润%</label>
+                            <input type="number" id="installer-profit-cn" value="0" step="1" oninput="recalcInstallerQuote()" onchange="recalcInstallerQuote()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-600">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">安装_马来西亚子公司利润</label>
+                            <input type="number" id="installer-profit-my" value="0" step="1" oninput="recalcInstallerQuote()" onchange="recalcInstallerQuote()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-600">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">海外施工安装费用 (RMB)</label>
+                            <input type="text" id="installer-install-fee-cny" readonly="" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-slate-50 text-slate-700 font-bold text-right">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">海外施工安装费用 (RM)</label>
+                            <input type="text" id="installer-install-fee-myr" readonly="" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-slate-50 text-slate-700 font-bold text-right">
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </main>
+
+    <div id="install-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center z-[220] p-4">
+        <div class="bg-white rounded-3xl p-8 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
+            <h3 id="install-title" class="text-xl font-bold text-slate-800 mb-6">施工安装</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">项目</label>
+                    <input type="text" id="install-desc" readonly="" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-slate-50 text-slate-700 font-bold">
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">单价 (RMB)</label>
+                        <input type="number" id="install-unit-price" step="0.01" oninput="recalcInstallModal()" onchange="recalcInstallModal()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">数量</label>
+                        <input type="number" id="install-qty" step="1" oninput="recalcInstallModal()" onchange="recalcInstallModal()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">小计 (RMB)</label>
+                    <input type="text" id="install-subtotal" readonly="" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-slate-50 text-slate-700 font-bold text-right">
+                </div>
+            </div>
+            <div class="mt-8 flex gap-3">
+                <button onclick="closeInstallModal()" class="flex-1 py-3 text-slate-400 font-bold hover:bg-slate-50 rounded-2xl transition-colors border border-slate-200">取消</button>
+                <button onclick="applyInstallToQuote()" class="flex-1 py-3 bg-slate-900 text-white rounded-2xl font-bold shadow-lg hover:bg-black transition-all">添加到报价单</button>
+            </div>
+        </div>
+    </div>
 
     <div id="modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[200] p-4 hidden">
         <!-- 为了容纳更多字段，弹窗宽度由 max-w-lg 增加到了 max-w-2xl -->
@@ -2193,8 +2151,15 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
         let subcategoriesByCategory = {};
         let profitSettings = null;
         let profitTarget = 'home';
+        let installerProfitSettings = { cnPct: 0, myPct: 0 };
         function safeJsonParseLoose(raw, fallback) {
             try { return raw ? JSON.parse(raw) : fallback; } catch { return fallback; }
+        }
+        function normalizeInstallerProfitSettings(next) {
+            const base = next && typeof next === 'object' ? next : {};
+            const cnPct = Number.isFinite(parseFloat(base.cnPct)) ? parseFloat(base.cnPct) : 0;
+            const myPct = Number.isFinite(parseFloat(base.myPct)) ? parseFloat(base.myPct) : 0;
+            return { cnPct, myPct };
         }
         function normalizeProfitSettings(next) {
             const base = next && typeof next === 'object' ? next : {};
@@ -2372,7 +2337,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                             ${profitSettings.companies.map(c => {
                                 const v = profitSettings.categoryProfitPct?.[c.id]?.[profitTarget]?.[cat];
                                 const val = Number.isFinite(parseFloat(v)) ? String(parseFloat(v)) : '';
-                                return `<td class="py-3 px-4 text-right"><input type="number" step="0.01" value="${val}" placeholder="0" oninput="updateProfitCategoryPct('${c.id}', '${profitTarget}', '${cat}', this.value)" class="w-20 text-right bg-transparent border-b border-dashed border-slate-300 outline-none font-bold text-slate-700"></td>`;
+                                return `<td class="py-3 px-4 text-right"><input type="number" step="1" value="${val}" placeholder="0" oninput="updateProfitCategoryPct('${c.id}', '${profitTarget}', '${cat}', this.value)" class="w-20 text-right bg-transparent border-b border-dashed border-slate-300 outline-none font-bold text-slate-700"></td>`;
                             }).join('')}
                         </tr>
                     `;
@@ -2390,7 +2355,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                         ${profitSettings.companies.map(c => {
                             const v = profitSettings.subcatProfitPct?.[c.id]?.[profitTarget]?.[cat]?.[sub];
                             const val = Number.isFinite(parseFloat(v)) ? String(parseFloat(v)) : '';
-                            return `<td class="py-3 px-4 text-right"><input type="number" step="0.01" value="${val}" placeholder="继承" oninput="updateProfitSubcatPct('${c.id}', '${profitTarget}', '${cat}', '${sub}', this.value)" class="w-20 text-right bg-transparent border-b border-dashed border-slate-300 outline-none text-blue-700 font-bold"></td>`;
+                            return `<td class="py-3 px-4 text-right"><input type="number" step="1" value="${val}" placeholder="继承" oninput="updateProfitSubcatPct('${c.id}', '${profitTarget}', '${cat}', '${sub}', this.value)" class="w-20 text-right bg-transparent border-b border-dashed border-slate-300 outline-none text-blue-700 font-bold"></td>`;
                         }).join('')}
                     </tr>
                 `;
@@ -2446,12 +2411,14 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                     if (inventoryHistory.length > 1000) inventoryHistory = inventoryHistory.slice(inventoryHistory.length - 1000);
                     subcategoriesByCategory = embedded.data.subcategoriesByCategory && typeof embedded.data.subcategoriesByCategory === 'object' ? embedded.data.subcategoriesByCategory : {};
                     profitSettings = normalizeProfitSettings(embedded.data.profitSettings || null);
+                    installerProfitSettings = normalizeInstallerProfitSettings(embedded.data.installerProfitSettings || installerProfitSettings || null);
                     localStorage.setItem('minova_embedded_updatedAt', String(embeddedAt));
                     localStorage.setItem('minova_products', JSON.stringify(products));
                     localStorage.setItem('minova_inventory', JSON.stringify(inventory));
                     localStorage.setItem('minova_inventory_history', JSON.stringify(inventoryHistory));
                     localStorage.setItem('minova_subcategories_v1', JSON.stringify(subcategoriesByCategory));
                     localStorage.setItem('minova_profit_settings_v1', JSON.stringify(profitSettings));
+                    localStorage.setItem('minova_installer_profit_v1', JSON.stringify(installerProfitSettings));
                 }
             }
         } catch (e) {}
@@ -2466,6 +2433,8 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
             if (inventoryHistory.length > 1000) inventoryHistory = inventoryHistory.slice(inventoryHistory.length - 1000);
             const savedProfit = localStorage.getItem('minova_profit_settings_v1');
             if (savedProfit) profitSettings = normalizeProfitSettings(JSON.parse(savedProfit));
+            const savedInstallerProfit = localStorage.getItem('minova_installer_profit_v1');
+            if (savedInstallerProfit) installerProfitSettings = normalizeInstallerProfitSettings(JSON.parse(savedInstallerProfit));
         } catch (e) { console.error("Load data failed:", e); }
         function rebuildSubcategoryIndexFromProducts() {
             const map = {};
@@ -2513,6 +2482,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
             if (inventoryHistory.length > 1000) inventoryHistory = inventoryHistory.slice(inventoryHistory.length - 1000);
             subcategoriesByCategory = data?.subcategoriesByCategory && typeof data.subcategoriesByCategory === 'object' ? data.subcategoriesByCategory : {};
             profitSettings = normalizeProfitSettings(data?.profitSettings || profitSettings || null);
+            installerProfitSettings = normalizeInstallerProfitSettings(data?.installerProfitSettings || installerProfitSettings || null);
             try {
                 if (stampMs) localStorage.setItem('minova_embedded_updatedAt', String(stampMs));
                 localStorage.setItem('minova_products', JSON.stringify(products));
@@ -2520,6 +2490,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                 localStorage.setItem('minova_inventory_history', JSON.stringify(inventoryHistory));
                 localStorage.setItem('minova_subcategories_v1', JSON.stringify(subcategoriesByCategory));
                 localStorage.setItem('minova_profit_settings_v1', JSON.stringify(profitSettings));
+                localStorage.setItem('minova_installer_profit_v1', JSON.stringify(installerProfitSettings));
             } catch (e) {}
             renderDb();
             renderInventory();
@@ -3278,16 +3249,13 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
         window.renderInventory = () => {
             const list = document.getElementById('inventory-list');
             if(inventory.length === 0) {
-                list.innerHTML = `<tr><td colspan="22" class="py-20 text-center text-slate-400 text-sm">暂无库存记录...</td></tr>`;
+                list.innerHTML = `<tr><td colspan="20" class="py-20 text-center text-slate-400 text-sm">暂无库存记录...</td></tr>`;
                 return;
             }
             list.innerHTML = inventory.map(item => {
                 const product = products.find(p => p.id === item.productId) || {};
                 
-                // 使用存储的价格或默认计算
                 const unitPrice = item.unitPurchasePrice || ((item.purchasePrice || 0) * (item.spec || 1));
-                const srp = item.suggestedRetailPrice || (unitPrice * 1.3);
-                const spp = item.suggestedProjectPrice || (unitPrice * 1.2);
                 const purchaseDate = item.purchaseDate ? String(item.purchaseDate) : '-';
                 const spec = Number.isFinite(parseFloat(item.spec)) ? parseFloat(item.spec) : 1;
                 const purchaseTotal = item.purchaseTotal || (unitPrice * (item.quantity || 0));
@@ -3322,8 +3290,6 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                         <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">¥${domesticTax.toFixed(2)}</td>
                         <td class="py-4 px-4 text-right text-sm font-mono text-slate-900 font-bold">¥${totalCost.toFixed(2)}</td>
                         <td class="py-4 px-4 text-right text-sm font-mono text-slate-700">¥${avgCost.toFixed(2)}</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-purple-700">¥${srp.toFixed(2)}</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-indigo-700">¥${spp.toFixed(2)}</td>
                         <td class="py-4 px-4 text-xs text-slate-600">${item.location || '-'}</td>
                         <td class="py-4 px-4 text-center">
                             <div class="flex items-center justify-center gap-2">
@@ -3648,9 +3614,90 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
             const cnyEl = document.getElementById('installer-total-cny');
             if (myrEl) myrEl.value = totalMyr.toFixed(4);
             if (cnyEl) cnyEl.value = totalCny.toFixed(4);
+            const cnProfitEl = document.getElementById('installer-profit-cn');
+            const myProfitEl = document.getElementById('installer-profit-my');
+            const feeEl = document.getElementById('installer-install-fee-cny');
+            const feeMyrEl = document.getElementById('installer-install-fee-myr');
+            if (cnProfitEl && myProfitEl && feeEl) {
+                const cnPct = parseFloat(cnProfitEl.value) || 0;
+                const myPct = parseFloat(myProfitEl.value) || 0;
+                const fee = totalCny * (1 + (cnPct + myPct) / 100);
+                feeEl.value = fee.toFixed(4);
+                if (feeMyrEl) feeMyrEl.value = (fee / rate).toFixed(4);
+                installerProfitSettings = normalizeInstallerProfitSettings({ cnPct, myPct });
+                try { localStorage.setItem('minova_installer_profit_v1', JSON.stringify(installerProfitSettings)); } catch (e) {}
+            }
             try {
                 localStorage.setItem('minova_installer_quote_v1', JSON.stringify({ labor, bracket, cable }));
             } catch (e) {}
+        };
+
+        function getDefaultPvModuleQuantity() {
+            let total = 0;
+            for (const r of quoteRows) {
+                if (r.isBlank) continue;
+                const qty = parseFloat(r.quantity) || 0;
+                if (qty <= 0) continue;
+                const desc = String(r.description || '').trim();
+                if (!desc) continue;
+                const p = products.find(x => String(x?.name || '').trim() === desc);
+                if (p && String(p.category || '').includes('光伏组件')) {
+                    total += qty;
+                    continue;
+                }
+                if (desc.includes('光伏组件') || desc.includes('组件')) total += qty;
+            }
+            return total > 0 ? total : 1;
+        }
+
+        window.openInstallModal = (mode) => {
+            window.installMode = mode === 'domestic' ? 'domestic' : 'overseas';
+            const modal = document.getElementById('install-modal');
+            if (!modal) return;
+            modal.classList.remove('hidden');
+
+            const titleEl = document.getElementById('install-title');
+            const descEl = document.getElementById('install-desc');
+            const unitEl = document.getElementById('install-unit-price');
+            const qtyEl = document.getElementById('install-qty');
+
+            const isDomestic = window.installMode === 'domestic';
+            if (titleEl) titleEl.textContent = isDomestic ? '施工安装 · 国内施工费' : '施工安装 · 海外施工费';
+            if (descEl) descEl.value = isDomestic ? '国内施工费' : '海外施工费';
+
+            const overseasUnit = parseFloat(document.getElementById('installer-install-fee-cny')?.value) || 0;
+            if (unitEl) {
+                unitEl.value = isDomestic ? '0' : String(overseasUnit.toFixed(4));
+                unitEl.readOnly = !isDomestic;
+                unitEl.classList.toggle('bg-slate-50', !isDomestic);
+            }
+            if (qtyEl) qtyEl.value = String(isDomestic ? 1 : getDefaultPvModuleQuantity());
+            recalcInstallModal();
+        };
+        window.closeInstallModal = () => {
+            const modal = document.getElementById('install-modal');
+            if (modal) modal.classList.add('hidden');
+        };
+        window.recalcInstallModal = () => {
+            const unit = parseFloat(document.getElementById('install-unit-price')?.value) || 0;
+            const qty = parseFloat(document.getElementById('install-qty')?.value) || 0;
+            const sub = unit * qty;
+            const el = document.getElementById('install-subtotal');
+            if (el) el.value = sub.toFixed(4);
+        };
+        window.applyInstallToQuote = () => {
+            const desc = String(document.getElementById('install-desc')?.value || '').trim() || '施工安装';
+            const unit = parseFloat(document.getElementById('install-unit-price')?.value) || 0;
+            const qty = Math.max(0, parseFloat(document.getElementById('install-qty')?.value) || 0);
+            if (qty <= 0) return alert('请输入数量');
+            if (unit < 0) return alert('单价不能为负数');
+
+            const row = { id: Date.now(), description: desc, spec: '', batchNo: '', quantity: qty, price: unit, cost: 0 };
+            const firstBlankIdx = quoteRows.findIndex(r => r.isBlank);
+            const insertIdx = firstBlankIdx === -1 ? quoteRows.length : firstBlankIdx;
+            quoteRows.splice(insertIdx, 0, row);
+            closeInstallModal();
+            renderQuote();
         };
 
         window.changeInventoryHistoryPage = (delta) => {
@@ -4486,6 +4533,21 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                 if (cableEl && Number.isFinite(parseFloat(d?.cable))) cableEl.value = String(d.cable);
             }
         } catch (e) {}
+        try {
+            const raw = localStorage.getItem('minova_installer_profit_v1');
+            if (raw) {
+                installerProfitSettings = normalizeInstallerProfitSettings(JSON.parse(raw));
+                const cnEl = document.getElementById('installer-profit-cn');
+                const myEl = document.getElementById('installer-profit-my');
+                if (cnEl) cnEl.value = String(installerProfitSettings.cnPct);
+                if (myEl) myEl.value = String(installerProfitSettings.myPct);
+            } else {
+                const cnEl = document.getElementById('installer-profit-cn');
+                const myEl = document.getElementById('installer-profit-my');
+                if (cnEl && String(cnEl.value ?? '').trim() === '') cnEl.value = String(installerProfitSettings.cnPct);
+                if (myEl && String(myEl.value ?? '').trim() === '') myEl.value = String(installerProfitSettings.myPct);
+            }
+        } catch (e) {}
 
         window.__minovaSync = initGitHubSync({
             getLocalState: () => ({
@@ -4493,7 +4555,8 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                 inventory,
                 inventoryHistory,
                 subcategoriesByCategory,
-                profitSettings
+                profitSettings,
+                installerProfitSettings
             }),
             applyRemoteState: (data) => {
                 applyStateFromData(data, Date.now());
@@ -4509,7 +4572,8 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                     inventory,
                     inventoryHistory,
                     subcategoriesByCategory,
-                    profitSettings
+                    profitSettings,
+                    installerProfitSettings
                 }
             };
             const json = JSON.stringify(snapshot).replaceAll('<', '\\u003c');

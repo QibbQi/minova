@@ -1,6 +1,6 @@
 {
   "v": 1,
-  "updatedAt": "2026-04-09T10:07:09.189Z",
+  "updatedAt": "2026-04-10T04:10:21.066Z",
   "data": {
     "products": [
       {
@@ -290,6 +290,22 @@
         "cost": 666,
         "price": 6666,
         "ts": 1775729216048
+      },
+      {
+        "id": "GFZJ007",
+        "name": "陈冠希",
+        "category": "光伏组件",
+        "vendor": "汉伏",
+        "spec": "",
+        "scenario": "双面",
+        "warrantyYears": "",
+        "warrantyCycles": "",
+        "leadTime": "",
+        "contact": "",
+        "contactInfo": "",
+        "cost": 4444,
+        "price": 5551,
+        "ts": 1775794215347
       }
     ],
     "inventory": [

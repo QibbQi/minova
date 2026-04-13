@@ -487,6 +487,9 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                     <p class="text-xs text-slate-400 mt-1">记录产品入库出库及批次采购价格</p>
                 </div>
                 <div class="flex items-center gap-3">
+                    <button onclick="toggleInventorySummary()" id="btn-inv-summary" class="bg-slate-100 text-slate-700 px-4 py-2 rounded-xl text-sm font-black shadow-lg shadow-slate-100 hover:bg-slate-200 border border-slate-200 flex items-center gap-2">
+                        <span>一键汇总</span>
+                    </button>
                     <button onclick="openHistoricalInventoryModal()" class="bg-yellow-100 text-yellow-800 px-4 py-2 rounded-xl text-sm font-black shadow-lg shadow-yellow-100 hover:bg-yellow-50 border border-yellow-200 flex items-center gap-2">
                         <span>历史库存</span>
                     </button>
@@ -502,7 +505,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
             <div class="overflow-x-auto">
                 <table class="w-full text-left whitespace-nowrap">
                     <thead class="bg-slate-50/50">
-                        <tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                        <tr id="inventory-head-row" class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
                             <th class="py-4 px-4">产品编号</th>
                             <th class="py-4 px-4">产品全称</th>
                             <th class="py-4 px-4">类目</th>
@@ -2392,6 +2395,8 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
         let inventoryHistory = [];
         let salesRecords = [];
         let historicalInventory = [];
+        let inventorySummaryMode = false;
+        let inventoryFullHeadHtml = '';
         let inventoryHistoryPage = 1;
         let subcategoriesByCategory = {};
         let profitSettings = null;
@@ -3316,6 +3321,31 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
             }
             renderQuote();
         };
+        let translateCache = {};
+        let translatePending = new Set();
+        try { translateCache = safeJsonParseLoose(localStorage.getItem('minova_translate_cache_v1'), {}) || {}; } catch (e) { translateCache = {}; }
+        function looksChinese(s) { return /[\u4e00-\u9fff]/.test(String(s || '')); }
+        async function translateZhToEn(text) {
+            const raw = String(text || '').trim();
+            if (!raw) return '';
+            if (translateCache[raw]) return translateCache[raw];
+            if (translatePending.has(raw)) return '';
+            translatePending.add(raw);
+            try {
+                const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(raw)}&langpair=zh-CN|en`;
+                const res = await fetch(url, { cache: 'no-store' });
+                const data = await res.json();
+                const out = String(data?.responseData?.translatedText || '').trim();
+                if (out) {
+                    translateCache[raw] = out;
+                    try { localStorage.setItem('minova_translate_cache_v1', JSON.stringify(translateCache)); } catch (e) {}
+                }
+            } catch (e) {}
+            translatePending.delete(raw);
+            if (currentLang === 'en') renderQuote();
+            return translateCache[raw] || '';
+        }
+
         window.updateRow = (id, field, val) => {
             const row = quoteRows.find(r => r.id === id);
             if(!row) return;
@@ -3323,7 +3353,10 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
             if (field === 'price') {
                 const rate = parseFloat(document.getElementById('rate-myr-cny').value) || 1.53;
                 row.price = currentCurrency === 'MYR' ? (parseFloat(val) || 0) * rate : parseFloat(val) || 0;
-            } else if (field === 'description' || field === 'spec' || field === 'batchNo') {
+            } else if (field === 'description') {
+                if (currentLang === 'en') row.descEn = val;
+                else row.description = val;
+            } else if (field === 'spec' || field === 'batchNo') {
                 row[field] = val;
             } else {
                 row[field] = parseFloat(val) || 0;
@@ -3429,6 +3462,17 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
 
             container.innerHTML = quoteRows.map((r, idx) => {
                 const priceInCurrentCurrency = currentCurrency === 'MYR' ? r.price / rate : r.price;
+                const descVal = currentLang === 'en'
+                    ? (r.descEn || r.description || '')
+                    : (r.description || '');
+                if (currentLang === 'en' && !r.descEn && looksChinese(r.description)) {
+                    translateZhToEn(r.description).then(enText => {
+                        if (enText) {
+                            const row = quoteRows.find(x => x.id === r.id);
+                            if (row && !row.descEn) row.descEn = enText;
+                        }
+                    });
+                }
                 const displayNo = isCountedRow(r) ? (++displayIndex) : '';
                 const rowHtml = r.isBlank ? `
                 <tr class="group transition-colors hover:bg-slate-50/50">
@@ -3451,7 +3495,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                 ` : `
                 <tr class="border-b border-slate-50 group transition-colors hover:bg-slate-50/50">
                     <td class="py-4 px-2 text-center text-[10px] font-mono text-slate-300">${displayNo}</td>
-                    <td class="py-4 px-2"><input type="text" value="${r.description}" oninput="updateRow(${r.id}, 'description', this.value)" class="w-full bg-transparent outline-none text-sm font-medium focus:text-blue-600" placeholder="${currentLang === 'en' ? 'Description' : '描述'}"></td>
+                    <td class="py-4 px-2"><input type="text" value="${descVal}" oninput="updateRow(${r.id}, 'description', this.value)" class="w-full bg-transparent outline-none text-sm font-medium focus:text-blue-600" placeholder="${currentLang === 'en' ? 'Description' : '描述'}"></td>
                     <td class="py-4 px-2"><input type="text" value="${r.spec}" oninput="updateRow(${r.id}, 'spec', this.value)" class="w-full bg-transparent outline-none text-sm focus:text-blue-600" placeholder="${currentLang === 'en' ? 'Spec' : '规格'}"></td>
                     <td class="py-4 px-2 no-print"><input type="text" value="${r.batchNo}" oninput="updateRow(${r.id}, 'batchNo', this.value)" class="w-full bg-transparent outline-none text-sm focus:text-blue-600" placeholder="${currentLang === 'en' ? 'Batch' : '采购批次'}"></td>
                     <td class="py-4 px-2"><input type="number" value="${r.quantity}" oninput="updateRow(${r.id}, 'quantity', this.value)" class="w-full bg-transparent outline-none text-center text-sm"></td>
@@ -3534,6 +3578,62 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
 
         window.renderInventory = () => {
             const list = document.getElementById('inventory-list');
+            const headRow = document.getElementById('inventory-head-row');
+            if (headRow && !inventoryFullHeadHtml) inventoryFullHeadHtml = headRow.innerHTML;
+            const btn = document.getElementById('btn-inv-summary');
+            if (btn) btn.innerHTML = inventorySummaryMode ? '<span>取消汇总</span>' : '<span>一键汇总</span>';
+            if (inventorySummaryMode && headRow) {
+                headRow.innerHTML = `
+                    <th class="py-4 px-4">产品编号</th>
+                    <th class="py-4 px-4">产品全称</th>
+                    <th class="py-4 px-4">类目</th>
+                    <th class="py-4 px-4">子类目</th>
+                    <th class="py-4 px-4">供应商</th>
+                    <th class="py-4 px-4">规格</th>
+                    <th class="py-4 px-4 text-center">库存数量(汇总)</th>
+                    <th class="py-4 px-4 text-right">总库存平均成本(¥)</th>
+                `;
+            } else if (!inventorySummaryMode && headRow && inventoryFullHeadHtml) {
+                headRow.innerHTML = inventoryFullHeadHtml;
+            }
+
+            if (inventorySummaryMode) {
+                if (inventory.length === 0) {
+                    list.innerHTML = `<tr><td colspan="8" class="py-20 text-center text-slate-400 text-sm">暂无库存记录...</td></tr>`;
+                    return;
+                }
+                const grouped = new Map();
+                for (const item of inventory) {
+                    const pid = String(item.productId || '').trim();
+                    if (!pid) continue;
+                    const q = parseFloat(item.quantity) || 0;
+                    if (q <= 0) continue;
+                    const prev = grouped.get(pid) || { productId: pid, quantity: 0 };
+                    prev.quantity += q;
+                    grouped.set(pid, prev);
+                }
+                const rows = [...grouped.values()].sort((a, b) => a.productId.localeCompare(b.productId));
+                list.innerHTML = rows.map(r => {
+                    const p = products.find(x => x.id === r.productId) || {};
+                    const ref = inventory.find(x => x.productId === r.productId && (parseFloat(x.quantity) || 0) > 0) || inventory.find(x => x.productId === r.productId);
+                    const specNum = Number.isFinite(parseFloat(ref?.spec)) ? parseFloat(ref.spec) : 1;
+                    const avgCost = getAverageInventoryCostPerSpec(r.productId, specNum);
+                    return `
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="py-4 px-4 text-xs font-mono text-slate-500">${r.productId}</td>
+                            <td class="py-4 px-4 font-bold text-slate-700 text-sm">${p.name || '未知产品'}</td>
+                            <td class="py-4 px-4 text-xs text-slate-500 uppercase tracking-tighter">${p.category || '-'}</td>
+                            <td class="py-4 px-4 text-xs text-slate-600">${p.scenario || '-'}</td>
+                            <td class="py-4 px-4 text-xs text-slate-600">${p.vendor || '-'}</td>
+                            <td class="py-4 px-4 text-xs text-slate-600">${specNum}</td>
+                            <td class="py-4 px-4 text-center font-black text-green-700">${formatNumberAuto(r.quantity, 4)}</td>
+                            <td class="py-4 px-4 text-right text-sm font-mono text-slate-700">¥${(parseFloat(avgCost) || 0).toFixed(4)}</td>
+                        </tr>
+                    `;
+                }).join('');
+                return;
+            }
+
             if(inventory.length === 0) {
                 list.innerHTML = `<tr><td colspan="20" class="py-20 text-center text-slate-400 text-sm">暂无库存记录...</td></tr>`;
                 return;
@@ -3587,6 +3687,11 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                         </td>
                     </tr>`;
             }).join('');
+        };
+
+        window.toggleInventorySummary = () => {
+            inventorySummaryMode = !inventorySummaryMode;
+            renderInventory();
         };
 
         // --- 全局浮窗逻辑 ---
@@ -5438,9 +5543,10 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                 const p = products.find(prod => prod.id === item.productId);
                 if (!p) return false;
 
+                const pid = String(item.productId || '').toLowerCase();
                 return (!vendor || p.vendor === vendor) && 
                        (!category || p.category === category) && 
-                       (!query || p.name.toLowerCase().includes(query) || p.category.toLowerCase().includes(query));
+                       (!query || p.name.toLowerCase().includes(query) || p.category.toLowerCase().includes(query) || pid.includes(query));
             });
 
             if(filtered.length === 0) { list.innerHTML = `<div class="p-8 text-center text-xs text-slate-400 italic">未找到有库存的产品...</div>`; return; }
@@ -5455,9 +5561,13 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                 return `
                 <div class="p-3 hover:bg-purple-50 transition-colors group border-b border-slate-50">
                     <div class="flex justify-between items-start">
-                        <span class="text-sm font-bold text-slate-700">${p.name}</span>
+                        <div class="min-w-0">
+                            <div class="text-sm font-bold text-slate-700 truncate" title="${p.name}">${p.name}</div>
+                            <div class="text-[10px] font-mono text-slate-400">${item.productId || ''}</div>
+                        </div>
                         <div class="text-right">
-                            <span class="text-[10px] text-slate-400 block">库存: ${item.quantity} | 批次: ${item.batchNo}</span>
+                            <span class="text-[10px] text-slate-400 block">仓库: ${item.location || '-'} | 批次: ${item.batchNo}</span>
+                            <span class="text-[10px] text-slate-400 block">库存: <span class="text-green-700 font-black">${formatNumberAuto(item.quantity, 4)}</span></span>
                         </div>
                     </div>
                     <div class="flex justify-between items-center mt-2">

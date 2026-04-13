@@ -487,6 +487,9 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                     <p class="text-xs text-slate-400 mt-1">记录产品入库出库及批次采购价格</p>
                 </div>
                 <div class="flex items-center gap-3">
+                    <button onclick="openHistoricalInventoryModal()" class="bg-yellow-100 text-yellow-800 px-4 py-2 rounded-xl text-sm font-black shadow-lg shadow-yellow-100 hover:bg-yellow-50 border border-yellow-200 flex items-center gap-2">
+                        <span>历史库存</span>
+                    </button>
                     <button onclick="openSalesOutModal()" class="bg-yellow-400 text-purple-900 px-4 py-2 rounded-xl text-sm font-black shadow-lg shadow-yellow-100 hover:bg-yellow-300 flex items-center gap-2">
                         <span>销售出库</span>
                     </button>
@@ -1623,6 +1626,40 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
         </div>
     </div>
 
+    <div id="historical-inventory-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center z-[220] p-4">
+        <div class="bg-white rounded-3xl p-8 w-full max-w-4xl shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between gap-4 mb-6">
+                <h3 class="text-xl font-black text-slate-800">历史库存</h3>
+                <div class="flex items-center gap-2">
+                    <button onclick="exportHistoricalInventory()" class="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-slate-100 hover:bg-black">导出</button>
+                    <button onclick="closeHistoricalInventoryModal()" class="bg-slate-100 text-slate-700 px-4 py-2 rounded-xl text-sm font-bold hover:bg-slate-200 border border-slate-200">关闭</button>
+                </div>
+            </div>
+            <div class="text-xs text-slate-400 font-bold mb-3" id="historical-inventory-summary">共 0 条</div>
+            <div class="overflow-x-auto max-h-[60vh] border border-slate-200 rounded-2xl">
+                <table class="w-full text-left whitespace-nowrap">
+                    <thead class="bg-slate-50/50">
+                        <tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                            <th class="py-3 px-4">归档时间</th>
+                            <th class="py-3 px-4">产品编号</th>
+                            <th class="py-3 px-4">产品全称</th>
+                            <th class="py-3 px-4">类目</th>
+                            <th class="py-3 px-4">子类目</th>
+                            <th class="py-3 px-4">供应商</th>
+                            <th class="py-3 px-4">采购入库时间</th>
+                            <th class="py-3 px-4">批次号</th>
+                            <th class="py-3 px-4 text-right">规格</th>
+                            <th class="py-3 px-4 text-right">批次采购价(¥)</th>
+                            <th class="py-3 px-4">仓库</th>
+                            <th class="py-3 px-4">备注</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historical-inventory-list" class="divide-y divide-slate-50"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <!-- 全局浮窗容器 -->
     <div id="global-tooltip" class="fixed hidden p-3 bg-slate-800 text-white text-xs rounded-lg shadow-xl z-[9999] pointer-events-none w-64 whitespace-normal"></div>
 
@@ -2354,6 +2391,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
         let inventory = [];
         let inventoryHistory = [];
         let salesRecords = [];
+        let historicalInventory = [];
         let inventoryHistoryPage = 1;
         let subcategoriesByCategory = {};
         let profitSettings = null;
@@ -2616,6 +2654,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                     inventoryHistory = Array.isArray(embedded.data.inventoryHistory) ? embedded.data.inventoryHistory : [];
                     if (inventoryHistory.length > 1000) inventoryHistory = inventoryHistory.slice(inventoryHistory.length - 1000);
                     salesRecords = Array.isArray(embedded.data.salesRecords) ? embedded.data.salesRecords : [];
+                    historicalInventory = Array.isArray(embedded.data.historicalInventory) ? embedded.data.historicalInventory : [];
                     subcategoriesByCategory = embedded.data.subcategoriesByCategory && typeof embedded.data.subcategoriesByCategory === 'object' ? embedded.data.subcategoriesByCategory : {};
                     profitSettings = normalizeProfitSettings(embedded.data.profitSettings || null);
                     installerProfitSettings = normalizeInstallerProfitSettings(embedded.data.installerProfitSettings || installerProfitSettings || null);
@@ -2625,6 +2664,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                         localStorage.setItem('minova_inventory', JSON.stringify(inventory));
                         localStorage.setItem('minova_inventory_history', JSON.stringify(inventoryHistory));
                         localStorage.setItem('minova_sales_records_v1', JSON.stringify(salesRecords));
+                        localStorage.setItem('minova_historical_inventory_v1', JSON.stringify(historicalInventory));
                         localStorage.setItem('minova_subcategories_v1', JSON.stringify(subcategoriesByCategory));
                         localStorage.setItem('minova_profit_settings_v1', JSON.stringify(profitSettings));
                         localStorage.setItem('minova_installer_profit_v1', JSON.stringify(installerProfitSettings));
@@ -2685,6 +2725,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
             inventoryHistory = Array.isArray(data?.inventoryHistory) ? data.inventoryHistory : [];
             if (inventoryHistory.length > 1000) inventoryHistory = inventoryHistory.slice(inventoryHistory.length - 1000);
             salesRecords = Array.isArray(data?.salesRecords) ? data.salesRecords : [];
+            historicalInventory = Array.isArray(data?.historicalInventory) ? data.historicalInventory : [];
             subcategoriesByCategory = data?.subcategoriesByCategory && typeof data.subcategoriesByCategory === 'object' ? data.subcategoriesByCategory : {};
             profitSettings = normalizeProfitSettings(data?.profitSettings || profitSettings || null);
             installerProfitSettings = normalizeInstallerProfitSettings(data?.installerProfitSettings || installerProfitSettings || null);
@@ -2694,6 +2735,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                 localStorage.setItem('minova_inventory', JSON.stringify(inventory));
                 localStorage.setItem('minova_inventory_history', JSON.stringify(inventoryHistory));
                 localStorage.setItem('minova_sales_records_v1', JSON.stringify(salesRecords));
+                localStorage.setItem('minova_historical_inventory_v1', JSON.stringify(historicalInventory));
                 localStorage.setItem('minova_subcategories_v1', JSON.stringify(subcategoriesByCategory));
                 localStorage.setItem('minova_profit_settings_v1', JSON.stringify(profitSettings));
                 localStorage.setItem('minova_installer_profit_v1', JSON.stringify(installerProfitSettings));
@@ -2701,6 +2743,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
             renderDb();
             renderInventory();
             renderSalesRecords();
+            renderHistoricalInventory();
             renderInventoryHistory();
             updatePickerFilters();
             renderPicker();
@@ -2752,6 +2795,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
             localStorage.setItem('minova_inventory', JSON.stringify(inventory));
             localStorage.setItem('minova_inventory_history', JSON.stringify(inventoryHistory));
             localStorage.setItem('minova_sales_records_v1', JSON.stringify(salesRecords));
+            localStorage.setItem('minova_historical_inventory_v1', JSON.stringify(historicalInventory));
             rebuildSubcategoryIndexFromProducts();
             saveSubcategoryIndex();
             ensureProfitSettingsCoverage();
@@ -2759,6 +2803,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
             renderDb();
             renderInventory();
             renderSalesRecords();
+            renderHistoricalInventory();
             renderInventoryHistory();
             updatePickerFilters();
             renderPicker();
@@ -4003,7 +4048,21 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
             }
             list.innerHTML = rows.slice(0, 500).map(r => {
                 const finalPrice = parseFloat(r.finalContractPrice) || 0;
-                const profit = parseFloat(r.totalProfit) || 0;
+                const qty = parseFloat(r.quantity) || 0;
+                const spec = parseFloat(r.spec) || 1;
+                const avgCostPerSpec = parseFloat(r.avgCostPerSpec) || 0;
+                const goodsCost = avgCostPerSpec * spec * qty;
+                const customsFee = computeSalesCustomsFeeByType({
+                    avgCostPerSpec,
+                    spec,
+                    qty,
+                    priceType: r.priceType,
+                    dutyPct: r.dutyPct,
+                    sstPct: r.sstPct,
+                    grayPct: r.grayPct,
+                    fallback: r.customsFee
+                });
+                const profit = finalPrice - goodsCost - customsFee;
                 const margin = finalPrice > 0 ? (profit / finalPrice * 100) : 0;
                 const mClass = margin >= 15 ? 'text-green-700 bg-green-50' : margin >= 0 ? 'text-orange-700 bg-orange-50' : 'text-red-700 bg-red-50';
                 return `
@@ -4014,13 +4073,13 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                         <td class="py-3 px-4 text-xs text-slate-600">${r.subcategory || '-'}</td>
                         <td class="py-3 px-4 text-xs text-slate-600">${r.vendor || '-'}</td>
                         <td class="py-3 px-4 text-xs text-slate-500">${r.outAt ? `${r.outDate || ''} ${new Date(r.outAt).toLocaleTimeString()}`.trim() : (r.outDate || '-')}</td>
-                        <td class="py-3 px-4 text-xs text-right font-bold text-slate-700">${parseFloat(r.quantity || 0)}</td>
+                        <td class="py-3 px-4 text-xs text-right font-bold text-slate-700">${qty}</td>
                         <td class="py-3 px-4 text-xs text-slate-600">${r.contractNo || '-'}</td>
                         <td class="py-3 px-4 text-xs text-right font-mono text-slate-700">¥${(parseFloat(r.salesPrice) || 0).toFixed(4)}</td>
-                        <td class="py-3 px-4 text-xs text-right font-mono text-slate-700">${(parseFloat(r.spec) || 0).toFixed(2)}</td>
+                        <td class="py-3 px-4 text-xs text-right font-mono text-slate-700">${spec.toFixed(2)}</td>
                         <td class="py-3 px-4 text-xs text-right font-mono text-purple-700 font-black">¥${finalPrice.toFixed(2)}</td>
-                        <td class="py-3 px-4 text-xs text-right font-mono text-slate-700">¥${(parseFloat(r.goodsCost) || 0).toFixed(2)}</td>
-                        <td class="py-3 px-4 text-xs text-right font-mono text-slate-700">¥${(parseFloat(r.customsFee) || 0).toFixed(2)}</td>
+                        <td class="py-3 px-4 text-xs text-right font-mono text-slate-700">¥${goodsCost.toFixed(2)}</td>
+                        <td class="py-3 px-4 text-xs text-right font-mono text-slate-700">¥${customsFee.toFixed(2)}</td>
                         <td class="py-3 px-4 text-xs text-right font-mono text-slate-900 font-black">¥${profit.toFixed(2)}</td>
                         <td class="py-3 px-4 text-xs text-right"><span class="px-2 py-1 rounded ${mClass} text-[10px] font-black">${margin.toFixed(1)}%</span></td>
                         <td class="py-3 px-4 text-xs text-slate-600">${r.salesperson || '-'}</td>
@@ -4036,6 +4095,112 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
             }).join('');
         };
 
+        function computeSalesCustomsFeeByType({ avgCostPerSpec, spec, qty, priceType, dutyPct, sstPct, grayPct, fallback }) {
+            const base = (parseFloat(avgCostPerSpec) || 0) * (parseFloat(spec) || 0) * (parseFloat(qty) || 0);
+            const pt = String(priceType || '');
+            const duty = parseFloat(dutyPct);
+            const sst = parseFloat(sstPct);
+            const gray = parseFloat(grayPct);
+            if (pt.startsWith('clearance_') && Number.isFinite(duty) && Number.isFinite(sst)) return base * ((duty + sst) / 100);
+            if (pt.startsWith('gray_') && Number.isFinite(gray)) return base * (gray / 100);
+            const fb = parseFloat(fallback);
+            return Number.isFinite(fb) ? fb : 0;
+        }
+        function restoreArchivedInventoryItemById(id, qtyToAdd) {
+            const qty = parseInt(qtyToAdd, 10) || 0;
+            if (!id || qty <= 0) return;
+            const live = inventory.find(i => i.id === id);
+            if (live) {
+                live.quantity = (parseInt(live.quantity, 10) || 0) + qty;
+                return;
+            }
+            const idx = historicalInventory.findIndex(i => i.id === id);
+            if (idx === -1) return;
+            const item = historicalInventory[idx];
+            historicalInventory.splice(idx, 1);
+            const { archivedAt, archivedReason, ...rest } = item || {};
+            inventory.push({ ...rest, quantity: qty });
+        }
+        function archiveZeroQtyInventoryItems(reason) {
+            const now = Date.now();
+            const toArchive = [];
+            for (const item of inventory) {
+                const q = parseInt(item.quantity, 10) || 0;
+                if (q <= 0) toArchive.push({ ...item, quantity: 0, archivedAt: now, archivedReason: String(reason || '') });
+            }
+            if (toArchive.length) {
+                inventory = inventory.filter(i => (parseInt(i.quantity, 10) || 0) > 0);
+                historicalInventory.unshift(...toArchive);
+                if (historicalInventory.length > 10000) historicalInventory = historicalInventory.slice(0, 10000);
+            }
+        }
+        window.openHistoricalInventoryModal = () => {
+            const modal = document.getElementById('historical-inventory-modal');
+            if (modal) modal.classList.remove('hidden');
+            renderHistoricalInventory();
+        };
+        window.closeHistoricalInventoryModal = () => {
+            const modal = document.getElementById('historical-inventory-modal');
+            if (modal) modal.classList.add('hidden');
+        };
+        window.renderHistoricalInventory = () => {
+            const list = document.getElementById('historical-inventory-list');
+            const sumEl = document.getElementById('historical-inventory-summary');
+            if (!list || !sumEl) return;
+            const rows = Array.isArray(historicalInventory) ? historicalInventory : [];
+            sumEl.textContent = `共 ${rows.length} 条`;
+            if (rows.length === 0) {
+                list.innerHTML = `<tr><td colspan="12" class="py-10 text-center text-slate-400 text-sm">暂无历史库存...</td></tr>`;
+                return;
+            }
+            list.innerHTML = rows.slice(0, 500).map(it => {
+                const p = products.find(x => x.id === it.productId) || {};
+                return `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="py-3 px-4 text-xs text-slate-500">${it.archivedAt ? new Date(it.archivedAt).toLocaleString() : '-'}</td>
+                        <td class="py-3 px-4 text-xs font-mono text-slate-600">${it.productId || '-'}</td>
+                        <td class="py-3 px-4 text-xs font-bold text-slate-700 max-w-[180px] truncate" title="${p.name || ''}">${p.name || '-'}</td>
+                        <td class="py-3 px-4 text-xs text-slate-600">${p.category || '-'}</td>
+                        <td class="py-3 px-4 text-xs text-slate-600">${p.scenario || '-'}</td>
+                        <td class="py-3 px-4 text-xs text-slate-600">${p.vendor || '-'}</td>
+                        <td class="py-3 px-4 text-xs text-slate-500">${it.purchaseDate || '-'}</td>
+                        <td class="py-3 px-4 text-xs text-slate-500">${it.batchNo || '-'}</td>
+                        <td class="py-3 px-4 text-xs text-right font-mono text-slate-700">${(parseFloat(it.spec) || 1).toFixed(2)}</td>
+                        <td class="py-3 px-4 text-xs text-right font-mono text-slate-700">¥${(parseFloat(it.purchasePrice) || 0).toFixed(4)}</td>
+                        <td class="py-3 px-4 text-xs text-slate-600">${it.location || '-'}</td>
+                        <td class="py-3 px-4 text-xs text-slate-500 truncate max-w-[160px]" title="${it.archivedReason || ''}">${it.archivedReason || '-'}</td>
+                    </tr>
+                `;
+            }).join('');
+        };
+        window.exportHistoricalInventory = () => {
+            const rows = (Array.isArray(historicalInventory) ? historicalInventory : []).map(it => {
+                const p = products.find(x => x.id === it.productId) || {};
+                return {
+                    归档时间: it.archivedAt ? new Date(it.archivedAt).toLocaleString() : '',
+                    归档原因: it.archivedReason || '',
+                    产品编号: it.productId || '',
+                    产品全称: p.name || '',
+                    类目: p.category || '',
+                    子类目: p.scenario || '',
+                    供应商: p.vendor || '',
+                    采购入库时间: it.purchaseDate || '',
+                    批次号: it.batchNo || '',
+                    规格: parseFloat(it.spec) || 1,
+                    批次采购价格: parseFloat(it.purchasePrice) || 0,
+                    单位采购价: parseFloat(it.unitPurchasePrice) || 0,
+                    运费比率: parseFloat(it.shippingRate) || 0,
+                    国内税率: parseFloat(it.domesticTaxRate) || 0,
+                    仓库: it.location || '',
+                    原始记录: JSON.stringify(it)
+                };
+            });
+            const ws = XLSX.utils.json_to_sheet(rows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, '历史库存');
+            XLSX.writeFile(wb, '历史库存.xlsx');
+        };
+
         window.editSalesRecord = (id) => {
             const r = salesRecords.find(x => x.id === id);
             if (!r) return;
@@ -4048,9 +4213,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
             if (!confirm('确定删除该销售出库记录吗？将尝试回滚库存。')) return;
             const alloc = Array.isArray(r.allocations) ? r.allocations : [];
             for (const a of alloc) {
-                const item = inventory.find(i => i.id === a.id);
-                if (!item) continue;
-                item.quantity = (parseInt(item.quantity, 10) || 0) + (parseInt(a.qty, 10) || 0);
+                restoreArchivedInventoryItemById(a.id, a.qty);
             }
             salesRecords.splice(idx, 1);
             pushInventoryHistory({
@@ -4402,6 +4565,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                         batchNo: item.batchNo,
                         note: `入库性质：调拨入库 | 入库日期：${outDate || '-'} | 调入：${toLoc} ← 调出：${fromLoc}`
                     });
+                    archiveZeroQtyInventoryItems(`调拨出库 | ${fromLoc}→${toLoc}`);
                     saveToLocal();
                     closeInventoryModal();
                     return;
@@ -4419,7 +4583,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                     note: `出库性质：${outNature} | 出库日期：${outDate || '-'} | 从 ${item.location || '未指定位置'} 出库`
                 });
 
-                // 如果数量为0且不是最后一个批次，可以选择保留或删除，这里选择保留记录但显示0
+                archiveZeroQtyInventoryItems(`批次出库 | ${outNature}`);
             }
             
             saveToLocal();
@@ -4778,7 +4942,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                 }
                 const avgCostPerSpec = parseFloat(document.getElementById('sales-out-avg-cost')?.value) || (parseFloat(editingPrev.avgCostPerSpec) || 0);
                 const goodsCost = avgCostPerSpec * spec * qty;
-                const customsFee = (unitPriceCny - avgCostPerSpec) * spec * qty;
+                const customsFee = computeSalesCustomsFeeByType({ avgCostPerSpec, spec, qty, priceType, dutyPct, sstPct, grayPct, fallback: 0 });
                 const totalProfit = finalPriceCny - goodsCost - customsFee;
                 const marginPct = finalPriceCny > 0 ? (totalProfit / finalPriceCny) * 100 : 0;
                 pushInventoryHistory({
@@ -4818,9 +4982,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
             }
             if (prevAlloc) {
                 for (const a of prevAlloc) {
-                    const item = inventory.find(i => i.id === a.id);
-                    if (!item) continue;
-                    item.quantity = (parseInt(item.quantity, 10) || 0) + (parseInt(a.qty, 10) || 0);
+                    restoreArchivedInventoryItemById(a.id, a.qty);
                 }
             }
 
@@ -4870,7 +5032,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
 
             const avgCostPerSpec = parseFloat(document.getElementById('sales-out-avg-cost')?.value) || 0;
             const goodsCost = avgCostPerSpec * spec * qty;
-            const customsFee = (unitPriceCny - avgCostPerSpec) * spec * qty;
+            const customsFee = computeSalesCustomsFeeByType({ avgCostPerSpec, spec, qty, priceType, dutyPct, sstPct, grayPct, fallback: 0 });
             const totalProfit = finalPriceCny - goodsCost - customsFee;
             const marginPct = finalPriceCny > 0 ? (totalProfit / finalPriceCny) * 100 : 0;
             const outWarehouse = getLocationSummaryFromAllocations(allocations);
@@ -4910,6 +5072,8 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                 salesRecords.unshift(record);
                 if (salesRecords.length > 5000) salesRecords = salesRecords.slice(0, 5000);
             }
+
+            archiveZeroQtyInventoryItems(`销售出库 | 合同：${contractNo || '-'} | 价格类型：${priceType}`);
 
             if (salesperson) {
                 const list = getSalespeopleList();
@@ -5469,6 +5633,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                 inventory,
                 inventoryHistory,
                 salesRecords,
+                historicalInventory,
                 subcategoriesByCategory,
                 profitSettings,
                 installerProfitSettings
@@ -5487,6 +5652,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                     inventory,
                     inventoryHistory,
                     salesRecords,
+                    historicalInventory,
                     subcategoriesByCategory,
                     profitSettings,
                     installerProfitSettings
@@ -5539,6 +5705,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
         renderDb();
         renderInventory();
         renderSalesRecords();
+        renderHistoricalInventory();
         renderInventoryHistory();
         updatePickerFilters();
         renderPicker();

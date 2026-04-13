@@ -1591,7 +1591,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">销售价格 (<span id="sales-out-currency-symbol">¥</span>)</label>
-                            <input type="number" id="sales-out-unit-price" step="0.01" oninput="window.salesOutUnitPriceDirty=true; recalcSalesOutPreview()" onchange="window.salesOutUnitPriceDirty=true; recalcSalesOutPreview()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500 text-right font-black text-purple-700">
+                            <input type="number" id="sales-out-unit-price" step="0.0001" oninput="window.salesOutUnitPriceDirty=true; recalcSalesOutPreview()" onchange="window.salesOutUnitPriceDirty=true; recalcSalesOutPreview()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500 text-right font-black text-purple-700">
                         </div>
                         <div>
                             <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">最终合同售价 (<span id="sales-out-currency-symbol-final">¥</span>)</label>
@@ -3330,6 +3330,13 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
             }
             calculateQuote();
         };
+
+        function formatNumberAuto(v, maxDecimals = 4) {
+            const n = Number(v);
+            if (!Number.isFinite(n)) return '0';
+            const s = n.toFixed(maxDecimals);
+            return s.replace(/\.?0+$/, '');
+        }
         function calculateQuote() {
             let total = 0, totalCost = 0;
             const rate = parseFloat(document.getElementById('rate-myr-cny').value) || 1.53;
@@ -3448,7 +3455,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                     <td class="py-4 px-2"><input type="text" value="${r.spec}" oninput="updateRow(${r.id}, 'spec', this.value)" class="w-full bg-transparent outline-none text-sm focus:text-blue-600" placeholder="${currentLang === 'en' ? 'Spec' : '规格'}"></td>
                     <td class="py-4 px-2 no-print"><input type="text" value="${r.batchNo}" oninput="updateRow(${r.id}, 'batchNo', this.value)" class="w-full bg-transparent outline-none text-sm focus:text-blue-600" placeholder="${currentLang === 'en' ? 'Batch' : '采购批次'}"></td>
                     <td class="py-4 px-2"><input type="number" value="${r.quantity}" oninput="updateRow(${r.id}, 'quantity', this.value)" class="w-full bg-transparent outline-none text-center text-sm"></td>
-                    <td class="py-4 px-2 whitespace-nowrap"><input type="number" step="0.01" value="${priceInCurrentCurrency.toFixed(2)}" oninput="updateRow(${r.id}, 'price', this.value)" class="w-full bg-transparent outline-none text-right text-sm font-bold"></td>
+                    <td class="py-4 px-2 whitespace-nowrap"><input type="number" step="0.01" value="${formatNumberAuto(priceInCurrentCurrency, 4)}" oninput="updateRow(${r.id}, 'price', this.value)" class="w-full bg-transparent outline-none text-right text-sm font-bold"></td>
                     <td id="margin-${r.id}" class="no-print py-4 px-2 text-center text-[10px] font-bold text-slate-400">0%</td>
                     <td class="py-4 px-2 text-right font-black text-slate-700 text-sm whitespace-nowrap"><span class="currency-symbol mr-1"></span><span id="sub-${r.id}">0.00</span></td>
                     <td class="no-print py-4 px-2 text-center">
@@ -3688,20 +3695,20 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                 el.value = Number.isFinite(parseFloat(v)) ? parseFloat(v).toFixed(digits) : '0.00';
             };
 
-            set('edit-inv-avg-cost', r.avgCost);
+            set('edit-inv-avg-cost', r.avgCost, 4);
             if (dutyEl && String(dutyEl.value ?? '').trim() === '') dutyEl.value = String(r.dutyPct);
             if (sstEl && String(sstEl.value ?? '').trim() === '') sstEl.value = String(r.sstPct);
             if (grayEl && String(grayEl.value ?? '').trim() === '') grayEl.value = String(r.grayPct);
-            set('edit-inv-clearance-cost', r.clearanceCost);
-            set('edit-inv-gray-cost', r.grayCost);
+            set('edit-inv-clearance-cost', r.clearanceCost, 4);
+            set('edit-inv-gray-cost', r.grayCost, 4);
             set('edit-profit-cn-home', r.cnHomePct);
             set('edit-profit-my-home', r.myHomePct);
             set('edit-profit-cn-biz', r.cnBizPct);
             set('edit-profit-my-biz', r.myBizPct);
-            set('edit-price-clearance-home', r.clearanceHomePrice);
-            set('edit-price-clearance-biz', r.clearanceBizPrice);
-            set('edit-price-gray-home', r.grayHomePrice);
-            set('edit-price-gray-biz', r.grayBizPrice);
+            set('edit-price-clearance-home', r.clearanceHomePrice, 4);
+            set('edit-price-clearance-biz', r.clearanceBizPrice, 4);
+            set('edit-price-gray-home', r.grayHomePrice, 4);
+            set('edit-price-gray-biz', r.grayBizPrice, 4);
         };
         window.openInventoryEditModal = (id) => {
             const item = inventory.find(i => i.id === id);
@@ -4715,7 +4722,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
             updateSalesOutCurrencyUi();
 
             if (unitEl) unitEl.value = salesOutDisplayFromCny(unitCny).toFixed(4);
-            if (finalEl) finalEl.value = salesOutDisplayFromCny(finalCny).toFixed(4);
+            if (finalEl) finalEl.value = salesOutDisplayFromCny(finalCny).toFixed(2);
         };
         window.openSalesOutModal = (opts = {}) => {
             const modal = document.getElementById('sales-out-modal');
@@ -4786,7 +4793,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                 const unitEl = document.getElementById('sales-out-unit-price');
                 const finalEl = document.getElementById('sales-out-final-price');
                 if (unitEl) unitEl.value = salesOutDisplayFromCny(parseFloat(editingRecord.salesPrice) || 0).toFixed(4);
-                if (finalEl) finalEl.value = salesOutDisplayFromCny(parseFloat(editingRecord.finalContractPrice) || 0).toFixed(4);
+                if (finalEl) finalEl.value = salesOutDisplayFromCny(parseFloat(editingRecord.finalContractPrice) || 0).toFixed(2);
                 const contractEl = document.getElementById('sales-out-contract-no');
                 if (contractEl) contractEl.value = String(editingRecord.contractNo || '');
                 const salespersonEl = document.getElementById('sales-out-salesperson');
@@ -4898,7 +4905,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
             const finalEl = document.getElementById('sales-out-final-price');
             if (finalEl && !window.salesOutFinalPriceDirty) {
                 const finalCny = (qty * spec) * unitCny;
-                finalEl.value = salesOutDisplayFromCny(finalCny).toFixed(4);
+                finalEl.value = salesOutDisplayFromCny(finalCny).toFixed(2);
             }
             if (previewEl) {
                 const lines = formatAllocationsPreview(allocations, 3);
@@ -5459,10 +5466,10 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                             <span class="text-[9px] uppercase px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded">${p.vendor}</span>
                         </div>
                         <div class="flex flex-wrap gap-2 justify-end">
-                            <button onclick="pickProduct('${item.id}', 'clearance_home')" class="px-3 py-1 bg-blue-700 text-white text-[10px] font-bold rounded-lg hover:bg-blue-800 transition-all shadow-sm">清关家用 ¥${parseFloat(ch).toFixed(2)}</button>
-                            <button onclick="pickProduct('${item.id}', 'clearance_biz')" class="px-3 py-1 bg-sky-700 text-white text-[10px] font-bold rounded-lg hover:bg-sky-800 transition-all shadow-sm">清关工商业 ¥${parseFloat(cb).toFixed(2)}</button>
-                            <button onclick="pickProduct('${item.id}', 'gray_home')" class="px-3 py-1 bg-indigo-700 text-white text-[10px] font-bold rounded-lg hover:bg-indigo-800 transition-all shadow-sm">灰清家用 ¥${parseFloat(gh).toFixed(2)}</button>
-                            <button onclick="pickProduct('${item.id}', 'gray_biz')" class="px-3 py-1 bg-violet-700 text-white text-[10px] font-bold rounded-lg hover:bg-violet-800 transition-all shadow-sm">灰清工商业 ¥${parseFloat(gb).toFixed(2)}</button>
+                            <button onclick="pickProduct('${item.id}', 'clearance_home')" class="px-3 py-1 bg-blue-700 text-white text-[10px] font-bold rounded-lg hover:bg-blue-800 transition-all shadow-sm">清关家用 ¥${formatNumberAuto(ch, 4)}</button>
+                            <button onclick="pickProduct('${item.id}', 'clearance_biz')" class="px-3 py-1 bg-sky-700 text-white text-[10px] font-bold rounded-lg hover:bg-sky-800 transition-all shadow-sm">清关工商业 ¥${formatNumberAuto(cb, 4)}</button>
+                            <button onclick="pickProduct('${item.id}', 'gray_home')" class="px-3 py-1 bg-indigo-700 text-white text-[10px] font-bold rounded-lg hover:bg-indigo-800 transition-all shadow-sm">灰清家用 ¥${formatNumberAuto(gh, 4)}</button>
+                            <button onclick="pickProduct('${item.id}', 'gray_biz')" class="px-3 py-1 bg-violet-700 text-white text-[10px] font-bold rounded-lg hover:bg-violet-800 transition-all shadow-sm">灰清工商业 ¥${formatNumberAuto(gb, 4)}</button>
                         </div>
                     </div>
                 </div>`}).join('');

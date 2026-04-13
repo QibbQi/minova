@@ -221,14 +221,14 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
             </div>
 
             <div class="flex-grow">
-                <table class="w-full text-left">
+                <table class="w-full text-left table-fixed" id="quote-table">
                     <thead>
                         <tr class="border-b-2 border-purple-900 text-[10px] font-black uppercase text-slate-400">
                             <th class="py-3 px-2 w-10">#</th>
-                            <th class="py-3 px-2" id="th-desc">产品</th>
-                            <th class="py-3 px-2 w-32" id="th-spec">规格型号</th>
+                            <th class="py-3 px-2 w-[55%] min-w-[30ch]" id="th-desc">产品</th>
+                            <th class="py-3 px-2 w-24 text-center" id="th-spec">规格型号</th>
                             <th class="py-3 px-2 w-32 no-print" id="th-batch">采购批次</th>
-                            <th class="py-3 px-2 w-20 text-center" id="th-qty">数量</th>
+                            <th class="py-3 px-2 w-14 text-center" id="th-qty">数量</th>
                             <th class="py-3 px-2 w-32 text-right" id="th-price">单价 (¥)</th>
                             <th class="no-print py-3 px-2 w-24 text-center" id="th-margin">毛利%</th>
                             <th class="py-3 px-2 w-32 text-right" id="th-amount">小计 (¥)</th>
@@ -239,7 +239,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                 <tr class="border-b border-slate-50 group transition-colors hover:bg-slate-50/50">
                     <td class="py-4 px-2 text-center text-[10px] font-mono text-slate-300">1</td>
                     <td class="py-4 px-2"><input type="text" value="" oninput="updateRow(1775729044931, 'description', this.value)" class="w-full bg-transparent outline-none text-sm font-medium focus:text-blue-600" placeholder="描述"></td>
-                    <td class="py-4 px-2"><input type="text" value="" oninput="updateRow(1775729044931, 'spec', this.value)" class="w-full bg-transparent outline-none text-sm focus:text-blue-600" placeholder="规格"></td>
+                    <td class="py-4 px-2"><input type="text" value="" oninput="updateRow(1775729044931, 'spec', this.value)" class="w-full bg-transparent outline-none text-sm text-center focus:text-blue-600" placeholder="规格"></td>
                     <td class="py-4 px-2 no-print"><input type="text" value="" oninput="updateRow(1775729044931, 'batchNo', this.value)" class="w-full bg-transparent outline-none text-sm focus:text-blue-600" placeholder="采购批次"></td>
                     <td class="py-4 px-2"><input type="number" value="1" oninput="updateRow(1775729044931, 'quantity', this.value)" class="w-full bg-transparent outline-none text-center text-sm"></td>
                     <td class="py-4 px-2 whitespace-nowrap"><input type="number" step="0.01" value="0.00" oninput="updateRow(1775729044931, 'price', this.value)" class="w-full bg-transparent outline-none text-right text-sm font-bold"></td>

@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Minova BI 统计</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      .mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      }
+    </style>
+  </head>
+  <body class="bg-slate-50 min-h-screen text-slate-800">
+    <div class="max-w-6xl mx-auto py-6 px-4">
+      <header class="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-purple-700 rounded-xl flex items-center justify-center text-white font-black">BI</div>
+          <div>
+            <h1 class="font-bold text-slate-800 text-lg">Minova BI 统计</h1>
+            <div class="text-xs text-slate-500 font-medium" id="data-source">数据源：加载中…</div>
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <a href="./index.html" class="text-sm bg-slate-100 text-slate-700 px-4 py-2 rounded-xl hover:bg-slate-200 transition-colors font-bold border border-slate-200">返回主页</a>
+          <button id="btn-refresh" class="text-sm bg-slate-900 text-white px-4 py-2 rounded-xl hover:bg-black transition-colors font-bold shadow-sm">刷新</button>
+        </div>
+      </header>
+
+      <section class="mb-6 bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div class="flex flex-wrap items-center gap-2">
+            <div class="text-sm font-bold text-slate-700">销售筛选</div>
+            <div class="flex items-center gap-2">
+              <input id="date-from" type="date" class="text-sm bg-slate-50 border border-slate-200 rounded-xl px-3 py-2" />
+              <span class="text-slate-400 text-sm">至</span>
+              <input id="date-to" type="date" class="text-sm bg-slate-50 border border-slate-200 rounded-xl px-3 py-2" />
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button data-range="7" class="btn-range text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl font-bold border border-slate-200">近7天</button>
+            <button data-range="30" class="btn-range text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl font-bold border border-slate-200">近30天</button>
+            <button data-range="90" class="btn-range text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl font-bold border border-slate-200">近90天</button>
+            <button data-range="all" class="btn-range text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl font-bold border border-slate-200">全部</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+          <div class="text-xs text-slate-500 font-bold">当前库存数量</div>
+          <div class="mt-2 text-2xl font-black text-slate-800 mono" id="kpi-stock-qty">-</div>
+          <div class="mt-1 text-xs text-slate-400" id="kpi-stock-sku">-</div>
+        </div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+          <div class="text-xs text-slate-500 font-bold">库存估值（成本口径）</div>
+          <div class="mt-2 text-2xl font-black text-slate-800 mono" id="kpi-stock-value">-</div>
+          <div class="mt-1 text-xs text-slate-400">由入库批次的总成本/原始数量推算</div>
+        </div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+          <div class="text-xs text-slate-500 font-bold">销售额（筛选范围）</div>
+          <div class="mt-2 text-2xl font-black text-slate-800 mono" id="kpi-sales-rev">-</div>
+          <div class="mt-1 text-xs text-slate-400" id="kpi-sales-count">-</div>
+        </div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+          <div class="text-xs text-slate-500 font-bold">毛利（筛选范围）</div>
+          <div class="mt-2 text-2xl font-black text-slate-800 mono" id="kpi-sales-profit">-</div>
+          <div class="mt-1 text-xs text-slate-400" id="kpi-sales-margin">-</div>
+        </div>
+      </section>
+
+      <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="p-4 border-b border-slate-100 flex items-center justify-between gap-2">
+            <div class="font-black text-slate-800">库存概览（按产品汇总）</div>
+            <div class="text-xs text-slate-400 font-bold" id="inv-summary">-</div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left whitespace-nowrap">
+              <thead class="bg-slate-50 text-slate-600 font-bold">
+                <tr>
+                  <th class="px-4 py-3 border-b border-slate-200">产品</th>
+                  <th class="px-4 py-3 border-b border-slate-200">分类</th>
+                  <th class="px-4 py-3 border-b border-slate-200 text-right">库存</th>
+                  <th class="px-4 py-3 border-b border-slate-200 text-right">估值</th>
+                  <th class="px-4 py-3 border-b border-slate-200">最早入库</th>
+                  <th class="px-4 py-3 border-b border-slate-200">最近销售</th>
+                </tr>
+              </thead>
+              <tbody id="inv-table" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="p-4 border-b border-slate-100 flex items-center justify-between gap-2">
+            <div class="font-black text-slate-800">销售排行（筛选范围 Top 10）</div>
+            <div class="text-xs text-slate-400 font-bold" id="sales-summary">-</div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left whitespace-nowrap">
+              <thead class="bg-slate-50 text-slate-600 font-bold">
+                <tr>
+                  <th class="px-4 py-3 border-b border-slate-200">产品</th>
+                  <th class="px-4 py-3 border-b border-slate-200 text-right">数量</th>
+                  <th class="px-4 py-3 border-b border-slate-200 text-right">销售额</th>
+                  <th class="px-4 py-3 border-b border-slate-200 text-right">毛利</th>
+                  <th class="px-4 py-3 border-b border-slate-200 text-right">毛利率</th>
+                </tr>
+              </thead>
+              <tbody id="sales-table" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="p-4 border-b border-slate-100 flex items-center justify-between gap-2">
+            <div class="font-black text-slate-800">销售人员（筛选范围）</div>
+            <div class="text-xs text-slate-400 font-bold" id="sp-summary">-</div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left whitespace-nowrap">
+              <thead class="bg-slate-50 text-slate-600 font-bold">
+                <tr>
+                  <th class="px-4 py-3 border-b border-slate-200">销售</th>
+                  <th class="px-4 py-3 border-b border-slate-200 text-right">单数</th>
+                  <th class="px-4 py-3 border-b border-slate-200 text-right">销售额</th>
+                  <th class="px-4 py-3 border-b border-slate-200 text-right">毛利</th>
+                </tr>
+              </thead>
+              <tbody id="sp-table" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="p-4 border-b border-slate-100 flex items-center justify-between gap-2">
+            <div class="font-black text-slate-800">呆滞库存（90天无销售）</div>
+            <div class="text-xs text-slate-400 font-bold" id="dead-summary">-</div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left whitespace-nowrap">
+              <thead class="bg-slate-50 text-slate-600 font-bold">
+                <tr>
+                  <th class="px-4 py-3 border-b border-slate-200">产品</th>
+                  <th class="px-4 py-3 border-b border-slate-200 text-right">库存</th>
+                  <th class="px-4 py-3 border-b border-slate-200 text-right">估值</th>
+                  <th class="px-4 py-3 border-b border-slate-200">最近销售</th>
+                </tr>
+              </thead>
+              <tbody id="dead-table" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      function safeJsonParse(raw, fallback) {
+        try {
+          return raw ? JSON.parse(raw) : fallback;
+        } catch {
+          return fallback;
+        }
+      }
+
+      function fmtMoney(n) {
+        const v = Number.isFinite(Number(n)) ? Number(n) : 0;
+        return "¥" + v.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+
+      function fmtInt(n) {
+        const v = Number.isFinite(Number(n)) ? Number(n) : 0;
+        return Math.round(v).toLocaleString("zh-CN");
+      }
+
+      function fmtDate(ts) {
+        if (!Number.isFinite(ts) || ts <= 0) return "-";
+        const d = new Date(ts);
+        if (Number.isNaN(d.getTime())) return "-";
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${day}`;
+      }
+
+      function parseYmdToTs(ymd) {
+        const s = String(ymd || "").trim();
+        if (!s) return 0;
+        const ts = Date.parse(s);
+        return Number.isFinite(ts) ? ts : 0;
+      }
+
+      function inferOriginalQty(batch) {
+        const unitPurchasePrice = batch && Number.isFinite(Number(batch.unitPurchasePrice)) ? Number(batch.unitPurchasePrice) : 0;
+        const purchaseTotal = batch && Number.isFinite(Number(batch.purchaseTotal)) ? Number(batch.purchaseTotal) : 0;
+        if (unitPurchasePrice > 0 && purchaseTotal > 0) {
+          const q = purchaseTotal / unitPurchasePrice;
+          if (Number.isFinite(q) && q > 0) return Math.max(1, Math.round(q));
+        }
+        const qty = batch && Number.isFinite(Number(batch.quantity)) ? Number(batch.quantity) : 0;
+        return qty > 0 ? qty : 0;
+      }
+
+      function getBatchTotalCost(batch) {
+        const totalCost = batch && Number.isFinite(Number(batch.totalCost)) ? Number(batch.totalCost) : 0;
+        if (totalCost > 0) return totalCost;
+        const purchaseTotal = batch && Number.isFinite(Number(batch.purchaseTotal)) ? Number(batch.purchaseTotal) : 0;
+        const shippingCost = batch && Number.isFinite(Number(batch.shippingCost)) ? Number(batch.shippingCost) : 0;
+        const domesticTax = batch && Number.isFinite(Number(batch.domesticTax)) ? Number(batch.domesticTax) : 0;
+        const sum = purchaseTotal + shippingCost + domesticTax;
+        return sum > 0 ? sum : 0;
+      }
+
+      function getBatchUnitCost(batch) {
+        const origQty = inferOriginalQty(batch);
+        const totalCost = getBatchTotalCost(batch);
+        if (origQty > 0 && totalCost > 0) return totalCost / origQty;
+        const unitPurchasePrice = batch && Number.isFinite(Number(batch.unitPurchasePrice)) ? Number(batch.unitPurchasePrice) : 0;
+        if (unitPurchasePrice > 0) return unitPurchasePrice;
+        const purchasePrice = batch && Number.isFinite(Number(batch.purchasePrice)) ? Number(batch.purchasePrice) : 0;
+        const spec = batch && Number.isFinite(Number(batch.spec)) ? Number(batch.spec) : 1;
+        const computed = purchasePrice * spec;
+        return computed > 0 ? computed : 0;
+      }
+
+      function getSaleTs(r) {
+        const outAt = r && Number.isFinite(Number(r.outAt)) ? Number(r.outAt) : 0;
+        const d = parseYmdToTs(r ? r.outDate : "");
+        return d > 0 ? d : outAt;
+      }
+
+      function normalizeString(v, fallback) {
+        const s = String(v == null ? "" : v).trim();
+        return s ? s : fallback;
+      }
+
+      async function tryLoadEmbeddedStateFromIndexHtml() {
+        const tryPaths = ["./index.html", "./Index.html"];
+        for (const p of tryPaths) {
+          try {
+            const res = await fetch(p, { cache: "no-store" });
+            if (!res.ok) continue;
+            const html = await res.text();
+            const doc = new DOMParser().parseFromString(html, "text/html");
+            const el = doc.getElementById("minova-embedded-state");
+            const raw = el && el.textContent ? String(el.textContent).trim() : "";
+            if (!raw) continue;
+            const embedded = safeJsonParse(raw, null);
+            if (!embedded || !embedded.data) continue;
+            const data = embedded.data;
+            return {
+              products: Array.isArray(data.products) ? data.products : [],
+              inventory: Array.isArray(data.inventory) ? data.inventory : [],
+              salesRecords: Array.isArray(data.salesRecords) ? data.salesRecords : [],
+              updatedAt: embedded.updatedAt ? Date.parse(embedded.updatedAt) : 0
+            };
+          } catch (e) {}
+        }
+        return null;
+      }
+
+      async function loadData() {
+        const products = safeJsonParse(localStorage.getItem("minova_products"), []) || [];
+        const inventory = safeJsonParse(localStorage.getItem("minova_inventory"), []) || [];
+        const salesRecords = safeJsonParse(localStorage.getItem("minova_sales_records_v1"), []) || [];
+        const hasLocal = (products && products.length ? products.length : 0) + (inventory && inventory.length ? inventory.length : 0) + (salesRecords && salesRecords.length ? salesRecords.length : 0) > 0;
+
+        if (hasLocal) {
+          return { products, inventory, salesRecords, source: "localStorage" };
+        }
+
+        const embedded = await tryLoadEmbeddedStateFromIndexHtml();
+        if (embedded) {
+          return { ...embedded, source: "index.html 内嵌状态" };
+        }
+
+        return { products: [], inventory: [], salesRecords: [], source: "未找到数据" };
+      }
+
+      function computeInventoryAgg(state) {
+        const productIndex = new Map();
+        for (const p of Array.isArray(state.products) ? state.products : []) {
+          if (!p || !p.id) continue;
+          productIndex.set(String(p.id), p);
+        }
+
+        const lastSaleTsByProduct = new Map();
+        for (const r of Array.isArray(state.salesRecords) ? state.salesRecords : []) {
+          const productId = normalizeString(r ? r.productId : "", "");
+          if (!productId) continue;
+          const ts = getSaleTs(r);
+          const prev = lastSaleTsByProduct.get(productId) || 0;
+          if (ts > prev) lastSaleTsByProduct.set(productId, ts);
+        }
+
+        const rowsByProduct = new Map();
+        let totalQty = 0;
+        let totalValue = 0;
+
+        for (const b of Array.isArray(state.inventory) ? state.inventory : []) {
+          if (!b) continue;
+          const qty = Number.isFinite(Number(b.quantity)) ? Number(b.quantity) : 0;
+          if (qty <= 0) continue;
+          const productId = normalizeString(b.productId, "");
+          if (!productId) continue;
+          const p = productIndex.get(productId) || {};
+          const name = normalizeString(p.name, productId);
+          const category = normalizeString(p.category, "-");
+
+          const unitCost = getBatchUnitCost(b);
+          const val = unitCost * qty;
+          totalQty += qty;
+          totalValue += val;
+
+          const prev = rowsByProduct.get(productId) || {
+            productId,
+            name,
+            category,
+            qty: 0,
+            value: 0,
+            oldestInTs: 0,
+            lastSaleTs: lastSaleTsByProduct.get(productId) || 0
+          };
+
+          const inTs = parseYmdToTs(b.purchaseDate);
+          const oldest = prev.oldestInTs && inTs ? Math.min(prev.oldestInTs, inTs) : (prev.oldestInTs || inTs || 0);
+
+          prev.qty += qty;
+          prev.value += val;
+          prev.oldestInTs = oldest;
+          prev.lastSaleTs = lastSaleTsByProduct.get(productId) || prev.lastSaleTs || 0;
+          rowsByProduct.set(productId, prev);
+        }
+
+        const rows = Array.from(rowsByProduct.values()).sort((a, b) => (b.value || 0) - (a.value || 0));
+        return { rows, totalQty, totalValue };
+      }
+
+      function computeSalesAgg(state, range) {
+        const fromTs = range.fromTs || 0;
+        const toTs = range.toTs || 0;
+        const inRange = (r) => {
+          const ts = getSaleTs(r);
+          if (!ts) return false;
+          if (fromTs && ts < fromTs) return false;
+          if (toTs && ts > toTs) return false;
+          return true;
+        };
+
+        const rowsByProduct = new Map();
+        const rowsBySalesperson = new Map();
+        let revenue = 0;
+        let profit = 0;
+        let count = 0;
+
+        for (const r of Array.isArray(state.salesRecords) ? state.salesRecords : []) {
+          if (!r || !inRange(r)) continue;
+          count += 1;
+          const productId = normalizeString(r.productId, "");
+          const productName = normalizeString(r.productName, productId || "-");
+          const qty = Number.isFinite(Number(r.quantity)) ? Number(r.quantity) : 0;
+          const rev = Number.isFinite(Number(r.finalContractPrice)) ? Number(r.finalContractPrice) : 0;
+          const prof = Number.isFinite(Number(r.totalProfit)) ? Number(r.totalProfit) : 0;
+          revenue += rev;
+          profit += prof;
+
+          if (productId) {
+            const prev = rowsByProduct.get(productId) || { productId, name: productName, qty: 0, revenue: 0, profit: 0 };
+            prev.qty += qty;
+            prev.revenue += rev;
+            prev.profit += prof;
+            rowsByProduct.set(productId, prev);
+          }
+
+          const sp = normalizeString(r.salesperson, "未填写");
+          const spPrev = rowsBySalesperson.get(sp) || { salesperson: sp, count: 0, revenue: 0, profit: 0 };
+          spPrev.count += 1;
+          spPrev.revenue += rev;
+          spPrev.profit += prof;
+          rowsBySalesperson.set(sp, spPrev);
+        }
+
+        const byProduct = Array.from(rowsByProduct.values())
+          .map((x) => ({ ...x, marginPct: x.revenue > 0 ? (x.profit / x.revenue) * 100 : 0 }))
+          .sort((a, b) => (b.revenue || 0) - (a.revenue || 0));
+
+        const bySalesperson = Array.from(rowsBySalesperson.values()).sort((a, b) => (b.revenue || 0) - (a.revenue || 0));
+
+        return { revenue, profit, count, byProduct, bySalesperson };
+      }
+
+      function getRangeFromInputs() {
+        const fromEl = document.getElementById("date-from");
+        const toEl = document.getElementById("date-to");
+        const fromTs = parseYmdToTs(fromEl ? fromEl.value : "");
+        const toTs = parseYmdToTs(toEl ? toEl.value : "");
+        const inclusiveTo = toTs ? toTs + 24 * 60 * 60 * 1000 - 1 : 0;
+        return { fromTs, toTs: inclusiveTo };
+      }
+
+      function setRangeDays(days) {
+        const fromEl = document.getElementById("date-from");
+        const toEl = document.getElementById("date-to");
+        const now = new Date();
+        const end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const start = new Date(end.getTime() - (days - 1) * 24 * 60 * 60 * 1000);
+        const ymd = (d) => {
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, "0");
+          const day = String(d.getDate()).padStart(2, "0");
+          return `${y}-${m}-${day}`;
+        };
+        if (fromEl) fromEl.value = ymd(start);
+        if (toEl) toEl.value = ymd(end);
+      }
+
+      function clearRange() {
+        const fromEl = document.getElementById("date-from");
+        const toEl = document.getElementById("date-to");
+        if (fromEl) fromEl.value = "";
+        if (toEl) toEl.value = "";
+      }
+
+      function render(state) {
+        const sourceEl = document.getElementById("data-source");
+        if (sourceEl) sourceEl.textContent = `数据源：${state.source}`;
+
+        const range = getRangeFromInputs();
+        const invAgg = computeInventoryAgg(state);
+        const salesAgg = computeSalesAgg(state, range);
+
+        const skuCount = invAgg.rows.length;
+        document.getElementById("kpi-stock-qty").textContent = fmtInt(invAgg.totalQty);
+        document.getElementById("kpi-stock-sku").textContent = `SKU：${skuCount.toLocaleString("zh-CN")}`;
+        document.getElementById("kpi-stock-value").textContent = fmtMoney(invAgg.totalValue);
+
+        document.getElementById("kpi-sales-rev").textContent = fmtMoney(salesAgg.revenue);
+        document.getElementById("kpi-sales-profit").textContent = fmtMoney(salesAgg.profit);
+        document.getElementById("kpi-sales-count").textContent = `销售记录：${salesAgg.count.toLocaleString("zh-CN")} 条`;
+        const marginPct = salesAgg.revenue > 0 ? (salesAgg.profit / salesAgg.revenue) * 100 : 0;
+        document.getElementById("kpi-sales-margin").textContent = `毛利率：${marginPct.toFixed(2)}%`;
+
+        const invSummary = document.getElementById("inv-summary");
+        if (invSummary) invSummary.textContent = `${skuCount.toLocaleString("zh-CN")} 个SKU`;
+
+        const invBody = document.getElementById("inv-table");
+        invBody.innerHTML = invAgg.rows
+          .slice(0, 200)
+          .map((r) => {
+            const lastSale = r.lastSaleTs ? fmtDate(r.lastSaleTs) : "-";
+            return `
+              <tr class="hover:bg-slate-50 transition-colors">
+                <td class="px-4 py-3">
+                  <div class="font-bold text-slate-800">${String(r.name).replaceAll("<", "&lt;")}</div>
+                  <div class="text-xs text-slate-400 mono">${String(r.productId).replaceAll("<", "&lt;")}</div>
+                </td>
+                <td class="px-4 py-3 text-slate-600">${String(r.category).replaceAll("<", "&lt;")}</td>
+                <td class="px-4 py-3 text-right font-bold mono text-slate-800">${fmtInt(r.qty)}</td>
+                <td class="px-4 py-3 text-right font-bold mono text-slate-800">${fmtMoney(r.value)}</td>
+                <td class="px-4 py-3 text-slate-600 mono">${fmtDate(r.oldestInTs)}</td>
+                <td class="px-4 py-3 text-slate-600 mono">${lastSale}</td>
+              </tr>
+            `;
+          })
+          .join("");
+
+        const salesSummary = document.getElementById("sales-summary");
+        if (salesSummary) salesSummary.textContent = `${salesAgg.byProduct.length.toLocaleString("zh-CN")} 个产品`;
+
+        const salesBody = document.getElementById("sales-table");
+        salesBody.innerHTML = salesAgg.byProduct
+          .slice(0, 10)
+          .map((r) => {
+            return `
+              <tr class="hover:bg-slate-50 transition-colors">
+                <td class="px-4 py-3">
+                  <div class="font-bold text-slate-800">${String(r.name).replaceAll("<", "&lt;")}</div>
+                  <div class="text-xs text-slate-400 mono">${String(r.productId).replaceAll("<", "&lt;")}</div>
+                </td>
+                <td class="px-4 py-3 text-right font-bold mono">${fmtInt(r.qty)}</td>
+                <td class="px-4 py-3 text-right font-bold mono">${fmtMoney(r.revenue)}</td>
+                <td class="px-4 py-3 text-right font-bold mono">${fmtMoney(r.profit)}</td>
+                <td class="px-4 py-3 text-right font-bold mono">${r.marginPct.toFixed(2)}%</td>
+              </tr>
+            `;
+          })
+          .join("");
+
+        const spSummary = document.getElementById("sp-summary");
+        if (spSummary) spSummary.textContent = `${salesAgg.bySalesperson.length.toLocaleString("zh-CN")} 人`;
+
+        const spBody = document.getElementById("sp-table");
+        spBody.innerHTML = salesAgg.bySalesperson
+          .slice(0, 50)
+          .map((r) => {
+            return `
+              <tr class="hover:bg-slate-50 transition-colors">
+                <td class="px-4 py-3 font-bold text-slate-800">${String(r.salesperson).replaceAll("<", "&lt;")}</td>
+                <td class="px-4 py-3 text-right font-bold mono">${fmtInt(r.count)}</td>
+                <td class="px-4 py-3 text-right font-bold mono">${fmtMoney(r.revenue)}</td>
+                <td class="px-4 py-3 text-right font-bold mono">${fmtMoney(r.profit)}</td>
+              </tr>
+            `;
+          })
+          .join("");
+
+        const now = Date.now();
+        const deadCutoff = now - 90 * 24 * 60 * 60 * 1000;
+        const deadRows = invAgg.rows
+          .filter((r) => (r.lastSaleTs || 0) <= deadCutoff)
+          .sort((a, b) => (b.value || 0) - (a.value || 0))
+          .slice(0, 50);
+
+        const deadSummary = document.getElementById("dead-summary");
+        if (deadSummary) deadSummary.textContent = `${deadRows.length.toLocaleString("zh-CN")} 个SKU`;
+
+        const deadBody = document.getElementById("dead-table");
+        deadBody.innerHTML = deadRows
+          .map((r) => {
+            const lastSale = r.lastSaleTs ? fmtDate(r.lastSaleTs) : "从未销售";
+            return `
+              <tr class="hover:bg-slate-50 transition-colors">
+                <td class="px-4 py-3">
+                  <div class="font-bold text-slate-800">${String(r.name).replaceAll("<", "&lt;")}</div>
+                  <div class="text-xs text-slate-400 mono">${String(r.productId).replaceAll("<", "&lt;")}</div>
+                </td>
+                <td class="px-4 py-3 text-right font-bold mono">${fmtInt(r.qty)}</td>
+                <td class="px-4 py-3 text-right font-bold mono">${fmtMoney(r.value)}</td>
+                <td class="px-4 py-3 text-slate-600 mono">${lastSale}</td>
+              </tr>
+            `;
+          })
+          .join("");
+      }
+
+      let cachedState = null;
+
+      async function refreshAll() {
+        cachedState = await loadData();
+        render(cachedState);
+      }
+
+      document.getElementById("btn-refresh").addEventListener("click", () => refreshAll());
+      document.getElementById("date-from").addEventListener("change", () => cachedState && render(cachedState));
+      document.getElementById("date-to").addEventListener("change", () => cachedState && render(cachedState));
+      for (const btn of document.querySelectorAll(".btn-range")) {
+        btn.addEventListener("click", () => {
+          const v = btn.getAttribute("data-range");
+          if (v === "all") clearRange();
+          else setRangeDays(Math.max(1, parseInt(v, 10) || 30));
+          cachedState && render(cachedState);
+        });
+      }
+
+      refreshAll();
+    </script>
+  </body>
+</html>

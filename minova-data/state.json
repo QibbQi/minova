@@ -1,6 +1,6 @@
 {
   "v": 1,
-  "updatedAt": "2026-04-11T03:42:37.539Z",
+  "updatedAt": "2026-04-15T11:42:31.644Z",
   "data": {
     "products": [
       {
@@ -343,6 +343,8 @@
         "note": "采购入库 2026-04-10 | 入库到 马来西亚仓库 | 总成本¥7749.00"
       }
     ],
+    "salesRecords": [],
+    "historicalInventory": [],
     "subcategoriesByCategory": {
       "光伏组件": [
         "双面"

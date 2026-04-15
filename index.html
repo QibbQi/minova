@@ -56,22 +56,22 @@
         <header class="mb-6 flex justify-between items-center bg-white p-3 rounded-2xl shadow-sm border border-slate-200">
             <div class="flex items-center gap-2 pl-4">
                 <div class="w-8 h-8 bg-purple-700 rounded-lg flex items-center justify-center text-white font-bold">Q</div>
-                <h1 class="font-bold text-slate-700">Minova后台管理系统</h1>
+                <h1 class="font-bold text-slate-700">Minova 管理系统</h1>
             </div>
             <nav class="flex">
-                <button onclick="switchTab('quotation')" id="tab-quotation" class="px-6 py-2 transition-all text-sm text-slate-500 hover:text-blue-600">报价生成</button>
+                <button onclick="switchTab('quotation')" id="tab-quotation" style="display:none" class="px-6 py-2 transition-all text-sm text-slate-500 hover:text-blue-600">报价生成</button>
                 <button onclick="switchTab('pvcalc')" id="tab-pvcalc" class="px-6 py-2 text-slate-500 hover:text-purple-700 transition-all text-sm hover:text-blue-600">光储计算</button>
-                <button onclick="switchTab('costcalc')" id="tab-costcalc" class="px-6 py-2 text-slate-500 hover:text-purple-700 transition-all text-sm hover:text-blue-600">成本报价核算</button>
-                <button onclick="switchTab('database')" id="tab-database" class="px-6 py-2 hover:text-purple-700 transition-all text-sm tab-active">产品清单</button>
-                <button onclick="switchTab('inventory')" id="tab-inventory" class="px-6 py-2 hover:text-purple-700 transition-all text-sm text-slate-500 hover:text-blue-600">库存管理</button>
+                <button onclick="switchTab('costcalc')" id="tab-costcalc" style="display:none" class="px-6 py-2 text-slate-500 hover:text-purple-700 transition-all text-sm hover:text-blue-600">报价设置</button>
+                <button onclick="switchTab('database')" id="tab-database" style="display:none" class="px-6 py-2 hover:text-purple-700 transition-all text-sm tab-active">产品清单</button>
+                <button onclick="switchTab('inventory')" id="tab-inventory" style="display:none" class="px-6 py-2 hover:text-purple-700 transition-all text-sm text-slate-500 hover:text-blue-600">库存管理</button>
             </nav>
             <div class="flex gap-3">
-                <div id="github-sync-root" class="flex items-center"><div class="flex items-center gap-3"><button class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl font-bold border border-slate-200">GitHub 同步</button><div class="text-[10px] text-slate-500 font-bold">GitHub 已连接 | 队列 0</div></div></div>
+                <div id="github-sync-root" class="flex items-center"><div class="flex items-center"><button title="GitHub 数据同步" class="whitespace-nowrap text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1.5 rounded-lg font-bold border border-slate-200">GH 未连</button></div></div>
                 <button onclick="toggleLanguage()" id="btn-lang" class="text-sm bg-slate-100 text-slate-700 px-4 py-2 rounded-xl hover:bg-slate-200 transition-colors font-bold border border-slate-200">中 / EN</button>
                 <button onclick="toggleCurrency()" id="btn-currency" class="text-sm bg-slate-100 text-slate-700 px-4 py-2 rounded-xl hover:bg-slate-200 transition-colors font-bold border border-slate-200">
                     ¥ / RM
                 </button>
-                <button onclick="generateQuotationPDF()" class="text-sm bg-slate-900 text-white px-5 py-2 rounded-xl hover:bg-black transition-all shadow-lg shadow-slate-200">
+                <button onclick="generateQuotationPDF()" id="btn-generate-pdf" style="display:none" class="text-sm bg-slate-900 text-white px-5 py-2 rounded-xl hover:bg-black transition-all shadow-lg shadow-slate-200">
                     生成报价单 (PDF)
                 </button>
             </div>
@@ -1213,7 +1213,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                     <div class="p-6 border-b border-slate-100">
                         <h3 class="text-lg font-bold text-slate-800">海外安装商报价</h3>
-                        <p class="text-xs text-slate-400 mt-1">合计安装报价（RM）= 人工 + 支架 + 线缆；合计安装报价（RMB）使用“成本报价核算”的实时汇率换算</p>
+                        <p class="text-xs text-slate-400 mt-1">合计安装报价（RM）= 人工 + 支架 + 线缆；合计安装报价（RMB）使用“报价设置”的实时汇率换算</p>
                     </div>
                     <div class="p-6 grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
                         <div>
@@ -1971,7 +1971,11 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                     headers.set('Accept', 'application/vnd.github+json');
                     headers.set('X-GitHub-Api-Version', '2022-11-28');
                     headers.set('User-Agent', 'MinovaQuotation');
-                    if (token) headers.set('Authorization', `token ${token}`);
+                    if (token) {
+                        const t = String(token).trim();
+                        const scheme = t.startsWith('github_pat_') ? 'Bearer' : 'token';
+                        headers.set('Authorization', `${scheme} ${t}`);
+                    }
                     if (!headers.has('Content-Type') && init?.body) headers.set('Content-Type', 'application/json');
 
                     const res = await fetch(url, { ...init, headers });
@@ -2006,7 +2010,9 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                     }
 
                     if (!res.ok) {
-                        const err = new Error(`GitHub API ${res.status}: ${typeof data === 'string' ? data : JSON.stringify(data)}`);
+                        const docUrl = typeof data === 'object' && data ? data.documentation_url : '';
+                        const baseMsg = typeof data === 'string' ? data : (data?.message ? String(data.message) : JSON.stringify(data));
+                        const err = new Error(`GitHub API ${res.status}: ${baseMsg}${docUrl ? ` (${docUrl})` : ''}`);
                         err.status = res.status;
                         err.data = data;
                         err.rateLimit = { remaining, reset };
@@ -2161,8 +2167,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
 
                 const state = () => sync.getStatus();
 
-                const statusText = el('div', { class: 'text-[10px] text-slate-500 font-bold', text: '' });
-                const btn = el('button', { class: 'text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl font-bold border border-slate-200', text: 'GitHub 同步' });
+                const btn = el('button', { title: 'GitHub 数据同步', class: 'whitespace-nowrap text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1.5 rounded-lg font-bold border border-slate-200', text: 'GH 未连' });
 
                 root.innerHTML = '';
                 const existing = document.getElementById('github-sync-modal');
@@ -2205,7 +2210,25 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
 
                 const refresh = () => {
                     const s = state();
-                    statusText.textContent = s.connected ? `GitHub 已连接 | 队列 ${s.queueSize}` : `GitHub 未连接${s.hasTokenStored ? '（有已保存 token）' : ''}`;
+                    btn.textContent = s.connected
+                        ? `GH 已连(${s.queueSize})`
+                        : `GH 未连${s.hasTokenStored ? '·token' : ''}`;
+                    const restrictedTabs = ['quotation', 'costcalc', 'database', 'inventory'];
+                    for (const t of restrictedTabs) {
+                        const tabBtn = document.getElementById(`tab-${t}`);
+                        if (tabBtn) tabBtn.style.display = s.connected ? '' : 'none';
+                    }
+                    const pdfBtn = document.getElementById('btn-generate-pdf');
+                    if (pdfBtn) pdfBtn.style.display = s.connected ? '' : 'none';
+                    if (!s.connected) {
+                        const activeRestricted = restrictedTabs.some(t => {
+                            const view = document.getElementById(`view-${t}`);
+                            return view && !view.classList.contains('hidden') && view.style.display !== 'none';
+                        });
+                        if (activeRestricted) {
+                            try { window.switchTab?.('pvcalc'); } catch (e) {}
+                        }
+                    }
                     btnCheck.style.display = s.connected ? '' : 'none';
                     btnPublish.style.display = s.connected ? '' : 'none';
                     const cfg = s.config || {};
@@ -2243,6 +2266,9 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                         const reset = s?.rateLimit?.reset ? new Date(parseInt(s.rateLimit.reset, 10) * 1000).toLocaleString() : '-';
                         msg.textContent = `已使用 PAT 连接：${s.login || '-'}\nRateLimit(Core)：${s.rateLimit.remaining}/${s.rateLimit.limit}，重置：${reset}`;
                     } catch (e) {
+                        if (e?.status === 401) {
+                            try { await sync.lock(); } catch (e2) {}
+                        }
                         msg.textContent = formatErr(e);
                     }
                     refresh();
@@ -2254,6 +2280,9 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                         const reset = s?.rateLimit?.reset ? new Date(parseInt(s.rateLimit.reset, 10) * 1000).toLocaleString() : '-';
                         msg.textContent = `已认证：${s.login || '-'}\nRateLimit(Core)：${s.rateLimit.remaining}/${s.rateLimit.limit}，重置：${reset}`;
                     } catch (e) {
+                        if (e?.status === 401) {
+                            try { await sync.lock(); } catch (e2) {}
+                        }
                         msg.textContent = formatErr(e);
                     }
                     refresh();
@@ -2264,6 +2293,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                         ensureConfig();
                         const html = window.buildUpdatedHtml?.();
                         if (!html) { msg.textContent = '生成 HTML 失败'; return; }
+                        try { window.previewUpdatedHtml?.(html, 'minova_pages_preview'); } catch (e) {}
                         await sync.publishIndexHtml(html);
                         const expectedAt = (() => {
                             const m = html.match(/<script id="minova-embedded-state" type="application\/json">([\s\S]*?)<\/script>/);
@@ -2297,12 +2327,15 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                             msg.textContent = '已发布：index.html 已覆盖；Pages 可能仍在构建/缓存中，稍后再刷新。如超过 2-3 分钟仍未更新，请到 GitHub Actions 手动运行 “Manual Redeploy Pages”。';
                         }
                     } catch (e) {
+                        if (e?.status === 401) {
+                            try { await sync.lock(); } catch (e2) {}
+                        }
                         msg.textContent = formatErr(e);
                     }
                     refresh();
                 };
 
-                root.append(el('div', { class: 'flex items-center gap-3' }, [btn, statusText]));
+                root.append(el('div', { class: 'flex items-center' }, [btn]));
                 document.body.append(modal);
                 ensureConfig();
                 refresh();
@@ -2343,9 +2376,10 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                 }
 
                 async function storeToken(passphrase, token) {
-                    const payload = await encryptWithPassphrase(passphrase, token);
+                    const cleaned = String(token || '').trim();
+                    const payload = await encryptWithPassphrase(passphrase, cleaned);
                     storage.set(KEY.token, JSON.stringify(payload));
-                    unlockedToken = token;
+                    unlockedToken = cleaned;
                     appendAudit('store_token', 'token stored (encrypted)');
                 }
 
@@ -5799,6 +5833,14 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
             return html;
         };
 
+        window.previewUpdatedHtml = (html, name = 'minova_preview') => {
+            const blob = new Blob([html], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const w = window.open(url, name);
+            setTimeout(() => URL.revokeObjectURL(url), 120000);
+            if (!w) throw new Error('预览被浏览器拦截，请允许弹窗后重试');
+        };
+
         window.downloadUpdatedHtml = () => {
             const html = window.buildUpdatedHtml();
             const now = new Date();
@@ -5811,13 +5853,14 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
             const filename = `当前页面的更新版本_${y}${m}${d}_${hh}${mm}${ss}.html`;
             const blob = new Blob([html], { type: 'text/html' });
             const url = URL.createObjectURL(blob);
+            try { window.previewUpdatedHtml(html, filename); } catch (e) {}
             const a = document.createElement('a');
             a.href = url;
             a.download = filename;
             document.body.appendChild(a);
             a.click();
             a.remove();
-            URL.revokeObjectURL(url);
+            setTimeout(() => URL.revokeObjectURL(url), 120000);
         };
         renderDb();
         renderInventory();

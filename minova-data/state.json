@@ -1,6 +1,6 @@
 {
   "v": 1,
-  "updatedAt": "2026-04-15T13:31:50.428Z",
+  "updatedAt": "2026-04-15T13:40:45.324Z",
   "data": {
     "products": [
       {
@@ -165,9 +165,9 @@
       },
       {
         "id": "GFZJ003",
-        "name": "123321",
+        "name": "123333",
         "category": "光伏组件",
-        "vendor": "明匠",
+        "vendor": "联塑 LESSO",
         "spec": "",
         "scenario": "",
         "warrantyYears": "",
@@ -177,7 +177,7 @@
         "contactInfo": "",
         "cost": 0,
         "price": 0,
-        "ts": 1776259905453
+        "ts": 1776260438466
       }
     ],
     "inventory": [

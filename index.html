@@ -946,6 +946,40 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
     </main>
 
     <main id="view-database" class="max-w-6xl mx-auto px-4 mb-20" style="display: block;">
+        <!-- 公司信息 & 认证文件面板 -->
+        <div id="company-cert-panel" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-4">
+            <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-800">公司信息</h2>
+                    <p class="text-xs text-slate-400 mt-1">管理公司级认证文件</p>
+                </div>
+                <button onclick="toggleCompanyCertPanel()" id="btn-toggle-company-cert" class="text-sm bg-slate-100 text-slate-600 px-4 py-2 rounded-xl hover:bg-slate-200 font-bold">
+                    展开
+                </button>
+            </div>
+            <div id="company-cert-body" class="p-6 hidden">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- 工厂ISO认证 -->
+                    <div class="border border-slate-200 rounded-xl p-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-bold text-slate-700">工厂ISO认证</h3>
+                            <button onclick="openCertUpload('iso')" class="text-xs bg-purple-700 text-white px-3 py-1.5 rounded-lg font-bold hover:bg-purple-800">+ 上传</button>
+                        </div>
+                        <div id="iso-cert-list" class="space-y-2"></div>
+                        <p id="iso-cert-empty" class="text-xs text-slate-400 hidden">暂无文件</p>
+                    </div>
+                    <!-- 运输文件 -->
+                    <div class="border border-slate-200 rounded-xl p-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-bold text-slate-700">运输文件 (UN38.3/MSDS)</h3>
+                            <button onclick="openCertUpload('transport')" class="text-xs bg-purple-700 text-white px-3 py-1.5 rounded-lg font-bold hover:bg-purple-800">+ 上传</button>
+                        </div>
+                        <div id="transport-cert-list" class="space-y-2"></div>
+                        <p id="transport-cert-empty" class="text-xs text-slate-400 hidden">暂无文件</p>
+                    </div>
+                </div>
+            </div>
+        </div>
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
             <div class="p-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
@@ -6242,6 +6276,102 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
         renderCostCalcUI();
         startPublishedStatePolling();
         tryLoadPublishedState(true);
+
+        window.toggleCompanyCertPanel = () => {
+            const body = document.getElementById('company-cert-body');
+            const btn = document.getElementById('btn-toggle-company-cert');
+            const isHidden = body.classList.contains('hidden');
+            body.classList.toggle('hidden', !isHidden);
+            btn.textContent = isHidden ? '收起' : '展开';
+            if (isHidden) renderCompanyCertList();
+        };
+
+        window.renderCompanyCertList = () => {
+            const certs = companyCerts;
+            ['iso', 'transport'].forEach(type => {
+                const list = document.getElementById(`${type}-cert-list`);
+                const empty = document.getElementById(`${type}-cert-empty`);
+                const files = type === 'iso' ? certs.isoCerts : certs.transportCerts;
+                if (!files || files.length === 0) {
+                    list.innerHTML = '';
+                    empty.classList.remove('hidden');
+                } else {
+                    empty.classList.add('hidden');
+                    list.innerHTML = files.map(f => `
+                        <div class="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2">
+                            <a href="#" onclick="previewCertFile('${f.path}'); return false;" class="text-sm text-purple-700 hover:underline flex-1 truncate">${f.name}</a>
+                            <button onclick="deleteCompanyCert('${type}', '${f.id}')" class="text-red-400 hover:text-red-600 ml-2 text-xs font-bold">删除</button>
+                        </div>
+                    `).join('');
+                }
+            });
+        };
+
+        window.openCertUpload = (type) => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.pdf,.jpg,.jpeg,.png,.doc,.docx';
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                await uploadCompanyCert(type, file);
+            };
+            input.click();
+        };
+
+        window.uploadCompanyCert = async (type, file) => {
+            const reader = new FileReader();
+            reader.onload = async () => {
+                try {
+                    const base64 = reader.result.split(',')[1];
+                    const path = `minova-data/certifications/${type}/${file.name}`;
+                    const content = atob(base64);
+                    await repo.commitTextFiles({
+                        owner: config.owner,
+                        repo: config.repo,
+                        branch: config.branch,
+                        message: `minova: upload cert ${file.name}`,
+                        files: [{ path, content }]
+                    });
+                    const certEntry = {
+                        id: crypto.randomUUID(),
+                        name: file.name,
+                        path: path,
+                        uploadedAt: new Date().toISOString()
+                    };
+                    if (type === 'iso') {
+                        companyCerts.isoCerts.push(certEntry);
+                    } else {
+                        companyCerts.transportCerts.push(certEntry);
+                    }
+                    saveToLocal();
+                    enqueueSnapshot('upload cert');
+                    renderCompanyCertList();
+                } catch (err) {
+                    alert('上传失败: ' + err.message);
+                }
+            };
+            reader.readAsDataURL(file);
+        };
+
+        window.deleteCompanyCert = (type, certId) => {
+            if (!confirm('确定删除该文件？')) return;
+            const certs = type === 'iso' ? companyCerts.isoCerts : companyCerts.transportCerts;
+            const idx = certs.findIndex(c => c.id === certId);
+            if (idx !== -1) certs.splice(idx, 1);
+            saveToLocal();
+            enqueueSnapshot('delete cert');
+            renderCompanyCertList();
+        };
+
+        window.previewCertFile = (path) => {
+            const url = `https://${config.owner}.github.io/${config.repo}/${path}`;
+            const win = window.open(url, '_blank');
+            if (!win) {
+                navigator.clipboard.writeText(url);
+                alert('链接已复制到剪贴板，请在浏览器中打开');
+            }
+        };
     </script>
 
 

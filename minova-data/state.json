@@ -1,6 +1,6 @@
 {
   "v": 1,
-  "updatedAt": "2026-04-21T08:43:15.510Z",
+  "updatedAt": "2026-04-21T09:25:57.608Z",
   "data": {
     "products": [
       {
@@ -69,7 +69,11 @@
         "contactInfo": "",
         "cost": 0.66,
         "price": 1.848,
-        "ts": 1775705274152
+        "ts": 1776763554691,
+        "certifications": {
+          "tuvCerts": [],
+          "specSheets": []
+        }
       },
       {
         "id": "NBQ002",

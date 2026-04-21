@@ -5710,6 +5710,10 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                 price: parseFloat(document.getElementById('m-price').value) || 0,
                 ts: Date.now()
             };
+            // 确保 certifications 字段存在
+            if (!data.certifications) {
+                data.certifications = { tuvCerts: [], specSheets: [] };
+            }
             if(!data.name) return alert("请输入产品全称！");
             const sub = (data.scenario || '').trim();
             const cat = (data.category || '').trim() || '未分类';

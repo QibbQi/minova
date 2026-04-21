@@ -2741,6 +2741,59 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
 
                 root.append(el('div', { class: 'flex items-center' }, [btn]));
                 document.body.append(modal);
+
+                // 添加 cert-attachment-modal
+                const certModal = el('div', { id: 'cert-attachment-modal', class: 'fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-[300] p-4' });
+                document.body.appendChild(certModal);
+
+                certModal.innerHTML = `
+<div class="bg-white rounded-3xl p-8 w-full max-w-xl shadow-2xl max-h-[90vh] overflow-y-auto">
+    <h3 class="text-xl font-bold text-slate-800 mb-2">选择附上认证文件</h3>
+    <p class="text-xs text-slate-400 mb-5">勾选本次报价需要附上的认证文件，将以链接形式出现在 PDF 末尾</p>
+
+    <!-- 公司级认证 -->
+    <div class="border border-slate-200 rounded-xl mb-4">
+        <div class="flex items-center justify-between p-4 cursor-pointer" onclick="toggleCertSection('company')">
+            <span class="text-sm font-bold text-slate-700">【公司级认证】</span>
+            <span id="company-cert-count" class="text-xs text-slate-400">0 项</span>
+            <span id="company-cert-arrow">▶</span>
+        </div>
+        <div id="company-cert-body" class="hidden px-4 pb-4">
+            <div class="mb-3">
+                <p class="text-xs font-bold text-slate-500 mb-2">工厂ISO认证</p>
+                <div id="iso-cert-checkboxes"></div>
+            </div>
+            <div>
+                <p class="text-xs font-bold text-slate-500 mb-2">运输文件 (UN38.3/MSDS)</p>
+                <div id="transport-cert-checkboxes"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 产品级认证 -->
+    <div class="border border-slate-200 rounded-xl mb-4">
+        <div class="flex items-center justify-between p-4 cursor-pointer" onclick="toggleCertSection('product')">
+            <span class="text-sm font-bold text-slate-700">【产品级认证】</span>
+            <span id="product-cert-count" class="text-xs text-slate-400">0 项</span>
+            <span id="product-cert-arrow">▶</span>
+        </div>
+        <div id="product-cert-body" class="hidden px-4 pb-4">
+            <div id="product-cert-list"></div>
+            <p id="product-cert-empty" class="text-xs text-slate-400 hidden">报价单中暂无有认证文件的产品</p>
+        </div>
+    </div>
+
+    <!-- 底部按钮 -->
+    <div class="flex justify-between items-center mt-4">
+        <span id="cert-selected-summary" class="text-xs text-slate-500">已选 0 个文件</span>
+        <div class="flex gap-3">
+            <button onclick="closeCertAttachmentModal()" class="px-4 py-2 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50">取消</button>
+            <button onclick="confirmAndGeneratePDF()" class="px-4 py-2 rounded-xl bg-purple-700 text-white font-bold hover:bg-purple-800">生成 PDF</button>
+        </div>
+    </div>
+</div>
+`;
+
                 ensureConfig();
                 refresh();
             }

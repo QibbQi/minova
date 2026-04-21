@@ -2762,6 +2762,9 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                 const certModal = el('div', { id: 'cert-attachment-modal', class: 'fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-[300] p-4' });
                 document.body.appendChild(certModal);
 
+                // 注意：el() 函数的 onclick 是字符串，不会自动执行，需要手动绑定
+                // certModal 的 innerHTML 通过直接设置字符串内容，其中的 onclick 会被浏览器解析
+
                 certModal.innerHTML = `
 <div class="bg-white rounded-3xl p-8 w-full max-w-xl shadow-2xl max-h-[90vh] overflow-y-auto">
     <h3 class="text-xl font-bold text-slate-800 mb-2">选择附上认证文件</h3>
@@ -2912,6 +2915,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
         let salesRecords = [];
         let historicalInventory = [];
         let companyCerts = { isoCerts: [], transportCerts: [] };
+        window.companyCerts = companyCerts; // 暴露到 window 以便弹窗 JS 函数访问
         let inventorySummaryMode = false;
         let inventoryFullHeadHtml = '';
         let inventoryHistoryPage = 1;
@@ -6510,7 +6514,8 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
             const transportContainer = document.getElementById('transport-cert-checkboxes');
             if (!isoContainer || !transportContainer) return;
 
-            const isoCerts = companyCerts.isoCerts || [];
+            const certs = window.companyCerts || companyCerts;
+            const isoCerts = certs.isoCerts || [];
             if (isoCerts.length === 0) {
                 isoContainer.innerHTML = '<p class="text-xs text-slate-400">暂无文件</p>';
             } else {
@@ -6522,7 +6527,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                 `).join('');
             }
 
-            const transportCerts = companyCerts.transportCerts || [];
+            const transportCerts = certs.transportCerts || [];
             if (transportCerts.length === 0) {
                 transportContainer.innerHTML = '<p class="text-xs text-slate-400">暂无文件</p>';
             } else {
@@ -6592,11 +6597,19 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
 
         window.getQuotedProductIds = () => {
             const quotedProductIds = new Set();
-            const rows = document.querySelectorAll('.print-container table tbody tr');
+            // 从报价单输入表格获取产品 ID（description 列包含产品编号）
+            const rows = document.querySelectorAll('#quote-body tr');
             rows.forEach(row => {
-                const productId = row.querySelector('[data-product-id]')?.dataset?.productId
-                    || row.cells[0]?.textContent?.trim();
-                if (productId) quotedProductIds.add(productId);
+                // 第一列是序号，第二列是产品描述（可能包含产品编号）
+                const descEl = row.querySelector('td:nth-child(2) input');
+                const descVal = descEl ? descEl.value.trim() : '';
+                if (descVal) {
+                    // 尝试从描述中提取产品 ID（格式如 "P001 - Solar Panel" 或纯 "P001"）
+                    const match = descVal.match(/^([A-Z0-9]+[-\d]*)\s*[-–—]/i) || descVal.match(/^([A-Z0-9]+[-\d]*)\s*$/i);
+                    if (match) {
+                        quotedProductIds.add(match[1].toUpperCase());
+                    }
+                }
             });
             return quotedProductIds;
         };

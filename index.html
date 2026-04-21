@@ -6404,7 +6404,6 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                     companyCerts.transportCerts.push(certEntry);
                 }
                 saveToLocal();
-                window.__minovaSync?.enqueueSnapshot('upload cert');
                 renderCompanyCertList();
             } catch (err) {
                 alert('上传失败: ' + err.message);
@@ -6417,7 +6416,6 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
             const idx = certs.findIndex(c => c.id === certId);
             if (idx !== -1) certs.splice(idx, 1);
             saveToLocal();
-            window.__minovaSync?.enqueueSnapshot('delete cert');
             renderCompanyCertList();
         };
 
@@ -6478,7 +6476,6 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                     p.certifications.specSheets.push(certEntry);
                 }
                 saveToLocal();
-                window.__minovaSync?.enqueueSnapshot('upload product cert');
                 renderProductCertsInModal();
             } catch (err) {
                 alert('上传失败: ' + err.message);
@@ -6536,7 +6533,6 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
             const idx = arr.findIndex(c => c.id === certId);
             if (idx !== -1) arr.splice(idx, 1);
             saveToLocal();
-            window.__minovaSync?.enqueueSnapshot('delete product cert');
             renderProductCertsInModal();
         };
     </script>

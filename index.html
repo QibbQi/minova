@@ -2830,7 +2830,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                     return { connected: !!unlockedToken, config, queueSize: queue.items.length, hasTokenStored: !!storage.get(KEY.token) };
                 }
 
-                const sync = { storage, getStatus, saveConfig, lock, storeToken, selfCheck, publishIndexHtml, enqueueSnapshot, repo, config };
+                const sync = { storage, getStatus, saveConfig, lock, storeToken, selfCheck, publishIndexHtml, repo, config };
                 mountGitHubSyncUi({ sync });
                 return sync;
             };

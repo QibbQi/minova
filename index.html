@@ -3068,8 +3068,8 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                 }
             }
         } catch (e) {}
-        // 确保 companyCerts 存在，加载本地存储中的数据
-        {
+        // Only load from localStorage if embedded didn't provide companyCerts
+        if (!companyCerts.isoCerts.length && !companyCerts.transportCerts.length) {
             const savedCerts = localStorage.getItem('minova_company_certs');
             if (savedCerts) {
                 try { companyCerts = JSON.parse(savedCerts); } catch (e) { console.warn('Failed to parse companyCerts from localStorage:', e); }

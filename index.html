@@ -3064,6 +3064,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                         localStorage.setItem('minova_profit_settings_v1', JSON.stringify(profitSettings));
                         localStorage.setItem('minova_installer_profit_v1', JSON.stringify(installerProfitSettings));
                     } catch (e) {}
+                    companyCerts = embedded.data.companyCerts && typeof embedded.data.companyCerts === 'object' ? embedded.data.companyCerts : companyCerts;
                 }
             }
         } catch (e) {}
@@ -3071,9 +3072,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
         {
             const savedCerts = localStorage.getItem('minova_company_certs');
             if (savedCerts) {
-                try { companyCerts = JSON.parse(savedCerts); } catch { companyCerts = { isoCerts: [], transportCerts: [] }; }
-            } else {
-                companyCerts = { isoCerts: [], transportCerts: [] };
+                try { companyCerts = JSON.parse(savedCerts); } catch (e) { console.warn('Failed to parse companyCerts from localStorage:', e); }
             }
         }
         function rebuildSubcategoryIndexFromProducts() {

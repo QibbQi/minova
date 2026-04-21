@@ -1709,6 +1709,30 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                         </div>
                     </div>
                 </div>
+                <!-- 认证文件区块 -->
+                <div class="border-t border-slate-200 mt-6 pt-6">
+                    <h4 class="text-sm font-bold text-slate-700 mb-4">产品认证文件</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- TUV/IEC认证 -->
+                        <div class="border border-slate-200 rounded-xl p-3">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs font-bold text-slate-500">TUV/IEC 认证</span>
+                                <button onclick="openProductCertUpload('tuv')" class="text-xs bg-blue-600 text-white px-2 py-1 rounded-lg font-bold hover:bg-blue-700">+ 上传</button>
+                            </div>
+                            <div id="product-tuv-list" class="space-y-1"></div>
+                            <p id="product-tuv-empty" class="text-xs text-slate-400 hidden">暂无</p>
+                        </div>
+                        <!-- 产品规格书 -->
+                        <div class="border border-slate-200 rounded-xl p-3">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs font-bold text-slate-500">产品规格书</span>
+                                <button onclick="openProductCertUpload('specs')" class="text-xs bg-blue-600 text-white px-2 py-1 rounded-lg font-bold hover:bg-blue-700">+ 上传</button>
+                            </div>
+                            <div id="product-specs-list" class="space-y-1"></div>
+                            <p id="product-specs-empty" class="text-xs text-slate-400 hidden">暂无</p>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="mt-8 flex gap-3">
                 <button onclick="closeModal()" class="flex-1 py-3 text-slate-400 font-bold hover:bg-slate-50 rounded-2xl transition-colors border border-slate-200">取消</button>
@@ -5653,6 +5677,14 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
         };
         window.openModal = () => {
             updateSubcatSuggestions();
+            if (!window.editId) {
+                ['tuv', 'specs'].forEach(type => {
+                    const list = document.getElementById(`product-${type}-list`);
+                    const empty = document.getElementById(`product-${type}-empty`);
+                    if (list) list.innerHTML = '';
+                    if (empty) empty.classList.remove('hidden');
+                });
+            }
             document.getElementById('modal').classList.remove('hidden');
         };
         window.closeModal = () => {
@@ -5708,6 +5740,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
             document.getElementById('m-cost').value = p.cost || 0;
             document.getElementById('m-price').value = p.price || 0;
             openModal();
+            renderProductCertsInModal();
         };
         window.deleteProduct = (id) => {
             if(confirm('确定删除该产品档案吗？')) { products = products.filter(p => p.id !== id); saveToLocal(); }
@@ -6384,6 +6417,114 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                 navigator.clipboard.writeText(url);
                 alert('链接已复制到剪贴板，请在浏览器中打开');
             }
+        };
+
+        window.openProductCertUpload = (type) => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.pdf,.jpg,.jpeg,.png,.doc,.docx';
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                await uploadProductCert(type, file);
+            };
+            input.click();
+        };
+
+        window.uploadProductCert = async (type, file) => {
+            const pid = window.editId;
+            if (!pid) { alert('请先保存产品后再上传认证文件'); return; }
+            const reader = new FileReader();
+            reader.onload = async () => {
+                try {
+                    const base64 = reader.result.split(',')[1];
+                    const subDir = type === 'tuv' ? 'tuv' : 'specs';
+                    const path = `minova-data/certifications/products/${pid}/${subDir}/${file.name}`;
+                    const content = atob(base64);
+                    const { owner, repo, branch } = window.__minovaSync.config;
+                    await window.__minovaSync.repo.commitTextFiles({
+                        owner, repo, branch,
+                        message: `minova: upload product cert ${file.name}`,
+                        files: [{ path, content }]
+                    });
+                    const certEntry = {
+                        id: crypto.randomUUID(),
+                        name: file.name,
+                        path: path,
+                        uploadedAt: new Date().toISOString()
+                    };
+                    const p = products.find(x => x.id === pid);
+                    if (!p.certifications) {
+                        p.certifications = { tuvCerts: [], specSheets: [] };
+                    }
+                    if (type === 'tuv') {
+                        p.certifications.tuvCerts.push(certEntry);
+                    } else {
+                        p.certifications.specSheets.push(certEntry);
+                    }
+                    saveToLocal();
+                    window.__minovaSync?.enqueueSnapshot('upload product cert');
+                    renderProductCertsInModal();
+                } catch (err) {
+                    alert('上传失败: ' + err.message);
+                }
+            };
+            reader.readAsDataURL(file);
+        };
+
+        window.renderProductCertsInModal = () => {
+            const pid = window.editId;
+            if (!pid) {
+                ['tuv', 'specs'].forEach(type => {
+                    document.getElementById(`product-${type}-list`).innerHTML = '';
+                    document.getElementById(`product-${type}-empty`).classList.remove('hidden');
+                });
+                return;
+            }
+            const p = products.find(x => x.id === pid);
+            if (!p) return;
+            const certs = p.certifications || {};
+            ['tuv', 'specs'].forEach(type => {
+                const list = document.getElementById(`product-${type}-list`);
+                const empty = document.getElementById(`product-${type}-empty`);
+                const files = type === 'tuv' ? (certs.tuvCerts || []) : (certs.specSheets || []);
+                if (!files.length) {
+                    list.innerHTML = '';
+                    empty.classList.remove('hidden');
+                } else {
+                    empty.classList.add('hidden');
+                    list.innerHTML = '';
+                    files.forEach(f => {
+                        const div = document.createElement('div');
+                        div.className = 'flex items-center justify-between bg-slate-50 rounded-lg px-2 py-1.5';
+                        const a = document.createElement('a');
+                        a.href = '#';
+                        a.className = 'text-xs text-blue-600 hover:underline flex-1 truncate';
+                        a.textContent = f.name;
+                        a.onclick = () => { previewCertFile(f.path); return false; };
+                        const btn = document.createElement('button');
+                        btn.className = 'text-red-400 hover:text-red-600 ml-2 text-xs font-bold';
+                        btn.textContent = '×';
+                        btn.onclick = () => deleteProductCert(type, f.id);
+                        div.appendChild(a);
+                        div.appendChild(btn);
+                        list.appendChild(div);
+                    });
+                }
+            });
+        };
+
+        window.deleteProductCert = (type, certId) => {
+            if (!confirm('确定删除？')) return;
+            const pid = window.editId;
+            const p = products.find(x => x.id === pid);
+            if (!p || !p.certifications) return;
+            const arr = type === 'tuv' ? p.certifications.tuvCerts : p.certifications.specSheets;
+            const idx = arr.findIndex(c => c.id === certId);
+            if (idx !== -1) arr.splice(idx, 1);
+            saveToLocal();
+            window.__minovaSync?.enqueueSnapshot('delete product cert');
+            renderProductCertsInModal();
         };
     </script>
 

@@ -1,6 +1,6 @@
 {
   "v": 1,
-  "updatedAt": "2026-04-21T08:06:07.406Z",
+  "updatedAt": "2026-04-21T08:43:15.510Z",
   "data": {
     "products": [
       {
@@ -19,22 +19,8 @@
         "price": 1.45,
         "ts": 1776758723498,
         "certifications": {
-          "tuvCerts": [
-            {
-              "id": "61069344-9d5a-4239-8f15-cd990f6fe1c3",
-              "name": "QT-20260421-01 (4).pdf",
-              "path": "minova-data/certifications/products/GFZJ001/tuv/QT-20260421-01 (4).pdf",
-              "uploadedAt": "2026-04-21T08:04:21.920Z"
-            }
-          ],
-          "specSheets": [
-            {
-              "id": "cdb69e6d-0648-4544-ba1a-57b01efcaccf",
-              "name": "南海制造业出海（新马站）闭门圆桌会.pdf",
-              "path": "minova-data/certifications/products/GFZJ001/specs/南海制造业出海（新马站）闭门圆桌会.pdf",
-              "uploadedAt": "2026-04-21T08:05:21.070Z"
-            }
-          ]
+          "tuvCerts": [],
+          "specSheets": []
         }
       },
       {

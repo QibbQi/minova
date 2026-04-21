@@ -2806,7 +2806,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                     return { connected: !!unlockedToken, config, queueSize: queue.items.length, hasTokenStored: !!storage.get(KEY.token) };
                 }
 
-                const sync = { storage, getStatus, saveConfig, lock, storeToken, selfCheck, publishIndexHtml };
+                const sync = { storage, getStatus, saveConfig, lock, storeToken, selfCheck, publishIndexHtml, repo, config };
                 mountGitHubSyncUi({ sync });
                 return sync;
             };
@@ -6326,10 +6326,11 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                     const base64 = reader.result.split(',')[1];
                     const path = `minova-data/certifications/${type}/${file.name}`;
                     const content = atob(base64);
-                    await repo.commitTextFiles({
-                        owner: config.owner,
-                        repo: config.repo,
-                        branch: config.branch,
+                    const { owner, repo: repoName, branch } = window.__minovaSync.config;
+                    await window.__minovaSync.repo.commitTextFiles({
+                        owner,
+                        repo: repoName,
+                        branch,
                         message: `minova: upload cert ${file.name}`,
                         files: [{ path, content }]
                     });
@@ -6345,7 +6346,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                         companyCerts.transportCerts.push(certEntry);
                     }
                     saveToLocal();
-                    enqueueSnapshot('upload cert');
+                    window.__minovaSync?.enqueueSnapshot('upload cert');
                     renderCompanyCertList();
                 } catch (err) {
                     alert('上传失败: ' + err.message);
@@ -6360,12 +6361,13 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
             const idx = certs.findIndex(c => c.id === certId);
             if (idx !== -1) certs.splice(idx, 1);
             saveToLocal();
-            enqueueSnapshot('delete cert');
+            window.__minovaSync?.enqueueSnapshot('delete cert');
             renderCompanyCertList();
         };
 
         window.previewCertFile = (path) => {
-            const url = `https://${config.owner}.github.io/${config.repo}/${path}`;
+            const { owner, repo } = window.__minovaSync.config;
+            const url = `https://${owner}.github.io/${repo}/${path}`;
             const win = window.open(url, '_blank');
             if (!win) {
                 navigator.clipboard.writeText(url);

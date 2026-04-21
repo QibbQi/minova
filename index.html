@@ -2784,6 +2784,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
         let inventoryHistory = [];
         let salesRecords = [];
         let historicalInventory = [];
+        let companyCerts = { isoCerts: [], transportCerts: [] };
         let inventorySummaryMode = false;
         let inventoryFullHeadHtml = '';
         let inventoryHistoryPage = 1;
@@ -3066,6 +3067,15 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                 }
             }
         } catch (e) {}
+        // 确保 companyCerts 存在，加载本地存储中的数据
+        {
+            const savedCerts = localStorage.getItem('minova_company_certs');
+            if (savedCerts) {
+                try { companyCerts = JSON.parse(savedCerts); } catch { companyCerts = { isoCerts: [], transportCerts: [] }; }
+            } else {
+                companyCerts = { isoCerts: [], transportCerts: [] };
+            }
+        }
         function rebuildSubcategoryIndexFromProducts() {
             const map = {};
             products.forEach(p => {
@@ -3192,6 +3202,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
             localStorage.setItem('minova_inventory_history', JSON.stringify(inventoryHistory));
             localStorage.setItem('minova_sales_records_v1', JSON.stringify(salesRecords));
             localStorage.setItem('minova_historical_inventory_v1', JSON.stringify(historicalInventory));
+            localStorage.setItem('minova_company_certs', JSON.stringify(companyCerts));
             rebuildSubcategoryIndexFromProducts();
             saveSubcategoryIndex();
             ensureProfitSettingsCoverage();

@@ -2470,7 +2470,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
 
                         const treeItems = [];
                         for (const f of list) {
-                            const blob = await api.post(`/repos/${owner}/${repo}/git/blobs`, { content: String(f.content ?? ''), encoding: 'utf-8' });
+                            const blob = await api.post(`/repos/${owner}/${repo}/git/blobs`, { content: String(f.content ?? ''), encoding: f.encoding || 'utf-8' });
                             treeItems.push({ path: String(f.path), mode: '100644', type: 'blob', sha: blob?.sha });
                         }
 
@@ -6364,39 +6364,40 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
         };
 
         window.uploadCompanyCert = async (type, file) => {
-            const reader = new FileReader();
-            reader.onload = async () => {
-                try {
-                    const base64 = reader.result.split(',')[1];
-                    const path = `minova-data/certifications/${type}/${file.name}`;
-                    const content = atob(base64);
-                    const { owner, repo: repoName, branch } = window.__minovaSync.config;
-                    await window.__minovaSync.repo.commitTextFiles({
-                        owner,
-                        repo: repoName,
-                        branch,
-                        message: `minova: upload cert ${file.name}`,
-                        files: [{ path, content }]
-                    });
-                    const certEntry = {
-                        id: crypto.randomUUID(),
-                        name: file.name,
-                        path: path,
-                        uploadedAt: new Date().toISOString()
-                    };
-                    if (type === 'iso') {
-                        companyCerts.isoCerts.push(certEntry);
-                    } else {
-                        companyCerts.transportCerts.push(certEntry);
-                    }
-                    saveToLocal();
-                    window.__minovaSync?.enqueueSnapshot('upload cert');
-                    renderCompanyCertList();
-                } catch (err) {
-                    alert('上传失败: ' + err.message);
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const bytes = new Uint8Array(arrayBuffer);
+                let binary = '';
+                for (let i = 0; i < bytes.length; i++) {
+                    binary += String.fromCharCode(bytes[i]);
                 }
-            };
-            reader.readAsDataURL(file);
+                const content = btoa(binary);
+                const path = `minova-data/certifications/${type}/${file.name}`;
+                const { owner, repo: repoName, branch } = window.__minovaSync.config;
+                await window.__minovaSync.repo.commitTextFiles({
+                    owner,
+                    repo: repoName,
+                    branch,
+                    message: `minova: upload cert ${file.name}`,
+                    files: [{ path, content, encoding: 'base64' }]
+                });
+                const certEntry = {
+                    id: crypto.randomUUID(),
+                    name: file.name,
+                    path: path,
+                    uploadedAt: new Date().toISOString()
+                };
+                if (type === 'iso') {
+                    companyCerts.isoCerts.push(certEntry);
+                } else {
+                    companyCerts.transportCerts.push(certEntry);
+                }
+                saveToLocal();
+                window.__minovaSync?.enqueueSnapshot('upload cert');
+                renderCompanyCertList();
+            } catch (err) {
+                alert('上传失败: ' + err.message);
+            }
         };
 
         window.deleteCompanyCert = (type, certId) => {
@@ -6434,42 +6435,43 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
         window.uploadProductCert = async (type, file) => {
             const pid = window.editId;
             if (!pid) { alert('请先保存产品后再上传认证文件'); return; }
-            const reader = new FileReader();
-            reader.onload = async () => {
-                try {
-                    const base64 = reader.result.split(',')[1];
-                    const subDir = type === 'tuv' ? 'tuv' : 'specs';
-                    const path = `minova-data/certifications/products/${pid}/${subDir}/${file.name}`;
-                    const content = atob(base64);
-                    const { owner, repo, branch } = window.__minovaSync.config;
-                    await window.__minovaSync.repo.commitTextFiles({
-                        owner, repo, branch,
-                        message: `minova: upload product cert ${file.name}`,
-                        files: [{ path, content }]
-                    });
-                    const certEntry = {
-                        id: crypto.randomUUID(),
-                        name: file.name,
-                        path: path,
-                        uploadedAt: new Date().toISOString()
-                    };
-                    const p = products.find(x => x.id === pid);
-                    if (!p.certifications) {
-                        p.certifications = { tuvCerts: [], specSheets: [] };
-                    }
-                    if (type === 'tuv') {
-                        p.certifications.tuvCerts.push(certEntry);
-                    } else {
-                        p.certifications.specSheets.push(certEntry);
-                    }
-                    saveToLocal();
-                    window.__minovaSync?.enqueueSnapshot('upload product cert');
-                    renderProductCertsInModal();
-                } catch (err) {
-                    alert('上传失败: ' + err.message);
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const bytes = new Uint8Array(arrayBuffer);
+                let binary = '';
+                for (let i = 0; i < bytes.length; i++) {
+                    binary += String.fromCharCode(bytes[i]);
                 }
-            };
-            reader.readAsDataURL(file);
+                const content = btoa(binary);
+                const subDir = type === 'tuv' ? 'tuv' : 'specs';
+                const path = `minova-data/certifications/products/${pid}/${subDir}/${file.name}`;
+                const { owner, repo, branch } = window.__minovaSync.config;
+                await window.__minovaSync.repo.commitTextFiles({
+                    owner, repo, branch,
+                    message: `minova: upload product cert ${file.name}`,
+                    files: [{ path, content, encoding: 'base64' }]
+                });
+                const certEntry = {
+                    id: crypto.randomUUID(),
+                    name: file.name,
+                    path: path,
+                    uploadedAt: new Date().toISOString()
+                };
+                const p = products.find(x => x.id === pid);
+                if (!p.certifications) {
+                    p.certifications = { tuvCerts: [], specSheets: [] };
+                }
+                if (type === 'tuv') {
+                    p.certifications.tuvCerts.push(certEntry);
+                } else {
+                    p.certifications.specSheets.push(certEntry);
+                }
+                saveToLocal();
+                window.__minovaSync?.enqueueSnapshot('upload product cert');
+                renderProductCertsInModal();
+            } catch (err) {
+                alert('上传失败: ' + err.message);
+            }
         };
 
         window.renderProductCertsInModal = () => {

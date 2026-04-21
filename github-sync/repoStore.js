@@ -142,7 +142,7 @@ export function createRepoStore({ api }) {
 
       const treeItems = []
       for (const f of list) {
-        const blob = await api.post(`/repos/${owner}/${repo}/git/blobs`, { content: String(f.content ?? ''), encoding: 'utf-8' })
+        const blob = await api.post(`/repos/${owner}/${repo}/git/blobs`, { content: String(f.content ?? ''), encoding: f.encoding || 'utf-8' })
         treeItems.push({ path: String(f.path), mode: '100644', type: 'blob', sha: blob?.sha })
       }
 

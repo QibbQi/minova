@@ -1,6 +1,6 @@
 {
   "v": 1,
-  "updatedAt": "2026-04-23T16:46:49.105Z",
+  "updatedAt": "2026-04-23T17:14:32.524Z",
   "data": {
     "products": [
       {
@@ -363,14 +363,7 @@
     "salesRecords": [],
     "historicalInventory": [],
     "companyCerts": {
-      "isoCerts": [
-        {
-          "id": "6d57bec5-e857-4d1b-a3e9-d5b5e4fbb206",
-          "name": "Letter of Award_CEEC x Minova_Solar Capark_full signed.pdf",
-          "path": "minova-data/certifications/iso/Letter of Award_CEEC x Minova_Solar Capark_full signed.pdf",
-          "uploadedAt": "2026-04-23T15:53:49.459Z"
-        }
-      ],
+      "isoCerts": [],
       "transportCerts": []
     },
     "subcategoriesByCategory": {

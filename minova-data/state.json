@@ -1,6 +1,6 @@
 {
   "v": 1,
-  "updatedAt": "2026-04-23T17:14:32.524Z",
+  "updatedAt": "2026-04-23T18:13:32.882Z",
   "data": {
     "products": [
       {
@@ -69,18 +69,9 @@
         "contactInfo": "",
         "cost": 0.66,
         "price": 1.848,
-        "ts": 1776962704888,
+        "ts": 1776763554691,
         "certifications": {
-          "tuvCerts": [
-            {
-              "id": "c889bab5-c0ec-4fc0-b79c-05d361f010ba",
-              "name": "Minova Malaysia New Cooperation Plan.pdf",
-              "path": "minova-data/certifications/products/DC001/tuv/Minova Malaysia New Cooperation Plan.pdf",
-              "size": 656995,
-              "sha256": "5388b5850d17673dbf080e801f2ca9a10b7bbf8daae9a7b8626477f022ea8e52",
-              "uploadedAt": "2026-04-23T16:45:03.135Z"
-            }
-          ],
+          "tuvCerts": [],
           "specSheets": []
         }
       },
@@ -366,6 +357,44 @@
       "isoCerts": [],
       "transportCerts": []
     },
+    "transportRecords": [
+      {
+        "id": "tr_1776966786335",
+        "createdAt": "2026-04-23T17:53:06.335Z",
+        "trackingNo": "123",
+        "method": "air",
+        "status": "delivered",
+        "freight": 2000,
+        "totalWeightKg": 1,
+        "totalVolumeM3": 1,
+        "lines": [
+          {
+            "inventoryId": "inv_1775819903003",
+            "batchNo": "20250411-001",
+            "productId": "GFZJ001",
+            "productName": "210R N-type组件",
+            "category": "光伏组件",
+            "subcategory": "双面",
+            "vendor": "联塑 LESSO",
+            "quantity": 72,
+            "weightKg": 1,
+            "volumeM3": 1
+          }
+        ]
+      }
+    ],
+    "fileDeleteLogs": [
+      {
+        "id": "096a45ed-2fe8-4598-a646-8a8c2aea37b5",
+        "at": "2026-04-23T18:13:32.882Z",
+        "user": "QibbQi",
+        "scope": "company",
+        "fileType": "iso",
+        "path": "minova-data/certifications/iso/智能纪要：马来西亚业务合作会议决议 2026年4月17日.pdf",
+        "name": "智能纪要：马来西亚业务合作会议决议 2026年4月17日.pdf",
+        "productId": ""
+      }
+    ],
     "subcategoriesByCategory": {
       "光伏组件": [
         "双面"

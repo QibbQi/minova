@@ -1,6 +1,6 @@
 {
   "v": 1,
-  "updatedAt": "2026-04-25T12:55:07.255Z",
+  "updatedAt": "2026-04-25T13:19:10.166Z",
   "data": {
     "products": [
       {
@@ -190,7 +190,7 @@
         "totalCost": 34543.08,
         "location": "马来西亚仓库",
         "transportIds": [
-          "tr_1777102007442"
+          "tr_1777122874758"
         ]
       },
       {
@@ -210,7 +210,7 @@
         "totalCost": 67716,
         "location": "马来西亚仓库",
         "transportIds": [
-          "tr_1777121459545"
+          "tr_1777122874758"
         ]
       },
       {
@@ -229,9 +229,7 @@
         "domesticTax": 693.0791999999999,
         "totalCost": 13168.5048,
         "location": "马来西亚仓库",
-        "transportIds": [
-          "tr_1777121459545"
-        ]
+        "transportIds": []
       },
       {
         "id": "inv_1775820358973",
@@ -378,15 +376,15 @@
     },
     "transportRecords": [
       {
-        "id": "tr_1777102007442",
-        "createdAt": "2026-04-25T07:26:47.442Z",
-        "trackingNo": "1234567",
+        "id": "tr_1777122874758",
+        "createdAt": "2026-04-25T13:14:34.758Z",
+        "trackingNo": "12356778",
         "carrierCompany": "海澜天",
         "method": "sea",
         "status": "in_transit",
         "freight": 2000,
-        "totalWeightKg": 123,
-        "totalVolumeM3": 23,
+        "totalWeightKg": 60,
+        "totalVolumeM3": 80,
         "lines": [
           {
             "inventoryId": "inv_1775819903003",
@@ -397,22 +395,9 @@
             "subcategory": "双面",
             "vendor": "联塑 LESSO",
             "quantity": 72,
-            "weightKg": 123,
-            "volumeM3": 23
-          }
-        ]
-      },
-      {
-        "id": "tr_1777121459545",
-        "createdAt": "2026-04-25T12:50:59.545Z",
-        "trackingNo": "125678",
-        "carrierCompany": "海澜天",
-        "method": "sea",
-        "status": "in_transit",
-        "freight": 300,
-        "totalWeightKg": 70,
-        "totalVolumeM3": 110,
-        "lines": [
+            "weightKg": 30,
+            "volumeM3": 40
+          },
           {
             "inventoryId": "inv_1775820030632",
             "batchNo": "20250411-002",
@@ -423,24 +408,22 @@
             "vendor": "明匠",
             "quantity": 18,
             "weightKg": 30,
-            "volumeM3": 50
-          },
-          {
-            "inventoryId": "inv_1775820265501",
-            "batchNo": "20250411-003",
-            "productId": "NBQ002",
-            "productName": "5.5kW 逆变器",
-            "category": "逆变器",
-            "subcategory": "堆叠式单相逆变器",
-            "vendor": "明匠",
-            "quantity": 6,
-            "weightKg": 40,
-            "volumeM3": 60
+            "volumeM3": 40
           }
         ]
       }
     ],
     "fileDeleteLogs": [
+      {
+        "id": "cf793229-87a9-46f4-9ef0-00cdfaa9855c",
+        "at": "2026-04-25T13:19:10.165Z",
+        "user": "QibbQi",
+        "scope": "company",
+        "fileType": "transport",
+        "path": "minova-data/certifications/transport/南海制造业出海（新马站）闭门圆桌会.pdf",
+        "name": "南海制造业出海（新马站）闭门圆桌会.pdf",
+        "productId": ""
+      },
       {
         "id": "5c95262e-8799-4c9b-b164-2f38ee19b243",
         "at": "2026-04-25T10:27:45.018Z",

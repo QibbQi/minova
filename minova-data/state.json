@@ -1,6 +1,6 @@
 {
   "v": 1,
-  "updatedAt": "2026-04-23T18:13:32.882Z",
+  "updatedAt": "2026-04-25T07:27:27.386Z",
   "data": {
     "products": [
       {
@@ -188,7 +188,10 @@
         "shippingCost": 2283.84,
         "domesticTax": 3711.2400000000002,
         "totalCost": 34543.08,
-        "location": "马来西亚仓库"
+        "location": "马来西亚仓库",
+        "transportIds": [
+          "tr_1777102007442"
+        ]
       },
       {
         "id": "inv_1775820030632",
@@ -359,14 +362,15 @@
     },
     "transportRecords": [
       {
-        "id": "tr_1776966786335",
-        "createdAt": "2026-04-23T17:53:06.335Z",
-        "trackingNo": "123",
-        "method": "air",
-        "status": "delivered",
+        "id": "tr_1777102007442",
+        "createdAt": "2026-04-25T07:26:47.442Z",
+        "trackingNo": "1234567",
+        "carrierCompany": "海澜天",
+        "method": "sea",
+        "status": "in_transit",
         "freight": 2000,
-        "totalWeightKg": 1,
-        "totalVolumeM3": 1,
+        "totalWeightKg": 123,
+        "totalVolumeM3": 23,
         "lines": [
           {
             "inventoryId": "inv_1775819903003",
@@ -377,21 +381,21 @@
             "subcategory": "双面",
             "vendor": "联塑 LESSO",
             "quantity": 72,
-            "weightKg": 1,
-            "volumeM3": 1
+            "weightKg": 123,
+            "volumeM3": 23
           }
         ]
       }
     ],
     "fileDeleteLogs": [
       {
-        "id": "096a45ed-2fe8-4598-a646-8a8c2aea37b5",
-        "at": "2026-04-23T18:13:32.882Z",
+        "id": "b73827d9-00f6-4fcb-8e13-4ea4d56b265d",
+        "at": "2026-04-25T07:27:27.386Z",
         "user": "QibbQi",
         "scope": "company",
         "fileType": "iso",
-        "path": "minova-data/certifications/iso/智能纪要：马来西亚业务合作会议决议 2026年4月17日.pdf",
-        "name": "智能纪要：马来西亚业务合作会议决议 2026年4月17日.pdf",
+        "path": "minova-data/certifications/iso/合作备忘录：关于构建“产投联动”机制助力产业升级.pdf",
+        "name": "合作备忘录：关于构建“产投联动”机制助力产业升级.pdf",
         "productId": ""
       }
     ],

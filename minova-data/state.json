@@ -1,6 +1,6 @@
 {
   "v": 1,
-  "updatedAt": "2026-04-25T10:44:58.901Z",
+  "updatedAt": "2026-04-25T12:55:07.255Z",
   "data": {
     "products": [
       {
@@ -208,7 +208,10 @@
         "shippingCost": 4752,
         "domesticTax": 3564,
         "totalCost": 67716,
-        "location": "马来西亚仓库"
+        "location": "马来西亚仓库",
+        "transportIds": [
+          "tr_1777121459545"
+        ]
       },
       {
         "id": "inv_1775820265501",
@@ -225,7 +228,10 @@
         "shippingCost": 924.1056,
         "domesticTax": 693.0791999999999,
         "totalCost": 13168.5048,
-        "location": "马来西亚仓库"
+        "location": "马来西亚仓库",
+        "transportIds": [
+          "tr_1777121459545"
+        ]
       },
       {
         "id": "inv_1775820358973",
@@ -393,6 +399,43 @@
             "quantity": 72,
             "weightKg": 123,
             "volumeM3": 23
+          }
+        ]
+      },
+      {
+        "id": "tr_1777121459545",
+        "createdAt": "2026-04-25T12:50:59.545Z",
+        "trackingNo": "125678",
+        "carrierCompany": "海澜天",
+        "method": "sea",
+        "status": "in_transit",
+        "freight": 300,
+        "totalWeightKg": 70,
+        "totalVolumeM3": 110,
+        "lines": [
+          {
+            "inventoryId": "inv_1775820030632",
+            "batchNo": "20250411-002",
+            "productId": "DC001",
+            "productName": "5kW 电池",
+            "category": "电池",
+            "subcategory": "堆叠式家储",
+            "vendor": "明匠",
+            "quantity": 18,
+            "weightKg": 30,
+            "volumeM3": 50
+          },
+          {
+            "inventoryId": "inv_1775820265501",
+            "batchNo": "20250411-003",
+            "productId": "NBQ002",
+            "productName": "5.5kW 逆变器",
+            "category": "逆变器",
+            "subcategory": "堆叠式单相逆变器",
+            "vendor": "明匠",
+            "quantity": 6,
+            "weightKg": 40,
+            "volumeM3": 60
           }
         ]
       }

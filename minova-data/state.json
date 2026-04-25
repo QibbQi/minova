@@ -1,6 +1,6 @@
 {
   "v": 1,
-  "updatedAt": "2026-04-25T10:38:31.845Z",
+  "updatedAt": "2026-04-25T10:44:58.901Z",
   "data": {
     "products": [
       {
@@ -357,7 +357,17 @@
     "salesRecords": [],
     "historicalInventory": [],
     "companyCerts": {
-      "isoCerts": [],
+      "isoCerts": [
+        {
+          "id": "7daa88e2-6747-4455-93cd-9dfbce58da73",
+          "name": "排排网基金PK_洛书CTA开拓者1号A类份额VS九木CTA1号.png",
+          "path": "minova-data/certifications/iso/排排网基金PK_洛书CTA开拓者1号A类份额VS九木CTA1号.png",
+          "size": 684263,
+          "sha256": "45ad64dd88056aec224ccc18123d80788e7a4020bfe1ff1334db8657ea6a7b56",
+          "uploadedAt": "2026-04-25T10:44:09.117Z",
+          "vendor": "埃克森"
+        }
+      ],
       "transportCerts": []
     },
     "transportRecords": [

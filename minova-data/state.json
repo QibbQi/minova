@@ -1,6 +1,6 @@
 {
   "v": 1,
-  "updatedAt": "2026-04-25T08:13:41.149Z",
+  "updatedAt": "2026-04-25T10:27:45.018Z",
   "data": {
     "products": [
       {
@@ -357,17 +357,7 @@
     "salesRecords": [],
     "historicalInventory": [],
     "companyCerts": {
-      "isoCerts": [
-        {
-          "id": "c288d89f-4037-4b0d-b86b-afafc52bb69c",
-          "name": "南海制造业出海（新马站）闭门圆桌会.pdf",
-          "path": "minova-data/certifications/iso/南海制造业出海（新马站）闭门圆桌会.pdf",
-          "size": 139561,
-          "sha256": "84443907979317629819794e702e82874fb17edbe0769dd5de58e65ecbea479e",
-          "uploadedAt": "2026-04-25T08:11:35.032Z",
-          "vendor": "明匠"
-        }
-      ],
+      "isoCerts": [],
       "transportCerts": []
     },
     "transportRecords": [
@@ -398,6 +388,16 @@
       }
     ],
     "fileDeleteLogs": [
+      {
+        "id": "5c95262e-8799-4c9b-b164-2f38ee19b243",
+        "at": "2026-04-25T10:27:45.018Z",
+        "user": "QibbQi",
+        "scope": "company",
+        "fileType": "iso",
+        "path": "minova-data/certifications/iso/南海制造业出海（新马站）闭门圆桌会.pdf",
+        "name": "南海制造业出海（新马站）闭门圆桌会.pdf",
+        "productId": ""
+      },
       {
         "id": "b73827d9-00f6-4fcb-8e13-4ea4d56b265d",
         "at": "2026-04-25T07:27:27.386Z",

@@ -87,17 +87,17 @@
 
     <main id="view-quotation" class="max-w-5xl mx-auto px-4 mb-20 hidden" style="display: none;">
         <div class="bg-white shadow-2xl rounded-sm print-container min-h-[1050px] flex flex-col p-12 md:p-16 border border-slate-100">
-            <div class="flex justify-between items-start mb-12 border-b-4 border-slate-1000 pb-8">
+            <div class="flex justify-between items-start mb-2">
                 <div class="flex-1 min-w-0">
             <div class="flex items-center gap-4 mb-4">
                 <img src="logo-horizontal.png" alt="MINOVA Logo" class="h-12 w-auto object-contain" />
             </div>
             <div class="space-y-1 text-sm text-slate-500 font-medium">
                 <p class="uppercase tracking-[0.2em] text-[10px] font-bold text-purple-800/60 mb-2">Solar System Solution | Storage Battery</p>
-                        <textarea id="company-address" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'" class="block w-full outline-none resize-none overflow-hidden leading-tight bg-transparent" style="height: 0px;">Add：Tiong Nam Industrial Park, 12A, JIn 51/203A, 
-Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
-                        <input type="text" value="Tel：+60 (11) 1258-0513" class="block w-full outline-none">
-                        <input id="company-web" type="text" value="Web：minovasolar.com" class="text-sm text-slate-500 font-medium outline-none flex-1 min-w-0">
+                <div contenteditable="true" id="company-address" class="block w-full outline-none leading-tight bg-transparent whitespace-pre-wrap">Add：Tiong Nam Industrial Park, 12A, JIn 51/203A, 
+Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
+                <input type="text" value="Tel：+60 (11) 1258-0513" class="block w-full outline-none">
+                        <input id="company-web" type="text" value="Web：minovamy.com" class="text-sm text-slate-500 font-medium outline-none flex-1 min-w-0">
                     </div>
                 </div>
                 <div class="flex-shrink-0 text-right pl-8">
@@ -109,7 +109,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 gap-12 mb-12">
+            <div class="mb-4">
                 <div class="border-l-4 border-purple-700 pl-4">
                     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-2">
                         <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0" id="lbl-to-customer">致客户：</h3>
@@ -131,35 +131,35 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
             </div>
 
             <!-- Estimated Timeline & Payment Terms -->
-            <div class="grid grid-cols-2 gap-12 mb-8">
+            <div class="grid grid-cols-2 gap-8 mb-4">
                 <!-- Timeline Section -->
                 <div>
                     <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3" id="lbl-timeline">预计时间表</h3>
-                    <div class="space-y-2">
-                        <div class="flex items-center gap-3 bg-slate-50/50 p-2 rounded-lg border border-slate-100">
-                            <span class="flex-shrink-0 w-5 h-5 bg-purple-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">1</span>
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-3 bg-slate-50/50 py-1.5 px-2 rounded-lg border border-slate-100">
+                            <span class="flex-shrink-0 w-5 h-5 bg-[#582C83] text-white text-[10px] font-bold rounded-full flex items-center justify-center">1</span>
                             <span class="text-xs font-bold text-slate-700 flex-grow" id="val-step1">现场勘测</span>
                             <div class="flex items-center gap-1">
-                                <span class="text-xs font-bold text-purple-600 mr-0.5">≈</span>
-                                <input type="number" class="w-12 text-xs font-bold text-purple-600 bg-transparent outline-none text-right border-b border-purple-200" placeholder="0">
+                                <span class="text-xs font-bold text-[#582C83] mr-0.5">≈</span>
+                                <input type="number" class="w-12 text-xs font-bold text-[#582C83] bg-transparent outline-none text-right border-b border-purple-200" placeholder="0">
                                 <span class="text-[10px] font-bold text-slate-400 unit-days">天</span>
                             </div>
                         </div>
-                        <div class="flex items-center gap-3 bg-slate-50/50 p-2 rounded-lg border border-slate-100">
-                            <span class="flex-shrink-0 w-5 h-5 bg-purple-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">2</span>
+                        <div class="flex items-center gap-3 bg-slate-50/50 py-1.5 px-2 rounded-lg border border-slate-100">
+                            <span class="flex-shrink-0 w-5 h-5 bg-[#582C83] text-white text-[10px] font-bold rounded-full flex items-center justify-center">2</span>
                             <span class="text-xs font-bold text-slate-700 flex-grow" id="val-step2">材料采购与安装规划</span>
                             <div class="flex items-center gap-1">
-                                <span class="text-xs font-bold text-purple-600 mr-0.5">≈</span>
-                                <input type="number" class="w-12 text-xs font-bold text-purple-600 bg-transparent outline-none text-right border-b border-purple-200" placeholder="0">
+                                <span class="text-xs font-bold text-[#582C83] mr-0.5">≈</span>
+                                <input type="number" class="w-12 text-xs font-bold text-[#582C83] bg-transparent outline-none text-right border-b border-purple-200" placeholder="0">
                                 <span class="text-[10px] font-bold text-slate-400 unit-days">天</span>
                             </div>
                         </div>
-                        <div class="flex items-center gap-3 bg-slate-50/50 p-2 rounded-lg border border-slate-100">
-                            <span class="flex-shrink-0 w-5 h-5 bg-purple-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">3</span>
+                        <div class="flex items-center gap-3 bg-slate-50/50 py-1.5 px-2 rounded-lg border border-slate-100">
+                            <span class="flex-shrink-0 w-5 h-5 bg-[#582C83] text-white text-[10px] font-bold rounded-full flex items-center justify-center">3</span>
                             <span class="text-xs font-bold text-slate-700 flex-grow" id="val-step3">安装</span>
                             <div class="flex items-center gap-1">
-                                <span class="text-xs font-bold text-purple-600 mr-0.5">≈</span>
-                                <input type="number" class="w-12 text-xs font-bold text-purple-600 bg-transparent outline-none text-right border-b border-purple-200" placeholder="0">
+                                <span class="text-xs font-bold text-[#582C83] mr-0.5">≈</span>
+                                <input type="number" class="w-12 text-xs font-bold text-[#582C83] bg-transparent outline-none text-right border-b border-purple-200" placeholder="0">
                                 <span class="text-[10px] font-bold text-slate-400 unit-days">天</span>
                             </div>
                         </div>
@@ -169,45 +169,62 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                 <!-- Payment Terms Section -->
                 <div>
                     <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3" id="lbl-payment-terms">支付条款</h3>
-                    <div class="space-y-2">
-                        <div class="flex justify-between items-center p-2 bg-purple-900 text-white rounded-lg mb-2">
+                    <div class="space-y-1">
+                        <div class="flex justify-between items-center py-1.5 px-2 bg-purple-900 text-white rounded-lg mb-1">
                             <span class="text-[10px] font-bold uppercase tracking-wider" id="lbl-total-payable">核算总价</span>
                             <span class="text-xs font-black"><span class="currency-symbol mr-1">¥</span><span id="payment-grand-total">1,956.24</span></span>
                         </div>
                         <div class="grid grid-cols-1 gap-1.5">
-                            <div class="flex justify-between items-center p-2 bg-slate-50 rounded-lg border border-slate-100 group/pay">
+                            <div class="flex justify-between items-center py-0.5 px-2 bg-slate-50 rounded-lg border border-slate-100 group/pay">
                                 <span class="text-[10px] font-bold text-slate-500 uppercase" id="lbl-confirmation">确认后</span>
                                 <div class="flex items-center gap-1">
-                                    <input type="number" id="payment-confirmation-percent" value="30" oninput="onPaymentPercentInput()" onchange="onPaymentPercentInput()" class="w-10 text-xs font-bold text-purple-600 bg-transparent outline-none text-right border-b border-purple-200">
-                                    <span class="text-[10px] font-bold text-slate-400">%</span>
+                                    <input type="number" id="payment-confirmation-percent" value="30" oninput="onPaymentPercentInput()" onchange="onPaymentPercentInput()" class="w-8 text-[10px] font-black text-[#582C83] bg-transparent outline-none text-right border-b border-purple-200">
+                                    <span class="text-[10px] font-bold text-[#582C83]">%</span>
                                     <button onclick="confirmPaymentTerms()" class="p-1 bg-purple-100 text-purple-600 rounded-md hover:bg-purple-600 hover:text-white transition-all no-print opacity-0 group-hover/pay:opacity-100" title="确认修改">
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd"></path></svg>
                                     </button>
                                     <span class="text-xs font-bold text-slate-700 w-24 text-right"><span class="currency-symbol mr-1">¥</span><span id="payment-confirmation">586.87</span></span>
                                 </div>
                             </div>
-                            <div class="flex justify-between items-center p-2 bg-slate-50 rounded-lg border border-slate-100 group/pay">
+                            <div class="flex justify-between items-center py-0.5 px-2 bg-slate-50 rounded-lg border border-slate-100 group/pay">
                                 <span class="text-[10px] font-bold text-slate-500 uppercase" id="lbl-installation">安装后</span>
                                 <div class="flex items-center gap-1">
-                                    <input type="number" id="payment-installation-percent" value="40" oninput="onPaymentPercentInput()" onchange="onPaymentPercentInput()" class="w-10 text-xs font-bold text-purple-600 bg-transparent outline-none text-right border-b border-purple-200">
-                                    <span class="text-[10px] font-bold text-slate-400">%</span>
+                                    <input type="number" id="payment-installation-percent" value="40" oninput="onPaymentPercentInput()" onchange="onPaymentPercentInput()" class="w-8 text-[10px] font-black text-[#582C83] bg-transparent outline-none text-right border-b border-purple-200">
+                                    <span class="text-[10px] font-bold text-[#582C83]">%</span>
                                     <button onclick="confirmPaymentTerms()" class="p-1 bg-purple-100 text-purple-600 rounded-md hover:bg-purple-600 hover:text-white transition-all no-print opacity-0 group-hover/pay:opacity-100" title="确认修改">
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd"></path></svg>
                                     </button>
                                     <span class="text-xs font-bold text-slate-700 w-24 text-right"><span class="currency-symbol mr-1">¥</span><span id="payment-installation">782.50</span></span>
                                 </div>
                             </div>
-                            <div class="flex justify-between items-center p-2 bg-slate-50 rounded-lg border border-slate-100 group/pay">
+                            <div class="flex justify-between items-center py-0.5 px-2 bg-slate-50 rounded-lg border border-slate-100 group/pay">
                                 <span class="text-[10px] font-bold text-slate-500 uppercase" id="lbl-testing">测试与调试后</span>
                                 <div class="flex items-center gap-1">
-                                    <input type="number" id="payment-testing-percent" value="30" oninput="onPaymentPercentInput()" onchange="onPaymentPercentInput()" class="w-10 text-xs font-bold text-purple-600 bg-transparent outline-none text-right border-b border-purple-200">
-                                    <span class="text-[10px] font-bold text-slate-400">%</span>
+                                    <input type="number" id="payment-testing-percent" value="30" oninput="onPaymentPercentInput()" onchange="onPaymentPercentInput()" class="w-8 text-[10px] font-black text-[#582C83] bg-transparent outline-none text-right border-b border-purple-200">
+                                    <span class="text-[10px] font-bold text-[#582C83]">%</span>
                                     <button onclick="confirmPaymentTerms()" class="p-1 bg-purple-100 text-purple-600 rounded-md hover:bg-purple-600 hover:text-white transition-all no-print opacity-0 group-hover/pay:opacity-100" title="确认修改">
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd"></path></svg>
                                     </button>
                                     <span class="text-xs font-bold text-slate-700 w-24 text-right"><span class="currency-symbol mr-1">¥</span><span id="payment-testing">586.87</span></span>
                                 </div>
                             </div>
+                            <div id="payment-final-container" class="hidden flex justify-between items-center py-0.5 px-2 bg-slate-50 rounded-lg border border-slate-100 group/pay">
+                                <span class="text-[10px] font-bold text-slate-500 uppercase"><input type="text" id="lbl-final" value="交付验收后" class="w-24 bg-transparent outline-none uppercase placeholder-slate-400"></span>
+                                <div class="flex items-center gap-1">
+                                    <input type="number" id="payment-final-percent" value="0" oninput="onPaymentPercentInput()" onchange="onPaymentPercentInput()" class="w-8 text-[10px] font-black text-[#582C83] bg-transparent outline-none text-right border-b border-purple-200">
+                                    <span class="text-[10px] font-bold text-[#582C83]">%</span>
+                                    <button onclick="confirmPaymentTerms()" class="p-1 bg-purple-100 text-purple-600 rounded-md hover:bg-purple-600 hover:text-white transition-all no-print opacity-0 group-hover/pay:opacity-100" title="确认修改">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd"></path></svg>
+                                    </button>
+                                    <button onclick="toggleFinalPayment(false)" class="p-1 bg-red-100 text-red-500 rounded-md hover:bg-red-500 hover:text-white transition-all no-print opacity-0 group-hover/pay:opacity-100" title="移除">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                                    </button>
+                                    <span class="text-xs font-bold text-slate-700 w-24 text-right"><span class="currency-symbol mr-1">¥</span><span id="payment-final">0.00</span></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex justify-center no-print">
+                            <button id="btn-add-payment" onclick="toggleFinalPayment(true)" class="text-[10px] font-bold text-slate-400 hover:text-purple-600 hover:bg-purple-50 px-3 py-1 rounded border border-dashed border-slate-300 transition-colors">+ 增加阶段</button>
                         </div>
                         <p id="payment-warning" class="hidden text-[10px] font-bold text-red-500 mt-2 bg-red-50 p-2 rounded-lg border border-red-100 animate-pulse"></p>
                     </div>
@@ -218,29 +235,29 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                 <table class="w-full text-left table-fixed" id="quote-table">
                     <thead>
                         <tr class="border-b-2 border-purple-900 text-[10px] font-black uppercase text-slate-400">
-                            <th class="py-3 px-2 w-10">#</th>
-                            <th class="py-3 px-2 w-[55%] min-w-[30ch]" id="th-desc">产品</th>
-                            <th class="py-3 px-2 w-24 text-center" id="th-vendor">品牌</th>
-                            <th class="py-3 px-2 w-24 text-center" id="th-spec">规格型号</th>
-                            <th class="py-3 px-2 w-32 no-print" id="th-batch">采购批次</th>
-                            <th class="py-3 px-2 w-14 text-center" id="th-qty">数量</th>
-                            <th class="py-3 px-2 w-32 text-right" id="th-price">单价 (¥)</th>
-                            <th class="no-print py-3 px-2 w-24 text-center" id="th-margin">毛利%</th>
-                            <th class="py-3 px-2 w-32 text-right" id="th-amount">小计 (¥)</th>
-                            <th class="no-print py-3 px-2 w-10"></th>
+                            <th class="py-2 px-2 w-10">#</th>
+                            <th class="py-2 px-2 w-[40%] min-w-[20ch]" id="th-desc">DESCRIPTION</th>
+                            <th class="py-2 px-2 w-32 text-center" id="th-vendor">BRAND</th>
+                            <th class="py-2 px-2 w-24 text-center" id="th-spec">SPEC</th>
+                            <th class="py-2 px-2 w-32 no-print" id="th-batch">采购批次</th>
+                            <th class="py-2 px-2 w-16 text-center" id="th-qty">QTY</th>
+                            <th class="py-2 px-2 w-28 text-right print:hidden no-print" id="th-price">UNIT PRICE (¥)</th>
+                            <th class="no-print py-2 px-2 w-24 text-center" id="th-margin">毛利%</th>
+                            <th class="py-2 px-2 w-32 text-right" id="th-amount">AMOUNT (¥)</th>
+                            <th class="no-print py-2 px-2 w-10"></th>
                         </tr>
                     </thead>
                     <tbody id="quote-body">
                 <tr class="border-b border-slate-50 group transition-colors hover:bg-slate-50/50">
-                    <td class="py-4 px-2 text-center text-[10px] font-mono text-slate-300">1</td>
-                    <td class="py-4 px-2"><input type="text" value="5kW 电池" oninput="updateRow(1776763424740, 'description', this.value)" class="w-full bg-transparent outline-none text-sm font-medium focus:text-blue-600" placeholder="描述"></td>
-                    <td class="py-4 px-2"><input type="text" value="5kWh" oninput="updateRow(1776763424740, 'spec', this.value)" class="w-full bg-transparent outline-none text-sm focus:text-blue-600" placeholder="规格"></td>
-                    <td class="py-4 px-2 no-print"><input type="text" value="20250411-002" oninput="updateRow(1776763424740, 'batchNo', this.value)" class="w-full bg-transparent outline-none text-sm focus:text-blue-600" placeholder="采购批次"></td>
-                    <td class="py-4 px-2"><input type="number" value="1" oninput="updateRow(1776763424740, 'quantity', this.value)" class="w-full bg-transparent outline-none text-center text-sm"></td>
-                    <td class="py-4 px-2 whitespace-nowrap"><input type="number" step="0.01" value="1956.24" oninput="updateRow(1776763424740, 'price', this.value)" class="w-full bg-transparent outline-none text-right text-sm font-bold"></td>
-                    <td id="margin-1776763424740" class="no-print py-4 px-2 text-center text-[10px] font-bold text-slate-400">196.4%</td>
-                    <td class="py-4 px-2 text-right font-black text-slate-700 text-sm whitespace-nowrap"><span class="currency-symbol mr-1">¥</span><span id="sub-1776763424740">1956.24</span></td>
-                    <td class="no-print py-4 px-2 text-center">
+                    <td class="py-2 px-2 text-center text-[10px] font-mono text-slate-300">1</td>
+                    <td class="py-2 px-2"><input type="text" value="5kW 电池" oninput="updateRow(1776763424740, 'description', this.value)" class="w-full bg-transparent outline-none text-sm font-medium focus:text-blue-600" placeholder="描述"></td>
+                    <td class="py-2 px-2"><input type="text" value="5kWh" oninput="updateRow(1776763424740, 'spec', this.value)" class="w-full bg-transparent outline-none text-center text-sm focus:text-blue-600" placeholder="规格"></td>
+                    <td class="py-2 px-2 no-print"><input type="text" value="20250411-002" oninput="updateRow(1776763424740, 'batchNo', this.value)" class="w-full bg-transparent outline-none text-sm focus:text-blue-600" placeholder="采购批次"></td>
+                    <td class="py-2 px-2"><input type="number" value="1" oninput="updateRow(1776763424740, 'quantity', this.value)" class="w-full bg-transparent outline-none text-center text-sm"></td>
+                    <td class="py-2 px-2 print:hidden no-print whitespace-nowrap"><input type="number" step="0.01" value="1956.24" oninput="updateRow(1776763424740, 'price', this.value)" class="w-full bg-transparent outline-none text-right text-sm font-bold"></td>
+                    <td id="margin-1776763424740" class="no-print py-2 px-2 text-center text-[10px] font-bold text-slate-400">196.4%</td>
+                    <td class="py-2 px-2 text-right font-black text-slate-700 text-sm whitespace-nowrap"><span class="currency-symbol mr-1">¥</span><span id="sub-1776763424740">1956.24</span></td>
+                    <td class="no-print py-2 px-2 text-center">
                         <div class="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
                             <button onclick="moveRow(1776763424740, -1)" class="px-2 py-1 text-[10px] font-black text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-md border border-slate-200" title="上移">↑</button>
                             <button onclick="moveRow(1776763424740, 1)" class="px-2 py-1 text-[10px] font-black text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-md border border-slate-200" title="下移">↓</button>
@@ -485,7 +502,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                 <div class="terms-container">
                     <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3" id="lbl-terms">备注与条款：</h4>
                     <textarea id="val-terms" oninput="this.dataset.dirty='true'; this.style.height = ''; this.style.height = this.scrollHeight + 'px'" class="w-full min-h-[240px] text-sm text-slate-500 bg-transparent border-none outline-none leading-relaxed italic resize-none overflow-hidden" placeholder="1. 报价有效期自即日起30天。
-2. 款项请汇至：XX银行 XXXX..." data-lang="zh" data-dirty="false" style="height: 0px;">条款：
+2. 款项请汇至：XX银行 XXXX..." data-lang="zh" data-dirty="false">条款：
 本报价以现场全面勘察为准。如需采用非标准安装方式（包括但不限于额外开槽/破拆、布线、线槽/桥架、定制加工或任何超出标准安装范围的工作），费用可能调整。
 
 确认：
@@ -3466,6 +3483,8 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                 confirmation: "确认后",
                 installation: "安装后",
                 testing: "测试与调试后",
+                final: "交付验收后",
+                addPayment: "+ 增加阶段",
                 daysUnit: "天",
                 paymentWarning: "⚠️ 支付比例总和必须等于 100%（当前：{total}%）",
                 shippingHandling: "运输与装卸",
@@ -3500,6 +3519,8 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                 confirmation: "Upon Confirmation",
                 installation: "Upon Installation",
                 testing: "Upon Testing & Commissioning",
+                final: "Upon Final Acceptance",
+                addPayment: "+ Add Phase",
                 daysUnit: "Days",
                 paymentWarning: "⚠️ Total payment percentage must equal 100% (Current: {total}%)",
                 shippingHandling: "Shipping & Handling",
@@ -3583,6 +3604,22 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
         window.confirmPaymentTerms = () => {
             paymentTermsConfirmed = true;
             calculateQuote();
+        };
+
+        window.toggleFinalPayment = (show) => {
+            const container = document.getElementById('payment-final-container');
+            const addBtn = document.getElementById('btn-add-payment');
+            const percentInput = document.getElementById('payment-final-percent');
+            
+            if (show) {
+                container.classList.remove('hidden');
+                addBtn.classList.add('hidden');
+            } else {
+                container.classList.add('hidden');
+                addBtn.classList.remove('hidden');
+                percentInput.value = 0;
+                onPaymentPercentInput();
+            }
         };
 
         function renderValidityBadge() {
@@ -3762,6 +3799,10 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
             document.getElementById('lbl-confirmation').textContent = t.confirmation;
             document.getElementById('lbl-installation').textContent = t.installation;
             document.getElementById('lbl-testing').textContent = t.testing;
+            const finalInput = document.getElementById('lbl-final');
+            if (finalInput) finalInput.value = t.final;
+            const addPaymentBtn = document.getElementById('btn-add-payment');
+            if (addPaymentBtn) addPaymentBtn.textContent = t.addPayment;
             document.getElementById('lbl-shipping-handling').textContent = t.shippingHandling;
             document.getElementById('lbl-signature').textContent = t.signature;
             document.getElementById('lbl-full-name').textContent = t.fullName;
@@ -3911,40 +3952,51 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
             const confirmationPercent = parseFloat(document.getElementById('payment-confirmation-percent').value) || 0;
             const installationPercent = parseFloat(document.getElementById('payment-installation-percent').value) || 0;
             const testingPercent = parseFloat(document.getElementById('payment-testing-percent').value) || 0;
+            
+            const finalContainer = document.getElementById('payment-final-container');
+            const finalPercent = finalContainer && !finalContainer.classList.contains('hidden') ? (parseFloat(document.getElementById('payment-final-percent').value) || 0) : 0;
 
-            const totalPercent = confirmationPercent + installationPercent + testingPercent;
+            const totalPercent = confirmationPercent + installationPercent + testingPercent + finalPercent;
             const warningEl = document.getElementById('payment-warning');
+            
             const percentInputs = ['payment-confirmation-percent', 'payment-installation-percent', 'payment-testing-percent'];
+            if (finalContainer && !finalContainer.classList.contains('hidden')) {
+                percentInputs.push('payment-final-percent');
+            }
+            
             const t = i18n[currentLang];
 
             if (!paymentTermsConfirmed) {
                 warningEl.classList.add('hidden');
                 percentInputs.forEach(id => {
                     document.getElementById(id).classList.remove('text-red-500', 'border-red-500');
-                    document.getElementById(id).classList.add('text-purple-600', 'border-purple-200');
+                    document.getElementById(id).classList.add('text-[#582C83]', 'border-purple-200');
                 });
                 document.getElementById('payment-confirmation').textContent = '---';
                 document.getElementById('payment-installation').textContent = '---';
                 document.getElementById('payment-testing').textContent = '---';
+                document.getElementById('payment-final').textContent = '---';
             } else if (totalPercent !== 100) {
                 warningEl.classList.remove('hidden');
                 warningEl.textContent = t.paymentWarning.replace('{total}', totalPercent);
                 percentInputs.forEach(id => {
                     document.getElementById(id).classList.add('text-red-500', 'border-red-500');
-                    document.getElementById(id).classList.remove('text-purple-600', 'border-purple-200');
+                    document.getElementById(id).classList.remove('text-[#582C83]', 'border-purple-200');
                 });
                 document.getElementById('payment-confirmation').textContent = '---';
                 document.getElementById('payment-installation').textContent = '---';
                 document.getElementById('payment-testing').textContent = '---';
+                document.getElementById('payment-final').textContent = '---';
             } else {
                 warningEl.classList.add('hidden');
                 percentInputs.forEach(id => {
                     document.getElementById(id).classList.remove('text-red-500', 'border-red-500');
-                    document.getElementById(id).classList.add('text-purple-600', 'border-purple-200');
+                    document.getElementById(id).classList.add('text-[#582C83]', 'border-purple-200');
                 });
                 document.getElementById('payment-confirmation').textContent = (total * confirmationPercent / 100).toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
                 document.getElementById('payment-installation').textContent = (total * installationPercent / 100).toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
                 document.getElementById('payment-testing').textContent = (total * testingPercent / 100).toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                document.getElementById('payment-final').textContent = (total * finalPercent / 100).toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
             }
 
             document.querySelectorAll('.currency-symbol').forEach(el => el.textContent = currencySymbol);
@@ -3991,16 +4043,16 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                 const displayNo = isCountedRow(r) ? (++displayIndex) : '';
                 const rowHtml = r.isBlank ? `
                 <tr class="group transition-colors hover:bg-slate-50/50">
-                    <td class="py-6 px-2 text-center text-[10px] font-mono text-slate-200"></td>
-                    <td class="py-6 px-2 select-none">&nbsp;</td>
-                    <td class="py-6 px-2 select-none">&nbsp;</td>
-                    <td class="py-6 px-2 select-none">&nbsp;</td>
-                    <td class="py-6 px-2 no-print select-none">&nbsp;</td>
-                    <td class="py-6 px-2 text-center select-none">&nbsp;</td>
-                    <td class="py-6 px-2 text-right select-none">&nbsp;</td>
-                    <td class="no-print py-6 px-2 text-center select-none">&nbsp;</td>
-                    <td class="py-6 px-2 text-right select-none">&nbsp;</td>
-                    <td class="no-print py-6 px-2 text-center">
+                    <td class="py-4 px-2 text-center text-[10px] font-mono text-slate-200"></td>
+                    <td class="py-4 px-2 select-none">&nbsp;</td>
+                    <td class="py-4 px-2 select-none">&nbsp;</td>
+                    <td class="py-4 px-2 select-none">&nbsp;</td>
+                    <td class="py-4 px-2 no-print select-none">&nbsp;</td>
+                    <td class="py-4 px-2 text-center select-none">&nbsp;</td>
+                    <td class="py-4 px-2 text-right select-none print:hidden no-print">&nbsp;</td>
+                    <td class="no-print py-4 px-2 text-center select-none">&nbsp;</td>
+                    <td class="py-4 px-2 text-right select-none">&nbsp;</td>
+                    <td class="no-print py-4 px-2 text-center">
                         <div class="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
                             <button onclick="moveRow(${r.id}, -1)" class="px-2 py-1 text-[10px] font-black text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-md border border-slate-200" title="上移">↑</button>
                             <button onclick="moveRow(${r.id}, 1)" class="px-2 py-1 text-[10px] font-black text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-md border border-slate-200" title="下移">↓</button>
@@ -4010,16 +4062,16 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
                 </tr>
                 ` : `
                 <tr class="border-b border-slate-50 group transition-colors hover:bg-slate-50/50">
-                    <td class="py-4 px-2 text-center text-[10px] font-mono text-slate-300">${displayNo}</td>
-                    <td class="py-4 px-2"><input type="text" value="${descVal}" oninput="updateRow(${r.id}, 'description', this.value)" class="w-full bg-transparent outline-none text-sm font-medium focus:text-blue-600" placeholder="${currentLang === 'en' ? 'Description' : '描述'}"></td>
-                    <td class="py-4 px-2"><input type="text" value="${String(r.vendor || '')}" oninput="updateRow(${r.id}, 'vendor', this.value)" class="w-full bg-transparent outline-none text-center text-sm focus:text-blue-600" placeholder="${currentLang === 'en' ? 'Brand' : '品牌'}"></td>
-                    <td class="py-4 px-2"><input type="text" value="${r.spec}" oninput="updateRow(${r.id}, 'spec', this.value)" class="w-full bg-transparent outline-none text-sm focus:text-blue-600" placeholder="${currentLang === 'en' ? 'Spec' : '规格'}"></td>
-                    <td class="py-4 px-2 no-print"><input type="text" value="${r.batchNo}" oninput="updateRow(${r.id}, 'batchNo', this.value)" class="w-full bg-transparent outline-none text-sm focus:text-blue-600" placeholder="${currentLang === 'en' ? 'Batch' : '采购批次'}"></td>
-                    <td class="py-4 px-2"><input type="number" value="${r.quantity}" oninput="updateRow(${r.id}, 'quantity', this.value)" class="w-full bg-transparent outline-none text-center text-sm"></td>
-                    <td class="py-4 px-2 whitespace-nowrap"><input type="number" step="0.01" value="${formatNumberAuto(priceInCurrentCurrency, 4)}" oninput="updateRow(${r.id}, 'price', this.value)" class="w-full bg-transparent outline-none text-right text-sm font-bold"></td>
-                    <td id="margin-${r.id}" class="no-print py-4 px-2 text-center text-[10px] font-bold text-slate-400">0%</td>
-                    <td class="py-4 px-2 text-right font-black text-slate-700 text-sm whitespace-nowrap"><span class="currency-symbol mr-1"></span><span id="sub-${r.id}">0.00</span></td>
-                    <td class="no-print py-4 px-2 text-center">
+                    <td class="py-2 px-2 text-center text-[10px] font-mono text-slate-300">${displayNo}</td>
+                    <td class="py-2 px-2"><input type="text" value="${descVal}" oninput="updateRow(${r.id}, 'description', this.value)" class="w-full bg-transparent outline-none text-sm font-medium focus:text-blue-600" placeholder="${currentLang === 'en' ? 'Description' : '描述'}"></td>
+                    <td class="py-2 px-2"><input type="text" value="${String(r.vendor || '')}" oninput="updateRow(${r.id}, 'vendor', this.value)" class="w-full bg-transparent outline-none text-center text-sm focus:text-blue-600" placeholder="${currentLang === 'en' ? 'Brand' : '品牌'}"></td>
+                    <td class="py-2 px-2"><input type="text" value="${r.spec}" oninput="updateRow(${r.id}, 'spec', this.value)" class="w-full bg-transparent outline-none text-center text-sm focus:text-blue-600" placeholder="${currentLang === 'en' ? 'Spec' : '规格'}"></td>
+                    <td class="py-2 px-2 no-print"><input type="text" value="${r.batchNo}" oninput="updateRow(${r.id}, 'batchNo', this.value)" class="w-full bg-transparent outline-none text-sm focus:text-blue-600" placeholder="${currentLang === 'en' ? 'Batch' : '采购批次'}"></td>
+                    <td class="py-2 px-2"><input type="number" value="${r.quantity}" oninput="updateRow(${r.id}, 'quantity', this.value)" class="w-full bg-transparent outline-none text-center text-sm"></td>
+                    <td class="py-2 px-2 print:hidden no-print whitespace-nowrap"><input type="number" step="0.01" value="${formatNumberAuto(priceInCurrentCurrency, 4)}" oninput="updateRow(${r.id}, 'price', this.value)" class="w-full bg-transparent outline-none text-right text-sm font-bold"></td>
+                    <td id="margin-${r.id}" class="no-print py-2 px-2 text-center text-[10px] font-bold text-slate-400">0%</td>
+                    <td class="py-2 px-2 text-right font-black text-slate-700 text-sm whitespace-nowrap"><span class="currency-symbol mr-1"></span><span id="sub-${r.id}">0.00</span></td>
+                    <td class="no-print py-2 px-2 text-center">
                         <div class="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
                             <button onclick="moveRow(${r.id}, -1)" class="px-2 py-1 text-[10px] font-black text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-md border border-slate-200" title="上移">↑</button>
                             <button onclick="moveRow(${r.id}, 1)" class="px-2 py-1 text-[10px] font-black text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-md border border-slate-200" title="下移">↓</button>
@@ -6807,9 +6859,14 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</textarea>
         } catch (e) {}
         updateLanguageLabels();
         const termsEl = document.getElementById('val-terms');
-        if (termsEl) { termsEl.style.height = ''; termsEl.style.height = termsEl.scrollHeight + 'px'; }
+        if (termsEl) { 
+            requestAnimationFrame(() => {
+                termsEl.style.height = ''; 
+                termsEl.style.height = termsEl.scrollHeight + 'px'; 
+            });
+        }
         const addrEl = document.getElementById('company-address');
-        if (addrEl) { addrEl.style.height = ''; addrEl.style.height = addrEl.scrollHeight + 'px'; }
+        // Addr element is now a contenteditable div, so height sync is not needed
         if (termsEl) {
             termsEl.addEventListener('input', () => {
                 try { localStorage.setItem(`minova_terms_text_${currentLang}`, termsEl.value); } catch (e) {}

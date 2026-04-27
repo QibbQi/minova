@@ -138,28 +138,28 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                     <div class="space-y-1">
                         <div class="flex items-center gap-3 bg-slate-50/50 py-1.5 px-2 rounded-lg border border-slate-100">
                             <span class="flex-shrink-0 w-5 h-5 bg-[#582C83] text-white text-[10px] font-bold rounded-full flex items-center justify-center">1</span>
-                            <span class="text-xs font-bold text-slate-700 flex-grow" id="val-step1">现场勘测</span>
+                            <span class="text-[10px] font-bold text-slate-500 uppercase flex-grow min-w-0"><input type="text" id="val-step1" value="现场勘测" class="w-full bg-transparent outline-none uppercase placeholder-slate-400"></span>
                             <div class="flex items-center gap-1">
                                 <span class="text-xs font-bold text-[#582C83] mr-0.5">≈</span>
-                                <input type="number" class="w-12 text-xs font-bold text-[#582C83] bg-transparent outline-none text-right border-b border-purple-200" placeholder="0">
+                                <input type="number" id="timeline-days-1" class="w-10 text-[9px] font-black text-[#582C83] bg-transparent outline-none text-right border-b border-purple-200" placeholder="0">
                                 <span class="text-[10px] font-bold text-slate-400 unit-days">天</span>
                             </div>
                         </div>
                         <div class="flex items-center gap-3 bg-slate-50/50 py-1.5 px-2 rounded-lg border border-slate-100">
                             <span class="flex-shrink-0 w-5 h-5 bg-[#582C83] text-white text-[10px] font-bold rounded-full flex items-center justify-center">2</span>
-                            <span class="text-xs font-bold text-slate-700 flex-grow" id="val-step2">材料采购与安装规划</span>
+                            <span class="text-[10px] font-bold text-slate-500 uppercase flex-grow min-w-0"><input type="text" id="val-step2" value="材料采购与安装规划" class="w-full bg-transparent outline-none uppercase placeholder-slate-400"></span>
                             <div class="flex items-center gap-1">
                                 <span class="text-xs font-bold text-[#582C83] mr-0.5">≈</span>
-                                <input type="number" class="w-12 text-xs font-bold text-[#582C83] bg-transparent outline-none text-right border-b border-purple-200" placeholder="0">
+                                <input type="number" id="timeline-days-2" class="w-10 text-[9px] font-black text-[#582C83] bg-transparent outline-none text-right border-b border-purple-200" placeholder="0">
                                 <span class="text-[10px] font-bold text-slate-400 unit-days">天</span>
                             </div>
                         </div>
                         <div class="flex items-center gap-3 bg-slate-50/50 py-1.5 px-2 rounded-lg border border-slate-100">
                             <span class="flex-shrink-0 w-5 h-5 bg-[#582C83] text-white text-[10px] font-bold rounded-full flex items-center justify-center">3</span>
-                            <span class="text-xs font-bold text-slate-700 flex-grow" id="val-step3">安装</span>
+                            <span class="text-[10px] font-bold text-slate-500 uppercase flex-grow min-w-0"><input type="text" id="val-step3" value="安装" class="w-full bg-transparent outline-none uppercase placeholder-slate-400"></span>
                             <div class="flex items-center gap-1">
                                 <span class="text-xs font-bold text-[#582C83] mr-0.5">≈</span>
-                                <input type="number" class="w-12 text-xs font-bold text-[#582C83] bg-transparent outline-none text-right border-b border-purple-200" placeholder="0">
+                                <input type="number" id="timeline-days-3" class="w-10 text-[9px] font-black text-[#582C83] bg-transparent outline-none text-right border-b border-purple-200" placeholder="0">
                                 <span class="text-[10px] font-bold text-slate-400 unit-days">天</span>
                             </div>
                         </div>
@@ -176,9 +176,9 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                         </div>
                         <div class="grid grid-cols-1 gap-1.5">
                             <div class="flex justify-between items-center py-0.5 px-2 bg-slate-50 rounded-lg border border-slate-100 group/pay">
-                                <span class="text-[10px] font-bold text-slate-500 uppercase" id="lbl-confirmation">确认后</span>
+                                <span class="text-[10px] font-bold text-slate-500 uppercase"><input type="text" id="lbl-confirmation" value="确认后" class="w-24 bg-transparent outline-none uppercase placeholder-slate-400"></span>
                                 <div class="flex items-center gap-1">
-                                    <input type="number" id="payment-confirmation-percent" value="30" oninput="onPaymentPercentInput()" onchange="onPaymentPercentInput()" class="w-8 text-[10px] font-black text-[#582C83] bg-transparent outline-none text-right border-b border-purple-200">
+                                    <input type="number" id="payment-confirmation-percent" value="30" oninput="onPaymentPercentInput()" onchange="onPaymentPercentInput()" class="w-8 text-[9px] font-black text-[#582C83] bg-transparent outline-none text-right border-b border-purple-200">
                                     <span class="text-[10px] font-bold text-[#582C83]">%</span>
                                     <button onclick="confirmPaymentTerms()" class="p-1 bg-purple-100 text-purple-600 rounded-md hover:bg-purple-600 hover:text-white transition-all no-print opacity-0 group-hover/pay:opacity-100" title="确认修改">
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd"></path></svg>
@@ -187,9 +187,9 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                                 </div>
                             </div>
                             <div class="flex justify-between items-center py-0.5 px-2 bg-slate-50 rounded-lg border border-slate-100 group/pay">
-                                <span class="text-[10px] font-bold text-slate-500 uppercase" id="lbl-installation">安装后</span>
+                                <span class="text-[10px] font-bold text-slate-500 uppercase"><input type="text" id="lbl-installation" value="安装后" class="w-24 bg-transparent outline-none uppercase placeholder-slate-400"></span>
                                 <div class="flex items-center gap-1">
-                                    <input type="number" id="payment-installation-percent" value="40" oninput="onPaymentPercentInput()" onchange="onPaymentPercentInput()" class="w-8 text-[10px] font-black text-[#582C83] bg-transparent outline-none text-right border-b border-purple-200">
+                                    <input type="number" id="payment-installation-percent" value="40" oninput="onPaymentPercentInput()" onchange="onPaymentPercentInput()" class="w-8 text-[9px] font-black text-[#582C83] bg-transparent outline-none text-right border-b border-purple-200">
                                     <span class="text-[10px] font-bold text-[#582C83]">%</span>
                                     <button onclick="confirmPaymentTerms()" class="p-1 bg-purple-100 text-purple-600 rounded-md hover:bg-purple-600 hover:text-white transition-all no-print opacity-0 group-hover/pay:opacity-100" title="确认修改">
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd"></path></svg>
@@ -198,9 +198,9 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                                 </div>
                             </div>
                             <div class="flex justify-between items-center py-0.5 px-2 bg-slate-50 rounded-lg border border-slate-100 group/pay">
-                                <span class="text-[10px] font-bold text-slate-500 uppercase" id="lbl-testing">测试与调试后</span>
+                                <span class="text-[10px] font-bold text-slate-500 uppercase"><input type="text" id="lbl-testing" value="测试与调试后" class="w-24 bg-transparent outline-none uppercase placeholder-slate-400"></span>
                                 <div class="flex items-center gap-1">
-                                    <input type="number" id="payment-testing-percent" value="30" oninput="onPaymentPercentInput()" onchange="onPaymentPercentInput()" class="w-8 text-[10px] font-black text-[#582C83] bg-transparent outline-none text-right border-b border-purple-200">
+                                    <input type="number" id="payment-testing-percent" value="30" oninput="onPaymentPercentInput()" onchange="onPaymentPercentInput()" class="w-8 text-[9px] font-black text-[#582C83] bg-transparent outline-none text-right border-b border-purple-200">
                                     <span class="text-[10px] font-bold text-[#582C83]">%</span>
                                     <button onclick="confirmPaymentTerms()" class="p-1 bg-purple-100 text-purple-600 rounded-md hover:bg-purple-600 hover:text-white transition-all no-print opacity-0 group-hover/pay:opacity-100" title="确认修改">
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd"></path></svg>
@@ -211,7 +211,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                             <div id="payment-final-container" class="hidden flex justify-between items-center py-0.5 px-2 bg-slate-50 rounded-lg border border-slate-100 group/pay">
                                 <span class="text-[10px] font-bold text-slate-500 uppercase"><input type="text" id="lbl-final" value="交付验收后" class="w-24 bg-transparent outline-none uppercase placeholder-slate-400"></span>
                                 <div class="flex items-center gap-1">
-                                    <input type="number" id="payment-final-percent" value="0" oninput="onPaymentPercentInput()" onchange="onPaymentPercentInput()" class="w-8 text-[10px] font-black text-[#582C83] bg-transparent outline-none text-right border-b border-purple-200">
+                                    <input type="number" id="payment-final-percent" value="0" oninput="onPaymentPercentInput()" onchange="onPaymentPercentInput()" class="w-8 text-[9px] font-black text-[#582C83] bg-transparent outline-none text-right border-b border-purple-200">
                                     <span class="text-[10px] font-bold text-[#582C83]">%</span>
                                     <button onclick="confirmPaymentTerms()" class="p-1 bg-purple-100 text-purple-600 rounded-md hover:bg-purple-600 hover:text-white transition-all no-print opacity-0 group-hover/pay:opacity-100" title="确认修改">
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd"></path></svg>
@@ -483,6 +483,14 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                         <div class="flex justify-between items-center text-slate-400 text-sm">
                             <span id="lbl-shipping-handling">运输与装卸</span>
                             <input type="text" id="val-shipping-handling" value="已包含" oninput="this.dataset.dirty='true'" class="text-right font-bold text-slate-700 w-40 bg-transparent outline-none" data-lang="zh" data-dirty="false">
+                        </div>
+                        <div class="flex justify-between items-center text-slate-500 font-bold text-sm">
+                            <span id="lbl-sub-total" class="uppercase">Sub-Total</span>
+                            <div><span class="currency-symbol mr-1">¥</span><span id="val-sub-total">0.00</span></div>
+                        </div>
+                        <div class="flex justify-between items-center text-slate-500 font-bold text-sm">
+                            <span id="lbl-sst" class="uppercase">SST (6%)</span>
+                            <div><span class="currency-symbol mr-1">¥</span><span id="val-sst">0.00</span></div>
                         </div>
                         <div class="w-full">
                             <div class="grid grid-cols-2 w-full rounded overflow-hidden total-pill">
@@ -3486,6 +3494,8 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                 final: "交付验收后",
                 addPayment: "+ 增加阶段",
                 daysUnit: "天",
+                subTotal: "小计 (Sub-Total)",
+                sst: "销售服务税 (SST 6%)",
                 paymentWarning: "⚠️ 支付比例总和必须等于 100%（当前：{total}%）",
                 shippingHandling: "运输与装卸",
                 included: "已包含",
@@ -3522,6 +3532,8 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                 final: "Upon Final Acceptance",
                 addPayment: "+ Add Phase",
                 daysUnit: "Days",
+                subTotal: "Sub-Total",
+                sst: "SST (6%)",
                 paymentWarning: "⚠️ Total payment percentage must equal 100% (Current: {total}%)",
                 shippingHandling: "Shipping & Handling",
                 included: "Included",
@@ -3791,19 +3803,21 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
             document.getElementById('lbl-sign-date').textContent = t.signDate;
  
             document.getElementById('lbl-timeline').textContent = t.timeline;
-            document.getElementById('val-step1').textContent = t.step1;
-            document.getElementById('val-step2').textContent = t.step2;
-            document.getElementById('val-step3').textContent = t.step3;
+            document.getElementById('val-step1').value = t.step1;
+            document.getElementById('val-step2').value = t.step2;
+            document.getElementById('val-step3').value = t.step3;
             document.getElementById('lbl-payment-terms').textContent = t.paymentTerms;
             document.getElementById('lbl-total-payable').textContent = t.totalPayable;
-            document.getElementById('lbl-confirmation').textContent = t.confirmation;
-            document.getElementById('lbl-installation').textContent = t.installation;
-            document.getElementById('lbl-testing').textContent = t.testing;
+            document.getElementById('lbl-confirmation').value = t.confirmation;
+            document.getElementById('lbl-installation').value = t.installation;
+            document.getElementById('lbl-testing').value = t.testing;
             const finalInput = document.getElementById('lbl-final');
             if (finalInput) finalInput.value = t.final;
             const addPaymentBtn = document.getElementById('btn-add-payment');
             if (addPaymentBtn) addPaymentBtn.textContent = t.addPayment;
             document.getElementById('lbl-shipping-handling').textContent = t.shippingHandling;
+            document.getElementById('lbl-sub-total').textContent = t.subTotal;
+            document.getElementById('lbl-sst').textContent = t.sst;
             document.getElementById('lbl-signature').textContent = t.signature;
             document.getElementById('lbl-full-name').textContent = t.fullName;
             document.getElementById('lbl-contact-number').textContent = t.contactNumber;
@@ -3945,9 +3959,18 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                 }
             });
             const currencySymbol = currentCurrency === 'CNY' ? '¥' : 'RM';
-            const formattedTotal = total.toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-            document.getElementById('grand-total').textContent = formattedTotal;
-            document.getElementById('payment-grand-total').textContent = formattedTotal;
+            
+            // Sub-Total and SST calculations
+            const subTotal = total;
+            const sst = subTotal * 0.06;
+            const grandTotal = subTotal + sst;
+
+            document.getElementById('val-sub-total').textContent = subTotal.toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('val-sst').textContent = sst.toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+            const formattedGrandTotal = grandTotal.toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('grand-total').textContent = formattedGrandTotal;
+            document.getElementById('payment-grand-total').textContent = formattedGrandTotal;
 
             const confirmationPercent = parseFloat(document.getElementById('payment-confirmation-percent').value) || 0;
             const installationPercent = parseFloat(document.getElementById('payment-installation-percent').value) || 0;
@@ -3993,10 +4016,10 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                     document.getElementById(id).classList.remove('text-red-500', 'border-red-500');
                     document.getElementById(id).classList.add('text-[#582C83]', 'border-purple-200');
                 });
-                document.getElementById('payment-confirmation').textContent = (total * confirmationPercent / 100).toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                document.getElementById('payment-installation').textContent = (total * installationPercent / 100).toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                document.getElementById('payment-testing').textContent = (total * testingPercent / 100).toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                document.getElementById('payment-final').textContent = (total * finalPercent / 100).toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                document.getElementById('payment-confirmation').textContent = (grandTotal * confirmationPercent / 100).toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                document.getElementById('payment-installation').textContent = (grandTotal * installationPercent / 100).toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                document.getElementById('payment-testing').textContent = (grandTotal * testingPercent / 100).toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                document.getElementById('payment-final').textContent = (grandTotal * finalPercent / 100).toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
             }
 
             document.querySelectorAll('.currency-symbol').forEach(el => el.textContent = currencySymbol);
@@ -7814,7 +7837,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                             const replacement = clonedDoc.createElement('span');
                             replacement.innerText = el.value;
 
-                            const classesToCopy = ['font-bold', 'text-slate-700', 'uppercase', 'tracking-tighter', 'font-black', 'text-slate-900', 'text-sm', 'text-slate-500'];
+                            const classesToCopy = ['font-bold', 'text-slate-700', 'uppercase', 'tracking-tighter', 'font-black', 'text-slate-900', 'text-sm', 'text-slate-500', 'text-[', 'text-xs', 'w-'];
                             el.classList.forEach(c => {
                                 if(classesToCopy.some(prefix => c.startsWith(prefix))) {
                                     replacement.classList.add(c);

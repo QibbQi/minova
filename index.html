@@ -75,7 +75,7 @@
                 <button onclick="toggleCurrency()" id="btn-currency" class="text-sm bg-slate-100 text-slate-700 px-4 py-2 rounded-xl hover:bg-slate-200 transition-colors font-bold border border-slate-200">
                     ¥ / RM
                 </button>
-                <button onclick="generateQuotationPDF()" id="btn-generate-pdf" class="text-sm bg-slate-900 text-white px-5 py-2 rounded-xl hover:bg-black transition-all shadow-lg shadow-slate-200 leading-tight text-center">
+                <button onclick="openPDFSelectionModal()" id="btn-generate-pdf" class="text-sm bg-slate-900 text-white px-5 py-2 rounded-xl hover:bg-black transition-all shadow-lg shadow-slate-200 leading-tight text-center">
                     <span class="block">生成报价</span>
                     <span class="block">（PDF）</span>
                 </button>
@@ -86,6 +86,30 @@
     
 
     <main id="view-quotation" class="max-w-5xl mx-auto px-4 mb-20 hidden" style="display: none;">
+
+        <!-- Quote Management Bar -->
+        <div class="flex flex-col md:flex-row justify-between items-center mb-4 no-print bg-white p-3 rounded shadow-sm border border-slate-200 gap-3">
+            <div class="flex items-center gap-3 w-full md:w-auto">
+                <label class="text-sm font-bold text-slate-600 whitespace-nowrap" id="lbl-saved-quotes">选择已存报价:</label>
+                <select id="saved-quotes-select" onchange="onSavedQuoteSelect(this.value)" class="text-sm p-1.5 border border-slate-200 rounded outline-none focus:border-purple-400 bg-slate-50 flex-1 md:w-48">
+                    <option value="">-- 新建报价 (New) --</option>
+                </select>
+                <button onclick="createNewQuote()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded font-bold transition-all border border-slate-200" id="btn-new-quote">新建</button>
+                <button onclick="saveCurrentQuote()" class="text-xs bg-purple-700 hover:bg-purple-800 text-white px-3 py-1.5 rounded font-bold transition-all shadow-sm" id="btn-save-quote">保存当前报价</button>
+            </div>
+            <div class="flex items-center gap-3 w-full md:w-auto">
+                <label class="text-sm font-bold text-slate-600 whitespace-nowrap" id="lbl-quote-page">当前页面:</label>
+                <select id="quote-page-select" onchange="switchQuoteSubpage(this.value)" class="text-sm p-1.5 border border-slate-200 rounded outline-none focus:border-purple-400 bg-purple-50 text-purple-800 font-bold flex-1 md:w-64">
+                    <option value="1">1. Quotation (报价单)</option>
+                    <option value="2">2. ROI & Financial Analysis</option>
+                    <option value="3">3. Part Breakdown & Warranty</option>
+                    <option value="4">4. Reference</option>
+                    <option value="5">5. Site Overview</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="quote-page-1" class="quote-subpage block">
         <div class="bg-white shadow-2xl rounded-sm print-container min-h-[1050px] flex flex-col p-12 md:p-16 border border-slate-100">
             <div class="flex justify-between items-start mb-2">
                 <div class="flex-1 min-w-0">
@@ -580,8 +604,156 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                     <p class="text-xs text-slate-400 uppercase">日期</p>
                 </div>
             </div>
+        </div> <!-- End of quote-page-1 -->
+
+        <!-- Page 2: ROI -->
+        <div id="quote-page-2" class="quote-subpage hidden">
+            <div class="bg-white shadow-2xl rounded-sm print-container min-h-[1050px] flex flex-col p-12 md:p-16 border border-slate-100">
+                <div class="flex justify-between items-start mb-12">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-4 mb-4">
+                            <img src="logo-horizontal.png" alt="MINOVA Logo" class="h-12 w-auto object-contain" />
+                        </div>
+                        <div class="space-y-1 text-sm text-slate-500 font-medium">
+                            <p class="uppercase tracking-[0.2em] text-[10px] font-bold text-purple-800/60 mb-2">Solar System Solution | Storage Battery</p>
+                        </div>
+                    </div>
+                    <div class="flex-shrink-0 text-right pl-8">
+                        <h2 class="font-thin text-slate-300 mb-5 tracking-normal whitespace-nowrap" style="font-size:36px; line-height:1;">ROI / Financial Analysis</h2>
+                    </div>
+                </div>
+                <div class="flex-grow">
+                    <div class="grid grid-cols-2 gap-8 mb-8 no-print">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Before Installation (Monthly Bill)</label>
+                            <input type="number" id="roi-before-bill" value="0" oninput="calculateROI()" class="w-full p-2 border border-slate-200 rounded outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">After Installation (Monthly Bill)</label>
+                            <input type="number" id="roi-after-bill" value="0" oninput="calculateROI()" class="w-full p-2 border border-slate-200 rounded outline-none focus:border-purple-500">
+                        </div>
+                    </div>
+                    <div class="mb-8">
+                        <div class="bg-purple-50 p-4 rounded-xl flex justify-around">
+                            <div class="text-center">
+                                <p class="text-[10px] font-black text-slate-400 uppercase">Monthly Saving</p>
+                                <p class="text-2xl font-black text-purple-800"><span class="currency-symbol">¥</span><span id="roi-monthly-saving">0.00</span></p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-[10px] font-black text-slate-400 uppercase">Yearly Saving</p>
+                                <p class="text-2xl font-black text-purple-800"><span class="currency-symbol">¥</span><span id="roi-yearly-saving">0.00</span></p>
+                            </div>
+                        </div>
+                    </div>
+                    <table class="w-full text-left table-fixed text-sm border-collapse">
+                        <thead>
+                            <tr class="border-b-2 border-purple-900 text-[10px] font-black uppercase text-slate-400">
+                                <th class="py-2 px-2 w-1/4">Year</th>
+                                <th class="py-2 px-2 w-1/3 text-right">Energy Saving</th>
+                                <th class="py-2 px-2 w-1/3 text-right">Cumulative Saving</th>
+                            </tr>
+                        </thead>
+                        <tbody id="roi-table-body">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
-    </main>
+
+        <!-- Page 3: Part Breakdown -->
+        <div id="quote-page-3" class="quote-subpage hidden">
+            <div class="bg-white shadow-2xl rounded-sm print-container min-h-[1050px] flex flex-col p-12 md:p-16 border border-slate-100">
+                <div class="flex justify-between items-start mb-8">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-4 mb-4">
+                            <img src="logo-horizontal.png" alt="MINOVA Logo" class="h-12 w-auto object-contain" />
+                        </div>
+                        <div class="space-y-1 text-sm text-slate-500 font-medium">
+                            <p class="uppercase tracking-[0.2em] text-[10px] font-bold text-purple-800/60 mb-2">Solar System Solution | Storage Battery</p>
+                        </div>
+                    </div>
+                    <div class="flex-shrink-0 text-right pl-8">
+                        <h2 class="font-thin text-slate-300 mb-5 tracking-normal whitespace-nowrap" style="font-size:36px; line-height:1;">Part Breakdown & Warranty</h2>
+                    </div>
+                </div>
+                <div class="flex-grow">
+                    <div id="part-breakdown-container" class="space-y-8">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Page 4: Reference -->
+        <div id="quote-page-4" class="quote-subpage hidden">
+            <div class="bg-white shadow-2xl rounded-sm print-container min-h-[1050px] flex flex-col p-12 md:p-16 border border-slate-100">
+                <div class="flex justify-between items-start mb-8">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-4 mb-4">
+                            <img src="logo-horizontal.png" alt="MINOVA Logo" class="h-12 w-auto object-contain" />
+                        </div>
+                        <div class="space-y-1 text-sm text-slate-500 font-medium">
+                            <p class="uppercase tracking-[0.2em] text-[10px] font-bold text-purple-800/60 mb-2">Solar System Solution | Storage Battery</p>
+                        </div>
+                    </div>
+                    <div class="flex-shrink-0 text-right pl-8">
+                        <h2 class="font-thin text-slate-300 mb-5 tracking-normal whitespace-nowrap" style="font-size:36px; line-height:1;">Reference</h2>
+                    </div>
+                </div>
+                <div class="flex-grow flex flex-col gap-6">
+                    <div class="w-full flex-1 border-2 border-dashed border-slate-200 rounded-xl flex items-center justify-center relative overflow-hidden group min-h-[300px]">
+                        <input type="file" id="ref-image-upload" accept="image/*" onchange="uploadRefImage(this)" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 no-print">
+                        <div id="ref-image-placeholder" class="text-slate-400 text-center no-print">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mx-auto mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            <p class="text-sm font-bold">点击或拖拽上传 APP 控制页截图</p>
+                        </div>
+                        <img id="ref-image-preview" src="" class="absolute inset-0 w-full h-full object-contain hidden pointer-events-none">
+                        <button onclick="clearRefImage()" class="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-xs hidden z-20 no-print group-hover:block" id="btn-clear-ref">移除</button>
+                    </div>
+                    <div>
+                        <textarea id="ref-notes" placeholder="添加补充说明..." class="w-full p-4 border border-slate-200 rounded-xl outline-none focus:border-purple-500 text-sm h-32 resize-none whitespace-pre-wrap"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Page 5: Site Overview -->
+        <div id="quote-page-5" class="quote-subpage hidden">
+            <div class="bg-white shadow-2xl rounded-sm print-container min-h-[1050px] flex flex-col p-12 md:p-16 border border-slate-100">
+                <div class="flex justify-between items-start mb-8">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-4 mb-4">
+                            <img src="logo-horizontal.png" alt="MINOVA Logo" class="h-12 w-auto object-contain" />
+                        </div>
+                        <div class="space-y-1 text-sm text-slate-500 font-medium">
+                            <p class="uppercase tracking-[0.2em] text-[10px] font-bold text-purple-800/60 mb-2">Solar System Solution | Storage Battery</p>
+                        </div>
+                    </div>
+                    <div class="flex-shrink-0 text-right pl-8">
+                        <h2 class="font-thin text-slate-300 mb-5 tracking-normal whitespace-nowrap" style="font-size:36px; line-height:1;">Site Overview</h2>
+                    </div>
+                </div>
+                <div class="mb-4 no-print flex gap-2">
+                    <label class="bg-purple-700 hover:bg-purple-800 text-white px-4 py-2 rounded-lg font-bold text-xs cursor-pointer shadow-sm">
+                        上传屋顶图片
+                        <input type="file" id="site-image-upload" accept="image/*" onchange="uploadSiteImage(this)" class="hidden">
+                    </label>
+                    <button onclick="addSitePVPanel()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 px-4 py-2 rounded-lg font-bold text-xs shadow-sm" id="btn-add-pv-panel" style="display:none;">
+                        + 添加光伏板
+                    </button>
+                    <button onclick="clearSiteImage()" class="bg-red-50 hover:bg-red-100 text-red-500 border border-red-200 px-4 py-2 rounded-lg font-bold text-xs shadow-sm ml-auto" id="btn-clear-site" style="display:none;">
+                        清除图片
+                    </button>
+                </div>
+                <div class="flex-grow border-2 border-slate-200 rounded-xl relative overflow-hidden bg-slate-50" id="site-workspace" style="min-height: 500px;">
+                    <img id="site-image-preview" src="" class="absolute inset-0 w-full h-full object-cover hidden pointer-events-none">
+                    <!-- PV Panels will be appended here -->
+                </div>
+            </div>
+        </div>
+</main>
+
 
     <main id="view-inventory" class="max-w-6xl mx-auto px-4 mb-20 hidden" style="display: none;">
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
@@ -3006,6 +3178,9 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
         let profitSettings = null;
         let profitTarget = 'home';
         let installerProfitSettings = { cnPct: 0, myPct: 0 };
+        var savedQuotes = [];
+        var currentSavedQuoteId = null;
+        var isQuoteDirty = false;
         function safeJsonParseLoose(raw, fallback) {
             try { return raw ? JSON.parse(raw) : fallback; } catch { return fallback; }
         }
@@ -3356,6 +3531,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
             subcategoriesByCategory = data?.subcategoriesByCategory && typeof data.subcategoriesByCategory === 'object' ? data.subcategoriesByCategory : {};
             profitSettings = normalizeProfitSettings(data?.profitSettings || profitSettings || null);
             installerProfitSettings = normalizeInstallerProfitSettings(data?.installerProfitSettings || installerProfitSettings || null);
+            savedQuotes = Array.isArray(data?.savedQuotes) ? data.savedQuotes : [];
             try {
                 if (stampMs) localStorage.setItem('minova_embedded_updatedAt', String(stampMs));
                 localStorage.setItem('minova_products', JSON.stringify(products));
@@ -3459,11 +3635,11 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
             try { if (!suppressGitHubSync) window.__minovaSync?.enqueueSnapshot('state update'); } catch (e) {}
         }
 
-        let quoteRows = [{ id: Date.now(), description: '', vendor: '', spec: '', batchNo: '', quantity: 1, price: 0, cost: 0, productId: '', inventoryId: '' }];
-        let dbGroupMode = 'category';
-        let currentLang = 'zh';
-        let currentCurrency = 'CNY';
-        let paymentTermsConfirmed = true;
+        var quoteRows = [{ id: Date.now(), description: '', vendor: '', spec: '', batchNo: '', quantity: 1, price: 0, cost: 0, productId: '', inventoryId: '' }];
+        var dbGroupMode = 'category';
+        var currentLang = 'zh';
+        var currentCurrency = 'CNY';
+        var paymentTermsConfirmed = true;
         let quoteSplit = { enabled: false, afterRowId: null };
         let validityDays = 30;
         const apiKey = ""; 
@@ -6963,7 +7139,8 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                     fileDeleteLogs,
                     subcategoriesByCategory,
                     profitSettings,
-                    installerProfitSettings
+                    installerProfitSettings,
+                    savedQuotes
                 }
             };
             const json = JSON.stringify(snapshot).replaceAll('<', '\\u003c');
@@ -7762,10 +7939,59 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
 
             closeCertAttachmentModal();
 
-            const container = document.querySelector('.print-container');
-            if (!container) return;
 
-            const element = container;
+            const checkboxes = document.querySelectorAll('#pdf-page-checkboxes input[type="checkbox"]:checked');
+            const selectedPages = Array.from(checkboxes).map(cb => parseInt(cb.value));
+            
+            if (selectedPages.length === 0) {
+                selectedPages.push(1); // Default to page 1
+            }
+
+            let element;
+            const tempContainer = document.createElement('div');
+            tempContainer.id = 'temp-pdf-container';
+            tempContainer.style.position = 'absolute';
+            tempContainer.style.left = '-9999px';
+            tempContainer.style.top = '-9999px';
+            tempContainer.style.width = '100%';
+            document.body.appendChild(tempContainer);
+            
+            selectedPages.forEach((pageNum, index) => {
+                const pageEl = document.getElementById(`quote-page-${pageNum}`);
+                if (pageEl) {
+                    const printContainer = pageEl.querySelector('.print-container');
+                    if (printContainer) {
+                        const clone = printContainer.cloneNode(true);
+                        
+                        // Copy inputs
+                        const originalInputs = printContainer.querySelectorAll('input, textarea, select');
+                        const clonedInputs = clone.querySelectorAll('input, textarea, select');
+                        originalInputs.forEach((orig, i) => {
+                            if (clonedInputs[i]) {
+                                if (orig.tagName === 'INPUT' || orig.tagName === 'TEXTAREA') {
+                                    clonedInputs[i].value = orig.value;
+                                    if (orig.type === 'checkbox' || orig.type === 'radio') {
+                                        clonedInputs[i].checked = orig.checked;
+                                    }
+                                } else if (orig.tagName === 'SELECT') {
+                                    clonedInputs[i].value = orig.value;
+                                }
+                            }
+                        });
+                        
+                        tempContainer.appendChild(clone);
+                        
+                        if (index < selectedPages.length - 1) {
+                            const pageBreak = document.createElement('div');
+                            pageBreak.className = 'html2pdf__page-break';
+                            tempContainer.appendChild(pageBreak);
+                        }
+                    }
+                }
+            });
+            
+            element = tempContainer;
+
             const quoteNo = document.getElementById('quote-no').value || 'Quotation';
 
             const opt = {
@@ -7781,14 +8007,14 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                     scrollY: 0,
                     backgroundColor: '#ffffff',
                     onclone: (clonedDoc) => {
-                        const cont = clonedDoc.querySelector('.print-container');
+                        const conts = clonedDoc.querySelectorAll('.print-container');
                         clonedDoc.documentElement.style.margin = '0';
                         clonedDoc.documentElement.style.padding = '0';
                         clonedDoc.body.style.margin = '0';
                         clonedDoc.body.style.padding = '0';
                         clonedDoc.body.style.width = '210mm';
                         clonedDoc.body.style.maxWidth = '210mm';
-                        if (cont) {
+                        conts.forEach(cont => {
                             cont.style.boxShadow = 'none';
                             cont.style.border = 'none';
                             cont.style.padding = '0';
@@ -7799,7 +8025,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                             cont.style.overflow = 'visible';
                             cont.style.width = '210mm';
                             cont.style.maxWidth = '210mm';
-                        }
+                        });
                         clonedDoc.querySelectorAll('.no-print').forEach(el => el.style.display = 'none');
 
                         const style = clonedDoc.createElement('style');
@@ -7958,9 +8184,15 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                 if (skipped.length || failed.length) {
                     alert(`已生成合并 PDF。\n跳过（非 PDF/图片）：${skipped.length ? skipped.join('、') : '无'}\n下载失败：${failed.length ? failed.join('、') : '无'}`);
                 }
+
             }).catch((e) => {
                 alert('生成 PDF 失败：' + String(e?.message || e || ''));
+            }).finally(() => {
+                if (tempContainer && tempContainer.parentNode) {
+                    tempContainer.parentNode.removeChild(tempContainer);
+                }
             });
+
         };
 
         window.closeCertAttachmentModal = () => {
@@ -7970,4 +8202,38 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
             modal.classList.remove('flex');
         };
     </script>
+
+    <!-- PDF Selection Modal -->
+    <div id="pdf-selection-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex-col items-center justify-center z-[220] p-4">
+        <div class="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl">
+            <h3 class="text-xl font-bold text-slate-800 mb-6">选择要生成的 PDF 页面</h3>
+            <div class="space-y-3 mb-8" id="pdf-page-checkboxes">
+                <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" value="1" checked class="w-4 h-4 text-purple-600 rounded focus:ring-purple-500">
+                    <span class="text-sm font-bold text-slate-700">1. Quotation (报价单)</span>
+                </label>
+                <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" value="2" class="w-4 h-4 text-purple-600 rounded focus:ring-purple-500">
+                    <span class="text-sm font-bold text-slate-700">2. ROI & Financial Analysis</span>
+                </label>
+                <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" value="3" class="w-4 h-4 text-purple-600 rounded focus:ring-purple-500">
+                    <span class="text-sm font-bold text-slate-700">3. Part Breakdown & Warranty</span>
+                </label>
+                <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" value="4" class="w-4 h-4 text-purple-600 rounded focus:ring-purple-500">
+                    <span class="text-sm font-bold text-slate-700">4. Reference</span>
+                </label>
+                <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" value="5" class="w-4 h-4 text-purple-600 rounded focus:ring-purple-500">
+                    <span class="text-sm font-bold text-slate-700">5. Site Overview</span>
+                </label>
+            </div>
+            <div class="flex justify-end gap-3">
+                <button onclick="closePDFSelectionModal()" class="px-5 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition-colors">取消</button>
+                <button onclick="closePDFSelectionModal(); openCertAttachmentModal()" class="px-5 py-2 rounded-xl bg-purple-700 text-white font-bold hover:bg-purple-800 shadow-lg shadow-purple-200 transition-all">下一步：选择附件</button>
+            </div>
+        </div>
+    </div>
+
 </body></html>

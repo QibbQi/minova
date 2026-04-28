@@ -17,7 +17,6 @@
                 border: none !important; 
                 width: 100% !important; 
                 max-width: none !important;
-                padding: 0 !important;
             }
             .print-only { display: block !important; }
             .price-input { border: none !important; padding: 0 !important; background: transparent !important; }
@@ -75,7 +74,7 @@
                 <button onclick="toggleCurrency()" id="btn-currency" class="text-sm bg-slate-100 text-slate-700 px-4 py-2 rounded-xl hover:bg-slate-200 transition-colors font-bold border border-slate-200">
                     ¥ / RM
                 </button>
-                <button onclick="openPDFSelectionModal()" id="btn-generate-pdf" class="text-sm bg-slate-900 text-white px-5 py-2 rounded-xl hover:bg-black transition-all shadow-lg shadow-slate-200 leading-tight text-center">
+                <button onclick="generateQuotationPDF()" id="btn-generate-pdf" class="text-sm bg-slate-900 text-white px-5 py-2 rounded-xl hover:bg-black transition-all shadow-lg shadow-slate-200 leading-tight text-center">
                     <span class="block">生成报价</span>
                     <span class="block">（PDF）</span>
                 </button>
@@ -87,30 +86,32 @@
 
     <main id="view-quotation" class="max-w-5xl mx-auto px-4 mb-20 hidden" style="display: none;">
 
-        <!-- Quote Management Bar -->
-        <div class="flex flex-col md:flex-row justify-between items-center mb-4 no-print bg-white p-3 rounded shadow-sm border border-slate-200 gap-3">
-            <div class="flex items-center gap-3 w-full md:w-auto">
-                <label class="text-sm font-bold text-slate-600 whitespace-nowrap" id="lbl-saved-quotes">选择已存报价:</label>
-                <select id="saved-quotes-select" onchange="onSavedQuoteSelect(this.value)" class="text-sm p-1.5 border border-slate-200 rounded outline-none focus:border-purple-400 bg-slate-50 flex-1 md:w-48">
-                    <option value="">-- 新建报价 (New) --</option>
-                </select>
-                <button onclick="createNewQuote()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded font-bold transition-all border border-slate-200" id="btn-new-quote">新建</button>
-                <button onclick="saveCurrentQuote()" class="text-xs bg-purple-700 hover:bg-purple-800 text-white px-3 py-1.5 rounded font-bold transition-all shadow-sm" id="btn-save-quote">保存当前报价</button>
-            </div>
-            <div class="flex items-center gap-3 w-full md:w-auto">
-                <label class="text-sm font-bold text-slate-600 whitespace-nowrap" id="lbl-quote-page">当前页面:</label>
-                <select id="quote-page-select" onchange="switchQuoteSubpage(this.value)" class="text-sm p-1.5 border border-slate-200 rounded outline-none focus:border-purple-400 bg-purple-50 text-purple-800 font-bold flex-1 md:w-64">
-                    <option value="1">1. Quotation (报价单)</option>
-                    <option value="2">2. ROI & Financial Analysis</option>
-                    <option value="3">3. Part Breakdown & Warranty</option>
-                    <option value="4">4. Reference</option>
-                    <option value="5">5. Site Overview</option>
-                </select>
-            </div>
+    <!-- Saved Quotes and Page Navigation UI -->
+    <div class="mb-4 no-print flex flex-wrap gap-4 justify-between items-center bg-white p-3 rounded-2xl shadow-sm border border-slate-200">
+        <div class="flex items-center gap-2">
+            <label class="text-sm font-bold text-slate-600">已存报价:</label>
+            <select id="saved-quotes-select" onchange="onSavedQuoteSelectChange()" class="text-sm border border-slate-200 rounded p-1 outline-none w-48">
+                <option value="">-- 新报价 --</option>
+            </select>
+            <button onclick="loadSavedQuote()" class="text-xs bg-blue-100 text-blue-700 px-3 py-1.5 rounded hover:bg-blue-200">加载</button>
+            <button onclick="openSaveQuoteModal()" class="text-xs bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded hover:bg-emerald-200">保存</button>
+            <button onclick="openDeleteQuoteModal()" class="text-xs bg-red-100 text-red-700 px-3 py-1.5 rounded hover:bg-red-200">删除</button>
         </div>
+        <div class="flex items-center gap-2">
+            <label class="text-sm font-bold text-slate-600">当前视图:</label>
+            <select id="quote-page-select" onchange="switchQuotePage(this.value)" class="text-sm border border-slate-200 rounded p-1 outline-none w-56 font-bold text-purple-700">
+                <option value="1">1. 报价单 (Quotation)</option>
+                <option value="2">2. ROI / Financial Analysis</option>
+                <option value="3">3. Part Breakdown & Warranty</option>
+                <option value="4">4. Reference</option>
+                <option value="5">5. Site Overview</option>
+            </select>
+        </div>
+    </div>
+    
+    <div id="pdf-content-wrapper">
 
-        <div id="quote-page-1" class="quote-subpage block">
-        <div class="bg-white shadow-2xl rounded-sm print-container min-h-[1050px] flex flex-col p-12 md:p-16 border border-slate-100">
+        <div id="quote-page-1" class="quote-page bg-white shadow-2xl rounded-sm print-container min-h-[1050px] flex flex-col p-12 md:p-16 border border-slate-100">
             <div class="flex justify-between items-start mb-2">
                 <div class="flex-1 min-w-0">
             <div class="flex items-center gap-4 mb-4">
@@ -149,7 +150,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                     </div>
                     <div class="mt-2 flex items-center gap-2">
                         <span id="lbl-site-address" class="text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Site Address：</span>
-                        <input id="input-site-address" type="text" placeholder="填写现场地址" class="text-sm text-slate-700 block w-full border-none bg-slate-50/60 rounded-lg px-2 py-1 shadow-sm shadow-purple-100 outline-none transition-all focus:bg-white focus-visible:ring-2 focus-visible:ring-purple-300 focus-visible:ring-offset-1">
+                        <textarea id="input-site-address" rows="1" placeholder="填写现场地址" class="text-sm text-slate-700 block w-full border-none bg-slate-50/60 rounded-lg px-2 py-1 shadow-sm shadow-purple-100 outline-none transition-all focus:bg-white focus-visible:ring-2 focus-visible:ring-purple-300 focus-visible:ring-offset-1 resize-none overflow-hidden" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"></textarea>
                     </div>
                 </div>
             </div>
@@ -162,7 +163,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                     <div class="space-y-1">
                         <div class="flex items-center gap-3 bg-slate-50/50 py-1.5 px-2 rounded-lg border border-slate-100">
                             <span class="flex-shrink-0 w-5 h-5 bg-[#582C83] text-white text-[10px] font-bold rounded-full flex items-center justify-center">1</span>
-                            <span class="text-[10px] font-bold text-slate-500 uppercase flex-grow min-w-0"><input type="text" id="val-step1" value="现场勘测" class="w-full bg-transparent outline-none uppercase placeholder-slate-400"></span>
+                            <span class="text-[10px] font-bold text-slate-500 uppercase flex-grow min-w-0"><textarea id="val-step1" rows="1" class="w-full bg-transparent outline-none uppercase placeholder-slate-400 resize-none overflow-hidden align-middle leading-tight" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'">现场勘测</textarea></span>
                             <div class="flex items-center gap-1">
                                 <span class="text-xs font-bold text-[#582C83] mr-0.5">≈</span>
                                 <input type="number" id="timeline-days-1" class="w-10 text-[9px] font-black text-[#582C83] bg-transparent outline-none text-right border-b border-purple-200" placeholder="0">
@@ -171,7 +172,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                         </div>
                         <div class="flex items-center gap-3 bg-slate-50/50 py-1.5 px-2 rounded-lg border border-slate-100">
                             <span class="flex-shrink-0 w-5 h-5 bg-[#582C83] text-white text-[10px] font-bold rounded-full flex items-center justify-center">2</span>
-                            <span class="text-[10px] font-bold text-slate-500 uppercase flex-grow min-w-0"><input type="text" id="val-step2" value="材料采购与安装规划" class="w-full bg-transparent outline-none uppercase placeholder-slate-400"></span>
+                            <span class="text-[10px] font-bold text-slate-500 uppercase flex-grow min-w-0"><textarea id="val-step2" rows="1" class="w-full bg-transparent outline-none uppercase placeholder-slate-400 resize-none overflow-hidden align-middle leading-tight" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'">材料采购与安装规划</textarea></span>
                             <div class="flex items-center gap-1">
                                 <span class="text-xs font-bold text-[#582C83] mr-0.5">≈</span>
                                 <input type="number" id="timeline-days-2" class="w-10 text-[9px] font-black text-[#582C83] bg-transparent outline-none text-right border-b border-purple-200" placeholder="0">
@@ -180,7 +181,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                         </div>
                         <div class="flex items-center gap-3 bg-slate-50/50 py-1.5 px-2 rounded-lg border border-slate-100">
                             <span class="flex-shrink-0 w-5 h-5 bg-[#582C83] text-white text-[10px] font-bold rounded-full flex items-center justify-center">3</span>
-                            <span class="text-[10px] font-bold text-slate-500 uppercase flex-grow min-w-0"><input type="text" id="val-step3" value="安装" class="w-full bg-transparent outline-none uppercase placeholder-slate-400"></span>
+                            <span class="text-[10px] font-bold text-slate-500 uppercase flex-grow min-w-0"><textarea id="val-step3" rows="1" class="w-full bg-transparent outline-none uppercase placeholder-slate-400 resize-none overflow-hidden align-middle leading-tight" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'">安装</textarea></span>
                             <div class="flex items-center gap-1">
                                 <span class="text-xs font-bold text-[#582C83] mr-0.5">≈</span>
                                 <input type="number" id="timeline-days-3" class="w-10 text-[9px] font-black text-[#582C83] bg-transparent outline-none text-right border-b border-purple-200" placeholder="0">
@@ -200,7 +201,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                         </div>
                         <div class="grid grid-cols-1 gap-1.5">
                             <div class="flex justify-between items-center py-0.5 px-2 bg-slate-50 rounded-lg border border-slate-100 group/pay">
-                                <span class="text-[10px] font-bold text-slate-500 uppercase"><input type="text" id="lbl-confirmation" value="确认后" class="w-24 bg-transparent outline-none uppercase placeholder-slate-400"></span>
+                                <span class="text-[10px] font-bold text-slate-500 uppercase"><textarea id="lbl-confirmation" rows="1" class="w-24 bg-transparent outline-none uppercase placeholder-slate-400 resize-none overflow-hidden align-middle leading-tight" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'">确认后</textarea></span>
                                 <div class="flex items-center gap-1">
                                     <input type="number" id="payment-confirmation-percent" value="30" oninput="onPaymentPercentInput()" onchange="onPaymentPercentInput()" class="w-8 text-[9px] font-black text-[#582C83] bg-transparent outline-none text-right border-b border-purple-200">
                                     <span class="text-[10px] font-bold text-[#582C83]">%</span>
@@ -211,7 +212,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                                 </div>
                             </div>
                             <div class="flex justify-between items-center py-0.5 px-2 bg-slate-50 rounded-lg border border-slate-100 group/pay">
-                                <span class="text-[10px] font-bold text-slate-500 uppercase"><input type="text" id="lbl-installation" value="安装后" class="w-24 bg-transparent outline-none uppercase placeholder-slate-400"></span>
+                                <span class="text-[10px] font-bold text-slate-500 uppercase"><textarea id="lbl-installation" rows="1" class="w-24 bg-transparent outline-none uppercase placeholder-slate-400 resize-none overflow-hidden align-middle leading-tight" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'">安装后</textarea></span>
                                 <div class="flex items-center gap-1">
                                     <input type="number" id="payment-installation-percent" value="40" oninput="onPaymentPercentInput()" onchange="onPaymentPercentInput()" class="w-8 text-[9px] font-black text-[#582C83] bg-transparent outline-none text-right border-b border-purple-200">
                                     <span class="text-[10px] font-bold text-[#582C83]">%</span>
@@ -222,7 +223,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                                 </div>
                             </div>
                             <div class="flex justify-between items-center py-0.5 px-2 bg-slate-50 rounded-lg border border-slate-100 group/pay">
-                                <span class="text-[10px] font-bold text-slate-500 uppercase"><input type="text" id="lbl-testing" value="测试与调试后" class="w-24 bg-transparent outline-none uppercase placeholder-slate-400"></span>
+                                <span class="text-[10px] font-bold text-slate-500 uppercase"><textarea id="lbl-testing" rows="1" class="w-24 bg-transparent outline-none uppercase placeholder-slate-400 resize-none overflow-hidden align-middle leading-tight" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'">测试与调试后</textarea></span>
                                 <div class="flex items-center gap-1">
                                     <input type="number" id="payment-testing-percent" value="30" oninput="onPaymentPercentInput()" onchange="onPaymentPercentInput()" class="w-8 text-[9px] font-black text-[#582C83] bg-transparent outline-none text-right border-b border-purple-200">
                                     <span class="text-[10px] font-bold text-[#582C83]">%</span>
@@ -233,7 +234,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                                 </div>
                             </div>
                             <div id="payment-final-container" class="hidden flex justify-between items-center py-0.5 px-2 bg-slate-50 rounded-lg border border-slate-100 group/pay">
-                                <span class="text-[10px] font-bold text-slate-500 uppercase"><input type="text" id="lbl-final" value="交付验收后" class="w-24 bg-transparent outline-none uppercase placeholder-slate-400"></span>
+                                <span class="text-[10px] font-bold text-slate-500 uppercase"><textarea id="lbl-final" rows="1" class="w-24 bg-transparent outline-none uppercase placeholder-slate-400 resize-none overflow-hidden align-middle leading-tight" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'">交付验收后</textarea></span>
                                 <div class="flex items-center gap-1">
                                     <input type="number" id="payment-final-percent" value="0" oninput="onPaymentPercentInput()" onchange="onPaymentPercentInput()" class="w-8 text-[9px] font-black text-[#582C83] bg-transparent outline-none text-right border-b border-purple-200">
                                     <span class="text-[10px] font-bold text-[#582C83]">%</span>
@@ -604,156 +605,136 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                     <p class="text-xs text-slate-400 uppercase">日期</p>
                 </div>
             </div>
-        </div> <!-- End of quote-page-1 -->
-
-        <!-- Page 2: ROI -->
-        <div id="quote-page-2" class="quote-subpage hidden">
-            <div class="bg-white shadow-2xl rounded-sm print-container min-h-[1050px] flex flex-col p-12 md:p-16 border border-slate-100">
-                <div class="flex justify-between items-start mb-12">
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-4 mb-4">
-                            <img src="logo-horizontal.png" alt="MINOVA Logo" class="h-12 w-auto object-contain" />
-                        </div>
-                        <div class="space-y-1 text-sm text-slate-500 font-medium">
-                            <p class="uppercase tracking-[0.2em] text-[10px] font-bold text-purple-800/60 mb-2">Solar System Solution | Storage Battery</p>
-                        </div>
+        </div>
+    
+        <!-- Page 2 -->
+        <div id="quote-page-2" class="quote-page hidden bg-white shadow-2xl rounded-sm print-container min-h-[1050px] flex-col p-12 md:p-16 border border-slate-100 mb-8">
+            <div class="flex justify-between items-start mb-8">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-4 mb-4">
+                        <img src="logo-horizontal.png" alt="MINOVA Logo" class="h-12 w-auto object-contain" />
                     </div>
-                    <div class="flex-shrink-0 text-right pl-8">
-                        <h2 class="font-thin text-slate-300 mb-5 tracking-normal whitespace-nowrap" style="font-size:36px; line-height:1;">ROI / Financial Analysis</h2>
+                    <div class="space-y-1 text-sm text-slate-500 font-medium">
+                        <p class="uppercase tracking-[0.2em] text-[10px] font-bold text-purple-800/60 mb-2">Solar System Solution | Storage Battery</p>
                     </div>
                 </div>
-                <div class="flex-grow">
-                    <div class="grid grid-cols-2 gap-8 mb-8 no-print">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Before Installation (Monthly Bill)</label>
-                            <input type="number" id="roi-before-bill" value="0" oninput="calculateROI()" class="w-full p-2 border border-slate-200 rounded outline-none focus:border-purple-500">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">After Installation (Monthly Bill)</label>
-                            <input type="number" id="roi-after-bill" value="0" oninput="calculateROI()" class="w-full p-2 border border-slate-200 rounded outline-none focus:border-purple-500">
-                        </div>
-                    </div>
-                    <div class="mb-8">
-                        <div class="bg-purple-50 p-4 rounded-xl flex justify-around">
-                            <div class="text-center">
-                                <p class="text-[10px] font-black text-slate-400 uppercase">Monthly Saving</p>
-                                <p class="text-2xl font-black text-purple-800"><span class="currency-symbol">¥</span><span id="roi-monthly-saving">0.00</span></p>
-                            </div>
-                            <div class="text-center">
-                                <p class="text-[10px] font-black text-slate-400 uppercase">Yearly Saving</p>
-                                <p class="text-2xl font-black text-purple-800"><span class="currency-symbol">¥</span><span id="roi-yearly-saving">0.00</span></p>
-                            </div>
-                        </div>
-                    </div>
-                    <table class="w-full text-left table-fixed text-sm border-collapse">
-                        <thead>
-                            <tr class="border-b-2 border-purple-900 text-[10px] font-black uppercase text-slate-400">
-                                <th class="py-2 px-2 w-1/4">Year</th>
-                                <th class="py-2 px-2 w-1/3 text-right">Energy Saving</th>
-                                <th class="py-2 px-2 w-1/3 text-right">Cumulative Saving</th>
-                            </tr>
-                        </thead>
-                        <tbody id="roi-table-body">
-                            <!-- Populated by JS -->
-                        </tbody>
-                    </table>
+                <div class="flex-shrink-0 text-right pl-8">
+                    <h2 class="font-thin text-slate-300 mb-5 tracking-normal whitespace-nowrap" style="font-size:36px; line-height:1;" id="lbl-page2-title">ROI / FINANCIAL ANALYSIS</h2>
                 </div>
             </div>
-        </div>
-
-        <!-- Page 3: Part Breakdown -->
-        <div id="quote-page-3" class="quote-subpage hidden">
-            <div class="bg-white shadow-2xl rounded-sm print-container min-h-[1050px] flex flex-col p-12 md:p-16 border border-slate-100">
-                <div class="flex justify-between items-start mb-8">
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-4 mb-4">
-                            <img src="logo-horizontal.png" alt="MINOVA Logo" class="h-12 w-auto object-contain" />
-                        </div>
-                        <div class="space-y-1 text-sm text-slate-500 font-medium">
-                            <p class="uppercase tracking-[0.2em] text-[10px] font-bold text-purple-800/60 mb-2">Solar System Solution | Storage Battery</p>
-                        </div>
-                    </div>
-                    <div class="flex-shrink-0 text-right pl-8">
-                        <h2 class="font-thin text-slate-300 mb-5 tracking-normal whitespace-nowrap" style="font-size:36px; line-height:1;">Part Breakdown & Warranty</h2>
-                    </div>
-                </div>
-                <div class="flex-grow">
-                    <div id="part-breakdown-container" class="space-y-8">
-                        <!-- Populated by JS -->
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Page 4: Reference -->
-        <div id="quote-page-4" class="quote-subpage hidden">
-            <div class="bg-white shadow-2xl rounded-sm print-container min-h-[1050px] flex flex-col p-12 md:p-16 border border-slate-100">
-                <div class="flex justify-between items-start mb-8">
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-4 mb-4">
-                            <img src="logo-horizontal.png" alt="MINOVA Logo" class="h-12 w-auto object-contain" />
-                        </div>
-                        <div class="space-y-1 text-sm text-slate-500 font-medium">
-                            <p class="uppercase tracking-[0.2em] text-[10px] font-bold text-purple-800/60 mb-2">Solar System Solution | Storage Battery</p>
-                        </div>
-                    </div>
-                    <div class="flex-shrink-0 text-right pl-8">
-                        <h2 class="font-thin text-slate-300 mb-5 tracking-normal whitespace-nowrap" style="font-size:36px; line-height:1;">Reference</h2>
-                    </div>
-                </div>
-                <div class="flex-grow flex flex-col gap-6">
-                    <div class="w-full flex-1 border-2 border-dashed border-slate-200 rounded-xl flex items-center justify-center relative overflow-hidden group min-h-[300px]">
-                        <input type="file" id="ref-image-upload" accept="image/*" onchange="uploadRefImage(this)" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 no-print">
-                        <div id="ref-image-placeholder" class="text-slate-400 text-center no-print">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mx-auto mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                            <p class="text-sm font-bold">点击或拖拽上传 APP 控制页截图</p>
-                        </div>
-                        <img id="ref-image-preview" src="" class="absolute inset-0 w-full h-full object-contain hidden pointer-events-none">
-                        <button onclick="clearRefImage()" class="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-xs hidden z-20 no-print group-hover:block" id="btn-clear-ref">移除</button>
+            
+            <div class="flex-grow">
+                <div class="grid grid-cols-3 gap-4 mb-6 no-print">
+                    <div>
+                        <label id="lbl-roi-before" class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Monthly Bill Before (RM/¥)</label>
+                        <input type="number" id="roi-bill-before" value="500" class="w-full p-2 border border-slate-200 rounded text-sm" oninput="calculateROI()">
                     </div>
                     <div>
-                        <textarea id="ref-notes" placeholder="添加补充说明..." class="w-full p-4 border border-slate-200 rounded-xl outline-none focus:border-purple-500 text-sm h-32 resize-none whitespace-pre-wrap"></textarea>
+                        <label id="lbl-roi-after" class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Monthly Bill After (RM/¥)</label>
+                        <input type="number" id="roi-bill-after" value="50" class="w-full p-2 border border-slate-200 rounded text-sm" oninput="calculateROI()">
                     </div>
+                    <div>
+                        <label id="lbl-roi-cost" class="block text-[10px] font-bold text-slate-400 uppercase mb-1">System Cost (RM/¥)</label>
+                        <input type="number" id="roi-system-cost" value="0" class="w-full p-2 border border-slate-200 rounded text-sm" oninput="this.dataset.manual='true'; calculateROI()">
+                    </div>
+                </div>
+                
+                <table class="w-full text-left table-fixed">
+                    <thead>
+                        <tr class="border-b-2 border-purple-900 text-[10px] font-black uppercase text-slate-400">
+                            <th class="py-2 px-2">Year</th>
+                            <th class="py-2 px-2 text-right">Annual Saving</th>
+                            <th class="py-2 px-2 text-right">Cumulative Saving</th>
+                            <th class="py-2 px-2 text-right">ROI (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="roi-tbody">
+                        <!-- Filled by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Page 3 -->
+        <div id="quote-page-3" class="quote-page hidden bg-white shadow-2xl rounded-sm print-container min-h-[1050px] flex-col p-12 md:p-16 border border-slate-100 mb-8">
+            <div class="flex justify-between items-start mb-8">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-4 mb-4">
+                        <img src="logo-horizontal.png" alt="MINOVA Logo" class="h-12 w-auto object-contain" />
+                    </div>
+                    <div class="space-y-1 text-sm text-slate-500 font-medium">
+                        <p class="uppercase tracking-[0.2em] text-[10px] font-bold text-purple-800/60 mb-2">Solar System Solution | Storage Battery</p>
+                    </div>
+                </div>
+                <div class="flex-shrink-0 text-right pl-8">
+                    <h2 class="font-thin text-slate-300 mb-5 tracking-normal whitespace-nowrap" style="font-size:36px; line-height:1;" id="lbl-page3-title">PART BREAKDOWN & WARRANTY</h2>
+                </div>
+            </div>
+            
+            <div class="flex-grow" id="part-breakdown-container">
+                <!-- Filled by JS -->
+            </div>
+        </div>
+
+        <!-- Page 4 -->
+        <div id="quote-page-4" class="quote-page hidden bg-white shadow-2xl rounded-sm print-container min-h-[1050px] flex-col p-12 md:p-16 border border-slate-100 mb-8">
+            <div class="flex justify-between items-start mb-8">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-4 mb-4">
+                        <img src="logo-horizontal.png" alt="MINOVA Logo" class="h-12 w-auto object-contain" />
+                    </div>
+                    <div class="space-y-1 text-sm text-slate-500 font-medium">
+                        <p class="uppercase tracking-[0.2em] text-[10px] font-bold text-purple-800/60 mb-2">Solar System Solution | Storage Battery</p>
+                    </div>
+                </div>
+                <div class="flex-shrink-0 text-right pl-8">
+                    <h2 class="font-thin text-slate-300 mb-5 tracking-normal whitespace-nowrap" style="font-size:36px; line-height:1;" id="lbl-page4-title">REFERENCE</h2>
+                </div>
+            </div>
+            
+            <div class="flex-grow">
+                <button onclick="addReferenceBlock()" class="mb-4 no-print text-xs bg-purple-100 text-purple-700 px-4 py-2 rounded font-bold hover:bg-purple-200">+ 新增参考信息块</button>
+                <div id="reference-container" class="space-y-8">
+                    <!-- Reference blocks here -->
                 </div>
             </div>
         </div>
 
-        <!-- Page 5: Site Overview -->
-        <div id="quote-page-5" class="quote-subpage hidden">
-            <div class="bg-white shadow-2xl rounded-sm print-container min-h-[1050px] flex flex-col p-12 md:p-16 border border-slate-100">
-                <div class="flex justify-between items-start mb-8">
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-4 mb-4">
-                            <img src="logo-horizontal.png" alt="MINOVA Logo" class="h-12 w-auto object-contain" />
-                        </div>
-                        <div class="space-y-1 text-sm text-slate-500 font-medium">
-                            <p class="uppercase tracking-[0.2em] text-[10px] font-bold text-purple-800/60 mb-2">Solar System Solution | Storage Battery</p>
-                        </div>
+        <!-- Page 5 -->
+        <div id="quote-page-5" class="quote-page hidden bg-white shadow-2xl rounded-sm print-container min-h-[1050px] flex-col p-12 md:p-16 border border-slate-100 mb-8">
+            <div class="flex justify-between items-start mb-8">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-4 mb-4">
+                        <img src="logo-horizontal.png" alt="MINOVA Logo" class="h-12 w-auto object-contain" />
                     </div>
-                    <div class="flex-shrink-0 text-right pl-8">
-                        <h2 class="font-thin text-slate-300 mb-5 tracking-normal whitespace-nowrap" style="font-size:36px; line-height:1;">Site Overview</h2>
+                    <div class="space-y-1 text-sm text-slate-500 font-medium">
+                        <p class="uppercase tracking-[0.2em] text-[10px] font-bold text-purple-800/60 mb-2">Solar System Solution | Storage Battery</p>
                     </div>
                 </div>
+                <div class="flex-shrink-0 text-right pl-8">
+                    <h2 class="font-thin text-slate-300 mb-5 tracking-normal whitespace-nowrap" style="font-size:36px; line-height:1;" id="lbl-page5-title">SITE OVERVIEW</h2>
+                </div>
+            </div>
+            
+            <div class="flex-grow flex flex-col">
                 <div class="mb-4 no-print flex gap-2">
-                    <label class="bg-purple-700 hover:bg-purple-800 text-white px-4 py-2 rounded-lg font-bold text-xs cursor-pointer shadow-sm">
-                        上传屋顶图片
-                        <input type="file" id="site-image-upload" accept="image/*" onchange="uploadSiteImage(this)" class="hidden">
+                    <label class="text-xs bg-slate-100 text-slate-700 px-4 py-2 rounded font-bold hover:bg-slate-200 cursor-pointer border border-slate-200">
+                        上传屋顶背景图
+                        <input type="file" accept="image/*" class="hidden" onchange="uploadRoofBackground(event)">
                     </label>
-                    <button onclick="addSitePVPanel()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 px-4 py-2 rounded-lg font-bold text-xs shadow-sm" id="btn-add-pv-panel" style="display:none;">
-                        + 添加光伏板
-                    </button>
-                    <button onclick="clearSiteImage()" class="bg-red-50 hover:bg-red-100 text-red-500 border border-red-200 px-4 py-2 rounded-lg font-bold text-xs shadow-sm ml-auto" id="btn-clear-site" style="display:none;">
-                        清除图片
-                    </button>
+                    <button onclick="addPVModule()" class="text-xs bg-blue-100 text-blue-700 px-4 py-2 rounded font-bold hover:bg-blue-200">+ 添加光伏板</button>
+                    <button onclick="clearRoof()" class="text-xs bg-red-100 text-red-700 px-4 py-2 rounded font-bold hover:bg-red-200">清除全部</button>
                 </div>
-                <div class="flex-grow border-2 border-slate-200 rounded-xl relative overflow-hidden bg-slate-50" id="site-workspace" style="min-height: 500px;">
-                    <img id="site-image-preview" src="" class="absolute inset-0 w-full h-full object-cover hidden pointer-events-none">
-                    <!-- PV Panels will be appended here -->
+                <div id="roof-canvas" class="relative w-full h-[600px] border-2 border-dashed border-slate-300 rounded-lg bg-slate-50 bg-center bg-no-repeat bg-contain overflow-hidden">
+                    <div class="absolute inset-0 flex items-center justify-center pointer-events-none text-slate-300 font-bold tracking-widest no-print" id="roof-placeholder">
+                        ROOF IMAGE AREA
+                    </div>
                 </div>
             </div>
         </div>
-</main>
+    </div>
 
+    </main>
 
     <main id="view-inventory" class="max-w-6xl mx-auto px-4 mb-20 hidden" style="display: none;">
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
@@ -2962,7 +2943,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                         await sync.publishIndexHtml(html);
                         startDots('已提交，请稍等');
                         const expectedAt = (() => {
-                            const m = html.match(/<script id="minova-embedded-state" type="application\/json">([\s\S]*?)<\/script>/);
+                            const m = html.match(/\x3Cscript id="minova-embedded-state" type="application\/json">([\s\S]*?)<\/script>/);
                             if (!m?.[1]) return 0;
                             try { return Date.parse(JSON.parse(m[1]).updatedAt || '') || 0; } catch { return 0; }
                         })();
@@ -2973,7 +2954,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                         const fetchDeployedAt = async () => {
                             const res = await fetch(`${pagesUrl}?v=${Date.now()}`, { cache: 'no-store' });
                             const text = await res.text();
-                            const m = text.match(/<script id="minova-embedded-state" type="application\/json">([\s\S]*?)<\/script>/);
+                            const m = text.match(/\x3Cscript id="minova-embedded-state" type="application\/json">([\s\S]*?)<\/script>/);
                             if (!m?.[1]) return 0;
                             try { return Date.parse(JSON.parse(m[1]).updatedAt || '') || 0; } catch { return 0; }
                         };
@@ -3020,6 +3001,43 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
 <div class="bg-white rounded-3xl p-8 w-full max-w-xl shadow-2xl max-h-[90vh] overflow-y-auto">
     <h3 class="text-xl font-bold text-slate-800 mb-2">选择附上认证文件</h3>
     <p class="text-xs text-slate-400 mb-5">勾选本次报价需要附上的认证文件，将拼接在报价 PDF 后面一起交付</p>
+
+    <!-- 附加页面选择 -->
+    <div class="border border-slate-200 rounded-xl mb-4">
+        <div class="flex items-center justify-between p-4 cursor-pointer" onclick="toggleCertSection('pages')">
+            <span class="text-sm font-bold text-slate-700">【附加页面选择】</span>
+            <span id="qa-pages-cert-count" class="text-xs text-slate-400">4 项</span>
+            <span id="qa-pages-cert-arrow">▼</span>
+        </div>
+        <div id="qa-pages-cert-body" class="px-4 pb-4">
+            <div class="flex justify-end gap-2 mb-2">
+                <button onclick="toggleAllPages(true)" class="text-xs text-purple-600 hover:underline">全选</button>
+                <button onclick="toggleAllPages(false)" class="text-xs text-slate-500 hover:underline">不选</button>
+            </div>
+            <div class="space-y-2">
+                <label class="flex items-center gap-2 py-1">
+                    <input type="checkbox" class="w-4 h-4 text-purple-600" disabled checked>
+                    <span class="text-sm text-slate-400">1. 报价单 (Quotation) - 必选</span>
+                </label>
+                <label class="flex items-center gap-2 py-1 cursor-pointer">
+                    <input type="checkbox" value="2" class="print-page-checkbox w-4 h-4 text-purple-600" checked onchange="updateCertSelectedSummary()">
+                    <span class="text-sm text-slate-700">2. ROI / Financial Analysis</span>
+                </label>
+                <label class="flex items-center gap-2 py-1 cursor-pointer">
+                    <input type="checkbox" value="3" class="print-page-checkbox w-4 h-4 text-purple-600" checked onchange="updateCertSelectedSummary()">
+                    <span class="text-sm text-slate-700">3. Part Breakdown & Warranty</span>
+                </label>
+                <label class="flex items-center gap-2 py-1 cursor-pointer">
+                    <input type="checkbox" value="4" class="print-page-checkbox w-4 h-4 text-purple-600" checked onchange="updateCertSelectedSummary()">
+                    <span class="text-sm text-slate-700">4. Reference</span>
+                </label>
+                <label class="flex items-center gap-2 py-1 cursor-pointer">
+                    <input type="checkbox" value="5" class="print-page-checkbox w-4 h-4 text-purple-600" checked onchange="updateCertSelectedSummary()">
+                    <span class="text-sm text-slate-700">5. Site Overview</span>
+                </label>
+            </div>
+        </div>
+    </div>
 
     <!-- 公司级认证 -->
     <div class="border border-slate-200 rounded-xl mb-4">
@@ -3130,7 +3148,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                 async function publishIndexHtml(html) {
                     if (!unlockedToken) throw new Error('Not connected');
                     const { owner, repo: repoName, branch } = config;
-                    const m = html.match(/<script id="minova-embedded-state" type="application\/json">([\s\S]*?)<\/script>/);
+                    const m = html.match(/\x3Cscript id="minova-embedded-state" type="application\/json">([\s\S]*?)<\/script>/);
                     const raw = m?.[1] ? m[1] : '';
                     let stateJson = '';
                     if (raw) {
@@ -3178,9 +3196,6 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
         let profitSettings = null;
         let profitTarget = 'home';
         let installerProfitSettings = { cnPct: 0, myPct: 0 };
-        var savedQuotes = [];
-        var currentSavedQuoteId = null;
-        var isQuoteDirty = false;
         function safeJsonParseLoose(raw, fallback) {
             try { return raw ? JSON.parse(raw) : fallback; } catch { return fallback; }
         }
@@ -3531,7 +3546,6 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
             subcategoriesByCategory = data?.subcategoriesByCategory && typeof data.subcategoriesByCategory === 'object' ? data.subcategoriesByCategory : {};
             profitSettings = normalizeProfitSettings(data?.profitSettings || profitSettings || null);
             installerProfitSettings = normalizeInstallerProfitSettings(data?.installerProfitSettings || installerProfitSettings || null);
-            savedQuotes = Array.isArray(data?.savedQuotes) ? data.savedQuotes : [];
             try {
                 if (stampMs) localStorage.setItem('minova_embedded_updatedAt', String(stampMs));
                 localStorage.setItem('minova_products', JSON.stringify(products));
@@ -3635,11 +3649,11 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
             try { if (!suppressGitHubSync) window.__minovaSync?.enqueueSnapshot('state update'); } catch (e) {}
         }
 
-        var quoteRows = [{ id: Date.now(), description: '', vendor: '', spec: '', batchNo: '', quantity: 1, price: 0, cost: 0, productId: '', inventoryId: '' }];
-        var dbGroupMode = 'category';
-        var currentLang = 'zh';
-        var currentCurrency = 'CNY';
-        var paymentTermsConfirmed = true;
+        let quoteRows = [{ id: Date.now(), description: '', vendor: '', spec: '', batchNo: '', quantity: 1, price: 0, cost: 0, productId: '', inventoryId: '' }];
+        let dbGroupMode = 'category';
+        let currentLang = 'zh';
+        let currentCurrency = 'CNY';
+        let paymentTermsConfirmed = true;
         let quoteSplit = { enabled: false, afterRowId: null };
         let validityDays = 30;
         const apiKey = ""; 
@@ -4037,6 +4051,22 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
 
             document.getElementById('btn-lang').textContent = currentLang === 'zh' ? '中 / EN' : 'EN / 中';
             renderQuote();
+
+            const p2 = document.getElementById('lbl-page2-title');
+            if(p2) p2.textContent = currentLang === 'zh' ? '投资回报分析' : 'ROI / FINANCIAL ANALYSIS';
+            const p3 = document.getElementById('lbl-page3-title');
+            if(p3) p3.textContent = currentLang === 'zh' ? '产品明细与质保' : 'PART BREAKDOWN & WARRANTY';
+            const p4 = document.getElementById('lbl-page4-title');
+            if(p4) p4.textContent = currentLang === 'zh' ? '参考信息' : 'REFERENCE';
+            const p5 = document.getElementById('lbl-page5-title');
+            if(p5) p5.textContent = currentLang === 'zh' ? '现场概览' : 'SITE OVERVIEW';
+            
+            const lblBefore = document.getElementById('lbl-roi-before');
+            if(lblBefore) lblBefore.textContent = currentLang === 'zh' ? `安装前月均电费 (${currentCurrency === 'CNY' ? '¥' : 'RM'})` : `Monthly Bill Before (${currentCurrency === 'CNY' ? '¥' : 'RM'})`;
+            const lblAfter = document.getElementById('lbl-roi-after');
+            if(lblAfter) lblAfter.textContent = currentLang === 'zh' ? `安装后月均电费 (${currentCurrency === 'CNY' ? '¥' : 'RM'})` : `Monthly Bill After (${currentCurrency === 'CNY' ? '¥' : 'RM'})`;
+            const lblCost = document.getElementById('lbl-roi-cost');
+            if(lblCost) lblCost.textContent = currentLang === 'zh' ? `系统总成本 (${currentCurrency === 'CNY' ? '¥' : 'RM'})` : `System Cost (${currentCurrency === 'CNY' ? '¥' : 'RM'})`;
         };
 
         // --- 报价单逻辑 ---
@@ -7139,8 +7169,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                     fileDeleteLogs,
                     subcategoriesByCategory,
                     profitSettings,
-                    installerProfitSettings,
-                    savedQuotes
+                    installerProfitSettings
                 }
             };
             const json = JSON.stringify(snapshot).replaceAll('<', '\\u003c');
@@ -7410,7 +7439,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
             if (fileDeleteLogs.length > 500) fileDeleteLogs = fileDeleteLogs.slice(0, 500);
         }
         function extractStateJsonFromHtml(html) {
-            const m = String(html || '').match(/<script id="minova-embedded-state"[^>]*>([\s\S]*?)<\/script>/i);
+            const m = String(html || '').match(/\x3Cscript id="minova-embedded-state"[^>]*>([\s\S]*?)<\/script>/i);
             if (!m) throw new Error('无法提取 state 快照');
             const parsed = JSON.parse(m[1]);
             return JSON.stringify(parsed, null, 2);
@@ -7849,8 +7878,14 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
             if (!modal) return;
             const countEl = modal.querySelector(`#qa-${section}-cert-count`);
             if (!countEl) return;
-            const checkboxes = modal.querySelectorAll(`#qa-${section}-cert-body .cert-checkbox`);
-            const checked = modal.querySelectorAll(`#qa-${section}-cert-body .cert-checkbox:checked`);
+            let checkboxes, checked;
+            if (section === 'pages') {
+                checkboxes = modal.querySelectorAll(`#qa-${section}-cert-body input[type="checkbox"]`);
+                checked = modal.querySelectorAll(`#qa-${section}-cert-body input[type="checkbox"]:checked`);
+            } else {
+                checkboxes = modal.querySelectorAll(`#qa-${section}-cert-body .cert-checkbox`);
+                checked = modal.querySelectorAll(`#qa-${section}-cert-body .cert-checkbox:checked`);
+            }
             countEl.textContent = `${checked.length}/${checkboxes.length} 项`;
         };
 
@@ -7864,6 +7899,14 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
             }
             updateCertSectionCount('company');
             updateCertSectionCount('product');
+            updateCertSectionCount('pages');
+        };
+
+        window.toggleAllPages = (select) => {
+            const modal = document.getElementById('cert-attachment-modal');
+            if (!modal) return;
+            modal.querySelectorAll('.print-page-checkbox').forEach(cb => cb.checked = select);
+            updateCertSelectedSummary();
         };
 
         window.buildAttachmentHtml = (selectedFiles) => {
@@ -7926,8 +7969,40 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
             return html;
         };
 
-        window.confirmAndGeneratePDF = () => {
+        
+        const downloadFile = async (type, path, name) => {
+            const cfgStr = localStorage.getItem('minova_github_sync_config_v1');
+            const cfg = cfgStr ? JSON.parse(cfgStr) : {};
+            const owner = cfg.owner || 'QibbQi';
+            const repo = cfg.repo || 'minova';
+            const branch = cfg.branch || 'main';
+            if (!owner || !repo) throw new Error('未连接 GitHub，无法下载附件');
+            const url = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${String(path).replace(/^\//, '')}?v=${Date.now()}`;
+            const res = await fetch(url, { cache: 'no-store' });
+            if (!res.ok) throw new Error(`附件下载失败：${res.status}`);
+            return res.arrayBuffer();
+        };
+
+        const savePdfBytes = (bytes) => {
+            const blob = new Blob([bytes], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = document.getElementById('quote-no').value || 'Quotation.pdf';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 120000);
+        };
+
+        window.confirmAndGeneratePDF = async () => {
             const modal = document.getElementById('cert-attachment-modal');
+            
+            if (modal) {
+                const pageCheckboxes = modal.querySelectorAll('.print-page-checkbox:checked');
+                window.selectedPrintPages = [1, ...Array.from(pageCheckboxes).map(cb => parseInt(cb.value, 10))];
+            }
+
             const checked = modal ? modal.querySelectorAll('.cert-checkbox:checked') : [];
             const selectedFiles = Array.from(checked).map(cb => ({
                 type: cb.dataset.type,
@@ -7939,260 +8014,203 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
 
             closeCertAttachmentModal();
 
-
-            const checkboxes = document.querySelectorAll('#pdf-page-checkboxes input[type="checkbox"]:checked');
-            const selectedPages = Array.from(checkboxes).map(cb => parseInt(cb.value));
-            
-            if (selectedPages.length === 0) {
-                selectedPages.push(1); // Default to page 1
+            const PDFLibRef = window.PDFLib;
+            if (!PDFLibRef?.PDFDocument) {
+                showToast('当前环境未加载 PDFLib，无法生成合并文件', 'error');
+                return;
             }
 
-            let element;
-            const tempContainer = document.createElement('div');
-            tempContainer.id = 'temp-pdf-container';
-            tempContainer.style.position = 'absolute';
-            tempContainer.style.left = '-9999px';
-            tempContainer.style.top = '-9999px';
-            tempContainer.style.width = '100%';
-            document.body.appendChild(tempContainer);
-            
-            selectedPages.forEach((pageNum, index) => {
-                const pageEl = document.getElementById(`quote-page-${pageNum}`);
-                if (pageEl) {
-                    const printContainer = pageEl.querySelector('.print-container');
-                    if (printContainer) {
-                        const clone = printContainer.cloneNode(true);
-                        
-                        // Copy inputs
-                        const originalInputs = printContainer.querySelectorAll('input, textarea, select');
-                        const clonedInputs = clone.querySelectorAll('input, textarea, select');
-                        originalInputs.forEach((orig, i) => {
-                            if (clonedInputs[i]) {
-                                if (orig.tagName === 'INPUT' || orig.tagName === 'TEXTAREA') {
-                                    clonedInputs[i].value = orig.value;
-                                    if (orig.type === 'checkbox' || orig.type === 'radio') {
-                                        clonedInputs[i].checked = orig.checked;
-                                    }
-                                } else if (orig.tagName === 'SELECT') {
-                                    clonedInputs[i].value = orig.value;
-                                }
-                            }
-                        });
-                        
-                        tempContainer.appendChild(clone);
-                        
-                        if (index < selectedPages.length - 1) {
-                            const pageBreak = document.createElement('div');
-                            pageBreak.className = 'html2pdf__page-break';
-                            tempContainer.appendChild(pageBreak);
-                        }
-                    }
+            const originalStates = {};
+            [1, 2, 3, 4, 5].forEach(pageNum => {
+                const page = document.getElementById(`quote-page-${pageNum}`);
+                if (page) {
+                    originalStates[pageNum] = {
+                        display: page.style.display,
+                        hidden: page.classList.contains('hidden')
+                    };
                 }
             });
-            
-            element = tempContainer;
 
-            const quoteNo = document.getElementById('quote-no').value || 'Quotation';
+            const loadingOverlay = document.createElement('div');
+            loadingOverlay.className = 'fixed inset-0 bg-white/90 z-[9999] flex flex-col items-center justify-center backdrop-blur-sm';
+            loadingOverlay.innerHTML = `
+                <div class="text-2xl font-bold text-purple-700 mb-4" id="pdf-progress-title">正在初始化 PDF...</div>
+                <div class="text-sm text-slate-500">请稍候，这可能需要几秒钟时间</div>
+            `;
+            document.body.appendChild(loadingOverlay);
 
-            const opt = {
-                margin: 0,
-                filename: `${quoteNo}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                pagebreak: { mode: ['css', 'legacy'] },
-                html2canvas: {
-                    scale: 3,
-                    useCORS: true,
-                    letterRendering: true,
-                    scrollX: 0,
-                    scrollY: 0,
-                    backgroundColor: '#ffffff',
-                    onclone: (clonedDoc) => {
-                        const conts = clonedDoc.querySelectorAll('.print-container');
-                        clonedDoc.documentElement.style.margin = '0';
-                        clonedDoc.documentElement.style.padding = '0';
-                        clonedDoc.body.style.margin = '0';
-                        clonedDoc.body.style.padding = '0';
-                        clonedDoc.body.style.width = '210mm';
-                        clonedDoc.body.style.maxWidth = '210mm';
-                        conts.forEach(cont => {
-                            cont.style.boxShadow = 'none';
-                            cont.style.border = 'none';
-                            cont.style.padding = '0';
-                            cont.style.margin = '0';
-                            cont.style.borderRadius = '0';
-                            cont.style.minHeight = 'auto';
-                            cont.style.height = 'auto';
-                            cont.style.overflow = 'visible';
-                            cont.style.width = '210mm';
-                            cont.style.maxWidth = '210mm';
-                        });
-                        clonedDoc.querySelectorAll('.no-print').forEach(el => el.style.display = 'none');
-
-                        const style = clonedDoc.createElement('style');
-                        style.innerHTML = `
-                            @page { size: A4; margin: 0; }
-                            tr, h1, h2, h3, h4, h5, h6 { page-break-inside: avoid !important; break-inside: avoid !important; }
-                            .grand-total-container, .grand-total-container * { page-break-inside: avoid !important; break-inside: avoid !important; }
-                            .total-pill { page-break-inside: avoid !important; break-inside: avoid !important; }
-                            .signature-container { page-break-inside: avoid !important; break-inside: avoid !important; margin-bottom: 0 !important; }
-                            .terms-container { page-break-inside: auto !important; }
-                            .pdf-page-break { page-break-before: always !important; break-before: page !important; }
-                            .header-item-p {
-                                display: flex;
-                                justify-content: space-between;
-                                width: 100%;
-                            }
-                        `;
-                        clonedDoc.head.appendChild(style);
-
-                        clonedDoc.getElementById('quote-no').parentElement.classList.add('header-item-p');
-                        clonedDoc.getElementById('currentDate').parentElement.classList.add('header-item-p');
-                        const afterDetailsSection = clonedDoc.getElementById('section-after-details');
-                        if (afterDetailsSection?.dataset?.splitEnabled === 'true') afterDetailsSection.classList.add('pdf-page-break');
-                        const signature = clonedDoc.querySelector('.signature-container');
-                        if (signature && signature.parentElement) {
-                            let n = signature.nextElementSibling;
-                            while (n) {
-                                const next = n.nextElementSibling;
-                                n.remove();
-                                n = next;
-                            }
+            const restoreStates = () => {
+                [1, 2, 3, 4, 5].forEach(pageNum => {
+                    const page = document.getElementById(`quote-page-${pageNum}`);
+                    const state = originalStates[pageNum];
+                    if (page && state) {
+                        page.style.display = state.display;
+                        if (state.hidden) {
+                            page.classList.add('hidden');
+                        } else {
+                            page.classList.remove('hidden');
                         }
-
-                        clonedDoc.querySelectorAll('textarea, input').forEach(el => {
-                            const replacement = clonedDoc.createElement('span');
-                            replacement.innerText = el.value;
-
-                            const classesToCopy = ['font-bold', 'text-slate-700', 'uppercase', 'tracking-tighter', 'font-black', 'text-slate-900', 'text-sm', 'text-slate-500', 'text-[', 'text-xs', 'w-'];
-                            el.classList.forEach(c => {
-                                if(classesToCopy.some(prefix => c.startsWith(prefix))) {
-                                    replacement.classList.add(c);
-                                }
-                            });
-
-                            if (el.classList.contains('text-right')) {
-                                replacement.style.textAlign = 'right';
-                            }
-                            if (el.classList.contains('text-center')) {
-                                replacement.style.textAlign = 'center';
-                            }
-                            const inTable = !!el.closest('table');
-                            replacement.style.width = inTable ? '100%' : 'auto';
-                            if (inTable) replacement.style.display = 'block';
-                            if (!inTable && (el.classList.contains('block') || el.classList.contains('w-full'))) {
-                                replacement.style.display = 'block';
-                                replacement.style.width = '100%';
-                            }
-                            if (el.tagName === 'TEXTAREA') {
-                                replacement.style.whiteSpace = 'pre-wrap';
-                                replacement.style.display = 'block';
-                                replacement.style.width = '100%';
-                            }
-
-                            el.parentNode.replaceChild(replacement, el);
-                        });
                     }
-                },
-                jsPDF: { unit: 'mm', format: [210, 297], orientation: 'portrait' }
-            };
-
-            const fetchAttachmentArrayBuffer = async (path) => {
-                const cfg = window.__minovaSync?.config || {};
-                const owner = cfg.owner;
-                const repo = cfg.repo;
-                const branch = cfg.branch || 'main';
-                if (!owner || !repo) throw new Error('未连接 GitHub，无法下载附件');
-                const url = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${String(path).replace(/^\//, '')}?v=${Date.now()}`;
-                const res = await fetch(url, { cache: 'no-store' });
-                if (!res.ok) throw new Error(`附件下载失败：${res.status}`);
-                return res.arrayBuffer();
-            };
-
-            const savePdfBytes = (bytes) => {
-                const blob = new Blob([bytes], { type: 'application/pdf' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `${quoteNo}.pdf`;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                setTimeout(() => URL.revokeObjectURL(url), 120000);
-            };
-
-            html2pdf().set(opt).from(element).toPdf().get('pdf').then(async (pdf) => {
-                const total = pdf.internal.getNumberOfPages();
-                const last = pdf.internal.pages?.[total];
-                if (last && last.length <= 1) pdf.deletePage(total);
-
-                const quoteBytes = pdf.output('arraybuffer');
-                if (!selectedFiles.length) {
-                    savePdfBytes(quoteBytes);
-                    return;
+                });
+                if (loadingOverlay && loadingOverlay.parentNode) {
+                    loadingOverlay.parentNode.removeChild(loadingOverlay);
                 }
+            };
 
-                const PDFLibRef = window.PDFLib;
-                if (!PDFLibRef?.PDFDocument) {
-                    pdf.save(`${quoteNo}.pdf`);
-                    return;
-                }
-
+            try {
                 const { PDFDocument } = PDFLibRef;
                 const mergedDoc = await PDFDocument.create();
-                const quoteDoc = await PDFDocument.load(quoteBytes);
-                const qPages = await mergedDoc.copyPages(quoteDoc, quoteDoc.getPageIndices());
-                qPages.forEach(p => mergedDoc.addPage(p));
+                const quoteNo = document.getElementById('quote-no').value || 'Quotation';
+                const titleEl = document.getElementById('pdf-progress-title');
 
+                const opt = {
+                    margin: 0,
+                    filename: 'temp.pdf',
+                    image: { type: 'jpeg', quality: 0.98 },
+                    pagebreak: { mode: ['css', 'legacy'] },
+                    html2canvas: {
+                        scale: 3,
+                        useCORS: true,
+                        letterRendering: true,
+                        scrollX: 0,
+                        scrollY: 0,
+                        backgroundColor: '#ffffff',
+                        onclone: (clonedDoc) => {
+                            clonedDoc.documentElement.style.margin = '0';
+                            clonedDoc.documentElement.style.padding = '0';
+                            clonedDoc.body.style.margin = '0';
+                            clonedDoc.body.style.padding = '0';
+                            clonedDoc.body.style.width = '210mm';
+                            clonedDoc.body.style.maxWidth = '210mm';
+                            
+                            const wrappers = clonedDoc.querySelectorAll('.quote-page');
+                            wrappers.forEach(page => {
+                                if (page.style.display !== 'none' && !page.classList.contains('hidden')) {
+                                    page.style.boxShadow = 'none';
+                                    page.style.border = 'none';
+                                    page.style.margin = '0 auto';
+                                    page.style.borderRadius = '0';
+                                    page.style.boxSizing = 'border-box';
+                                    page.style.minHeight = '297mm';
+                                    page.style.height = 'auto';
+                                    page.style.overflow = 'visible';
+                                    page.style.width = '210mm';
+                                    page.style.maxWidth = '210mm';
+                                }
+                            });
+                            const cont = clonedDoc.getElementById('pdf-content-wrapper');
+                            if (cont) {
+                                cont.style.width = '210mm';
+                                cont.style.maxWidth = '210mm';
+                                cont.style.margin = '0 auto';
+                            }
+                            clonedDoc.querySelectorAll('.no-print').forEach(el => el.style.display = 'none');
+
+                            const style = clonedDoc.createElement('style');
+                            style.innerHTML = `
+                                @page { size: A4; margin: 0; }
+                                tr, h1, h2, h3, h4, h5, h6 { page-break-inside: avoid !important; break-inside: avoid !important; }
+                                .grand-total-container, .grand-total-container * { page-break-inside: avoid !important; break-inside: avoid !important; }
+                                .total-pill { page-break-inside: avoid !important; break-inside: avoid !important; }
+                                .signature-container { page-break-inside: avoid !important; break-inside: avoid !important; margin-bottom: 0 !important; }
+                                .pv-module .resize-handle, .pv-module .delete-btn { display: none !important; }
+                            `;
+                            clonedDoc.head.appendChild(style);
+                        }
+                    },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true }
+                };
+
+                // Render internal pages sequentially
+                for (let i = 0; i < window.selectedPrintPages.length; i++) {
+                    const pageNum = window.selectedPrintPages[i];
+                    if (titleEl) titleEl.textContent = `正在生成页面 ${pageNum}... (${i + 1}/${window.selectedPrintPages.length})`;
+                    
+                    // Hide all, show only current
+                    [1, 2, 3, 4, 5].forEach(pn => {
+                        const p = document.getElementById(`quote-page-${pn}`);
+                        if (p) {
+                            if (pn === pageNum) {
+                                p.classList.remove('hidden');
+                                p.style.display = 'block';
+                            } else {
+                                p.classList.add('hidden');
+                                p.style.display = 'none';
+                            }
+                        }
+                    });
+
+                    // Await next frame to ensure DOM updates
+                    await new Promise(r => setTimeout(r, 100));
+
+                    const container = document.getElementById('pdf-content-wrapper');
+                    const pdfData = await html2pdf().set(opt).from(container).toPdf().get('pdf').then(pdf => {
+                        const total = pdf.internal.getNumberOfPages();
+                        const last = pdf.internal.pages?.[total];
+                        if (last && last.length <= 1) pdf.deletePage(total);
+                        return pdf.output('arraybuffer');
+                    });
+
+                    const tempDoc = await PDFDocument.load(pdfData);
+                    const copiedPages = await mergedDoc.copyPages(tempDoc, tempDoc.getPageIndices());
+                    copiedPages.forEach(p => mergedDoc.addPage(p));
+                }
+
+                // Process external attachments
                 const skipped = [];
                 const failed = [];
                 const A4 = [595.28, 841.89];
 
-                for (const f of selectedFiles) {
+                for (let i = 0; i < selectedFiles.length; i++) {
+                    const f = selectedFiles[i];
+                    if (titleEl) titleEl.textContent = `正在合并附件... (${i + 1}/${selectedFiles.length})`;
+                    
                     const name = String(f?.name || '');
                     const path = String(f?.path || '');
                     const ext = name.toLowerCase().split('.').pop() || '';
-                    if (!path) continue;
+
                     try {
-                        const ab = await fetchAttachmentArrayBuffer(path);
+                        const bytes = await downloadFile(f.type, path, name);
                         if (ext === 'pdf') {
-                            const ad = await PDFDocument.load(ab);
-                            const pages = await mergedDoc.copyPages(ad, ad.getPageIndices());
+                            const doc = await PDFDocument.load(bytes, { ignoreEncryption: true });
+                            const pages = await mergedDoc.copyPages(doc, doc.getPageIndices());
                             pages.forEach(p => mergedDoc.addPage(p));
-                        } else if (ext === 'png' || ext === 'jpg' || ext === 'jpeg') {
-                            const bytes = new Uint8Array(ab);
+                        } else if (['jpg', 'jpeg', 'png', 'webp'].includes(ext)) {
                             const img = ext === 'png' ? await mergedDoc.embedPng(bytes) : await mergedDoc.embedJpg(bytes);
+                            const dims = img.scale(1);
                             const page = mergedDoc.addPage(A4);
-                            const { width, height } = page.getSize();
-                            const iw = img.width;
-                            const ih = img.height;
-                            const scale = Math.min(width / iw, height / ih);
-                            const w = iw * scale;
-                            const h = ih * scale;
-                            const x = (width - w) / 2;
-                            const y = (height - h) / 2;
-                            page.drawImage(img, { x, y, width: w, height: h });
+                            const pw = page.getWidth();
+                            const ph = page.getHeight();
+                            const ratio = Math.min((pw - 40) / dims.width, (ph - 40) / dims.height);
+                            const w = dims.width * ratio;
+                            const h = dims.height * ratio;
+                            page.drawImage(img, { x: (pw - w) / 2, y: (ph - h) / 2, width: w, height: h });
                         } else {
                             skipped.push(name);
                         }
                     } catch (e) {
-                        failed.push(name || path);
+                        console.error(`Error processing ${name}:`, e);
+                        failed.push(name);
                     }
                 }
 
-                const mergedBytes = await mergedDoc.save();
-                savePdfBytes(mergedBytes);
+                if (titleEl) titleEl.textContent = `正在保存...`;
+                const finalBytes = await mergedDoc.save();
+                savePdfBytes(finalBytes);
+
                 if (skipped.length || failed.length) {
-                    alert(`已生成合并 PDF。\n跳过（非 PDF/图片）：${skipped.length ? skipped.join('、') : '无'}\n下载失败：${failed.length ? failed.join('、') : '无'}`);
+                    let msg = '';
+                    if (skipped.length) msg += `跳过 ${skipped.length} 个非 PDF/图片文件。\n`;
+                    if (failed.length) msg += `处理失败 ${failed.length} 个文件。\n`;
+                    showToast(msg + '请检查控制台获取详情。', 'error');
                 }
 
-            }).catch((e) => {
-                alert('生成 PDF 失败：' + String(e?.message || e || ''));
-            }).finally(() => {
-                if (tempContainer && tempContainer.parentNode) {
-                    tempContainer.parentNode.removeChild(tempContainer);
-                }
-            });
-
+            } catch (e) {
+                console.error("PDF generation failed:", e);
+                showToast("PDF生成失败，请检查控制台错误", "error");
+            } finally {
+                restoreStates();
+            }
         };
 
         window.closeCertAttachmentModal = () => {
@@ -8203,37 +8221,637 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
         };
     </script>
 
-    <!-- PDF Selection Modal -->
-    <div id="pdf-selection-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex-col items-center justify-center z-[220] p-4">
-        <div class="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl">
-            <h3 class="text-xl font-bold text-slate-800 mb-6">选择要生成的 PDF 页面</h3>
-            <div class="space-y-3 mb-8" id="pdf-page-checkboxes">
-                <label class="flex items-center gap-3 cursor-pointer">
-                    <input type="checkbox" value="1" checked class="w-4 h-4 text-purple-600 rounded focus:ring-purple-500">
-                    <span class="text-sm font-bold text-slate-700">1. Quotation (报价单)</span>
-                </label>
-                <label class="flex items-center gap-3 cursor-pointer">
-                    <input type="checkbox" value="2" class="w-4 h-4 text-purple-600 rounded focus:ring-purple-500">
-                    <span class="text-sm font-bold text-slate-700">2. ROI & Financial Analysis</span>
-                </label>
-                <label class="flex items-center gap-3 cursor-pointer">
-                    <input type="checkbox" value="3" class="w-4 h-4 text-purple-600 rounded focus:ring-purple-500">
-                    <span class="text-sm font-bold text-slate-700">3. Part Breakdown & Warranty</span>
-                </label>
-                <label class="flex items-center gap-3 cursor-pointer">
-                    <input type="checkbox" value="4" class="w-4 h-4 text-purple-600 rounded focus:ring-purple-500">
-                    <span class="text-sm font-bold text-slate-700">4. Reference</span>
-                </label>
-                <label class="flex items-center gap-3 cursor-pointer">
-                    <input type="checkbox" value="5" class="w-4 h-4 text-purple-600 rounded focus:ring-purple-500">
-                    <span class="text-sm font-bold text-slate-700">5. Site Overview</span>
-                </label>
+    <style>
+        .pv-module {
+            position: absolute;
+            background-color: rgba(30, 64, 175, 0.7);
+            border: 1px solid #1e3a8a;
+            box-shadow: inset 0 0 5px rgba(255,255,255,0.3);
+            cursor: move;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 10px;
+            font-weight: bold;
+        }
+        .pv-module .resize-handle {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 10px;
+            height: 10px;
+            background-color: white;
+            border: 1px solid #1e3a8a;
+            cursor: se-resize;
+        }
+        .pv-module .delete-btn {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 16px;
+            height: 16px;
+            background-color: red;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            cursor: pointer;
+            opacity: 0;
+        }
+        .pv-module:hover .delete-btn {
+            opacity: 1;
+        }
+        @media print {
+            .pv-module .resize-handle, .pv-module .delete-btn { display: none !important; }
+        }
+    </style>
+
+    <!-- Modal for Quote Name Prompt -->
+    <div id="quote-save-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-[400] p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 border border-slate-100">
+            <div class="mb-4">
+                <h3 class="text-lg font-bold text-slate-800">保存报价单</h3>
+            </div>
+            <div class="space-y-3 mb-6">
+                <label class="block text-sm font-bold text-slate-600">请输入报价保存名称：</label>
+                <input type="text" id="input-quote-save-name" class="w-full border border-slate-300 rounded-md p-2 outline-none focus:border-purple-500">
             </div>
             <div class="flex justify-end gap-3">
-                <button onclick="closePDFSelectionModal()" class="px-5 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition-colors">取消</button>
-                <button onclick="closePDFSelectionModal(); openCertAttachmentModal()" class="px-5 py-2 rounded-xl bg-purple-700 text-white font-bold hover:bg-purple-800 shadow-lg shadow-purple-200 transition-all">下一步：选择附件</button>
+                <button onclick="closeSaveQuoteModal()" class="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg">取消</button>
+                <button onclick="executeSaveQuote()" class="px-4 py-2 text-sm font-bold text-white bg-purple-700 hover:bg-purple-800 rounded-lg">保存</button>
             </div>
         </div>
     </div>
+
+    <!-- Modal for Quote Delete Confirm -->
+    <div id="quote-delete-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-[400] p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 border border-slate-100">
+            <div class="mb-4">
+                <h3 class="text-lg font-bold text-slate-800">删除确认</h3>
+            </div>
+            <div class="mb-6">
+                <p class="text-sm text-slate-600">确认删除该已保存的报价单吗？此操作不可恢复。</p>
+            </div>
+            <div class="flex justify-end gap-3">
+                <button onclick="closeDeleteQuoteModal()" class="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg">取消</button>
+                <button onclick="executeDeleteQuote()" class="px-4 py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg">确认删除</button>
+            </div>
+        </div>
+    </div>
+
+    <script id="multi-page-script">
+        window.sanitizePositiveInt = (el) => {
+            let val = el.value.replace(/[^0-9]/g, '');
+            if (val !== '') {
+                val = parseInt(val, 10);
+                if (val < 1) val = 1;
+            }
+            el.value = val;
+        };
+
+        window.selectedPrintPages = [1, 2, 3, 4, 5];
+
+        function switchQuotePage(page) {
+            for(let i=1; i<=5; i++) {
+                const el = document.getElementById('quote-page-'+i);
+                if(el) {
+                    if(i == page) {
+                        el.classList.remove('hidden');
+                        el.style.display = 'flex';
+                    } else {
+                        el.classList.add('hidden');
+                        el.style.display = 'none';
+                    }
+                }
+            }
+            if(page == 2) calculateROI();
+            if(page == 3) renderPartBreakdown();
+        }
+
+        function calculateROI() {
+            const before = parseFloat(document.getElementById('roi-bill-before').value) || 0;
+            const after = parseFloat(document.getElementById('roi-bill-after').value) || 0;
+            const cost = parseFloat(document.getElementById('roi-system-cost').value) || 0;
+            const tbody = document.getElementById('roi-tbody');
+            
+            let html = '';
+            let cumulative = 0;
+            const annualSaving = (before - after) * 12;
+
+            for(let year=1; year<=10; year++) {
+                cumulative += annualSaving;
+                let roi = cost > 0 ? ((cumulative / cost) * 100).toFixed(1) : 0;
+                html += `
+                    <tr class="border-b border-slate-50 text-sm">
+                        <td class="py-2 px-2 font-bold text-slate-700">Year ${year}</td>
+                        <td class="py-2 px-2 text-right">${annualSaving.toLocaleString(undefined, {minimumFractionDigits:2})}</td>
+                        <td class="py-2 px-2 text-right font-bold text-green-600">${cumulative.toLocaleString(undefined, {minimumFractionDigits:2})}</td>
+                        <td class="py-2 px-2 text-right text-purple-700">${roi}%</td>
+                    </tr>
+                `;
+            }
+            if(tbody) tbody.innerHTML = html;
+        }
+
+        // Auto link Grand Total to ROI System Cost
+        const originalCalculateQuote = window.calculateQuote;
+        window.calculateQuote = function() {
+            if(originalCalculateQuote) originalCalculateQuote();
+            setTimeout(() => {
+                const gt = document.getElementById('grand-total');
+                const roiCost = document.getElementById('roi-system-cost');
+                if(gt && roiCost && !roiCost.dataset.manual) {
+                    roiCost.value = gt.textContent.replace(/,/g, '');
+                    calculateROI();
+                }
+            }, 100);
+        };
+
+        // Part Breakdown
+        let partBreakdownData = {}; // { rowId: { brandImg, productImg, warranty } }
+        
+        async function handleImageUpload(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.readAsDataURL(file);
+            });
+        }
+
+        window.uploadPartImage = async (input, rowId, type) => {
+            if(!input.files || !input.files[0]) return;
+            const base64 = await handleImageUpload(input.files[0]);
+            if(!partBreakdownData[rowId]) partBreakdownData[rowId] = {};
+            partBreakdownData[rowId][type] = base64;
+            renderPartBreakdown();
+        };
+
+        window.updatePartWarranty = (rowId, val) => {
+            if(!partBreakdownData[rowId]) partBreakdownData[rowId] = {};
+            partBreakdownData[rowId].warranty = val;
+        };
+
+        function renderPartBreakdown() {
+            const container = document.getElementById('part-breakdown-container');
+            if(!container) return;
+            if(!window.quoteRows || window.quoteRows.length === 0) {
+                container.innerHTML = '<p class="text-sm text-slate-400">Please add items to Quotation first.</p>';
+                return;
+            }
+            
+            let html = '<div class="space-y-6">';
+            window.quoteRows.forEach(row => {
+                const data = partBreakdownData[row.id] || {};
+                const brandImg = data.brandImg ? `<img src="${data.brandImg}" class="h-16 object-contain mt-2">` : '';
+                const productImg = data.productImg ? `<img src="${data.productImg}" class="h-24 object-contain mt-2">` : '';
+                const warranty = data.warranty || '10 Years';
+
+                html += `
+                    <div class="p-4 border border-slate-200 rounded-lg flex gap-6">
+                        <div class="flex-1">
+                            <h4 class="font-bold text-slate-800 text-lg">${row.description || 'Unknown'}</h4>
+                            <p class="text-sm text-slate-500 mb-4">${row.brand || ''} | ${row.spec || ''}</p>
+                            
+                            <div class="mb-4">
+                                <label class="block text-xs font-bold text-slate-400 mb-1">WARRANTY</label>
+                                <input type="text" value="${warranty}" onchange="updatePartWarranty(${row.id}, this.value)" class="w-full max-w-xs border-b border-slate-300 outline-none p-1 text-sm font-bold text-purple-700">
+                            </div>
+                        </div>
+                        <div class="w-48">
+                            <label class="block text-xs font-bold text-slate-400 mb-1">BRAND LOGO</label>
+                            <input type="file" accept="image/*" class="text-[10px] mb-1 no-print w-full" onchange="uploadPartImage(this, ${row.id}, 'brandImg')">
+                            ${brandImg}
+                        </div>
+                        <div class="w-48">
+                            <label class="block text-xs font-bold text-slate-400 mb-1">PRODUCT IMAGE</label>
+                            <input type="file" accept="image/*" class="text-[10px] mb-1 no-print w-full" onchange="uploadPartImage(this, ${row.id}, 'productImg')">
+                            ${productImg}
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        // Reference
+        let referenceBlocks = [];
+
+        window.addReferenceBlock = () => {
+            referenceBlocks.push({ id: Date.now(), title: 'Reference Item', desc: '', img: '' });
+            renderReferenceBlocks();
+        };
+
+        window.removeReferenceBlock = (id) => {
+            referenceBlocks = referenceBlocks.filter(b => b.id !== id);
+            renderReferenceBlocks();
+        };
+
+        window.uploadReferenceImage = async (input, id) => {
+            if(!input.files || !input.files[0]) return;
+            const base64 = await handleImageUpload(input.files[0]);
+            const b = referenceBlocks.find(x => x.id === id);
+            if(b) { b.img = base64; renderReferenceBlocks(); }
+        };
+
+        window.updateReferenceText = (id, field, val) => {
+            const b = referenceBlocks.find(x => x.id === id);
+            if(b) b[field] = val;
+        };
+
+        function renderReferenceBlocks() {
+            const container = document.getElementById('reference-container');
+            if(!container) return;
+            let html = '';
+            referenceBlocks.forEach(b => {
+                const img = b.img ? `<img src="${b.img}" class="max-w-full max-h-64 object-contain mt-2">` : '<div class="w-full h-32 bg-slate-50 border border-dashed flex items-center justify-center text-xs text-slate-400">No Image</div>';
+                html += `
+                    <div class="relative p-4 border border-slate-200 rounded-lg">
+                        <button onclick="removeReferenceBlock(${b.id})" class="absolute top-2 right-2 text-red-500 hover:text-red-700 no-print">✕</button>
+                        <input type="text" value="${b.title}" onchange="updateReferenceText(${b.id}, 'title', this.value)" class="text-xl font-bold outline-none border-b border-slate-200 w-full mb-4 text-purple-800">
+                        <div class="grid grid-cols-2 gap-6">
+                            <div>
+                                <input type="file" accept="image/*" class="text-[10px] mb-2 no-print w-full" onchange="uploadReferenceImage(this, ${b.id})">
+                                ${img}
+                            </div>
+                            <div>
+                                <textarea class="w-full h-full p-2 border border-slate-200 rounded outline-none text-sm resize-none" placeholder="Description..." onchange="updateReferenceText(${b.id}, 'desc', this.value)">${b.desc}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        // Site Overview (Canvas)
+        let roofBackground = '';
+        let pvModules = [];
+
+        window.uploadRoofBackground = async (e) => {
+            if(!e.target.files || !e.target.files[0]) return;
+            roofBackground = await handleImageUpload(e.target.files[0]);
+            renderRoof();
+        };
+
+        window.addPVModule = () => {
+            pvModules.push({ id: Date.now(), x: 50, y: 50, w: 40, h: 60 });
+            renderRoof();
+        };
+
+        window.clearRoof = () => {
+            roofBackground = '';
+            pvModules = [];
+            renderRoof();
+        };
+
+        window.removePVModule = (id) => {
+            pvModules = pvModules.filter(m => m.id !== id);
+            renderRoof();
+        };
+
+        function renderRoof() {
+            const canvas = document.getElementById('roof-canvas');
+            const placeholder = document.getElementById('roof-placeholder');
+            if(!canvas) return;
+            
+            if(roofBackground) {
+                canvas.style.backgroundImage = `url(${roofBackground})`;
+                if(placeholder) placeholder.style.display = 'none';
+            } else {
+                canvas.style.backgroundImage = 'none';
+                if(placeholder) placeholder.style.display = 'flex';
+            }
+
+            // keep existing modules in DOM if they exist to avoid resetting drag state, 
+            // but for simplicity we'll just re-render and re-attach events
+            canvas.querySelectorAll('.pv-module').forEach(e => e.remove());
+
+            pvModules.forEach(m => {
+                const div = document.createElement('div');
+                div.className = 'pv-module';
+                div.style.left = m.x + 'px';
+                div.style.top = m.y + 'px';
+                div.style.width = m.w + 'px';
+                div.style.height = m.h + 'px';
+                div.innerHTML = `
+                    PV
+                    <div class="delete-btn no-print" onclick="removePVModule(${m.id}); event.stopPropagation();">✕</div>
+                    <div class="resize-handle no-print"></div>
+                `;
+                canvas.appendChild(div);
+
+                // Drag logic
+                let isDragging = false;
+                let startX, startY, initialX, initialY;
+                div.addEventListener('mousedown', (e) => {
+                    if(e.target.classList.contains('resize-handle') || e.target.classList.contains('delete-btn')) return;
+                    isDragging = true;
+                    startX = e.clientX;
+                    startY = e.clientY;
+                    initialX = m.x;
+                    initialY = m.y;
+                    e.stopPropagation();
+                });
+
+                // Resize logic
+                const handle = div.querySelector('.resize-handle');
+                let isResizing = false;
+                let initialW, initialH;
+                handle.addEventListener('mousedown', (e) => {
+                    isResizing = true;
+                    startX = e.clientX;
+                    startY = e.clientY;
+                    initialW = m.w;
+                    initialH = m.h;
+                    e.stopPropagation();
+                });
+
+                document.addEventListener('mousemove', (e) => {
+                    if(isDragging) {
+                        const dx = e.clientX - startX;
+                        const dy = e.clientY - startY;
+                        m.x = initialX + dx;
+                        m.y = initialY + dy;
+                        div.style.left = m.x + 'px';
+                        div.style.top = m.y + 'px';
+                    }
+                    if(isResizing) {
+                        const dx = e.clientX - startX;
+                        const dy = e.clientY - startY;
+                        m.w = Math.max(20, initialW + dx);
+                        m.h = Math.max(20, initialH + dy);
+                        div.style.width = m.w + 'px';
+                        div.style.height = m.h + 'px';
+                    }
+                });
+
+                document.addEventListener('mouseup', () => {
+                    isDragging = false;
+                    isResizing = false;
+                });
+            });
+        }
+
+        // Update generateQuotationPDF to use our original modal
+        window.generateQuotationPDF = window.openCertAttachmentModal;
+
+        // IndexedDB for Saving Quotes
+        const DB_NAME = 'MinovaQuotesDB';
+        const STORE_NAME = 'quotes';
+
+        function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, 1);
+                request.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                    }
+                };
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        window.showToast = (msg, type = 'info') => {
+            let container = document.getElementById('toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'toast-container';
+                container.className = 'fixed bottom-4 right-4 z-[500] flex flex-col gap-2 pointer-events-none';
+                document.body.appendChild(container);
+            }
+            const el = document.createElement('div');
+            const bg = type === 'error' ? 'bg-red-600' : (type === 'success' ? 'bg-green-600' : 'bg-slate-800');
+            el.className = `${bg} text-white px-4 py-2 rounded shadow-lg text-sm font-bold opacity-0 transition-opacity duration-300 pointer-events-auto`;
+            el.textContent = msg;
+            container.appendChild(el);
+            setTimeout(() => el.classList.remove('opacity-0'), 10);
+            setTimeout(() => {
+                el.classList.add('opacity-0');
+                setTimeout(() => el.remove(), 300);
+            }, 3000);
+        };
+
+        window.openSaveQuoteModal = () => {
+            const modal = document.getElementById('quote-save-modal');
+            if (!modal) return;
+            const input = document.getElementById('input-quote-save-name');
+            const customerName = document.getElementById('input-customer-name')?.value || '未命名报价';
+            if (input) input.value = customerName;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        };
+
+        window.closeSaveQuoteModal = () => {
+            const modal = document.getElementById('quote-save-modal');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        };
+
+        window.executeSaveQuote = async () => {
+            const input = document.getElementById('input-quote-save-name');
+            const name = input ? input.value.trim() : '';
+            if (!name) {
+                showToast('请输入有效的名称', 'error');
+                return;
+            }
+
+            const quoteData = {
+                id: Date.now().toString(),
+                name: name,
+                timestamp: Date.now(),
+                
+                // Page 1 basic states (just the ones we can easily grab, in a real app we'd grab everything)
+                quoteRows: window.quoteRows || [],
+                customerName: document.getElementById('input-customer-name')?.value || '',
+                customerContact: document.getElementById('input-customer-contact')?.value || '',
+                siteAddress: document.getElementById('input-site-address')?.value || '',
+                quoteNo: document.getElementById('quote-no')?.value || '',
+                validityDays: window.validityDays || 30,
+                payConf: document.getElementById('payment-confirmation-percent')?.value || 30,
+                payInst: document.getElementById('payment-installation-percent')?.value || 40,
+                payTest: document.getElementById('payment-testing-percent')?.value || 30,
+                payFinal: document.getElementById('payment-final-percent')?.value || 0,
+                payFinalShown: !document.getElementById('payment-final-container')?.classList.contains('hidden'),
+                
+                step1Text: document.getElementById('val-step1')?.value || '现场勘测',
+                step2Text: document.getElementById('val-step2')?.value || '材料采购与安装规划',
+                step3Text: document.getElementById('val-step3')?.value || '安装',
+                step1Days: document.getElementById('timeline-days-1')?.value || 0,
+                step2Days: document.getElementById('timeline-days-2')?.value || 0,
+                step3Days: document.getElementById('timeline-days-3')?.value || 0,
+                
+                // Page 2
+                roiBefore: document.getElementById('roi-bill-before')?.value,
+                roiAfter: document.getElementById('roi-bill-after')?.value,
+                roiCost: document.getElementById('roi-system-cost')?.value,
+                
+                // Page 3
+                partBreakdownData: partBreakdownData,
+                
+                // Page 4
+                referenceBlocks: referenceBlocks,
+                
+                // Page 5
+                roofBackground: roofBackground,
+                pvModules: pvModules
+            };
+
+            try {
+                const db = await initDB();
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                tx.objectStore(STORE_NAME).put(quoteData);
+                tx.oncomplete = () => {
+                    showToast('保存成功！', 'success');
+                    refreshSavedQuotesList();
+                    closeSaveQuoteModal();
+                };
+            } catch(e) {
+                console.error(e);
+                showToast('保存失败！', 'error');
+            }
+        };
+
+        window.refreshSavedQuotesList = async () => {
+            try {
+                const db = await initDB();
+                const tx = db.transaction(STORE_NAME, 'readonly');
+                const req = tx.objectStore(STORE_NAME).getAll();
+                req.onsuccess = () => {
+                    const list = req.result.sort((a,b) => b.timestamp - a.timestamp);
+                    const select = document.getElementById('saved-quotes-select');
+                    if(!select) return;
+                    select.innerHTML = '<option value="">-- 新报价 --</option>' + 
+                        list.map(q => `<option value="${q.id}">${q.name}</option>`).join('');
+                };
+            } catch(e) { console.error(e); }
+        };
+
+        window.onSavedQuoteSelectChange = () => {
+            // Optional: Auto load on select, or wait for Load button
+        };
+
+        window.loadSavedQuote = async () => {
+            const id = document.getElementById('saved-quotes-select')?.value;
+            if(!id) {
+                // Reset to new
+                window.quoteRows = [];
+                partBreakdownData = {};
+                referenceBlocks = [];
+                roofBackground = '';
+                pvModules = [];
+                if(window.renderQuote) window.renderQuote();
+                renderPartBreakdown();
+                renderReferenceBlocks();
+                renderRoof();
+                document.getElementById('input-customer-name').value = '';
+                return;
+            }
+
+            try {
+                const db = await initDB();
+                const tx = db.transaction(STORE_NAME, 'readonly');
+                const req = tx.objectStore(STORE_NAME).get(id);
+                req.onsuccess = () => {
+                    const q = req.result;
+                    if(!q) return;
+
+                    window.quoteRows = q.quoteRows || [];
+                    if(document.getElementById('input-customer-name')) document.getElementById('input-customer-name').value = q.customerName || '';
+                    if(document.getElementById('input-customer-contact')) document.getElementById('input-customer-contact').value = q.customerContact || '';
+                    if(document.getElementById('input-site-address')) document.getElementById('input-site-address').value = q.siteAddress || '';
+                    if(document.getElementById('quote-no')) document.getElementById('quote-no').value = q.quoteNo || '';
+                    window.validityDays = q.validityDays || 30;
+                    
+                    if(document.getElementById('payment-confirmation-percent')) document.getElementById('payment-confirmation-percent').value = q.payConf || 30;
+                    if(document.getElementById('payment-installation-percent')) document.getElementById('payment-installation-percent').value = q.payInst || 40;
+                    if(document.getElementById('payment-testing-percent')) document.getElementById('payment-testing-percent').value = q.payTest || 30;
+                    if(document.getElementById('payment-final-percent')) document.getElementById('payment-final-percent').value = q.payFinal || 0;
+                    if(window.toggleFinalPayment) window.toggleFinalPayment(!!q.payFinalShown);
+
+                    if(document.getElementById('val-step1')) document.getElementById('val-step1').value = q.step1Text || '现场勘测';
+                    if(document.getElementById('val-step2')) document.getElementById('val-step2').value = q.step2Text || '材料采购与安装规划';
+                    if(document.getElementById('val-step3')) document.getElementById('val-step3').value = q.step3Text || '安装';
+                    if(document.getElementById('timeline-days-1')) document.getElementById('timeline-days-1').value = q.step1Days || 0;
+                    if(document.getElementById('timeline-days-2')) document.getElementById('timeline-days-2').value = q.step2Days || 0;
+                    if(document.getElementById('timeline-days-3')) document.getElementById('timeline-days-3').value = q.step3Days || 0;
+
+                    if(document.getElementById('roi-bill-before')) document.getElementById('roi-bill-before').value = q.roiBefore || 0;
+                    if(document.getElementById('roi-bill-after')) document.getElementById('roi-bill-after').value = q.roiAfter || 0;
+                    if(document.getElementById('roi-system-cost')) document.getElementById('roi-system-cost').value = q.roiCost || 0;
+
+                    partBreakdownData = q.partBreakdownData || {};
+                    referenceBlocks = q.referenceBlocks || [];
+                    roofBackground = q.roofBackground || '';
+                    pvModules = q.pvModules || [];
+
+                    if(window.renderQuote) window.renderQuote();
+                    if(window.calculateQuote) window.calculateQuote();
+                    calculateROI();
+                    renderPartBreakdown();
+                    renderReferenceBlocks();
+                    renderRoof();
+                    showToast('加载成功！', 'success');
+                };
+            } catch(e) {
+                console.error(e);
+                showToast('加载失败！', 'error');
+            }
+        };
+
+        let quoteToDeleteId = null;
+
+        window.openDeleteQuoteModal = () => {
+            const id = document.getElementById('saved-quotes-select')?.value;
+            if(!id) {
+                showToast('请先选择要删除的报价单', 'error');
+                return;
+            }
+            quoteToDeleteId = id;
+            const modal = document.getElementById('quote-delete-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+        };
+
+        window.closeDeleteQuoteModal = () => {
+            quoteToDeleteId = null;
+            const modal = document.getElementById('quote-delete-modal');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        };
+
+        window.executeDeleteQuote = async () => {
+            if(!quoteToDeleteId) return;
+            try {
+                const db = await initDB();
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                tx.objectStore(STORE_NAME).delete(quoteToDeleteId);
+                tx.oncomplete = () => {
+                    showToast('删除成功！', 'success');
+                    refreshSavedQuotesList();
+                    document.getElementById('saved-quotes-select').value = '';
+                    closeDeleteQuoteModal();
+                };
+            } catch(e) {
+                console.error(e);
+                showToast('删除失败！', 'error');
+            }
+        };
+
+        // Init list on load
+        setTimeout(refreshSavedQuotesList, 1000);
+
+    </script>
 
 </body></html>

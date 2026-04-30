@@ -1,16 +1,7 @@
 {
   "v": 1,
-  "updatedAt": "2026-04-30T14:49:59.300Z",
+  "updatedAt": "2026-04-30T15:44:38.600Z",
   "quotes": [
-    {
-      "id": "403c4ff2-a4fb-4a75-a9bf-e293baeaa5bb",
-      "name": "fff",
-      "customerName": "fff",
-      "quoteNo": "QT-20260430-01",
-      "createdAt": "2026-04-30T14:47:35.472Z",
-      "updatedAt": "2026-04-30T14:49:59.300Z",
-      "timestamp": 1777560599300
-    },
     {
       "id": "601e55cc-36ba-47f8-b950-c9111eafe683",
       "name": "ininini",

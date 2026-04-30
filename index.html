@@ -2685,15 +2685,63 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                 return decodeURIComponent(escape(atob(b64)));
             }
 
+            function base64ToBytes(b64) {
+                const bin = atob(b64);
+                const bytes = new Uint8Array(bin.length);
+                for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+                return bytes;
+            }
+
+            function fromBase64Utf8Safe(b64) {
+                const clean = String(b64 || '').replaceAll('\n', '');
+                try {
+                    return new TextDecoder().decode(base64ToBytes(clean));
+                } catch {
+                    return fromBase64Utf8(clean);
+                }
+            }
+
             function createRepoStore({ api }) {
+                async function getFileViaGitDataApi({ owner, repo, path, branch }) {
+                    const cleanPath = String(path || '').replace(/^\//, '');
+                    const ref = await api.get(`/repos/${owner}/${repo}/git/ref/heads/${encodeRefPath(branch || '')}`);
+                    const headSha = ref?.object?.sha;
+                    if (!headSha) throw new Error('Unable to resolve branch head');
+
+                    const headCommit = await api.get(`/repos/${owner}/${repo}/git/commits/${headSha}`);
+                    const baseTreeSha = headCommit?.tree?.sha;
+                    if (!baseTreeSha) throw new Error('Unable to resolve base tree');
+
+                    const tree = await api.get(`/repos/${owner}/${repo}/git/trees/${baseTreeSha}?recursive=1`);
+                    const items = Array.isArray(tree?.tree) ? tree.tree : [];
+                    const hit = items.find((it) => String(it?.path || '') === cleanPath && String(it?.type || '') === 'blob');
+                    const blobSha = hit?.sha;
+                    if (!blobSha) throw new Error('Unable to resolve blob sha');
+
+                    const blob = await api.get(`/repos/${owner}/${repo}/git/blobs/${blobSha}`);
+                    const encoding = String(blob?.encoding || '');
+                    const content = encoding === 'base64' ? fromBase64Utf8Safe(blob?.content || '') : String(blob?.content || '');
+                    return { sha: blobSha, content };
+                }
+
                 async function getFile({ owner, repo, path, branch }) {
+                    const cleanPath = String(path || '').replace(/^\//, '');
                     const ref = branch ? `?ref=${encodeURIComponent(branch)}` : '';
-                    const data = await api.get(`/repos/${owner}/${repo}/contents/${encodeContentPath(path)}${ref}`);
+                    let data = null;
+                    try {
+                        data = await api.get(`/repos/${owner}/${repo}/contents/${encodeContentPath(cleanPath)}${ref}`);
+                    } catch (e) {
+                        if (e?.status === 403 && branch) return getFileViaGitDataApi({ owner, repo, path: cleanPath, branch });
+                        throw e;
+                    }
                     let content = '';
                     if (data?.content) {
-                        content = fromBase64Utf8(data.content.replaceAll('\n', ''));
+                        content = fromBase64Utf8Safe(data.content);
                     } else if (data?.download_url && typeof api.fetchText === 'function') {
-                        content = await api.fetchText(data.download_url, { method: 'GET' });
+                        try { content = await api.fetchText(data.download_url, { method: 'GET' }); } catch (e) { content = ''; }
+                    }
+                    if (!content && branch) {
+                        try { return await getFileViaGitDataApi({ owner, repo, path: cleanPath, branch }); } catch (e) {}
                     }
                     return { sha: data?.sha || null, content };
                 }
@@ -3693,6 +3741,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
         window.__getQuoteRows = () => quoteRows;
         window.__setQuoteRows = (rows) => {
             quoteRows = Array.isArray(rows) ? rows : [];
+            window.quoteRows = quoteRows;
         };
         window.__getValidityDays = () => validityDays;
         window.__setValidityDays = (n) => {
@@ -9117,14 +9166,26 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
             try { window.loadSavedQuote?.(); } catch (e) {}
         };
 
+        function resetQuoteToInitial() {
+            const rows = [{ id: Date.now(), description: '', vendor: '', spec: '', batchNo: '', quantity: 1, price: 0, cost: 0, productId: '', inventoryId: '' }];
+            try { window.__setQuoteRows?.(rows); } catch (e) {}
+            try { window.quoteRows = rows; } catch (e) {}
+            try {
+                if (typeof quoteSplit === 'object' && quoteSplit) {
+                    quoteSplit.enabled = false;
+                    quoteSplit.afterRowId = null;
+                }
+                if (typeof saveQuoteSplit === 'function') saveQuoteSplit();
+            } catch (e) {}
+        }
+
         window.loadSavedQuote = async () => {
             const select = document.getElementById('saved-quotes-select');
             const id = String(select?.value || '').trim();
             if(!id) {
-                window.quoteRows = [];
-                try { if (typeof quoteRows !== 'undefined') quoteRows = []; } catch (e) {}
+                resetQuoteToInitial();
+                try { window.__setValidityDays?.(30); } catch (e) {}
                 window.validityDays = 30;
-                try { if (typeof validityDays !== 'undefined') validityDays = 30; } catch (e) {}
                 partBreakdownData = {};
                 referenceBlocks = [];
                 roofBackground = '';
@@ -9202,10 +9263,9 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                     if (snap && window.applyQuoteSnapshot) {
                         window.applyQuoteSnapshot(snap);
                     } else {
-                        window.quoteRows = [];
-                        try { if (typeof quoteRows !== 'undefined') quoteRows = []; } catch (e) {}
+                        resetQuoteToInitial();
+                        try { window.__setValidityDays?.(30); } catch (e) {}
                         window.validityDays = 30;
-                        try { if (typeof validityDays !== 'undefined') validityDays = 30; } catch (e) {}
                         partBreakdownData = {};
                         referenceBlocks = [];
                         roofBackground = '';

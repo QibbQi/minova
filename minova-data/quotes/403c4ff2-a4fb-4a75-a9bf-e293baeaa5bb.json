@@ -1,0 +1,187 @@
+{
+  "v": 1,
+  "id": "403c4ff2-a4fb-4a75-a9bf-e293baeaa5bb",
+  "name": "fff",
+  "createdAt": "2026-04-30T14:47:35.472Z",
+  "updatedAt": "2026-04-30T14:47:35.472Z",
+  "snapshot": {
+    "v": 1,
+    "capturedAt": "2026-04-30T14:47:35.473Z",
+    "fields": {
+      "company-address": {
+        "t": "html",
+        "v": "Add：Tiong Nam Industrial Park, 12A, JIn 51/203A, \nSeksyen 51, 46050 Petaling Jaya, Selangor, Malaysia"
+      },
+      "company-web": {
+        "t": "value",
+        "v": "Web：minovamy.com"
+      },
+      "quote-no": {
+        "t": "value",
+        "v": "QT-20260430-01"
+      },
+      "currentDate": {
+        "t": "value",
+        "v": "2026-04-30"
+      },
+      "input-customer-name": {
+        "t": "value",
+        "v": "fff"
+      },
+      "input-customer-contact": {
+        "t": "value",
+        "v": "fff"
+      },
+      "input-site-address": {
+        "t": "value",
+        "v": "fff"
+      },
+      "val-step1": {
+        "t": "value",
+        "v": "Site Survey"
+      },
+      "timeline-days-1": {
+        "t": "value",
+        "v": ""
+      },
+      "val-step2": {
+        "t": "value",
+        "v": "Material Procurement & Installation Planning"
+      },
+      "timeline-days-2": {
+        "t": "value",
+        "v": ""
+      },
+      "val-step3": {
+        "t": "value",
+        "v": "Installation"
+      },
+      "timeline-days-3": {
+        "t": "value",
+        "v": ""
+      },
+      "lbl-confirmation": {
+        "t": "value",
+        "v": "Upon Confirmation"
+      },
+      "payment-confirmation-percent": {
+        "t": "value",
+        "v": "30"
+      },
+      "lbl-installation": {
+        "t": "value",
+        "v": "Upon Installation"
+      },
+      "payment-installation-percent": {
+        "t": "value",
+        "v": "40"
+      },
+      "lbl-testing": {
+        "t": "value",
+        "v": "Upon Testing & Commissioning"
+      },
+      "payment-testing-percent": {
+        "t": "value",
+        "v": "30"
+      },
+      "lbl-final": {
+        "t": "value",
+        "v": "Upon Final Acceptance"
+      },
+      "payment-final-percent": {
+        "t": "value",
+        "v": "0"
+      },
+      "picker-vendor": {
+        "t": "value",
+        "v": ""
+      },
+      "picker-category": {
+        "t": "value",
+        "v": ""
+      },
+      "picker-search": {
+        "t": "value",
+        "v": ""
+      },
+      "blank-row-count": {
+        "t": "value",
+        "v": "1"
+      },
+      "input-proposed-size": {
+        "t": "value",
+        "v": "333"
+      },
+      "select-solar-program": {
+        "t": "value",
+        "v": "offgrid"
+      },
+      "val-shipping-handling": {
+        "t": "value",
+        "v": "已包含"
+      },
+      "val-terms": {
+        "t": "value",
+        "v": "条款：\n本报价以现场全面勘察为准。如需采用非标准安装方式（包括但不限于额外开槽/破拆、布线、线槽/桥架、定制加工或任何超出标准安装范围的工作），费用可能调整。\n\n确认：\n本人/本公司（签署人）确认接受“光伏+电池+逆变器系统”及上述价格、规格、条款与条件，并同意由 Minova Holdings Sdn. Bhd. 开始进行系统设计、采购与安装。"
+      },
+      "roi-bill-before": {
+        "t": "value",
+        "v": "500"
+      },
+      "roi-bill-after": {
+        "t": "value",
+        "v": "50"
+      },
+      "roi-system-cost": {
+        "t": "value",
+        "v": "0"
+      }
+    },
+    "memory": {
+      "quoteRows": [
+        {
+          "id": 1777560393070,
+          "description": "210R N-type组件",
+          "vendor": "联塑 LESSO",
+          "spec": "610W",
+          "batchNo": "20250411-001",
+          "quantity": 1,
+          "price": 1.2544675000000003,
+          "cost": 0.65,
+          "productId": "GFZJ001",
+          "inventoryId": "inv_1775819903003"
+        },
+        {
+          "id": 1777560442562,
+          "description": "210R N-type组件",
+          "vendor": "联塑 LESSO",
+          "spec": "610W",
+          "batchNo": "20250411-001",
+          "quantity": 1,
+          "price": 1.2544675000000003,
+          "cost": 0.65,
+          "productId": "GFZJ001",
+          "inventoryId": "inv_1775819903003"
+        },
+        {
+          "id": 1777560443349,
+          "description": "210R N-type组件",
+          "vendor": "联塑 LESSO",
+          "spec": "610W",
+          "batchNo": "20250411-001",
+          "quantity": 1,
+          "price": 1.2544675000000003,
+          "cost": 0.65,
+          "productId": "GFZJ001",
+          "inventoryId": "inv_1775819903003"
+        }
+      ],
+      "validityDays": 30,
+      "quoteSplit": null,
+      "partBreakdownData": {},
+      "referenceBlocks": [],
+      "roofBackground": "",
+      "pvModules": []
+    }
+  }
+}

@@ -1,6 +1,6 @@
 {
   "v": 1,
-  "updatedAt": "2026-04-25T14:40:22.658Z",
+  "updatedAt": "2026-04-30T08:39:00.279Z",
   "data": {
     "products": [
       {
@@ -188,10 +188,7 @@
         "shippingCost": 2283.84,
         "domesticTax": 3711.2400000000002,
         "totalCost": 34543.08,
-        "location": "马来西亚仓库",
-        "transportIds": [
-          "tr_1777122874758"
-        ]
+        "location": "马来西亚仓库"
       },
       {
         "id": "inv_1775820030632",
@@ -208,10 +205,7 @@
         "shippingCost": 4752,
         "domesticTax": 3564,
         "totalCost": 67716,
-        "location": "马来西亚仓库",
-        "transportIds": [
-          "tr_1777122874758"
-        ]
+        "location": "马来西亚仓库"
       },
       {
         "id": "inv_1775820265501",
@@ -228,8 +222,7 @@
         "shippingCost": 924.1056,
         "domesticTax": 693.0791999999999,
         "totalCost": 13168.5048,
-        "location": "马来西亚仓库",
-        "transportIds": []
+        "location": "马来西亚仓库"
       },
       {
         "id": "inv_1775820358973",
@@ -364,87 +357,8 @@
       "isoCerts": [],
       "transportCerts": []
     },
-    "transportRecords": [
-      {
-        "id": "tr_1777122874758",
-        "createdAt": "2026-04-25T13:14:34.758Z",
-        "trackingNo": "12356778",
-        "carrierCompany": "海澜天",
-        "method": "sea",
-        "status": "in_transit",
-        "freight": 2000,
-        "totalWeightKg": 60,
-        "totalVolumeM3": 80,
-        "lines": [
-          {
-            "inventoryId": "inv_1775819903003",
-            "batchNo": "20250411-001",
-            "productId": "GFZJ001",
-            "productName": "210R N-type组件",
-            "category": "光伏组件",
-            "subcategory": "双面",
-            "vendor": "联塑 LESSO",
-            "quantity": 72,
-            "weightKg": 30,
-            "volumeM3": 40
-          },
-          {
-            "inventoryId": "inv_1775820030632",
-            "batchNo": "20250411-002",
-            "productId": "DC001",
-            "productName": "5kW 电池",
-            "category": "电池",
-            "subcategory": "堆叠式家储",
-            "vendor": "明匠",
-            "quantity": 18,
-            "weightKg": 30,
-            "volumeM3": 40
-          }
-        ]
-      }
-    ],
-    "fileDeleteLogs": [
-      {
-        "id": "2391ecab-c71a-42b5-9aa5-b890a026453d",
-        "at": "2026-04-25T14:39:15.474Z",
-        "user": "QibbQi",
-        "scope": "company",
-        "fileType": "iso",
-        "path": "minova-data/certifications/iso/排排网基金PK_洛书CTA开拓者1号A类份额VS九木CTA1号.png",
-        "name": "排排网基金PK_洛书CTA开拓者1号A类份额VS九木CTA1号.png",
-        "productId": ""
-      },
-      {
-        "id": "cf793229-87a9-46f4-9ef0-00cdfaa9855c",
-        "at": "2026-04-25T13:19:10.165Z",
-        "user": "QibbQi",
-        "scope": "company",
-        "fileType": "transport",
-        "path": "minova-data/certifications/transport/南海制造业出海（新马站）闭门圆桌会.pdf",
-        "name": "南海制造业出海（新马站）闭门圆桌会.pdf",
-        "productId": ""
-      },
-      {
-        "id": "5c95262e-8799-4c9b-b164-2f38ee19b243",
-        "at": "2026-04-25T10:27:45.018Z",
-        "user": "QibbQi",
-        "scope": "company",
-        "fileType": "iso",
-        "path": "minova-data/certifications/iso/南海制造业出海（新马站）闭门圆桌会.pdf",
-        "name": "南海制造业出海（新马站）闭门圆桌会.pdf",
-        "productId": ""
-      },
-      {
-        "id": "b73827d9-00f6-4fcb-8e13-4ea4d56b265d",
-        "at": "2026-04-25T07:27:27.386Z",
-        "user": "QibbQi",
-        "scope": "company",
-        "fileType": "iso",
-        "path": "minova-data/certifications/iso/合作备忘录：关于构建“产投联动”机制助力产业升级.pdf",
-        "name": "合作备忘录：关于构建“产投联动”机制助力产业升级.pdf",
-        "productId": ""
-      }
-    ],
+    "transportRecords": [],
+    "fileDeleteLogs": [],
     "subcategoriesByCategory": {
       "光伏组件": [
         "双面"

@@ -3,10 +3,10 @@
   "id": "601e55cc-36ba-47f8-b950-c9111eafe683",
   "name": "ininini",
   "createdAt": "2026-04-30T08:42:34.867Z",
-  "updatedAt": "2026-04-30T08:42:34.867Z",
+  "updatedAt": "2026-04-30T09:21:40.701Z",
   "snapshot": {
     "v": 1,
-    "capturedAt": "2026-04-30T08:42:34.868Z",
+    "capturedAt": "2026-04-30T09:21:40.702Z",
     "fields": {
       "company-address": {
         "t": "html",
@@ -138,7 +138,68 @@
       }
     },
     "memory": {
-      "quoteRows": [],
+      "quoteRows": [
+        {
+          "id": 1777540879349,
+          "description": "210R N-type组件",
+          "vendor": "联塑 LESSO",
+          "spec": "610W",
+          "batchNo": "20250411-001",
+          "quantity": 1,
+          "price": 1.2544675000000003,
+          "cost": 0.65,
+          "productId": "GFZJ001",
+          "inventoryId": "inv_1775819903003"
+        },
+        {
+          "id": 1777540880833,
+          "description": "5kW 电池",
+          "vendor": "明匠",
+          "spec": "5kWh",
+          "batchNo": "20250411-002",
+          "quantity": 1,
+          "price": 1956.24,
+          "cost": 660,
+          "productId": "DC001",
+          "inventoryId": "inv_1775820030632"
+        },
+        {
+          "id": 1777540882600,
+          "description": "5.5kW 逆变器",
+          "vendor": "明匠",
+          "spec": "5.5kW",
+          "batchNo": "20250411-003",
+          "quantity": 1,
+          "price": 607.5469260000001,
+          "cost": 350.04,
+          "productId": "NBQ002",
+          "inventoryId": "inv_1775820265501"
+        },
+        {
+          "id": 1777540884200,
+          "description": "堆叠式配件",
+          "vendor": "明匠",
+          "spec": "个",
+          "batchNo": "20260410-001",
+          "quantity": 1,
+          "price": 586.8720000000001,
+          "cost": 360,
+          "productId": "J001",
+          "inventoryId": "inv_1775820358973"
+        },
+        {
+          "id": 1777540885968,
+          "description": "5.5kW-10kWh 一体机",
+          "vendor": "明匠",
+          "spec": "5.5kW-10kWh",
+          "batchNo": "20260410-002",
+          "quantity": 1,
+          "price": 14064.435000000001,
+          "cost": 6750,
+          "productId": "PROD002",
+          "inventoryId": "inv_1775820443415"
+        }
+      ],
       "validityDays": 30,
       "quoteSplit": null,
       "partBreakdownData": {},

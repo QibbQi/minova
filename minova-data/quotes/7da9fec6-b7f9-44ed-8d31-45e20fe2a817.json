@@ -1,0 +1,150 @@
+{
+  "v": 1,
+  "id": "7da9fec6-b7f9-44ed-8d31-45e20fe2a817",
+  "name": "111",
+  "createdAt": "2026-04-30T08:47:02.835Z",
+  "updatedAt": "2026-04-30T08:47:02.835Z",
+  "snapshot": {
+    "v": 1,
+    "capturedAt": "2026-04-30T08:47:02.836Z",
+    "fields": {
+      "company-address": {
+        "t": "html",
+        "v": "Add：Tiong Nam Industrial Park, 12A, JIn 51/203A, \nSeksyen 51, 46050 Petaling Jaya, Selangor, Malaysia"
+      },
+      "company-web": {
+        "t": "value",
+        "v": "Web：minovamy.com"
+      },
+      "quote-no": {
+        "t": "value",
+        "v": "QT-20260430-01"
+      },
+      "currentDate": {
+        "t": "value",
+        "v": "2026-04-30"
+      },
+      "input-customer-name": {
+        "t": "value",
+        "v": "111"
+      },
+      "input-customer-contact": {
+        "t": "value",
+        "v": ""
+      },
+      "input-site-address": {
+        "t": "value",
+        "v": ""
+      },
+      "val-step1": {
+        "t": "value",
+        "v": "现场勘测"
+      },
+      "timeline-days-1": {
+        "t": "value",
+        "v": ""
+      },
+      "val-step2": {
+        "t": "value",
+        "v": "材料采购与安装规划"
+      },
+      "timeline-days-2": {
+        "t": "value",
+        "v": ""
+      },
+      "val-step3": {
+        "t": "value",
+        "v": "安装"
+      },
+      "timeline-days-3": {
+        "t": "value",
+        "v": ""
+      },
+      "lbl-confirmation": {
+        "t": "value",
+        "v": "确认后"
+      },
+      "payment-confirmation-percent": {
+        "t": "value",
+        "v": "30"
+      },
+      "lbl-installation": {
+        "t": "value",
+        "v": "安装后"
+      },
+      "payment-installation-percent": {
+        "t": "value",
+        "v": "40"
+      },
+      "lbl-testing": {
+        "t": "value",
+        "v": "测试与调试后"
+      },
+      "payment-testing-percent": {
+        "t": "value",
+        "v": "30"
+      },
+      "lbl-final": {
+        "t": "value",
+        "v": "交付验收后"
+      },
+      "payment-final-percent": {
+        "t": "value",
+        "v": "0"
+      },
+      "picker-vendor": {
+        "t": "value",
+        "v": ""
+      },
+      "picker-category": {
+        "t": "value",
+        "v": ""
+      },
+      "picker-search": {
+        "t": "value",
+        "v": ""
+      },
+      "blank-row-count": {
+        "t": "value",
+        "v": "1"
+      },
+      "input-proposed-size": {
+        "t": "value",
+        "v": ""
+      },
+      "select-solar-program": {
+        "t": "value",
+        "v": "offgrid"
+      },
+      "val-shipping-handling": {
+        "t": "value",
+        "v": "已包含"
+      },
+      "val-terms": {
+        "t": "value",
+        "v": "条款：\n本报价以现场全面勘察为准。如需采用非标准安装方式（包括但不限于额外开槽/破拆、布线、线槽/桥架、定制加工或任何超出标准安装范围的工作），费用可能调整。\n\n确认：\n本人/本公司（签署人）确认接受“光伏+电池+逆变器系统”及上述价格、规格、条款与条件，并同意由 Minova Holdings Sdn. Bhd. 开始进行系统设计、采购与安装。"
+      },
+      "roi-bill-before": {
+        "t": "value",
+        "v": "500"
+      },
+      "roi-bill-after": {
+        "t": "value",
+        "v": "50"
+      },
+      "roi-system-cost": {
+        "t": "value",
+        "v": "0"
+      }
+    },
+    "memory": {
+      "quoteRows": [],
+      "validityDays": 30,
+      "quoteSplit": null,
+      "partBreakdownData": {},
+      "referenceBlocks": [],
+      "roofBackground": "",
+      "pvModules": []
+    }
+  }
+}

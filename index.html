@@ -8733,8 +8733,9 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                                     const viewport = clonedDoc.getElementById('roof-viewport');
                                     const img = clonedDoc.getElementById('roof-image');
                                     if (viewport && img) {
-                                        const vw = viewport.clientWidth || 0;
-                                        const vh = viewport.clientHeight || 0;
+                                        const vr = viewport.getBoundingClientRect ? viewport.getBoundingClientRect() : null;
+                                        const vw = (vr?.width || 0) || (viewport.clientWidth || 0);
+                                        const vh = (vr?.height || 0) || (viewport.clientHeight || 0);
                                         const iw = parseFloat(String(img.dataset.iw || img.naturalWidth || '0')) || 0;
                                         const ih = parseFloat(String(img.dataset.ih || img.naturalHeight || '0')) || 0;
                                         if (vw && vh && iw && ih) {
@@ -8747,7 +8748,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                                             img.style.top = '0';
                                             img.style.width = `${w}px`;
                                             img.style.height = `${h}px`;
-                                            img.style.objectFit = 'fill';
+                                            img.style.objectFit = 'contain';
                                             img.style.objectPosition = 'left top';
                                         }
                                     }
@@ -8857,7 +8858,13 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                     } catch (e) {}
 
                     // Await next frame to ensure DOM updates
-                    await new Promise(r => setTimeout(r, 100));
+                    if (pageNum === 5) {
+                        try { renderRoof(); } catch (e) {}
+                        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+                        await new Promise(r => setTimeout(r, 120));
+                    } else {
+                        await new Promise(r => setTimeout(r, 100));
+                    }
 
                     const container = document.getElementById('pdf-content-wrapper');
                     const pdfData = await html2pdf().set(opt).from(container).toPdf().get('pdf').then(pdf => {
@@ -9294,6 +9301,7 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
         const originalCalculateQuote = window.calculateQuote;
         window.calculateQuote = function() {
             if(originalCalculateQuote) originalCalculateQuote();
+            try { renderPartBreakdown(); } catch (e) {}
             setTimeout(() => {
                 const gt = document.getElementById('grand-total');
                 const roiCost = document.getElementById('roi-system-cost');
@@ -9331,13 +9339,24 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
         function renderPartBreakdown() {
             const container = document.getElementById('part-breakdown-container');
             if(!container) return;
-            if(!window.quoteRows || window.quoteRows.length === 0) {
+            const allRows0 = (() => {
+                const a = Array.isArray(window.__getQuoteRows?.()) ? window.__getQuoteRows() : (Array.isArray(quoteRows) ? quoteRows : (Array.isArray(window.quoteRows) ? window.quoteRows : []));
+                return Array.isArray(a) ? a : [];
+            })();
+            const rows = allRows0.filter(r => !r?.isBlank && (((r.description || '').trim()) || ((r.spec || '').trim()) || ((r.batchNo || '').trim()) || (parseFloat(r.quantity) || 0) > 0 || (parseFloat(r.price) || 0) > 0));
+            if(!rows.length) {
                 container.innerHTML = '<p class="text-sm text-slate-400">Please add items to Quotation first.</p>';
                 return;
             }
+            const keep = new Set(rows.map(r => String(r.id)));
+            try {
+                Object.keys(partBreakdownData || {}).forEach((k) => {
+                    if (!keep.has(String(k))) delete partBreakdownData[k];
+                });
+            } catch (e) {}
             
             let html = '<div class="space-y-6">';
-            window.quoteRows.forEach(row => {
+            rows.forEach(row => {
                 const data = partBreakdownData[row.id] || {};
                 const brandImg = data.brandImg ? `<img src="${data.brandImg}" class="h-16 object-contain mt-2">` : '';
                 const productImg = data.productImg ? `<img src="${data.productImg}" class="h-24 object-contain mt-2">` : '';
@@ -10875,14 +10894,16 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
         function renderRoofMeasurements() {
             const els = getRoofEls();
             if (!els.measureLayer || !els.viewport) return;
-            els.measureLayer.innerHTML = '';
-            if (!siteOverview) return;
+            if (!siteOverview) {
+                els.measureLayer.innerHTML = '';
+                return;
+            }
             const ms = Array.isArray(siteOverview.measurements) ? siteOverview.measurements : [];
             const rect = getImageRect();
-            if (!rect) return;
             const vw = els.viewport.clientWidth || 0;
             const vh = els.viewport.clientHeight || 0;
-            if (!vw || !vh) return;
+            if (!rect || !vw || !vh) return;
+            els.measureLayer.innerHTML = '';
 
             const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
             svg.setAttribute('width', '100%');
@@ -11162,6 +11183,9 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
             const els = getRoofEls();
             if (!els.viewport || !els.rulerX || !els.rulerY || !siteOverview) return;
             const rect = getImageRect();
+            const vw = els.viewport.clientWidth || 0;
+            const vh = els.viewport.clientHeight || 0;
+            if (!rect || !vw || !vh) return;
             const show = !!siteOverview.settings.showRulers;
             els.rulerX.style.display = show ? 'block' : 'none';
             els.rulerY.style.display = show ? 'block' : 'none';
@@ -11441,10 +11465,17 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
         function renderModules() {
             const els = getRoofEls();
             if (!els.modulesLayer) return;
+            if (!siteOverview) {
+                els.modulesLayer.innerHTML = '';
+                clearGuides();
+                return;
+            }
+            const rect = getImageRect();
+            const vw = els.viewport?.clientWidth || 0;
+            const vh = els.viewport?.clientHeight || 0;
+            if (!rect || !vw || !vh) return;
             els.modulesLayer.innerHTML = '';
             clearGuides();
-            if (!siteOverview) return;
-            const rect = getImageRect();
             const pxPerM = getPxPerM(rect);
             const alpha = clamp(parseFloat(String(siteOverview.settings.moduleOpacity ?? 0.35)), 0.05, 1.0);
             const showVtxHandles = roofToolMode === 'edit_vertices' && roofSelection && roofSelection.size === 1;

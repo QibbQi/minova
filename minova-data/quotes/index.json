@@ -1,7 +1,16 @@
 {
   "v": 1,
-  "updatedAt": "2026-05-01T10:01:36.443Z",
+  "updatedAt": "2026-05-04T10:40:17.429Z",
   "quotes": [
+    {
+      "id": "3429ce65-8b77-4fb3-9163-f246e60e22dd",
+      "name": "ABCDEFG",
+      "customerName": "ABCDEFG",
+      "quoteNo": "QT-20260504-01",
+      "createdAt": "2026-05-04T10:40:17.429Z",
+      "updatedAt": "2026-05-04T10:40:17.429Z",
+      "timestamp": 1777891217429
+    },
     {
       "id": "b3a111dc-769d-413b-a16d-f56f6cd77eaf",
       "name": "xxxx",

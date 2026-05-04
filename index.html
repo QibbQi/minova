@@ -3311,6 +3311,21 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
         </div>
     </div>
 
+    <div class="border border-slate-200 rounded-xl mb-4">
+        <div class="flex items-center justify-between p-4">
+            <span class="text-sm font-bold text-slate-700">【导出选项】</span>
+        </div>
+        <div class="px-4 pb-4">
+            <label class="flex items-start gap-2 py-1 cursor-pointer">
+                <input id="qa-rotate-siteoverview" type="checkbox" class="w-4 h-4 text-purple-600 mt-0.5" onchange="onRotateSiteOverviewPrintChanged(this.checked)">
+                <div class="flex flex-col">
+                    <span class="text-sm text-slate-700">第 5 页画布旋转打印（右转 90°）</span>
+                    <span class="text-xs text-slate-400">仅影响 PDF 导出，不影响网页端显示</span>
+                </div>
+            </label>
+        </div>
+    </div>
+
     <!-- 公司级认证 -->
     <div class="border border-slate-200 rounded-xl mb-4">
         <div class="flex items-center justify-between p-4 cursor-pointer" onclick="toggleCertSection('company')">
@@ -8516,6 +8531,10 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
             updateCertSelectedSummary();
         };
 
+        window.onRotateSiteOverviewPrintChanged = (checked) => {
+            if (checked) showToast('已开启：导出 PDF 时第 5 页画布将向右旋转 90°（仅影响PDF，不影响网页显示）', 'info');
+        };
+
         window.buildAttachmentHtml = (selectedFiles) => {
             if (!selectedFiles || selectedFiles.length === 0) return '';
 
@@ -8604,6 +8623,8 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
 
         window.confirmAndGeneratePDF = async () => {
             const modal = document.getElementById('cert-attachment-modal');
+            const rotateSiteOverview = !!document.getElementById('qa-rotate-siteoverview')?.checked;
+            if (rotateSiteOverview) showToast('提示：本次导出第 5 页画布将向右旋转 90°（仅影响PDF）', 'info');
             
             if (modal) {
                 const pageCheckboxes = modal.querySelectorAll('.print-page-checkbox:checked');
@@ -8669,6 +8690,14 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                 const mergedDoc = await PDFDocument.create();
                 const quoteNo = document.getElementById('quote-no').value || 'Quotation';
                 const titleEl = document.getElementById('pdf-progress-title');
+                const StandardFonts = PDFLibRef.StandardFonts;
+                const rgb = PDFLibRef.rgb;
+                const degrees = PDFLibRef.degrees;
+                let pdfHeaderFont = null;
+                let pdfHeaderFontBold = null;
+                let pdfHeaderLogoImg = null;
+                let pdfHeaderLogoDims = null;
+                let pdfHeaderLogoTried = false;
 
                 const opt = {
                     margin: 0,
@@ -8689,6 +8718,9 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                             clonedDoc.body.style.padding = '0';
                             clonedDoc.body.style.width = '210mm';
                             clonedDoc.body.style.maxWidth = '210mm';
+                            const exportingPageNum = parseInt(String(window.__pdfExportingPageNum ?? ''), 10);
+                            const roofSnap = String(window.__pdfRoofSnapshotDataUrl || '');
+                            const useRoofSnap = exportingPageNum === 5 && !!roofSnap;
                             
                             const wrappers = clonedDoc.querySelectorAll('.quote-page');
                             wrappers.forEach(page => {
@@ -8730,68 +8762,96 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                             try {
                                 const win = clonedDoc.defaultView || window;
                                 try {
-                                    const viewport = clonedDoc.getElementById('roof-viewport');
-                                    const img = clonedDoc.getElementById('roof-image');
-                                    if (viewport && img) {
-                                        const vr = viewport.getBoundingClientRect ? viewport.getBoundingClientRect() : null;
-                                        const vw = (vr?.width || 0) || (viewport.clientWidth || 0);
-                                        const vh = (vr?.height || 0) || (viewport.clientHeight || 0);
-                                        const iw = parseFloat(String(img.dataset.iw || img.naturalWidth || '0')) || 0;
-                                        const ih = parseFloat(String(img.dataset.ih || img.naturalHeight || '0')) || 0;
-                                        if (vw && vh && iw && ih) {
-                                            const s = Math.min(vw / iw, vh / ih);
-                                            const w = iw * s;
-                                            const h = ih * s;
-                                            img.style.right = 'auto';
-                                            img.style.bottom = 'auto';
+                                    if (useRoofSnap) {
+                                        const grid = clonedDoc.getElementById('roof-editor-grid');
+                                        if (grid) {
+                                            grid.innerHTML = '';
+                                            grid.style.display = 'block';
+                                            const img = clonedDoc.createElement('img');
+                                            img.src = roofSnap;
+                                            img.style.position = 'absolute';
                                             img.style.left = '0';
                                             img.style.top = '0';
-                                            img.style.width = `${w}px`;
-                                            img.style.height = `${h}px`;
+                                            img.style.right = '0';
+                                            img.style.bottom = '0';
+                                            img.style.width = '100%';
+                                            img.style.height = '100%';
                                             img.style.objectFit = 'contain';
                                             img.style.objectPosition = 'left top';
+                                            img.style.display = 'block';
+                                            const prevPos = grid.style.position;
+                                            if (!prevPos) grid.style.position = 'relative';
+                                            grid.appendChild(img);
                                         }
                                     }
                                 } catch (e) {}
                                 try {
-                                    const parseClipPoly = (s) => {
-                                        const m = String(s || '').match(/polygon\((.+)\)/);
-                                        if (!m) return null;
-                                        const pts = m[1].split(',').map((raw) => {
-                                            const parts = String(raw || '').trim().split(/\s+/).filter(Boolean);
-                                            if (parts.length < 2) return null;
-                                            const x = parseFloat(parts[0]);
-                                            const y = parseFloat(parts[1]);
-                                            if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
-                                            return { x, y };
-                                        }).filter(Boolean);
-                                        return pts.length >= 3 ? pts : null;
-                                    };
-                                    const shapes = Array.from(clonedDoc.querySelectorAll('.pv-module.is-custom .pv-module-shape'));
-                                    shapes.forEach((shape) => {
-                                        const cs = win.getComputedStyle ? win.getComputedStyle(shape) : null;
-                                        const clip = shape.style.clipPath || (cs ? cs.clipPath : '') || '';
-                                        const pts = parseClipPoly(clip);
-                                        if (!pts) return;
-                                        const svg = clonedDoc.createElementNS('http://www.w3.org/2000/svg', 'svg');
-                                        svg.setAttribute('viewBox', '0 0 100 100');
-                                        svg.setAttribute('preserveAspectRatio', 'none');
-                                        svg.style.position = 'absolute';
-                                        svg.style.inset = '0';
-                                        svg.style.width = '100%';
-                                        svg.style.height = '100%';
-                                        const poly = clonedDoc.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-                                        poly.setAttribute('points', pts.map(p => `${p.x},${p.y}`).join(' '));
-                                        const fill = cs ? String(cs.backgroundColor || 'transparent') : 'transparent';
-                                        const stroke = cs ? String(cs.borderTopColor || 'rgba(15,23,42,0.25)') : 'rgba(15,23,42,0.25)';
-                                        const sw = cs ? (parseFloat(String(cs.borderTopWidth || '1')) || 1) : 1;
-                                        poly.setAttribute('fill', fill);
-                                        poly.setAttribute('stroke', stroke);
-                                        poly.setAttribute('stroke-width', String(sw));
-                                        poly.setAttribute('vector-effect', 'non-scaling-stroke');
-                                        svg.appendChild(poly);
-                                        shape.replaceWith(svg);
-                                    });
+                                    if (!useRoofSnap) {
+                                        const viewport = clonedDoc.getElementById('roof-viewport');
+                                        const img = clonedDoc.getElementById('roof-image');
+                                        if (viewport && img) {
+                                            const vr = viewport.getBoundingClientRect ? viewport.getBoundingClientRect() : null;
+                                            const vw = (vr?.width || 0) || (viewport.clientWidth || 0);
+                                            const vh = (vr?.height || 0) || (viewport.clientHeight || 0);
+                                            const iw = parseFloat(String(img.dataset.iw || img.naturalWidth || '0')) || 0;
+                                            const ih = parseFloat(String(img.dataset.ih || img.naturalHeight || '0')) || 0;
+                                            if (vw && vh && iw && ih) {
+                                                const s = Math.min(vw / iw, vh / ih);
+                                                const w = iw * s;
+                                                const h = ih * s;
+                                                img.style.right = 'auto';
+                                                img.style.bottom = 'auto';
+                                                img.style.left = '0';
+                                                img.style.top = '0';
+                                                img.style.width = `${w}px`;
+                                                img.style.height = `${h}px`;
+                                                img.style.objectFit = 'contain';
+                                                img.style.objectPosition = 'left top';
+                                            }
+                                        }
+                                    }
+                                } catch (e) {}
+                                try {
+                                    if (!useRoofSnap) {
+                                        const parseClipPoly = (s) => {
+                                            const m = String(s || '').match(/polygon\((.+)\)/);
+                                            if (!m) return null;
+                                            const pts = m[1].split(',').map((raw) => {
+                                                const parts = String(raw || '').trim().split(/\s+/).filter(Boolean);
+                                                if (parts.length < 2) return null;
+                                                const x = parseFloat(parts[0]);
+                                                const y = parseFloat(parts[1]);
+                                                if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+                                                return { x, y };
+                                            }).filter(Boolean);
+                                            return pts.length >= 3 ? pts : null;
+                                        };
+                                        const shapes = Array.from(clonedDoc.querySelectorAll('.pv-module.is-custom .pv-module-shape'));
+                                        shapes.forEach((shape) => {
+                                            const cs = win.getComputedStyle ? win.getComputedStyle(shape) : null;
+                                            const clip = shape.style.clipPath || (cs ? cs.clipPath : '') || '';
+                                            const pts = parseClipPoly(clip);
+                                            if (!pts) return;
+                                            const svg = clonedDoc.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                                            svg.setAttribute('viewBox', '0 0 100 100');
+                                            svg.setAttribute('preserveAspectRatio', 'none');
+                                            svg.style.position = 'absolute';
+                                            svg.style.inset = '0';
+                                            svg.style.width = '100%';
+                                            svg.style.height = '100%';
+                                            const poly = clonedDoc.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                                            poly.setAttribute('points', pts.map(p => `${p.x},${p.y}`).join(' '));
+                                            const fill = cs ? String(cs.backgroundColor || 'transparent') : 'transparent';
+                                            const stroke = cs ? String(cs.borderTopColor || 'rgba(15,23,42,0.25)') : 'rgba(15,23,42,0.25)';
+                                            const sw = cs ? (parseFloat(String(cs.borderTopWidth || '1')) || 1) : 1;
+                                            poly.setAttribute('fill', fill);
+                                            poly.setAttribute('stroke', stroke);
+                                            poly.setAttribute('stroke-width', String(sw));
+                                            poly.setAttribute('vector-effect', 'non-scaling-stroke');
+                                            svg.appendChild(poly);
+                                            shape.replaceWith(svg);
+                                        });
+                                    }
                                 } catch (e) {}
                                 const list = Array.from(clonedDoc.querySelectorAll('textarea'));
                                 list.forEach((ta) => {
@@ -8833,6 +8893,364 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true }
                 };
 
+                const buildRoofSnapshotForPdf = async () => {
+                    try {
+                        const grid = document.getElementById('roof-editor-grid');
+                        const viewport = document.getElementById('roof-viewport');
+                        const img = document.getElementById('roof-image');
+                        if (!grid || !viewport || !img || !siteOverview) return '';
+                        const r0 = grid.getBoundingClientRect ? grid.getBoundingClientRect() : null;
+                        const w0 = r0?.width || grid.offsetWidth || 0;
+                        const h0 = r0?.height || grid.offsetHeight || 0;
+                        if (!w0 || !h0) return '';
+
+                        const scale = 4;
+                        const canvas = document.createElement('canvas');
+                        canvas.width = Math.max(1, Math.round(w0 * scale));
+                        canvas.height = Math.max(1, Math.round(h0 * scale));
+                        const ctx = canvas.getContext('2d');
+                        if (!ctx) return '';
+                        ctx.scale(scale, scale);
+                        ctx.imageSmoothingEnabled = true;
+                        ctx.imageSmoothingQuality = 'high';
+
+                        const ruler = 20;
+                        const vp = { x: ruler, y: ruler, w: Math.max(0, w0 - ruler), h: Math.max(0, h0 - ruler) };
+
+                        const roofWm = parsePositiveFloat(siteOverview.roof?.widthM, 1);
+                        const roofHm = parsePositiveFloat(siteOverview.roof?.heightM, 1);
+
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillRect(0, 0, w0, h0);
+
+                        const drawRoundRect = (x, y, w, h, r) => {
+                            const rr = Math.max(0, Math.min(r, w / 2, h / 2));
+                            ctx.beginPath();
+                            ctx.moveTo(x + rr, y);
+                            ctx.arcTo(x + w, y, x + w, y + h, rr);
+                            ctx.arcTo(x + w, y + h, x, y + h, rr);
+                            ctx.arcTo(x, y + h, x, y, rr);
+                            ctx.arcTo(x, y, x + w, y, rr);
+                            ctx.closePath();
+                        };
+
+                        const computeBgRect = (vw, vh, iw, ih) => {
+                            const s = Math.min(vw / iw, vh / ih);
+                            const w = iw * s;
+                            const h = ih * s;
+                            return { x: 0, y: 0, w, h, vw, vh };
+                        };
+
+                        const bgIw = img.naturalWidth || parseFloat(String(img.dataset.iw || '0')) || 0;
+                        const bgIh = img.naturalHeight || parseFloat(String(img.dataset.ih || '0')) || 0;
+                        if (!img.complete) {
+                            await new Promise(r => {
+                                img.onload = () => r();
+                                img.onerror = () => r();
+                            });
+                        }
+                        const bgRect = (vp.w && vp.h && bgIw && bgIh) ? computeBgRect(vp.w, vp.h, bgIw, bgIh) : { x: 0, y: 0, w: vp.w, h: vp.h, vw: vp.w, vh: vp.h };
+                        const pxPerM = Math.min((bgRect.w || 1) / roofWm, (bgRect.h || 1) / roofHm);
+                        const worldToPxExport = (xM, yM) => ({ x: vp.x + bgRect.x + xM * pxPerM, y: vp.y + bgRect.y + yM * pxPerM });
+
+                        const show = !!siteOverview.settings?.showRulers;
+                        const step = parsePositiveFloat(siteOverview.settings?.gridStepM, 1);
+                        let minorStep = step / 10;
+                        const minorPx = minorStep * pxPerM;
+                        if (!Number.isFinite(minorPx) || minorPx < 4) minorStep = 0;
+                        const tickEvery = minorStep ? minorStep : step;
+                        const maxTicksX = tickEvery > 0 ? Math.ceil(roofWm / tickEvery) : 0;
+                        const maxTicksY = tickEvery > 0 ? Math.ceil(roofHm / tickEvery) : 0;
+                        if (maxTicksX > 6000 || maxTicksY > 6000) minorStep = 0;
+                        const majorPx = step * pxPerM;
+                        const labelEvery = majorPx > 0 ? Math.ceil(40 / majorPx) : 1;
+
+                        if (show) {
+                            ctx.strokeStyle = 'rgba(148,163,184,0.25)';
+                            ctx.lineWidth = 1;
+                            for (let m = 0; m <= roofWm + 1e-6; m += step) {
+                                const x = vp.x + m * pxPerM;
+                                ctx.beginPath();
+                                ctx.moveTo(x, vp.y);
+                                ctx.lineTo(x, vp.y + vp.h);
+                                ctx.stroke();
+                            }
+                            for (let m = 0; m <= roofHm + 1e-6; m += step) {
+                                const y = vp.y + m * pxPerM;
+                                ctx.beginPath();
+                                ctx.moveTo(vp.x, y);
+                                ctx.lineTo(vp.x + vp.w, y);
+                                ctx.stroke();
+                            }
+
+                            ctx.fillStyle = '#ffffff';
+                            ctx.fillRect(0, 0, w0, ruler);
+                            ctx.fillRect(0, 0, ruler, h0);
+                            ctx.strokeStyle = 'rgba(148,163,184,0.7)';
+                            ctx.beginPath();
+                            ctx.moveTo(ruler, ruler);
+                            ctx.lineTo(w0, ruler);
+                            ctx.moveTo(ruler, ruler);
+                            ctx.lineTo(ruler, h0);
+                            ctx.stroke();
+
+                            const drawTicksX = minorStep ? minorStep : step;
+                            for (let m = 0, idx = 0; m <= roofWm + 1e-6; m += drawTicksX, idx++) {
+                                const isMajor = Math.abs((m / step) - Math.round(m / step)) < 1e-6;
+                                const x = vp.x + m * pxPerM;
+                                ctx.strokeStyle = isMajor ? 'rgba(100,116,139,0.45)' : 'rgba(148,163,184,0.35)';
+                                ctx.lineWidth = 1;
+                                ctx.beginPath();
+                                ctx.moveTo(x, isMajor ? 0 : ruler * 0.6);
+                                ctx.lineTo(x, ruler);
+                                ctx.stroke();
+                                if (isMajor) {
+                                    const majorIdx = Math.round(m / step);
+                                    if (majorIdx % labelEvery === 0) {
+                                        ctx.fillStyle = 'rgba(71,85,105,0.9)';
+                                        ctx.font = '700 8px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+                                        ctx.fillText(String(Math.round(m * 1000) / 1000), x + 2, 10);
+                                    }
+                                }
+                            }
+
+                            const drawTicksY = minorStep ? minorStep : step;
+                            for (let m = 0, idx = 0; m <= roofHm + 1e-6; m += drawTicksY, idx++) {
+                                const isMajor = Math.abs((m / step) - Math.round(m / step)) < 1e-6;
+                                const y = vp.y + m * pxPerM;
+                                ctx.strokeStyle = isMajor ? 'rgba(100,116,139,0.45)' : 'rgba(148,163,184,0.35)';
+                                ctx.lineWidth = 1;
+                                ctx.beginPath();
+                                ctx.moveTo(isMajor ? 0 : ruler * 0.6, y);
+                                ctx.lineTo(ruler, y);
+                                ctx.stroke();
+                                if (isMajor) {
+                                    const majorIdx = Math.round(m / step);
+                                    if (majorIdx % labelEvery === 0) {
+                                        ctx.fillStyle = 'rgba(71,85,105,0.9)';
+                                        ctx.font = '700 8px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+                                        ctx.fillText(String(Math.round(m * 1000) / 1000), 2, y - 2);
+                                    }
+                                }
+                            }
+                        }
+
+                        if (bgIw && bgIh) {
+                            ctx.drawImage(img, vp.x + bgRect.x, vp.y + bgRect.y, bgRect.w, bgRect.h);
+                        }
+
+                        const alpha = clamp(parseFloat(String(siteOverview.settings?.moduleOpacity ?? 0.35)), 0.05, 1.0);
+                        const drawPoly = (pts, fill, stroke, sw) => {
+                            if (!Array.isArray(pts) || pts.length < 3) return;
+                            ctx.beginPath();
+                            ctx.moveTo(pts[0].x, pts[0].y);
+                            for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+                            ctx.closePath();
+                            if (fill && fill !== 'transparent') {
+                                ctx.fillStyle = fill;
+                                ctx.fill();
+                            }
+                            if (stroke) {
+                                ctx.strokeStyle = stroke;
+                                ctx.lineWidth = sw || 1;
+                                ctx.stroke();
+                            }
+                        };
+
+                        const modules = Array.isArray(siteOverview.modules) ? siteOverview.modules : [];
+                        modules.forEach((m) => {
+                            const type = String(m?.type || 'pv');
+                            const dims = getModuleDimsM(m);
+                            if (type === 'pv') {
+                                const p = worldToPxExport(parsePositiveFloat(m.xM, 0), parsePositiveFloat(m.yM, 0));
+                                const w = dims.wM * pxPerM;
+                                const h = dims.hM * pxPerM;
+                                ctx.fillStyle = `rgba(88, 44, 131, ${alpha})`;
+                                ctx.fillRect(p.x, p.y, w, h);
+                                ctx.strokeStyle = '#4B236F';
+                                ctx.lineWidth = 2;
+                                ctx.strokeRect(p.x, p.y, w, h);
+                                ctx.fillStyle = '#ffffff';
+                                ctx.font = '900 14px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+                                const t = 'PV';
+                                const tw = ctx.measureText(t).width;
+                                ctx.fillText(t, p.x + (w - tw) / 2, p.y + h / 2 + 5);
+                                return;
+                            }
+                            if (type === 'custom') {
+                                const bg = m.bgColor ? hexToRgba(m.bgColor, alpha) : 'transparent';
+                                const stroke = 'rgba(15,23,42,0.25)';
+                                const shape = String(m.shape || (m.polyN ? 'polygon' : 'rect'));
+                                const ptsW = (Array.isArray(m.points) && m.points.length >= 3)
+                                    ? m.points
+                                    : getCustomShapePointsFromRect(shape, m.xM, m.yM, dims.wM, dims.hM, m.polyN);
+                                const pts = ptsW.map(p => worldToPxExport(p.xM, p.yM));
+                                drawPoly(pts, bg, stroke, 2);
+                                const labelText = String(m.text || '').trim();
+                                if (labelText) {
+                                    const c0 = polygonCentroidM(ptsW) || { xM: m.xM + dims.wM / 2, yM: m.yM + dims.hM / 2 };
+                                    const cp = worldToPxExport(c0.xM, c0.yM);
+                                    ctx.fillStyle = String(m.textColor || siteOverview.settings?.labelColor || '#FFFFFF');
+                                    ctx.font = '900 12px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+                                    const tw = ctx.measureText(labelText).width;
+                                    ctx.fillText(labelText, cp.x - tw / 2, cp.y + 4);
+                                }
+                            }
+                        });
+
+                        const drawMarkerCanvas = (p, style, color) => {
+                            const s = String(style || 'cross');
+                            ctx.strokeStyle = color;
+                            ctx.fillStyle = color;
+                            ctx.lineWidth = 2;
+                            if (s === 'diamond') {
+                                ctx.save();
+                                ctx.translate(p.x, p.y);
+                                ctx.rotate(Math.PI / 4);
+                                ctx.fillRect(-5, -5, 10, 10);
+                                ctx.restore();
+                                return;
+                            }
+                            if (s === 'cross') {
+                                ctx.beginPath();
+                                ctx.moveTo(p.x - 6, p.y);
+                                ctx.lineTo(p.x + 6, p.y);
+                                ctx.moveTo(p.x, p.y - 6);
+                                ctx.lineTo(p.x, p.y + 6);
+                                ctx.stroke();
+                                return;
+                            }
+                            ctx.beginPath();
+                            ctx.arc(p.x, p.y, 5, 0, 2 * Math.PI);
+                            ctx.fill();
+                        };
+
+                        const drawArrowCanvas = (tip, toward, color) => {
+                            const dx = (toward?.x ?? tip.x) - tip.x;
+                            const dy = (toward?.y ?? tip.y) - tip.y;
+                            const ang = Math.atan2(dy, dx);
+                            ctx.save();
+                            ctx.translate(tip.x, tip.y);
+                            ctx.rotate(ang);
+                            ctx.fillStyle = color;
+                            ctx.beginPath();
+                            ctx.moveTo(0, 0);
+                            ctx.lineTo(10, 4);
+                            ctx.lineTo(10, -4);
+                            ctx.closePath();
+                            ctx.fill();
+                            ctx.restore();
+                        };
+
+                        const drawPill = (x, y, text) => {
+                            ctx.font = '700 10px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+                            const tw = ctx.measureText(text).width;
+                            const padX = 6;
+                            const padY = 3;
+                            const w = tw + padX * 2;
+                            const h = 16;
+                            drawRoundRect(x - w / 2, y - h / 2, w, h, 8);
+                            ctx.fillStyle = 'rgba(15,23,42,0.82)';
+                            ctx.fill();
+                            ctx.fillStyle = '#ffffff';
+                            ctx.fillText(text, x - tw / 2, y + 3);
+                        };
+
+                        const ms = Array.isArray(siteOverview.measurements) ? siteOverview.measurements : [];
+                        ms.forEach((m) => {
+                            if (m?.type === 'dist' && m.a && m.b) {
+                                const p1 = worldToPxExport(m.a.xM, m.a.yM);
+                                const p2 = worldToPxExport(m.b.xM, m.b.yM);
+                                const style = m.markerStyle || siteOverview.settings?.distMarkerStyle || 'cross';
+                                const base = String(m.color || siteOverview.settings?.distColor || '#582C83');
+                                const c = hexToRgba(base, 0.95) || 'rgba(88,44,131,0.95)';
+                                ctx.beginPath();
+                                ctx.moveTo(p1.x, p1.y);
+                                ctx.lineTo(p2.x, p2.y);
+                                ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+                                ctx.lineWidth = 6;
+                                ctx.stroke();
+                                ctx.strokeStyle = c;
+                                ctx.lineWidth = 3;
+                                ctx.stroke();
+                                if (String(style) === 'arrow_a') {
+                                    drawArrowCanvas(p1, p2, 'rgba(0,0,0,0.35)');
+                                    drawArrowCanvas(p1, p2, c);
+                                } else if (String(style) === 'arrow_b') {
+                                    drawArrowCanvas(p2, p1, 'rgba(0,0,0,0.35)');
+                                    drawArrowCanvas(p2, p1, c);
+                                } else if (String(style) === 'arrow_ab') {
+                                    drawArrowCanvas(p1, p2, 'rgba(0,0,0,0.35)');
+                                    drawArrowCanvas(p2, p1, 'rgba(0,0,0,0.35)');
+                                    drawArrowCanvas(p1, p2, c);
+                                    drawArrowCanvas(p2, p1, c);
+                                } else {
+                                    drawMarkerCanvas(p1, style, 'rgba(0,0,0,0.35)');
+                                    drawMarkerCanvas(p2, style, 'rgba(0,0,0,0.35)');
+                                    drawMarkerCanvas(p1, style, c);
+                                    drawMarkerCanvas(p2, style, c);
+                                }
+                                const dx = m.b.xM - m.a.xM;
+                                const dy = m.b.yM - m.a.yM;
+                                const d = Math.sqrt(dx * dx + dy * dy);
+                                const text = formatDistanceM(d + getDistExtraLenM(style));
+                                drawPill((p1.x + p2.x) / 2, (p1.y + p2.y) / 2, text);
+                            }
+                            if (m?.type === 'area') {
+                                const vc = clamp(parseInt(String(siteOverview.settings?.areaVertexCount ?? 4), 10) || 4, 4, 12);
+                                const ptsW = Array.isArray(m.points) && m.points.length >= 3 ? m.points : (m.a && m.b ? (vc === 4 ? getRectPointsFromAB(m.a, m.b) : getRegularPolygonPointsFromRect(m.a, m.b, vc)) : []);
+                                if (ptsW.length < 3) return;
+                                const pts = ptsW.map(p => worldToPxExport(p.xM, p.yM));
+                                const baseFill = String(m.bgColor || siteOverview.settings?.areaDefaultBgColor || '#FFC107');
+                                const opacity0 = clamp(parseFloat(String(m.opacity ?? siteOverview.settings?.areaDefaultOpacity ?? 0.18)), 0.05, 1);
+                                const opacity = Math.max(0.22, opacity0);
+                                const fill = hexToRgba(baseFill, opacity) || 'rgba(255,193,7,0.18)';
+                                ctx.beginPath();
+                                ctx.moveTo(pts[0].x, pts[0].y);
+                                for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+                                ctx.closePath();
+                                ctx.fillStyle = fill;
+                                ctx.fill();
+                                ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+                                ctx.lineWidth = 6;
+                                ctx.stroke();
+                                ctx.strokeStyle = 'rgba(88,44,131,0.95)';
+                                ctx.lineWidth = 3;
+                                ctx.stroke();
+                                const area0 = polygonAreaM2(ptsW);
+                                const perim0 = polygonPerimeterM(ptsW);
+                                const area = getAreaOuterAreaM2(area0, perim0, 2);
+                                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                                pts.forEach((p) => { minX = Math.min(minX, p.x); minY = Math.min(minY, p.y); maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y); });
+                                const areaStr = `${(Math.round(area * 100) / 100).toFixed(2)}m²`;
+                                const label = String(m.label || '').trim();
+                                drawPill((minX + maxX) / 2, (minY + maxY) / 2, label ? `${label} ${areaStr}` : areaStr);
+                            }
+                        });
+
+                        try {
+                            return canvas.toDataURL('image/png');
+                        } catch (e) {
+                            return '';
+                        }
+                    } catch (e) {
+                        return '';
+                    }
+                };
+
+                const dataUrlToBytes = (dataUrl) => {
+                    try {
+                        const parts = String(dataUrl || '').split(',');
+                        if (parts.length < 2) return null;
+                        const bin = atob(parts[1]);
+                        const bytes = new Uint8Array(bin.length);
+                        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+                        return bytes;
+                    } catch (e) {
+                        return null;
+                    }
+                };
+
                 // Render internal pages sequentially
                 for (let i = 0; i < window.selectedPrintPages.length; i++) {
                     const pageNum = window.selectedPrintPages[i];
@@ -8867,12 +9285,94 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                     }
 
                     const container = document.getElementById('pdf-content-wrapper');
-                    const pdfData = await html2pdf().set(opt).from(container).toPdf().get('pdf').then(pdf => {
-                        const total = pdf.internal.getNumberOfPages();
-                        const last = pdf.internal.pages?.[total];
-                        if (last && last.length <= 1) pdf.deletePage(total);
-                        return pdf.output('arraybuffer');
-                    });
+                    if (pageNum === 5) {
+                        try {
+                            const dataUrl = await buildRoofSnapshotForPdf();
+                            const bytes = dataUrlToBytes(dataUrl);
+                            if (bytes) {
+                                const img = await mergedDoc.embedPng(bytes);
+                                const dims = img.scale(1);
+                                const A4 = [595.28, 841.89];
+                                const page = mergedDoc.addPage(A4);
+                                const pw = page.getWidth();
+                                const ph = page.getHeight();
+                                if (!pdfHeaderFont && StandardFonts?.Helvetica) {
+                                    try { pdfHeaderFont = await mergedDoc.embedFont(StandardFonts.Helvetica); } catch (e) {}
+                                }
+                                if (!pdfHeaderFontBold && StandardFonts?.HelveticaBold) {
+                                    try { pdfHeaderFontBold = await mergedDoc.embedFont(StandardFonts.HelveticaBold); } catch (e) {}
+                                }
+                                if (!pdfHeaderLogoImg && !pdfHeaderLogoTried) {
+                                    pdfHeaderLogoTried = true;
+                                    try {
+                                        let res = await fetch('./logo-horizontal.png', { cache: 'no-store' });
+                                        if (!res.ok) res = await fetch('./logo.png', { cache: 'no-store' });
+                                        if (res.ok) {
+                                            const logoBytes = await res.arrayBuffer();
+                                            const u8 = new Uint8Array(logoBytes);
+                                            pdfHeaderLogoImg = await mergedDoc.embedPng(u8);
+                                            pdfHeaderLogoDims = pdfHeaderLogoImg.scale(1);
+                                        }
+                                    } catch (e) {}
+                                }
+
+                                const padX = 48;
+                                const padTop = 56;
+                                const padBottom = 24;
+                                const headerH = 120;
+                                const topY = ph - padTop;
+                                const titleText = String(document.getElementById('lbl-page5-title')?.textContent || 'SITE OVERVIEW').trim() || 'SITE OVERVIEW';
+                                const tagline = 'Solar System Solution | Storage Battery';
+
+                                if (pdfHeaderLogoImg && pdfHeaderLogoDims) {
+                                    const logoH = 36;
+                                    const s = logoH / Math.max(1e-9, pdfHeaderLogoDims.height);
+                                    const logoW = pdfHeaderLogoDims.width * s;
+                                    page.drawImage(pdfHeaderLogoImg, { x: padX, y: topY - logoH, width: logoW, height: logoH });
+                                }
+                                if (pdfHeaderFontBold && rgb) {
+                                    page.drawText(tagline, { x: padX, y: topY - 58, size: 10, font: pdfHeaderFontBold, color: rgb(0.651, 0.478, 0.796) });
+                                }
+                                if (pdfHeaderFont && rgb) {
+                                    const titleSize = 36;
+                                    const tw = pdfHeaderFont.widthOfTextAtSize(titleText, titleSize);
+                                    page.drawText(titleText, { x: Math.max(padX, pw - padX - tw), y: topY - 34, size: titleSize, font: pdfHeaderFont, color: rgb(0.796, 0.835, 0.882) });
+                                }
+
+                                const availH = Math.max(1, ph - headerH - padBottom);
+                                if (rotateSiteOverview && degrees) {
+                                    const ratio = Math.min(pw / dims.height, availH / dims.width);
+                                    const w = dims.width * ratio;
+                                    const h = dims.height * ratio;
+                                    const x = (pw - h) / 2;
+                                    const y = padBottom + (availH + w) / 2;
+                                    page.drawImage(img, { x, y, width: w, height: h, rotate: degrees(-90) });
+                                } else {
+                                    const ratio = Math.min(pw / dims.width, availH / dims.height);
+                                    const w = dims.width * ratio;
+                                    const h = dims.height * ratio;
+                                    const x = (pw - w) / 2;
+                                    const y = padBottom + (availH - h) / 2;
+                                    page.drawImage(img, { x, y, width: w, height: h });
+                                }
+                                continue;
+                            }
+                        } catch (e) {}
+                    }
+
+                    let pdfData;
+                    try {
+                        pdfData = await html2pdf().set(opt).from(container).toPdf().get('pdf').then(pdf => {
+                            const total = pdf.internal.getNumberOfPages();
+                            const last = pdf.internal.pages?.[total];
+                            if (last && last.length <= 1) pdf.deletePage(total);
+                            return pdf.output('arraybuffer');
+                        });
+                    } finally {
+                        if (pageNum === 5) {
+                            try { renderRoof(); } catch (e) {}
+                        }
+                    }
 
                     const tempDoc = await PDFDocument.load(pdfData);
                     const copiedPages = await mergedDoc.copyPages(tempDoc, tempDoc.getPageIndices());

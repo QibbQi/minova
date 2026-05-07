@@ -1672,6 +1672,8 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                 <select id="pvcalc-page-select" onchange="switchPvcalcPage(this.value)" class="text-sm border border-slate-200 rounded p-1 outline-none w-56 font-bold text-purple-700">
                     <option value="1">1. 光伏与电池系统测算</option>
                     <option value="2">2. TNB Calculator</option>
+                    <option value="3">3. Solar Only</option>
+                    <option value="4">4. Solar with Battery</option>
                 </select>
             </div>
         </div>
@@ -1787,74 +1789,405 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
         </div>
 
         <div id="pvcalc-page-2" class="hidden" style="display: none;">
-            <div class="rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-6 md:p-10 shadow-2xl shadow-slate-900/40">
-                <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-8 border-b border-slate-800/80 pb-6">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="p-6 md:p-8 border-b border-slate-100 bg-slate-50/50 flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                     <div>
-                        <h2 class="text-2xl font-black tracking-tight text-white">TNB Dual-Mode Calculator</h2>
-                        <p class="text-sm text-slate-400 mt-1">Two modes that sync in real-time (kWh ⇄ RM)</p>
+                        <p class="text-[10px] font-black text-purple-700 uppercase tracking-widest mb-1">TNB Residential Tool</p>
+                        <h2 class="text-2xl font-black text-slate-800 tracking-tight">TNB Calculator</h2>
+                        <p class="text-sm text-slate-500 mt-1">Estimate bills or reverse-calculate usage, then sync kWh into both Solar scenarios.</p>
                     </div>
-                    <div class="flex items-center bg-slate-900/70 border border-slate-800 rounded-2xl p-1">
-                        <button id="tnb-mode-btn-kwh" type="button" onclick="setTnbMode('kwhToBill')" class="px-4 py-2 rounded-xl text-xs font-black transition-colors bg-orange-500 text-slate-950">kWh → Bill</button>
-                        <button id="tnb-mode-btn-bill" type="button" onclick="setTnbMode('billToKwh')" class="px-4 py-2 rounded-xl text-xs font-black transition-colors text-slate-200 hover:text-white">Bill → kWh</button>
-                    </div>
-                </div>
-
-                <div id="tnb-mode-kwh" class="space-y-8">
-                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                        <div class="lg:col-span-5 space-y-4">
-                            <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
-                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Monthly Usage (kWh)</label>
-                                <input id="tnb-kwh-input" type="number" step="0.01" min="0" oninput="onTnbKwhInput(this.value)" placeholder="e.g. 600" class="w-full border border-slate-700 rounded-xl p-3 text-sm outline-none bg-slate-950 text-white focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all">
-                                <div class="mt-3 text-[11px] text-slate-400">As you type, the bill updates instantly.</div>
-                            </div>
-                        </div>
-                        <div class="lg:col-span-7">
-                            <div class="bg-slate-900/30 border border-slate-800 rounded-2xl p-6">
-                                <div class="flex items-end justify-between gap-6">
-                                    <div>
-                                        <div class="text-[10px] font-black uppercase tracking-widest text-slate-400">Estimated Bill</div>
-                                        <div class="text-4xl md:text-5xl font-black tracking-tight text-white mt-2"><span class="text-orange-400 mr-1">RM</span><span id="tnb-out-bill-total" class="tnb-num">0.00</span></div>
-                                    </div>
-                                    <div class="text-right text-[10px] font-black uppercase tracking-widest text-slate-500">TNB Residential</div>
-                                </div>
-                                <div class="mt-6 grid grid-cols-2 gap-4 text-sm">
-                                    <div class="bg-slate-950/40 border border-slate-800 rounded-xl p-4">
-                                        <div class="text-[10px] font-black uppercase tracking-widest text-slate-500">Energy Charge</div>
-                                        <div class="text-lg font-black text-white mt-1"><span class="text-slate-400 mr-1">RM</span><span id="tnb-out-energy" class="tnb-num">0.00</span></div>
-                                    </div>
-                                    <div class="bg-slate-950/40 border border-slate-800 rounded-xl p-4">
-                                        <div class="text-[10px] font-black uppercase tracking-widest text-slate-500">ICPT</div>
-                                        <div class="text-lg font-black text-white mt-1"><span class="text-slate-400 mr-1">RM</span><span id="tnb-out-icpt" class="tnb-num">0.00</span></div>
-                                    </div>
-                                    <div class="bg-slate-950/40 border border-slate-800 rounded-xl p-4">
-                                        <div class="text-[10px] font-black uppercase tracking-widest text-slate-500">ST (8%)</div>
-                                        <div class="text-lg font-black text-white mt-1"><span class="text-slate-400 mr-1">RM</span><span id="tnb-out-st" class="tnb-num">0.00</span></div>
-                                    </div>
-                                    <div class="bg-slate-950/40 border border-slate-800 rounded-xl p-4">
-                                        <div class="text-[10px] font-black uppercase tracking-widest text-slate-500">Total</div>
-                                        <div class="text-lg font-black text-white mt-1"><span class="text-slate-400 mr-1">RM</span><span id="tnb-out-total" class="tnb-num">0.00</span></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                    <div class="flex items-center bg-white border border-slate-200 rounded-2xl p-1 shadow-sm">
+                        <button id="tnb-mode-btn-kwh" type="button" onclick="setTnbMode('kwhToBill')" class="px-4 py-2 rounded-xl text-xs font-black transition-colors bg-[#582C83] text-white shadow-sm">kWh → Bill</button>
+                        <button id="tnb-mode-btn-bill" type="button" onclick="setTnbMode('billToKwh')" class="px-4 py-2 rounded-xl text-xs font-black transition-colors text-slate-500 hover:text-slate-600">Bill → kWh</button>
                     </div>
                 </div>
 
-                <div id="tnb-mode-bill" class="space-y-8 hidden" style="display: none;">
-                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                        <div class="lg:col-span-5 space-y-4">
-                            <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
-                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Bill Amount (RM)</label>
-                                <input id="tnb-bill-input" type="number" step="0.01" min="0" oninput="onTnbBillInput(this.value)" placeholder="e.g. 219.80" class="w-full border border-slate-700 rounded-xl p-3 text-sm outline-none bg-slate-950 text-white focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all">
-                                <div id="tnb-deadzone-tip" class="mt-3 hidden text-[11px] text-orange-200 bg-orange-500/10 border border-orange-500/20 rounded-xl px-3 py-2"></div>
+                <div class="p-6 md:p-8 space-y-6">
+                    <div id="tnb-mode-kwh" class="space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+                            <div class="md:col-span-5">
+                                <div class="border border-slate-200 rounded-2xl p-5 bg-white">
+                                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Monthly Usage (kWh)</label>
+                                    <input id="tnb-kwh-input" type="number" step="0.01" min="0" oninput="onTnbKwhInput(this.value)" placeholder="e.g. 600" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-500 bg-white">
+                                    <div class="mt-3 text-[11px] text-slate-400">Valid kWh syncs into Monthly Usage and Target Generation.</div>
+                                </div>
+                            </div>
+                            <div class="md:col-span-7">
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    <div class="border border-purple-200 rounded-2xl p-4 bg-purple-50/60 md:col-span-2">
+                                        <div class="text-[10px] font-black uppercase tracking-widest text-purple-500">Estimated Bill</div>
+                                        <div class="mt-2 text-2xl font-black text-purple-800 tracking-tight">RM <span id="tnb-out-bill-total" class="tnb-num">0.00</span></div>
+                                    </div>
+                                    <div class="border border-blue-200 rounded-2xl p-4 bg-blue-50/60">
+                                        <div class="text-[10px] font-black uppercase tracking-widest text-blue-600">Average RM/kWh</div>
+                                        <div class="mt-2 text-2xl font-black text-blue-700"><span id="tnb-out-average-kwh" class="tnb-num">0.0000</span></div>
+                                    </div>
+                                    <div class="border border-slate-200 rounded-2xl p-4 bg-white">
+                                        <div class="text-[10px] font-black uppercase tracking-widest text-slate-400">Energy Charge</div>
+                                        <div class="mt-2 text-xl font-black text-slate-800">RM <span id="tnb-out-energy" class="tnb-num">0.00</span></div>
+                                    </div>
+                                    <div class="border border-slate-200 rounded-2xl p-4 bg-white">
+                                        <div class="text-[10px] font-black uppercase tracking-widest text-slate-400">ICPT</div>
+                                        <div class="mt-2 text-xl font-black text-slate-800">RM <span id="tnb-out-icpt" class="tnb-num">0.00</span></div>
+                                    </div>
+                                    <div class="border border-slate-200 rounded-2xl p-4 bg-white">
+                                        <div class="text-[10px] font-black uppercase tracking-widest text-slate-400">ST (8%)</div>
+                                        <div class="mt-2 text-xl font-black text-slate-800">RM <span id="tnb-out-st" class="tnb-num">0.00</span></div>
+                                    </div>
+                                    <div class="border border-slate-200 rounded-2xl p-4 bg-slate-50/60">
+                                        <div class="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Bill</div>
+                                        <div class="mt-2 text-xl font-black text-slate-800">RM <span id="tnb-out-total" class="tnb-num">0.00</span></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div class="lg:col-span-7">
-                            <div class="bg-slate-900/30 border border-slate-800 rounded-2xl p-6">
-                                <div class="text-[10px] font-black uppercase tracking-widest text-slate-400">Estimated Usage</div>
-                                <div class="text-4xl md:text-5xl font-black tracking-tight text-white mt-2"><span id="tnb-out-kwh" class="tnb-num">0.00</span><span class="text-slate-400 ml-2 text-lg font-black">kWh</span></div>
-                                <div class="mt-6 text-[11px] text-slate-400">Reverse calculation uses segmented breakpoints due to non-linear jumps.</div>
+                    </div>
+
+                    <div id="tnb-mode-bill" class="space-y-6 hidden" style="display: none;">
+                        <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+                            <div class="md:col-span-5">
+                                <div class="border border-slate-200 rounded-2xl p-5 bg-white">
+                                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Bill Amount (RM)</label>
+                                    <input id="tnb-bill-input" type="number" step="0.01" min="0" oninput="onTnbBillInput(this.value)" placeholder="e.g. 219.80" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-500 bg-white">
+                                    <div id="tnb-deadzone-tip" class="mt-3 hidden text-[11px] text-purple-700 bg-purple-50 border border-purple-100 rounded-xl px-3 py-2"></div>
+                                </div>
                             </div>
+                            <div class="md:col-span-7">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div class="border border-purple-200 rounded-2xl p-4 bg-purple-50/60">
+                                        <div class="text-[10px] font-black uppercase tracking-widest text-purple-500">Estimated Usage</div>
+                                        <div class="mt-2 text-2xl font-black text-purple-800 tracking-tight"><span id="tnb-out-kwh" class="tnb-num">0.00</span><span class="text-slate-400 ml-2 text-lg font-black">kWh</span></div>
+                                    </div>
+                                    <div class="border border-blue-200 rounded-2xl p-4 bg-blue-50/60">
+                                        <div class="text-[10px] font-black uppercase tracking-widest text-blue-600">Average RM/kWh</div>
+                                        <div class="mt-2 text-2xl font-black text-blue-700 tracking-tight"><span id="tnb-out-average-bill" class="tnb-num">0.0000</span></div>
+                                    </div>
+                                    <div class="border border-slate-200 rounded-2xl p-4 bg-slate-50/60 md:col-span-2">
+                                        <div class="text-[10px] font-black uppercase tracking-widest text-slate-400">Reverse Logic</div>
+                                        <div class="mt-2 text-sm text-slate-500">Reverse calculation uses segmented breakpoints due to non-linear policy jumps.</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="pvcalc-page-3" class="hidden" style="display: none;">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="p-6 md:p-8 border-b border-slate-100 bg-slate-50/50 flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                    <div>
+                        <p class="text-[10px] font-black text-purple-700 uppercase tracking-widest mb-1">Customer Result View</p>
+                        <h2 class="text-2xl font-black text-slate-800 tracking-tight">Solar Only</h2>
+                        <p class="text-sm text-slate-500 mt-1">ATAP bill estimator with export credit, AFA, ST and 25-year payback logic.</p>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-[10px] font-black uppercase tracking-widest text-slate-400">Plan Type</div>
+                        <div class="mt-1 text-sm font-black text-purple-700">PV + Grid Export</div>
+                    </div>
+                </div>
+
+                <div class="p-6 md:p-8 space-y-6">
+                    <div class="border border-slate-200 rounded-2xl p-5 bg-white">
+                        <div class="flex items-center justify-between gap-4 mb-4">
+                            <div>
+                                <h3 class="text-sm font-black text-slate-700 uppercase tracking-widest">Scenario Inputs</h3>
+                                <p class="text-xs text-slate-400 mt-1">Shared by Solar Only and Solar with Battery views.</p>
+                            </div>
+                            <button type="button" onclick="resetAtapInputs()" class="px-3 py-2 rounded-xl border border-slate-200 text-xs font-black text-slate-600 hover:bg-slate-50">Reset</button>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                            <label class="block">
+                                <span class="block text-[10px] font-black text-slate-400 uppercase mb-1">Monthly Usage (kWh)</span>
+                                <input data-atap-input="monthlyConsumption" type="number" min="0" step="0.01" value="1100" oninput="syncAtapInput(this)" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-500 bg-white">
+                            </label>
+                            <label class="block">
+                                <span class="block text-[10px] font-black text-slate-400 uppercase mb-1">Target Generation (kWh)</span>
+                                <input data-atap-input="targetGeneration" type="number" min="0" step="0.01" value="1100" oninput="syncAtapInput(this)" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-500 bg-white">
+                            </label>
+                            <label class="block">
+                                <span class="block text-[10px] font-black text-slate-400 uppercase mb-1">Peak Sun Hours</span>
+                                <input data-atap-input="peakSunHours" type="number" min="0" step="0.1" value="4.5" oninput="syncAtapInput(this)" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-500 bg-white">
+                            </label>
+                            <label class="block">
+                                <span class="block text-[10px] font-black text-slate-400 uppercase mb-1">Panel Rating (W)</span>
+                                <input data-atap-input="panelRating" type="number" min="0" step="1" value="640" oninput="syncAtapInput(this)" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-500 bg-white">
+                            </label>
+                            <label class="block">
+                                <span class="block text-[10px] font-black text-slate-400 uppercase mb-1">Loss Factor</span>
+                                <input data-atap-input="lossFactor" type="number" min="0.01" step="0.01" value="0.8" oninput="syncAtapInput(this)" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-500 bg-white">
+                            </label>
+                            <label class="block">
+                                <span class="block text-[10px] font-black text-slate-400 uppercase mb-1">Investment kWp</span>
+                                <input data-atap-input="investmentBaseKw" type="number" min="0" step="0.1" value="10" oninput="syncAtapInput(this)" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-500 bg-white">
+                            </label>
+                            <label class="block">
+                                <span class="block text-[10px] font-black text-slate-400 uppercase mb-1">Export Factor</span>
+                                <input data-atap-input="exportFactor" type="number" min="0" max="1" step="0.01" value="0.6" oninput="syncAtapInput(this)" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-500 bg-white">
+                            </label>
+                            <label class="block">
+                                <span class="flex items-center justify-between gap-2 text-[10px] font-black text-slate-400 uppercase mb-1">
+                                    <span>Export Energy Rate</span>
+                                    <button type="button" data-atap-export-rate-edit-btn onclick="confirmAtapExportRateEdit()" class="text-[10px] font-black text-purple-700 hover:underline">Change</button>
+                                </span>
+                                <input data-atap-input="exportEnergyRate" data-atap-export-rate-input type="number" min="0" step="0.0001" value="0.2708" readonly oninput="syncAtapInput(this)" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-slate-50 text-slate-500 cursor-not-allowed">
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div class="border border-slate-200 rounded-2xl p-4 bg-slate-50/60">
+                            <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Before Bill</div>
+                            <div class="mt-2 text-2xl font-black text-slate-800">RM <span data-atap-out="solarOnly.beforeBill">0.00</span></div>
+                        </div>
+                        <div class="border border-purple-200 rounded-2xl p-4 bg-purple-50/60">
+                            <div class="text-[10px] font-black text-purple-500 uppercase tracking-widest">After Bill</div>
+                            <div class="mt-2 text-2xl font-black text-purple-800">RM <span data-atap-out="solarOnly.afterBill">0.00</span></div>
+                        </div>
+                        <div class="border border-green-200 rounded-2xl p-4 bg-green-50/60">
+                            <div class="text-[10px] font-black text-green-600 uppercase tracking-widest">Monthly Saving</div>
+                            <div class="mt-2 text-2xl font-black text-green-700">RM <span data-atap-out="solarOnly.saving">0.00</span></div>
+                        </div>
+                        <div class="border border-blue-200 rounded-2xl p-4 bg-blue-50/60">
+                            <div class="text-[10px] font-black text-blue-600 uppercase tracking-widest">Saving %</div>
+                            <div class="mt-2 text-2xl font-black text-blue-700"><span data-atap-out="solarOnly.savingPct">0.0%</span></div>
+                        </div>
+                        <div class="border border-slate-200 rounded-2xl p-4 bg-white">
+                            <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest">PV Size</div>
+                            <div class="mt-2 text-xl font-black text-slate-800"><span data-atap-out="solarOnly.pvSize">0.00</span> kWp</div>
+                        </div>
+                        <div class="border border-slate-200 rounded-2xl p-4 bg-white">
+                            <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Panel Count</div>
+                            <div class="mt-2 text-xl font-black text-slate-800"><span data-atap-out="solarOnly.panelCount">0</span> pcs</div>
+                        </div>
+                        <div class="border border-slate-200 rounded-2xl p-4 bg-white">
+                            <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Initial Investment</div>
+                            <div class="mt-2 text-xl font-black text-slate-800">RM <span data-atap-out="solarOnly.initialInvestment">0</span></div>
+                        </div>
+                        <div class="border border-slate-200 rounded-2xl p-4 bg-white">
+                            <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Payback Year</div>
+                            <div class="mt-2 text-xl font-black text-slate-800"><span data-atap-out="solarOnly.payback">-</span></div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="border border-slate-200 rounded-2xl overflow-hidden bg-white">
+                            <div class="px-5 py-4 bg-slate-50 border-b border-slate-100">
+                                <h3 class="text-sm font-black text-slate-700 uppercase tracking-widest">Bill Component Breakdown</h3>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left whitespace-nowrap">
+                                    <thead class="bg-white text-[10px] font-black uppercase text-slate-400 border-b border-slate-100">
+                                        <tr><th class="py-3 px-5">Metric</th><th class="py-3 px-5 text-right">Result</th><th class="py-3 px-5">Logic</th></tr>
+                                    </thead>
+                                    <tbody id="atap-solar-only-breakdown" class="divide-y divide-slate-100 text-sm"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="border border-slate-200 rounded-2xl overflow-hidden bg-white">
+                            <div class="px-5 py-4 bg-slate-50 border-b border-slate-100">
+                                <h3 class="text-sm font-black text-slate-700 uppercase tracking-widest">25-Year Snapshot</h3>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left whitespace-nowrap">
+                                    <thead class="bg-white text-[10px] font-black uppercase text-slate-400 border-b border-slate-100">
+                                        <tr><th class="py-3 px-5">Year</th><th class="py-3 px-5 text-right">PV kWh</th><th class="py-3 px-5 text-right">Saving</th><th class="py-3 px-5 text-right">Cumulative</th></tr>
+                                    </thead>
+                                    <tbody id="atap-solar-only-cashflow" class="divide-y divide-slate-100 text-sm"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border border-slate-200 rounded-2xl overflow-hidden bg-white">
+                        <div class="px-5 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between gap-4">
+                            <div>
+                                <h3 class="text-sm font-black text-slate-700 uppercase tracking-widest">Executable Formula Map</h3>
+                                <p class="text-xs text-slate-400 mt-1">Locked by default. Unlock to inspect calculation formulas.</p>
+                            </div>
+                            <button type="button" data-atap-formula-lock-action="lock" onclick="lockAtapFormulaMap()" class="hidden px-3 py-2 rounded-xl border border-slate-200 text-xs font-black text-slate-600 hover:bg-white">Lock</button>
+                        </div>
+                        <div data-atap-formula-lock-panel="solarOnly" class="p-5 bg-slate-950 text-white">
+                            <div class="flex flex-col md:flex-row md:items-end gap-3">
+                                <div class="flex-1">
+                                    <div class="text-[10px] font-black uppercase tracking-widest text-slate-400">Formula Access</div>
+                                    <div class="text-sm font-bold mt-1">Enter password to view executable formula map.</div>
+                                </div>
+                                <div class="flex flex-col sm:flex-row gap-2 sm:items-center">
+                                    <input data-atap-formula-password="solarOnly" type="password" placeholder="Password" onkeydown="if(event.key==='Enter') unlockAtapFormulaMap('solarOnly')" class="w-full sm:w-40 border border-slate-700 rounded-xl px-3 py-2 text-sm outline-none bg-slate-900 text-white focus:border-purple-400">
+                                    <button type="button" onclick="unlockAtapFormulaMap('solarOnly')" class="px-4 py-2 rounded-xl bg-[#582C83] text-white text-xs font-black hover:bg-[#4B236F]">Unlock</button>
+                                </div>
+                            </div>
+                            <div data-atap-formula-error="solarOnly" class="hidden mt-3 text-xs font-bold text-red-200 bg-red-500/10 border border-red-400/20 rounded-xl px-3 py-2"></div>
+                        </div>
+                        <div data-atap-formula-table="solarOnly" class="overflow-x-auto hidden" style="display: none;">
+                            <table class="w-full text-left">
+                                <thead class="bg-white text-[10px] font-black uppercase text-slate-400 border-b border-slate-100">
+                                    <tr><th class="py-3 px-5 w-36">Group</th><th class="py-3 px-5 w-48">Output</th><th class="py-3 px-5">Formula</th><th class="py-3 px-5 text-right w-40">Current Result</th></tr>
+                                </thead>
+                                <tbody id="atap-solar-only-formulas" class="divide-y divide-slate-100 text-xs"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="pvcalc-page-4" class="hidden" style="display: none;">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="p-6 md:p-8 border-b border-slate-100 bg-slate-50/50 flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                    <div>
+                        <p class="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-1">Customer Result View</p>
+                        <h2 class="text-2xl font-black text-slate-800 tracking-tight">Solar with Battery</h2>
+                        <p class="text-sm text-slate-500 mt-1">ATAP bill estimator with higher self-consumption, EEI rebate and corrected AFA logic.</p>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-[10px] font-black uppercase tracking-widest text-slate-400">Plan Type</div>
+                        <div class="mt-1 text-sm font-black text-emerald-700">PV + Battery</div>
+                    </div>
+                </div>
+
+                <div class="p-6 md:p-8 space-y-6">
+                    <div class="border border-slate-200 rounded-2xl p-5 bg-white">
+                        <div class="flex items-center justify-between gap-4 mb-4">
+                            <div>
+                                <h3 class="text-sm font-black text-slate-700 uppercase tracking-widest">Scenario Inputs</h3>
+                                <p class="text-xs text-slate-400 mt-1">Shared by Solar Only and Solar with Battery views.</p>
+                            </div>
+                            <button type="button" onclick="resetAtapInputs()" class="px-3 py-2 rounded-xl border border-slate-200 text-xs font-black text-slate-600 hover:bg-slate-50">Reset</button>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                            <label class="block">
+                                <span class="block text-[10px] font-black text-slate-400 uppercase mb-1">Monthly Usage (kWh)</span>
+                                <input data-atap-input="monthlyConsumption" type="number" min="0" step="0.01" value="1100" oninput="syncAtapInput(this)" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-emerald-500 bg-white">
+                            </label>
+                            <label class="block">
+                                <span class="block text-[10px] font-black text-slate-400 uppercase mb-1">Target Generation (kWh)</span>
+                                <input data-atap-input="targetGeneration" type="number" min="0" step="0.01" value="1100" oninput="syncAtapInput(this)" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-emerald-500 bg-white">
+                            </label>
+                            <label class="block">
+                                <span class="block text-[10px] font-black text-slate-400 uppercase mb-1">Peak Sun Hours</span>
+                                <input data-atap-input="peakSunHours" type="number" min="0" step="0.1" value="4.5" oninput="syncAtapInput(this)" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-emerald-500 bg-white">
+                            </label>
+                            <label class="block">
+                                <span class="block text-[10px] font-black text-slate-400 uppercase mb-1">Panel Rating (W)</span>
+                                <input data-atap-input="panelRating" type="number" min="0" step="1" value="640" oninput="syncAtapInput(this)" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-emerald-500 bg-white">
+                            </label>
+                            <label class="block">
+                                <span class="block text-[10px] font-black text-slate-400 uppercase mb-1">Loss Factor</span>
+                                <input data-atap-input="lossFactor" type="number" min="0.01" step="0.01" value="0.8" oninput="syncAtapInput(this)" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-emerald-500 bg-white">
+                            </label>
+                            <label class="block">
+                                <span class="block text-[10px] font-black text-slate-400 uppercase mb-1">Investment kWp</span>
+                                <input data-atap-input="investmentBaseKw" type="number" min="0" step="0.1" value="10" oninput="syncAtapInput(this)" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-emerald-500 bg-white">
+                            </label>
+                            <label class="block">
+                                <span class="block text-[10px] font-black text-slate-400 uppercase mb-1">Export Factor</span>
+                                <input data-atap-input="exportFactor" type="number" min="0" max="1" step="0.01" value="0.6" oninput="syncAtapInput(this)" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-emerald-500 bg-white">
+                            </label>
+                            <label class="block">
+                                <span class="flex items-center justify-between gap-2 text-[10px] font-black text-slate-400 uppercase mb-1">
+                                    <span>Export Energy Rate</span>
+                                    <button type="button" data-atap-export-rate-edit-btn onclick="confirmAtapExportRateEdit()" class="text-[10px] font-black text-emerald-700 hover:underline">Change</button>
+                                </span>
+                                <input data-atap-input="exportEnergyRate" data-atap-export-rate-input type="number" min="0" step="0.0001" value="0.2708" readonly oninput="syncAtapInput(this)" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-slate-50 text-slate-500 cursor-not-allowed">
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div class="border border-slate-200 rounded-2xl p-4 bg-slate-50/60">
+                            <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Before Bill</div>
+                            <div class="mt-2 text-2xl font-black text-slate-800">RM <span data-atap-out="solarBattery.beforeBill">0.00</span></div>
+                        </div>
+                        <div class="border border-emerald-200 rounded-2xl p-4 bg-green-50/60">
+                            <div class="text-[10px] font-black text-emerald-600 uppercase tracking-widest">After Bill</div>
+                            <div class="mt-2 text-2xl font-black text-emerald-800">RM <span data-atap-out="solarBattery.afterBill">0.00</span></div>
+                        </div>
+                        <div class="border border-green-200 rounded-2xl p-4 bg-green-50/60">
+                            <div class="text-[10px] font-black text-green-600 uppercase tracking-widest">Monthly Saving</div>
+                            <div class="mt-2 text-2xl font-black text-green-700">RM <span data-atap-out="solarBattery.saving">0.00</span></div>
+                        </div>
+                        <div class="border border-blue-200 rounded-2xl p-4 bg-blue-50/60">
+                            <div class="text-[10px] font-black text-blue-600 uppercase tracking-widest">Saving %</div>
+                            <div class="mt-2 text-2xl font-black text-blue-700"><span data-atap-out="solarBattery.savingPct">0.0%</span></div>
+                        </div>
+                        <div class="border border-slate-200 rounded-2xl p-4 bg-white">
+                            <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest">PV Size</div>
+                            <div class="mt-2 text-xl font-black text-slate-800"><span data-atap-out="solarBattery.pvSize">0.00</span> kWp</div>
+                        </div>
+                        <div class="border border-slate-200 rounded-2xl p-4 bg-white">
+                            <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Panel Count</div>
+                            <div class="mt-2 text-xl font-black text-slate-800"><span data-atap-out="solarBattery.panelCount">0</span> pcs</div>
+                        </div>
+                        <div class="border border-slate-200 rounded-2xl p-4 bg-white">
+                            <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Initial Investment</div>
+                            <div class="mt-2 text-xl font-black text-slate-800">RM <span data-atap-out="solarBattery.initialInvestment">0</span></div>
+                        </div>
+                        <div class="border border-slate-200 rounded-2xl p-4 bg-white">
+                            <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Payback Year</div>
+                            <div class="mt-2 text-xl font-black text-slate-800"><span data-atap-out="solarBattery.payback">-</span></div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="border border-slate-200 rounded-2xl overflow-hidden bg-white">
+                            <div class="px-5 py-4 bg-slate-50 border-b border-slate-100">
+                                <h3 class="text-sm font-black text-slate-700 uppercase tracking-widest">Bill Component Breakdown</h3>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left whitespace-nowrap">
+                                    <thead class="bg-white text-[10px] font-black uppercase text-slate-400 border-b border-slate-100">
+                                        <tr><th class="py-3 px-5">Metric</th><th class="py-3 px-5 text-right">Result</th><th class="py-3 px-5">Logic</th></tr>
+                                    </thead>
+                                    <tbody id="atap-solar-battery-breakdown" class="divide-y divide-slate-100 text-sm"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="border border-slate-200 rounded-2xl overflow-hidden bg-white">
+                            <div class="px-5 py-4 bg-slate-50 border-b border-slate-100">
+                                <h3 class="text-sm font-black text-slate-700 uppercase tracking-widest">25-Year Snapshot</h3>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left whitespace-nowrap">
+                                    <thead class="bg-white text-[10px] font-black uppercase text-slate-400 border-b border-slate-100">
+                                        <tr><th class="py-3 px-5">Year</th><th class="py-3 px-5 text-right">PV kWh</th><th class="py-3 px-5 text-right">Saving</th><th class="py-3 px-5 text-right">Cumulative</th></tr>
+                                    </thead>
+                                    <tbody id="atap-solar-battery-cashflow" class="divide-y divide-slate-100 text-sm"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border border-slate-200 rounded-2xl overflow-hidden bg-white">
+                        <div class="px-5 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between gap-4">
+                            <div>
+                                <h3 class="text-sm font-black text-slate-700 uppercase tracking-widest">Executable Formula Map</h3>
+                                <p class="text-xs text-slate-400 mt-1">Locked by default. Unlock to inspect calculation formulas.</p>
+                            </div>
+                            <button type="button" data-atap-formula-lock-action="lock" onclick="lockAtapFormulaMap()" class="hidden px-3 py-2 rounded-xl border border-slate-200 text-xs font-black text-slate-600 hover:bg-white">Lock</button>
+                        </div>
+                        <div data-atap-formula-lock-panel="solarBattery" class="p-5 bg-slate-950 text-white">
+                            <div class="flex flex-col md:flex-row md:items-end gap-3">
+                                <div class="flex-1">
+                                    <div class="text-[10px] font-black uppercase tracking-widest text-slate-400">Formula Access</div>
+                                    <div class="text-sm font-bold mt-1">Enter password to view executable formula map.</div>
+                                </div>
+                                <div class="flex flex-col sm:flex-row gap-2 sm:items-center">
+                                    <input data-atap-formula-password="solarBattery" type="password" placeholder="Password" onkeydown="if(event.key==='Enter') unlockAtapFormulaMap('solarBattery')" class="w-full sm:w-40 border border-slate-700 rounded-xl px-3 py-2 text-sm outline-none bg-slate-900 text-white focus:border-emerald-400">
+                                    <button type="button" onclick="unlockAtapFormulaMap('solarBattery')" class="px-4 py-2 rounded-xl bg-[#582C83] text-white text-xs font-black hover:bg-[#4B236F]">Unlock</button>
+                                </div>
+                            </div>
+                            <div data-atap-formula-error="solarBattery" class="hidden mt-3 text-xs font-bold text-red-200 bg-red-500/10 border border-red-400/20 rounded-xl px-3 py-2"></div>
+                        </div>
+                        <div data-atap-formula-table="solarBattery" class="overflow-x-auto hidden" style="display: none;">
+                            <table class="w-full text-left">
+                                <thead class="bg-white text-[10px] font-black uppercase text-slate-400 border-b border-slate-100">
+                                    <tr><th class="py-3 px-5 w-36">Group</th><th class="py-3 px-5 w-48">Output</th><th class="py-3 px-5">Formula</th><th class="py-3 px-5 text-right w-40">Current Result</th></tr>
+                                </thead>
+                                <tbody id="atap-solar-battery-formulas" class="divide-y divide-slate-100 text-xs"></tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -7747,33 +8080,26 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
         };
 
         window.switchPvcalcPage = (page) => {
-            const p = String(page || '1');
+            const p = ['1', '2', '3', '4'].includes(String(page || '1')) ? String(page || '1') : '1';
             const s = document.getElementById('pvcalc-page-select');
             if (s && s.value !== p) s.value = p;
-            const p1 = document.getElementById('pvcalc-page-1');
-            const p2 = document.getElementById('pvcalc-page-2');
-            if (p1) {
-                if (p === '1') {
-                    p1.classList.remove('hidden');
-                    p1.style.display = 'block';
+            ['1', '2', '3', '4'].forEach(n => {
+                const el = document.getElementById(`pvcalc-page-${n}`);
+                if (!el) return;
+                if (n === p) {
+                    el.classList.remove('hidden');
+                    el.style.display = 'block';
                 } else {
-                    p1.classList.add('hidden');
-                    p1.style.display = 'none';
+                    el.classList.add('hidden');
+                    el.style.display = 'none';
                 }
-            }
-            if (p2) {
-                if (p === '2') {
-                    p2.classList.remove('hidden');
-                    p2.style.display = 'block';
-                } else {
-                    p2.classList.add('hidden');
-                    p2.style.display = 'none';
-                }
-            }
+            });
             if (p === '1') {
                 try { window.calculatePV?.(); } catch (e) {}
             } else if (p === '2') {
                 try { window.recalcTnbFromActiveInput?.(); } catch (e) {}
+            } else {
+                try { window.recalcAtapViews?.(); } catch (e) {}
             }
         };
 
@@ -7831,6 +8157,458 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
             return { bill: b, kwh: null, deadZone: '1500' };
         };
 
+        window.atapInputDefaults = {
+            monthlyConsumption: 1100,
+            targetGeneration: 1100,
+            peakSunHours: 4.5,
+            panelRating: 640,
+            lossFactor: 0.8,
+            investmentBaseKw: 10,
+            exportFactor: 0.6,
+            exportEnergyRate: 0.2708
+        };
+
+        window.atapPlans = {
+            solarOnly: {
+                domKey: 'solar-only',
+                label: 'Solar Only',
+                exportFactor: 0.6,
+                afaRate: -0.02,
+                eeiRate: 0,
+                exportEnergyRate: 0.2708,
+                retailCharge: 10,
+                pricePerKwp: 2500,
+                effectiveTariffs: [0.357, 0.393, 0.393, 0.547, 0.586, 0.586, 0.581, 0.623, 0.623, 0.617, 0.664, 0.664, 0.658, 0.709, 0.709, 0.701, 0.757, 0.757, 0.749, 0.81, 0.81, 0.801, 0.868, 0.868, 0.858]
+            },
+            solarBattery: {
+                domKey: 'solar-battery',
+                label: 'Solar with Battery',
+                exportFactor: 0.4,
+                afaRate: -0.0215,
+                eeiRate: 0.055,
+                exportEnergyRate: 0.2708,
+                retailCharge: 10,
+                pricePerKwp: 3500,
+                effectiveTariffs: [0.393, 0.393, 0.393, 0.586, 0.586, 0.586, 0.623, 0.623, 0.623, 0.664, 0.664, 0.664, 0.709, 0.709, 0.709, 0.757, 0.757, 0.757, 0.81, 0.81, 0.81, 0.868, 0.868, 0.868, 0.931]
+            }
+        };
+
+        const atapRound = (n, digits = 2) => {
+            const v = Number(n);
+            if (!Number.isFinite(v)) return 0;
+            const m = Math.pow(10, digits);
+            return Math.round((v + Number.EPSILON) * m) / m;
+        };
+
+        const atapNum = (n, fallback = 0) => {
+            const v = Number(n);
+            return Number.isFinite(v) ? v : fallback;
+        };
+
+        const atapFmtMoney = (n) => atapNum(n).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const atapFmtWhole = (n) => atapNum(n).toLocaleString('en-MY', { maximumFractionDigits: 0 });
+        const atapFmtKwh = (n) => atapNum(n).toLocaleString('en-MY', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+        const atapFmtPct = (n) => `${(atapNum(n) * 100).toFixed(1)}%`;
+
+        window.__atapInvestmentManual = false;
+
+        window.syncAtapInput = (source) => {
+            const key = source?.dataset?.atapInput;
+            if (!key) return;
+            if (key === 'investmentBaseKw') {
+                window.__atapInvestmentManual = true;
+            } else if (['targetGeneration', 'peakSunHours', 'lossFactor'].includes(key)) {
+                window.__atapInvestmentManual = false;
+            }
+            document.querySelectorAll(`[data-atap-input="${key}"]`).forEach(el => {
+                if (el !== source) el.value = source.value;
+            });
+            window.recalcAtapViews?.();
+        };
+
+        window.__atapExportRateEditConfirmed = false;
+
+        window.setAtapExportRateEditable = (isEditable) => {
+            window.__atapExportRateEditConfirmed = !!isEditable;
+            document.querySelectorAll('[data-atap-export-rate-input]').forEach(el => {
+                el.readOnly = !isEditable;
+                el.classList.toggle('bg-slate-50', !isEditable);
+                el.classList.toggle('text-slate-500', !isEditable);
+                el.classList.toggle('cursor-not-allowed', !isEditable);
+                el.classList.toggle('bg-white', !!isEditable);
+                el.classList.toggle('text-slate-800', !!isEditable);
+            });
+            document.querySelectorAll('[data-atap-export-rate-edit-btn]').forEach(btn => {
+                btn.textContent = isEditable ? 'Editable' : 'Change';
+                btn.disabled = !!isEditable;
+                btn.classList.toggle('opacity-50', !!isEditable);
+                btn.classList.toggle('cursor-not-allowed', !!isEditable);
+            });
+        };
+
+        window.confirmAtapExportRateEdit = () => {
+            if (window.__atapExportRateEditConfirmed) return;
+            const ok = window.confirm?.('Export Energy Rate is fixed by TNB. Confirm you want to edit it?') ?? false;
+            if (!ok) return;
+            window.setAtapExportRateEditable(true);
+        };
+
+        window.resetAtapInputs = () => {
+            window.__atapInvestmentManual = false;
+            Object.entries(window.atapInputDefaults).forEach(([key, value]) => {
+                document.querySelectorAll(`[data-atap-input="${key}"]`).forEach(el => { el.value = String(value); });
+            });
+            window.setAtapExportRateEditable(false);
+            window.recalcAtapViews?.();
+        };
+
+        window.getAtapInputs = () => {
+            const read = (key) => {
+                const el = document.querySelector(`[data-atap-input="${key}"]`);
+                const fallback = window.atapInputDefaults[key] ?? 0;
+                return Math.max(0, atapNum(el?.value, fallback));
+            };
+            return {
+                monthlyConsumption: read('monthlyConsumption'),
+                targetGeneration: read('targetGeneration'),
+                peakSunHours: read('peakSunHours'),
+                panelRating: read('panelRating'),
+                lossFactor: Math.max(0.01, read('lossFactor')),
+                investmentBaseKw: read('investmentBaseKw'),
+                exportFactor: Math.min(1, Math.max(0, read('exportFactor'))),
+                exportEnergyRate: read('exportEnergyRate'),
+                performanceRatio: 0.777765,
+                daysPerMonth: 30,
+                daysPerYear: 365
+            };
+        };
+
+        window.calcPvSizing = (inputs) => {
+            const targetMonthly = Math.max(0, atapNum(inputs?.targetGeneration));
+            const dailyGeneration = targetMonthly / (inputs?.daysPerMonth || 30);
+            const dailyWithLoss = dailyGeneration / Math.max(0.01, atapNum(inputs?.lossFactor, 0.8));
+            const pvSizeKwp = atapNum(inputs?.peakSunHours) > 0 ? dailyWithLoss / inputs.peakSunHours : 0;
+            const panelKw = atapNum(inputs?.panelRating) / 1000;
+            const panelCountRaw = panelKw > 0 ? pvSizeKwp / panelKw : 0;
+            const panelCount = panelCountRaw > 0 ? Math.ceil(panelCountRaw) : 0;
+            const installedKwp = panelKw * panelCount;
+            const yearOneGeneration = installedKwp * atapNum(inputs?.peakSunHours) * (inputs?.daysPerYear || 365) * atapNum(inputs?.performanceRatio, 0.777765);
+            return { targetMonthly, dailyGeneration, dailyWithLoss, pvSizeKwp, panelKw, panelCountRaw, panelCount, installedKwp, yearOneGeneration };
+        };
+
+        window.syncAtapInvestmentToSizing = (sizing) => {
+            if (window.__atapInvestmentManual) return false;
+            const nextValue = String(Math.round(Math.max(0, atapNum(sizing?.pvSizeKwp))));
+            let changed = false;
+            document.querySelectorAll('[data-atap-input="investmentBaseKw"]').forEach(el => {
+                if (el.value !== nextValue) {
+                    el.value = nextValue;
+                    changed = true;
+                }
+            });
+            return changed;
+        };
+
+        window.syncAtapUsageFromTnb = (kwh) => {
+            const value = Number(kwh);
+            if (!Number.isFinite(value) || value < 0) return;
+            const text = String(atapRound(value, 2));
+            window.__atapInvestmentManual = false;
+            ['monthlyConsumption', 'targetGeneration'].forEach(key => {
+                document.querySelectorAll(`[data-atap-input="${key}"]`).forEach(el => { el.value = text; });
+            });
+            window.recalcAtapViews?.();
+        };
+
+        window.calcAtapBill = (plan, inputs) => {
+            const before = window.calcTnbForward?.(inputs.monthlyConsumption) || { total: 0 };
+            const exportFactor = atapNum(inputs.exportFactor, plan.exportFactor ?? 0.6);
+            const exportEnergyRate = atapNum(inputs.exportEnergyRate, plan.exportEnergyRate ?? 0.2708);
+            const exportedEnergy = inputs.targetGeneration * exportFactor;
+            const selfConsumedSolar = Math.max(0, inputs.targetGeneration - exportedEnergy);
+            const importedEnergy = Math.max(inputs.monthlyConsumption - selfConsumedSolar, 0);
+            const blockKwh = [
+                Math.min(importedEnergy, 200),
+                Math.max(Math.min(importedEnergy - 201, 100), 0),
+                Math.max(Math.min(importedEnergy - 300, 300), 0),
+                Math.max(Math.min(importedEnergy - 600, 300), 0),
+                Math.max(Math.min(importedEnergy - 900, 999999), 0)
+            ];
+            const rates = (window.tnbConstants?.tiers || []).map(t => t.rate);
+            const powerCharge = atapRound(blockKwh.reduce((sum, kwh, idx) => sum + (kwh * (rates[idx] || 0)), 0), 2);
+            const exportCredit = atapRound(Math.min(importedEnergy, exportedEnergy) * exportEnergyRate, 2);
+            const afa = atapRound(importedEnergy * plan.afaRate, 2);
+            const eei = atapRound(-importedEnergy * plan.eeiRate, 2);
+            const st = powerCharge * 0.08;
+            const kwtbb = powerCharge * 0.016;
+            const afterBill = atapRound(powerCharge + eei + afa + plan.retailCharge - exportCredit + st + kwtbb, 2);
+            const beforeBill = atapRound(before.total, 2);
+            const saving = atapRound(beforeBill - afterBill, 2);
+            const savingPct = beforeBill ? saving / beforeBill : 0;
+            return { beforeBill, exportFactor, exportEnergyRate, exportedEnergy, selfConsumedSolar, importedEnergy, blockKwh, powerCharge, exportCredit, afa, eei, st, kwtbb, retailCharge: plan.retailCharge, afterBill, saving, savingPct };
+        };
+
+        window.calcAtap25Year = (plan, sizing, inputs) => {
+            const initialInvestment = plan.pricePerKwp * inputs.investmentBaseKw;
+            const baseGeneration = sizing.yearOneGeneration;
+            let accumulated = 0;
+            const rows = [];
+            for (let year = 1; year <= 25; year++) {
+                const generation = year === 1
+                    ? baseGeneration
+                    : year === 2
+                        ? baseGeneration * 0.98
+                        : baseGeneration * 0.98 * Math.pow(0.9975, year - 2);
+                const effectiveTariff = plan.effectiveTariffs[year - 1] ?? plan.effectiveTariffs[plan.effectiveTariffs.length - 1] ?? 0;
+                const energyCost = atapRound(generation * effectiveTariff, 2);
+                const investment = year === 1 ? initialInvestment : 0;
+                const annualSaving = atapRound(energyCost - investment, 2);
+                accumulated = atapRound(accumulated + annualSaving, 2);
+                rows.push({ year, generation, effectiveTariff, energyCost, investment, annualSaving, accumulated });
+            }
+            let paybackYear = null;
+            for (let i = 0; i < rows.length; i++) {
+                const current = rows[i];
+                const previous = rows[i - 1];
+                if (current.accumulated >= 0) {
+                    if (!previous) {
+                        paybackYear = current.year;
+                    } else {
+                        paybackYear = previous.year + ((-previous.accumulated) / (current.accumulated - previous.accumulated));
+                    }
+                    break;
+                }
+            }
+            return { initialInvestment, baseGeneration, rows, paybackYear };
+        };
+
+        const atapSetOut = (key, value) => {
+            document.querySelectorAll(`[data-atap-out="${key}"]`).forEach(el => { el.textContent = value; });
+        };
+
+        const atapRenderRows = (tbodyId, rows, cols) => {
+            const tbody = document.getElementById(tbodyId);
+            if (!tbody) return;
+            tbody.innerHTML = rows.map(row => `<tr class="hover:bg-slate-50 transition-colors">${cols.map(col => `<td class="${col.className || 'py-3 px-5'}">${col.value(row)}</td>`).join('')}</tr>`).join('');
+        };
+
+        window.__atapCashflowExpanded = window.__atapCashflowExpanded || {
+            solarOnly: { y4: false, y6to9: false, y11to24: false },
+            solarBattery: { y4: false, y6to9: false, y11to24: false }
+        };
+        window.__atapFormulaUnlocked = false;
+
+        const ensureAtapCashflowState = (planKey) => {
+            if (!window.__atapCashflowExpanded) window.__atapCashflowExpanded = {};
+            if (!window.__atapCashflowExpanded[planKey]) {
+                window.__atapCashflowExpanded[planKey] = { y4: false, y6to9: false, y11to24: false };
+            }
+            return window.__atapCashflowExpanded[planKey];
+        };
+
+        window.toggleAtapCashflowRange = (planKey, rangeKey) => {
+            const state = ensureAtapCashflowState(planKey);
+            state[rangeKey] = !state[rangeKey];
+            window.recalcAtapViews?.();
+        };
+
+        window.buildAtapCashflowDisplayRows = (planKey, analysis) => {
+            const state = ensureAtapCashflowState(planKey);
+            const rowsByYear = new Map((analysis.rows || []).map(row => [row.year, row]));
+            const firstPositive = (analysis.rows || []).find(row => atapNum(row.accumulated) >= 0);
+            const paybackPositiveYear = firstPositive?.year || null;
+            const paybackLabel = analysis.paybackYear ? `Payback ${analysis.paybackYear.toFixed(2)}Y` : '';
+            const display = [];
+            const addYear = (year) => {
+                const row = rowsByYear.get(year);
+                if (row) display.push({ type: 'year', row, isPayback: year === paybackPositiveYear, paybackLabel });
+            };
+            const addToggle = (rangeKey, years, collapsedLabel, expandedLabel) => {
+                const expanded = !!state[rangeKey];
+                const containsPayback = !!paybackPositiveYear && years.includes(paybackPositiveYear);
+                display.push({ type: 'toggle', planKey, rangeKey, years, expanded, containsPayback: containsPayback && !expanded, label: expanded ? expandedLabel : collapsedLabel, paybackLabel });
+                if (expanded) years.forEach(addYear);
+            };
+
+            [1, 2, 3].forEach(addYear);
+            addToggle('y4', [4], 'Show hidden Year 4', 'Hide Year 4');
+            addYear(5);
+            addToggle('y6to9', [6, 7, 8, 9], 'Show hidden Years 6-9', 'Hide Years 6-9');
+            addYear(10);
+            addToggle('y11to24', Array.from({ length: 14 }, (_, i) => i + 11), 'Show hidden Years 11-24', 'Hide Years 11-24');
+            addYear(25);
+            return display;
+        };
+
+        const atapRenderCashflow = (planKey, plan, analysis) => {
+            const tbody = document.getElementById(`atap-${plan.domKey}-cashflow`);
+            if (!tbody) return;
+            const displayRows = window.buildAtapCashflowDisplayRows(planKey, analysis);
+            tbody.innerHTML = displayRows.map(item => {
+                if (item.type === 'toggle') {
+                    const paybackBadge = item.containsPayback
+                        ? `<span class="ml-3 inline-flex items-center rounded-full px-2 py-1 text-[10px] font-black" style="background:#582C83;color:#fff;">${item.paybackLabel}</span>`
+                        : '';
+                    const accentStyle = item.containsPayback ? 'background:rgba(88,44,131,0.08);' : '';
+                    const icon = item.expanded ? '−' : '+';
+                    return `<tr class="transition-colors" style="${accentStyle}">
+                        <td colspan="4" class="py-2 px-5">
+                            <button type="button" onclick="toggleAtapCashflowRange('${planKey}', '${item.rangeKey}')" class="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-xs font-black text-slate-600 hover:bg-purple-50 hover:text-purple-700">
+                                <span class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white border border-slate-200">${icon}</span>
+                                <span>${item.label}</span>
+                                <span class="text-slate-400">(${item.years.length} year${item.years.length > 1 ? 's' : ''})</span>
+                                ${paybackBadge}
+                            </button>
+                        </td>
+                    </tr>`;
+                }
+                const r = item.row;
+                const paybackBadge = item.isPayback
+                    ? `<span class="ml-2 inline-flex items-center rounded-full bg-white px-2 py-1 text-[10px] font-black" style="color:#582C83;">${item.paybackLabel}</span>`
+                    : '';
+                const rowClass = item.isPayback ? 'text-white' : 'hover:bg-slate-50 transition-colors';
+                const rowStyle = item.isPayback ? 'background:#582C83;' : '';
+                const mutedClass = item.isPayback ? 'text-white' : 'text-slate-700';
+                const strongClass = item.isPayback ? 'text-white' : 'text-slate-800';
+                return `<tr class="${rowClass}" style="${rowStyle}">
+                    <td class="py-3 px-5 font-bold ${strongClass}">Year ${r.year}${paybackBadge}</td>
+                    <td class="py-3 px-5 text-right font-mono ${mutedClass}">${atapFmtKwh(r.generation)}</td>
+                    <td class="py-3 px-5 text-right font-mono ${mutedClass}">RM ${atapFmtMoney(r.annualSaving)}</td>
+                    <td class="py-3 px-5 text-right font-black ${strongClass}">RM ${atapFmtMoney(r.accumulated)}</td>
+                </tr>`;
+            }).join('');
+        };
+
+        window.renderAtapFormulaLockPanels = () => {
+            const unlocked = !!window.__atapFormulaUnlocked;
+            document.querySelectorAll('[data-atap-formula-lock-panel]').forEach(el => {
+                if (unlocked) {
+                    el.classList.add('hidden');
+                    el.style.display = 'none';
+                } else {
+                    el.classList.remove('hidden');
+                    el.style.display = 'block';
+                }
+            });
+            document.querySelectorAll('[data-atap-formula-table]').forEach(el => {
+                if (unlocked) {
+                    el.classList.remove('hidden');
+                    el.style.display = 'block';
+                } else {
+                    el.classList.add('hidden');
+                    el.style.display = 'none';
+                }
+            });
+            document.querySelectorAll('[data-atap-formula-lock-action="lock"]').forEach(el => {
+                if (unlocked) {
+                    el.classList.remove('hidden');
+                    el.style.display = 'inline-flex';
+                } else {
+                    el.classList.add('hidden');
+                    el.style.display = 'none';
+                }
+            });
+        };
+
+        window.unlockAtapFormulaMap = (planKey) => {
+            const input = document.querySelector(`[data-atap-formula-password="${planKey}"]`);
+            const error = document.querySelector(`[data-atap-formula-error="${planKey}"]`);
+            if (String(input?.value || '') !== '0409') {
+                if (error) {
+                    error.textContent = 'Password incorrect. Please try again.';
+                    error.classList.remove('hidden');
+                }
+                return;
+            }
+            window.__atapFormulaUnlocked = true;
+            document.querySelectorAll('[data-atap-formula-password]').forEach(el => { el.value = ''; });
+            document.querySelectorAll('[data-atap-formula-error]').forEach(el => {
+                el.textContent = '';
+                el.classList.add('hidden');
+            });
+            window.renderAtapFormulaLockPanels();
+            window.recalcAtapViews?.();
+        };
+
+        window.lockAtapFormulaMap = () => {
+            window.__atapFormulaUnlocked = false;
+            document.querySelectorAll('#atap-solar-only-formulas, #atap-solar-battery-formulas').forEach(el => { el.innerHTML = ''; });
+            window.renderAtapFormulaLockPanels();
+            window.recalcAtapViews?.();
+        };
+
+        const atapRenderPlan = (planKey, plan, inputs, sizing, bill, analysis) => {
+            atapSetOut(`${planKey}.beforeBill`, atapFmtMoney(bill.beforeBill));
+            atapSetOut(`${planKey}.afterBill`, atapFmtMoney(bill.afterBill));
+            atapSetOut(`${planKey}.saving`, atapFmtMoney(bill.saving));
+            atapSetOut(`${planKey}.savingPct`, atapFmtPct(bill.savingPct));
+            atapSetOut(`${planKey}.pvSize`, sizing.pvSizeKwp.toFixed(2));
+            atapSetOut(`${planKey}.panelCount`, atapFmtWhole(sizing.panelCount));
+            atapSetOut(`${planKey}.initialInvestment`, atapFmtWhole(analysis.initialInvestment));
+            atapSetOut(`${planKey}.payback`, analysis.paybackYear ? analysis.paybackYear.toFixed(2) : 'Not within 25Y');
+
+            const breakdownRows = [
+                ['Exported Energy', `${atapFmtKwh(bill.exportedEnergy)} kWh`, 'Total Generation x Export Factor'],
+                ['Self-Consumed Solar', `${atapFmtKwh(bill.selfConsumedSolar)} kWh`, 'Total Generation - Exported Energy'],
+                ['Imported Energy', `${atapFmtKwh(bill.importedEnergy)} kWh`, 'Monthly Usage - Self-Consumed Solar'],
+                ['Power Consumption Charge', `RM ${atapFmtMoney(bill.powerCharge)}`, 'Imported Energy x TNB tariff blocks'],
+                ['Generation Export Credit', `RM ${atapFmtMoney(bill.exportCredit)}`, `MIN(Imported, Exported) x RM${bill.exportEnergyRate}`],
+                ['AFA', `RM ${atapFmtMoney(bill.afa)}`, 'Imported Energy x AFA Rate'],
+                ['EEI Rebate', `RM ${atapFmtMoney(bill.eei)}`, '-Imported Energy x EEI Rate'],
+                ['ST 8%', `RM ${atapFmtMoney(bill.st)}`, 'Power Consumption Charge x 8%'],
+                ['KWTBB 1.6%', `RM ${atapFmtMoney(bill.kwtbb)}`, 'Power Consumption Charge x 1.6%'],
+                ['Retail Charge', `RM ${atapFmtMoney(bill.retailCharge)}`, 'Fixed monthly charge']
+            ];
+            const lockedLogic = '<span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-slate-400">Locked</span>';
+            atapRenderRows(`atap-${plan.domKey}-breakdown`, breakdownRows, [
+                { className: 'py-3 px-5 font-bold text-slate-700', value: r => r[0] },
+                { className: 'py-3 px-5 text-right font-mono text-slate-800', value: r => r[1] },
+                { className: 'py-3 px-5 text-xs text-slate-500', value: r => window.__atapFormulaUnlocked ? r[2] : lockedLogic }
+            ]);
+
+            atapRenderCashflow(planKey, plan, analysis);
+
+            const formulaRows = [
+                ['TNB', 'Before Bill', `calcTnbForward(${inputs.monthlyConsumption} kWh).total`, `RM ${atapFmtMoney(bill.beforeBill)}`],
+                ['PV Sizing', 'Daily Generation', `Target Generation / 30`, `${sizing.dailyGeneration.toFixed(2)} kWh/day`],
+                ['PV Sizing', 'PV Size', `(Daily Generation / Loss Factor) / Peak Sun Hours`, `${sizing.pvSizeKwp.toFixed(2)} kWp`],
+                ['PV Sizing', 'Panel Count', `ROUNDUP(PV Size / (${inputs.panelRating} W / 1000), 0)`, `${atapFmtWhole(sizing.panelCount)} pcs`],
+                ['ATAP Bill', 'Exported Energy', `Total Generation x ${bill.exportFactor}`, `${atapFmtKwh(bill.exportedEnergy)} kWh`],
+                ['ATAP Bill', 'Export Credit', `MIN(Imported, Exported) x RM${bill.exportEnergyRate}`, `RM ${atapFmtMoney(bill.exportCredit)}`],
+                ['ATAP Bill', 'Imported Energy', `MAX(Monthly Usage - Self-Consumed Solar, 0)`, `${atapFmtKwh(bill.importedEnergy)} kWh`],
+                ['ATAP Bill', 'AFA RM', `Imported Energy x ${plan.afaRate}`, `RM ${atapFmtMoney(bill.afa)}`],
+                ['ATAP Bill', 'After Bill', `Power + EEI + AFA + Retail - Export Credit + ST + KWTBB`, `RM ${atapFmtMoney(bill.afterBill)}`],
+                ['25Y Analysis', 'Year 1 PV kWh', `Panel kW x Peak Sun Hours x Panels x 365 x 0.777765`, `${atapFmtKwh(analysis.baseGeneration)} kWh`],
+                ['25Y Analysis', 'Year 2+ PV kWh', `Year 2 = Year 1 x 0.98; Year 3+ = Year 1 x 0.98 x 0.9975^(Year-2)`, `${atapFmtKwh(analysis.rows[1]?.generation || 0)} kWh in Year 2`],
+                ['25Y Analysis', 'Payback Year', `Previous Year + (-Previous Cumulative) / (Current Cumulative - Previous Cumulative)`, analysis.paybackYear ? analysis.paybackYear.toFixed(2) : 'Not within 25Y']
+            ];
+            if (window.__atapFormulaUnlocked) {
+                atapRenderRows(`atap-${plan.domKey}-formulas`, formulaRows, [
+                    { className: 'py-3 px-5 font-black uppercase tracking-widest text-slate-400', value: r => r[0] },
+                    { className: 'py-3 px-5 font-bold text-slate-700', value: r => r[1] },
+                    { className: 'py-3 px-5 font-mono text-[11px] text-slate-600 whitespace-normal', value: r => r[2] },
+                    { className: 'py-3 px-5 text-right font-black text-slate-800 whitespace-nowrap', value: r => r[3] }
+                ]);
+            } else {
+                const tbody = document.getElementById(`atap-${plan.domKey}-formulas`);
+                if (tbody) tbody.innerHTML = '';
+            }
+            window.renderAtapFormulaLockPanels();
+        };
+
+        window.recalcAtapViews = () => {
+            let inputs = window.getAtapInputs();
+            const sizing = window.calcPvSizing(inputs);
+            if (window.syncAtapInvestmentToSizing?.(sizing)) {
+                inputs = window.getAtapInputs();
+            }
+            Object.entries(window.atapPlans).forEach(([planKey, plan]) => {
+                const bill = window.calcAtapBill(plan, inputs);
+                const analysis = window.calcAtap25Year(plan, sizing, inputs);
+                atapRenderPlan(planKey, plan, inputs, sizing, bill, analysis);
+            });
+        };
+
         window.__tnbMode = 'kwhToBill';
         window.__tnbLastEdited = null;
 
@@ -7864,6 +8642,13 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
             return v.toFixed(2);
         };
 
+        const tnbAverageFmt = (bill, kwh) => {
+            const b = Number(bill);
+            const k = Number(kwh);
+            if (!Number.isFinite(b) || !Number.isFinite(k) || k <= 0) return '0.0000';
+            return (b / k).toFixed(4);
+        };
+
         window.setTnbMode = (mode) => {
             const m = mode === 'billToKwh' ? 'billToKwh' : 'kwhToBill';
             window.__tnbMode = m;
@@ -7871,25 +8656,17 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
             const btnB = document.getElementById('tnb-mode-btn-bill');
             const secK = document.getElementById('tnb-mode-kwh');
             const secB = document.getElementById('tnb-mode-bill');
+            const setBtn = (btn, active) => {
+                if (!btn) return;
+                btn.classList.toggle('bg-[#582C83]', !!active);
+                btn.classList.toggle('text-white', !!active);
+                btn.classList.toggle('shadow-sm', !!active);
+                btn.classList.toggle('text-slate-500', !active);
+                btn.classList.toggle('hover:text-slate-600', !active);
+            };
 
-            if (btnK) {
-                if (m === 'kwhToBill') {
-                    btnK.classList.add('bg-orange-500', 'text-slate-950');
-                    btnK.classList.remove('text-slate-200');
-                } else {
-                    btnK.classList.remove('bg-orange-500', 'text-slate-950');
-                    btnK.classList.add('text-slate-200');
-                }
-            }
-            if (btnB) {
-                if (m === 'billToKwh') {
-                    btnB.classList.add('bg-orange-500', 'text-slate-950');
-                    btnB.classList.remove('text-slate-200');
-                } else {
-                    btnB.classList.remove('bg-orange-500', 'text-slate-950');
-                    btnB.classList.add('text-slate-200');
-                }
-            }
+            setBtn(btnK, m === 'kwhToBill');
+            setBtn(btnB, m === 'billToKwh');
 
             if (secK) {
                 if (m === 'kwhToBill') {
@@ -7921,15 +8698,27 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                 tnbSetText('tnb-out-icpt', '0.00');
                 tnbSetText('tnb-out-st', '0.00');
                 tnbSetText('tnb-out-total', '0.00');
+                tnbSetText('tnb-out-average-kwh', '0.0000');
                 return;
             }
             const kwh = Number(s);
+            if (!Number.isFinite(kwh)) {
+                tnbSetText('tnb-out-bill-total', '0.00');
+                tnbSetText('tnb-out-energy', '0.00');
+                tnbSetText('tnb-out-icpt', '0.00');
+                tnbSetText('tnb-out-st', '0.00');
+                tnbSetText('tnb-out-total', '0.00');
+                tnbSetText('tnb-out-average-kwh', '0.0000');
+                return;
+            }
             const r = window.calcTnbForward(kwh);
             tnbSetText('tnb-out-bill-total', tnbMoney(r.total));
             tnbSetText('tnb-out-energy', tnbMoney(r.energyCharge));
             tnbSetText('tnb-out-icpt', tnbMoney(r.icpt));
             tnbSetText('tnb-out-st', tnbMoney(r.st));
             tnbSetText('tnb-out-total', tnbMoney(r.total));
+            tnbSetText('tnb-out-average-kwh', tnbAverageFmt(r.total, kwh));
+            window.syncAtapUsageFromTnb?.(kwh);
         };
 
         window.onTnbBillInput = (raw) => {
@@ -7942,9 +8731,15 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                     tip.textContent = '';
                 }
                 tnbSetText('tnb-out-kwh', '0.00');
+                tnbSetText('tnb-out-average-bill', '0.0000');
                 return;
             }
             const bill = Number(s);
+            if (!Number.isFinite(bill)) {
+                tnbSetText('tnb-out-kwh', '0.00');
+                tnbSetText('tnb-out-average-bill', '0.0000');
+                return;
+            }
             const r = window.calcTnbReverse(bill);
             if (r.deadZone) {
                 if (tip) {
@@ -7953,6 +8748,8 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                         ? "This amount is rare due to TNB's 600kWh ICPT policy jump."
                         : "This amount is rare due to TNB's 1500kWh ICPT policy jump.";
                 }
+                tnbSetText('tnb-out-kwh', 'N/A');
+                tnbSetText('tnb-out-average-bill', 'N/A');
                 return;
             }
             if (tip) {
@@ -7960,6 +8757,8 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
                 tip.textContent = '';
             }
             tnbSetText('tnb-out-kwh', tnbKwhFmt(r.kwh));
+            tnbSetText('tnb-out-average-bill', tnbAverageFmt(bill, r.kwh));
+            window.syncAtapUsageFromTnb?.(r.kwh);
         };
 
         window.recalcTnbFromActiveInput = () => {
@@ -8016,6 +8815,8 @@ Seksyen 51, 46050 Petaling Jaya, Selangor, Malaysia</div>
         generateQuoteNo();
         try { window.switchPvcalcPage?.('1'); } catch (e) {}
         try { window.setTnbMode?.('kwhToBill'); } catch (e) {}
+        try { window.setAtapExportRateEditable?.(false); } catch (e) {}
+        try { window.recalcAtapViews?.(); } catch (e) {}
         const trSearch = document.getElementById('transport-search');
         if (trSearch) trSearch.addEventListener('input', () => renderTransport());
         const trStatus = document.getElementById('transport-status-filter');

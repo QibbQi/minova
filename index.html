@@ -2158,6 +2158,23 @@ I / We, the undersigned, hereby accept the Solar PV with Battery + Inverter Syst
                     <span>新增供应商</span>
                 </button>
             </div>
+            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/40">
+                <div id="supplier-funnel-summary" class="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-4"></div>
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button id="supplier-filter-all" type="button" onclick="setSupplierStageFilter('all')" class="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-black text-slate-600 hover:border-purple-200">全部供应商</button>
+                        <input id="supplier-search" type="text" placeholder="搜索供应商/联系人/国家/官网" oninput="renderSuppliers()" class="w-full sm:w-72 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-600 bg-white">
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] font-black text-slate-400 uppercase">排序</span>
+                        <select id="supplier-sort" onchange="setSupplierSortMode(this.value)" class="border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none bg-white">
+                            <option value="score_desc">综合分高到低</option>
+                            <option value="stage_desc">等级高到低</option>
+                            <option value="name_asc">名称 A-Z</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left whitespace-nowrap">
                     <thead class="bg-slate-50/50">
@@ -2166,6 +2183,9 @@ I / We, the undersigned, hereby accept the Solar PV with Battery + Inverter Syst
                             <th class="py-4 px-4">品牌LOGO</th>
                             <th class="py-4 px-4">中文名字</th>
                             <th class="py-4 px-4">英文名字</th>
+                            <th class="py-4 px-4">漏斗等级</th>
+                            <th class="py-4 px-4 text-right">综合分</th>
+                            <th class="py-4 px-4">当前短板</th>
                             <th class="py-4 px-4">国家/地区</th>
                             <th class="py-4 px-4">联系人</th>
                             <th class="py-4 px-4">电话/邮箱</th>
@@ -3358,6 +3378,42 @@ I / We, the undersigned, hereby accept the Solar PV with Battery + Inverter Syst
                     <div>
                         <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">地址</label>
                         <input type="text" id="supplier-address" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-600" placeholder="工厂或办公室地址">
+                    </div>
+                    <div class="md:col-span-2 border border-purple-100 rounded-2xl p-4 bg-purple-50/30">
+                        <div class="flex flex-col md:flex-row md:items-start justify-between gap-3 mb-4">
+                            <div>
+                                <label class="block text-[10px] font-black text-purple-900/60 uppercase mb-1">漏斗评估</label>
+                                <p class="text-xs text-slate-500">分数用于建议等级；最终等级由你确认，但不能超过证据门槛。</p>
+                            </div>
+                            <div class="min-w-[180px]">
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">确认等级</label>
+                                <select id="supplier-stage" onchange="updateSupplierEvaluationPreview()" class="w-full border border-purple-100 rounded-xl p-3 text-sm outline-none focus:border-purple-600 bg-white">
+                                    <option value="info">资料储备级</option>
+                                    <option value="research">实地调研级</option>
+                                    <option value="trial">试单合作级</option>
+                                    <option value="core">战略核心级</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="supplier-evaluation-preview" class="mb-4 rounded-xl bg-white border border-purple-100 px-4 py-3 text-xs text-slate-600"></div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                            <label class="flex items-center gap-2 text-xs font-bold text-slate-600"><input id="supplier-evidence-factory-visited" type="checkbox" class="w-4 h-4" onchange="updateSupplierEvaluationPreview()"> 已到访工厂</label>
+                            <label class="flex items-center gap-2 text-xs font-bold text-slate-600"><input id="supplier-evidence-accurate-quote" type="checkbox" class="w-4 h-4" onchange="updateSupplierEvaluationPreview()"> 已获取准确报价</label>
+                            <label class="flex items-center gap-2 text-xs font-bold text-slate-600"><input id="supplier-evidence-first-order" type="checkbox" class="w-4 h-4" onchange="updateSupplierEvaluationPreview()"> 已完成至少 1 次下单</label>
+                            <label class="flex items-center gap-2 text-xs font-bold text-slate-600"><input id="supplier-evidence-long-term" type="checkbox" class="w-4 h-4" onchange="updateSupplierEvaluationPreview()"> 已建立长期合作</label>
+                            <label class="flex items-center gap-2 text-xs font-bold text-slate-600"><input id="supplier-evidence-preferred-price" type="checkbox" class="w-4 h-4" onchange="updateSupplierEvaluationPreview()"> 已获得优惠价格</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">下单次数</label>
+                                    <input id="supplier-evidence-order-count" type="number" min="0" step="1" value="0" oninput="updateSupplierEvaluationPreview()" class="w-full border border-slate-200 rounded-xl p-2 text-sm outline-none focus:border-purple-600 bg-white">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">账期天数</label>
+                                    <input id="supplier-evidence-credit-days" type="number" min="0" step="1" value="0" oninput="updateSupplierEvaluationPreview()" class="w-full border border-slate-200 rounded-xl p-2 text-sm outline-none focus:border-purple-600 bg-white">
+                                </div>
+                            </div>
+                        </div>
+                        <div id="supplier-score-fields" class="grid grid-cols-1 md:grid-cols-3 gap-3"></div>
                     </div>
                     <div class="md:col-span-2">
                         <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">备注</label>
@@ -4968,6 +5024,156 @@ I / We, the undersigned, hereby accept the Solar PV with Battery + Inverter Syst
             const s = supplier && typeof supplier === 'object' ? supplier : {};
             return String(s.logoDataUrl || s.brandLogo || s.logo || '').trim();
         }
+        const SUPPLIER_STAGES = [
+            { key: 'info', label: '资料储备级', shortLabel: '资料', desc: '资料 / 简单报价' },
+            { key: 'research', label: '实地调研级', shortLabel: '调研', desc: '到访 / 准确报价' },
+            { key: 'trial', label: '试单合作级', shortLabel: '试单', desc: '至少 1 次下单' },
+            { key: 'core', label: '战略核心级', shortLabel: '核心', desc: '长期合作 / 账期' }
+        ];
+        const SUPPLIER_SCORE_FIELDS = [
+            { key: 'quality', label: '产品质量', weight: 18 },
+            { key: 'price', label: '价格优势', weight: 14 },
+            { key: 'technical', label: '技术研发', weight: 12 },
+            { key: 'willingness', label: '合作意愿', weight: 12 },
+            { key: 'capacity', label: '生产产能', weight: 10 },
+            { key: 'afterSales', label: '售后支持', weight: 10 },
+            { key: 'coverage', label: '类型覆盖', weight: 9 },
+            { key: 'export', label: '出口经验', weight: 8 },
+            { key: 'scale', label: '公司规模', weight: 7 }
+        ];
+        const SUPPLIER_STAGE_CLASS = {
+            info: 'bg-slate-100 text-slate-600 border-slate-200',
+            research: 'bg-blue-50 text-blue-700 border-blue-100',
+            trial: 'bg-amber-50 text-amber-700 border-amber-100',
+            core: 'bg-purple-50 text-purple-700 border-purple-100'
+        };
+        function normalizeSupplierStage(stage) {
+            const raw = String(stage || '').trim();
+            const mapped = {
+                info: 'info',
+                research: 'research',
+                trial: 'trial',
+                core: 'core',
+                '资料级': 'info',
+                '资料储备级': 'info',
+                '调研级': 'research',
+                '实地调研级': 'research',
+                '初步合作级': 'trial',
+                '试单合作级': 'trial',
+                '核心供应商级': 'core',
+                '战略核心级': 'core'
+            };
+            return mapped[raw] || 'info';
+        }
+        function getSupplierStageDef(stage) {
+            return SUPPLIER_STAGES.find(s => s.key === normalizeSupplierStage(stage)) || SUPPLIER_STAGES[0];
+        }
+        function supplierStageIndex(stage) {
+            const key = normalizeSupplierStage(stage);
+            return Math.max(0, SUPPLIER_STAGES.findIndex(s => s.key === key));
+        }
+        function supplierStageByIndex(index) {
+            return SUPPLIER_STAGES[Math.min(Math.max(parseInt(index, 10) || 0, 0), SUPPLIER_STAGES.length - 1)]?.key || 'info';
+        }
+        function normalizeSupplierScore(value) {
+            const n = parseFloat(value);
+            if (!Number.isFinite(n)) return 0;
+            return Math.min(Math.max(n, 0), 10);
+        }
+        function normalizeSupplierScores(raw) {
+            const base = raw && typeof raw === 'object' ? raw : {};
+            return SUPPLIER_SCORE_FIELDS.reduce((acc, field) => {
+                acc[field.key] = normalizeSupplierScore(base[field.key]);
+                return acc;
+            }, {});
+        }
+        function normalizeSupplierEvidence(raw) {
+            const base = raw && typeof raw === 'object' ? raw : {};
+            const orderCount = Math.max(0, parseInt(base.orderCount ?? base.orders ?? 0, 10) || 0);
+            const creditTermDays = Math.max(0, parseInt(base.creditTermDays ?? base.creditDays ?? 0, 10) || 0);
+            return {
+                factoryVisited: !!base.factoryVisited,
+                accurateQuote: !!base.accurateQuote,
+                firstOrderDone: !!base.firstOrderDone || orderCount > 0,
+                longTermCooperation: !!base.longTermCooperation,
+                preferredPrice: !!base.preferredPrice,
+                creditTermDays,
+                orderCount
+            };
+        }
+        function calculateSupplierTotalScore(scores) {
+            const normalized = normalizeSupplierScores(scores);
+            const total = SUPPLIER_SCORE_FIELDS.reduce((sum, field) => sum + (normalized[field.key] / 10 * field.weight), 0);
+            return Math.round(total * 10) / 10;
+        }
+        function getSupplierScoreStage(totalScore) {
+            const score = Number.isFinite(parseFloat(totalScore)) ? parseFloat(totalScore) : 0;
+            if (score >= 85) return 'core';
+            if (score >= 70) return 'trial';
+            if (score >= 50) return 'research';
+            return 'info';
+        }
+        function getSupplierEvidenceMaxStage(evidence) {
+            const e = normalizeSupplierEvidence(evidence);
+            const hasResearch = e.factoryVisited && e.accurateQuote;
+            const hasTrial = hasResearch && (e.firstOrderDone || e.orderCount > 0);
+            const hasCore = hasTrial && e.longTermCooperation && e.preferredPrice && e.creditTermDays > 0;
+            if (hasCore) return 'core';
+            if (hasTrial) return 'trial';
+            if (hasResearch) return 'research';
+            return 'info';
+        }
+        function minSupplierStage(stageA, stageB) {
+            return supplierStageByIndex(Math.min(supplierStageIndex(stageA), supplierStageIndex(stageB)));
+        }
+        function capSupplierStage(stage, evidence) {
+            return minSupplierStage(normalizeSupplierStage(stage), getSupplierEvidenceMaxStage(evidence));
+        }
+        function getSupplierSuggestedStage(scores, evidence) {
+            return minSupplierStage(getSupplierScoreStage(calculateSupplierTotalScore(scores)), getSupplierEvidenceMaxStage(evidence));
+        }
+        function normalizeSupplierEvaluation(input) {
+            const base = input && typeof input === 'object' ? input : {};
+            const scores = normalizeSupplierScores(base.scores || base);
+            const evidence = normalizeSupplierEvidence(base.evidence || base);
+            const totalScore = calculateSupplierTotalScore(scores);
+            return {
+                scores,
+                evidence,
+                totalScore,
+                suggestedStage: getSupplierSuggestedStage(scores, evidence),
+                lastReviewedAt: String(base.lastReviewedAt || '').trim()
+            };
+        }
+        function getSupplierMissingEvidenceForStage(stage, evidence) {
+            const target = supplierStageIndex(stage);
+            const e = normalizeSupplierEvidence(evidence);
+            const missing = [];
+            if (target >= supplierStageIndex('research')) {
+                if (!e.factoryVisited) missing.push('完成工厂到访');
+                if (!e.accurateQuote) missing.push('获取准确报价');
+            }
+            if (target >= supplierStageIndex('trial') && !(e.firstOrderDone || e.orderCount > 0)) missing.push('完成至少 1 次下单');
+            if (target >= supplierStageIndex('core')) {
+                if (!e.longTermCooperation) missing.push('确认长期合作关系');
+                if (!e.preferredPrice) missing.push('获得优惠价格');
+                if (!(e.creditTermDays > 0)) missing.push('记录长期账期天数');
+            }
+            return missing;
+        }
+        function getSupplierWeakness(scores) {
+            const normalized = normalizeSupplierScores(scores);
+            const sorted = SUPPLIER_SCORE_FIELDS
+                .map(field => ({ ...field, value: normalized[field.key] }))
+                .sort((a, b) => (a.value - b.value) || (b.weight - a.weight));
+            const worst = sorted[0];
+            return worst ? `${worst.label} ${worst.value.toFixed(1)}` : '-';
+        }
+        function supplierStageBadgeHtml(stage) {
+            const def = getSupplierStageDef(stage);
+            const cls = SUPPLIER_STAGE_CLASS[def.key] || SUPPLIER_STAGE_CLASS.info;
+            return `<span class="inline-flex items-center px-2.5 py-1 rounded-full border text-[10px] font-black whitespace-nowrap ${cls}">${htmlSafe(def.label)}</span>`;
+        }
         function normalizeSupplierRecord(input, idx = 0) {
             const base = input && typeof input === 'object' ? input : {};
             const nameZh = String(base.nameZh || base.nameCn || base.zhName || base.vendor || base.name || '').trim();
@@ -4976,11 +5182,20 @@ I / We, the undersigned, hereby accept the Solar PV with Battery + Inverter Syst
             const asciiSeed = normalizeSupplierCode(seed).replace(/[^A-Z0-9]/g, '').slice(0, 10);
             const fallback = asciiSeed || `SUP${String(hashStringToNumber(seed) % 10000).padStart(4, '0')}`;
             const code = normalizeSupplierCode(base.code || fallback) || fallback;
+            const evaluation = normalizeSupplierEvaluation(base.evaluation || {});
+            const stage = capSupplierStage(base.stage || base.level || evaluation.suggestedStage || 'info', evaluation.evidence);
+            const finalEvaluation = {
+                ...evaluation,
+                suggestedStage: getSupplierSuggestedStage(evaluation.scores, evaluation.evidence),
+                totalScore: calculateSupplierTotalScore(evaluation.scores)
+            };
             return {
                 id: String(base.id || `supplier_${code}`),
                 code,
                 nameZh,
                 nameEn,
+                stage,
+                evaluation: finalEvaluation,
                 logoDataUrl: getSupplierLogo(base),
                 country: String(base.country || base.region || '').trim(),
                 contact: String(base.contact || '').trim(),
@@ -5803,6 +6018,8 @@ I / We, the undersigned, hereby accept the Solar PV with Battery + Inverter Syst
 
         let quoteRows = [{ id: Date.now(), description: '', vendor: '', spec: '', batchNo: '', quantity: 1, price: 0, cost: 0, productId: '', inventoryId: '' }];
         let dbGroupMode = 'category';
+        let supplierStageFilter = 'all';
+        let supplierSortMode = 'score_desc';
         let currentLang = 'en';
         let currentCurrency = 'MYR';
         let paymentTermsConfirmed = true;
@@ -7226,17 +7443,111 @@ I / We, the undersigned, hereby accept the Solar PV with Battery + Inverter Syst
                 : 'No Product Image';
         }
 
+        function getSupplierEvaluationDetails(supplier) {
+            const s = supplier && typeof supplier === 'object' ? supplier : {};
+            const evaluation = normalizeSupplierEvaluation(s.evaluation || {});
+            const stage = capSupplierStage(s.stage || 'info', evaluation.evidence);
+            const totalScore = calculateSupplierTotalScore(evaluation.scores);
+            return {
+                stage,
+                evaluation: { ...evaluation, totalScore, suggestedStage: getSupplierSuggestedStage(evaluation.scores, evaluation.evidence) },
+                totalScore,
+                suggestedStage: getSupplierSuggestedStage(evaluation.scores, evaluation.evidence),
+                evidenceMaxStage: getSupplierEvidenceMaxStage(evaluation.evidence),
+                weakness: getSupplierWeakness(evaluation.scores)
+            };
+        }
+
+        function renderSupplierFunnelSummary(allSuppliers) {
+            const wrap = document.getElementById('supplier-funnel-summary');
+            if (!wrap) return;
+            const list = Array.isArray(allSuppliers) ? allSuppliers : [];
+            const totalAll = list.length;
+            wrap.innerHTML = SUPPLIER_STAGES.map(stage => {
+                const rows = list.filter(s => getSupplierEvaluationDetails(s).stage === stage.key);
+                const avg = rows.length
+                    ? rows.reduce((sum, s) => sum + getSupplierEvaluationDetails(s).totalScore, 0) / rows.length
+                    : 0;
+                const active = supplierStageFilter === stage.key;
+                const cls = active
+                    ? 'border-purple-200 bg-white text-purple-800 shadow-sm'
+                    : 'border-slate-200 bg-white/70 text-slate-600 hover:border-purple-200';
+                return `
+                    <button type="button" onclick="setSupplierStageFilter('${stage.key}')" class="text-left rounded-xl border px-4 py-3 transition-all ${cls}">
+                        <div class="flex items-center justify-between gap-3">
+                            <span class="text-xs font-black">${htmlSafe(stage.label)}</span>
+                            <span class="text-lg font-black">${rows.length}</span>
+                        </div>
+                        <div class="mt-1 flex items-center justify-between gap-2 text-[10px] font-bold text-slate-400">
+                            <span>${htmlSafe(stage.desc)}</span>
+                            <span>均分 ${avg.toFixed(1)}</span>
+                        </div>
+                    </button>
+                `;
+            }).join('');
+            const allBtn = document.getElementById('supplier-filter-all');
+            if (allBtn) {
+                allBtn.className = supplierStageFilter === 'all'
+                    ? 'px-3 py-2 rounded-xl border border-purple-200 bg-white text-xs font-black text-purple-800 shadow-sm'
+                    : 'px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-black text-slate-600 hover:border-purple-200';
+                allBtn.textContent = `全部供应商 (${totalAll})`;
+            }
+        }
+
+        window.setSupplierStageFilter = (stage) => {
+            supplierStageFilter = stage === 'all' ? 'all' : normalizeSupplierStage(stage);
+            renderSuppliers();
+        };
+
+        window.setSupplierSortMode = (mode) => {
+            supplierSortMode = String(mode || 'score_desc');
+            renderSuppliers();
+        };
+
         function renderSuppliers() {
             const list = document.getElementById('supplier-list');
             if (!list) return;
             ensureSupplierData();
+            renderSupplierFunnelSummary(suppliers);
             if (!suppliers.length) {
-                list.innerHTML = `<tr><td colspan="10" class="py-12 text-center text-slate-400 text-sm">暂无供应商，请先新增供应商后再维护产品档案。</td></tr>`;
+                list.innerHTML = `<tr><td colspan="13" class="py-12 text-center text-slate-400 text-sm">暂无供应商，请先新增供应商后再维护产品档案。</td></tr>`;
                 updateSupplierSelects();
                 return;
             }
-            list.innerHTML = suppliers.map(s => {
+            const searchEl = document.getElementById('supplier-search');
+            const sortEl = document.getElementById('supplier-sort');
+            const query = String(searchEl?.value || '').trim().toLowerCase();
+            supplierSortMode = String(sortEl?.value || supplierSortMode || 'score_desc');
+            const rows = suppliers.map(s => {
+                const details = getSupplierEvaluationDetails(s);
                 const linked = products.filter(p => normalizeSupplierCode(p.supplierCode) === normalizeSupplierCode(s.code)).length;
+                const hay = [
+                    s.code, s.nameZh, s.nameEn, s.country, s.contact, s.contactInfo, s.website, s.address, s.notes,
+                    getSupplierStageDef(details.stage).label, getSupplierStageDef(details.suggestedStage).label
+                ].filter(Boolean).map(v => String(v).toLowerCase()).join(' | ');
+                return { supplier: s, details, linked, hay };
+            }).filter(row => {
+                if (supplierStageFilter !== 'all' && row.details.stage !== supplierStageFilter) return false;
+                return !query || row.hay.includes(query);
+            });
+            rows.sort((a, b) => {
+                if (supplierSortMode === 'stage_desc') {
+                    const stageDiff = supplierStageIndex(b.details.stage) - supplierStageIndex(a.details.stage);
+                    if (stageDiff) return stageDiff;
+                    return b.details.totalScore - a.details.totalScore;
+                }
+                if (supplierSortMode === 'name_asc') return getSupplierDisplayName(a.supplier).localeCompare(getSupplierDisplayName(b.supplier));
+                return (b.details.totalScore - a.details.totalScore) || supplierStageIndex(b.details.stage) - supplierStageIndex(a.details.stage);
+            });
+            if (!rows.length) {
+                list.innerHTML = `<tr><td colspan="13" class="py-12 text-center text-slate-400 text-sm">没有匹配当前筛选条件的供应商。</td></tr>`;
+                updateSupplierSelects();
+                return;
+            }
+            list.innerHTML = rows.map(row => {
+                const s = row.supplier;
+                const details = row.details;
+                const linked = row.linked;
                 const logo = getSupplierLogo(s)
                     ? `<img src="${htmlSafe(getSupplierLogo(s))}" class="h-10 w-20 object-contain rounded-lg bg-white border border-slate-100" alt="${htmlSafe(getSupplierDisplayName(s))} logo">`
                     : `<div class="h-10 w-20 rounded-lg bg-slate-50 border border-dashed border-slate-200 flex items-center justify-center text-[10px] text-slate-300">No Logo</div>`;
@@ -7249,6 +7560,12 @@ I / We, the undersigned, hereby accept the Solar PV with Battery + Inverter Syst
                         <td class="py-4 px-4">${logo}</td>
                         <td class="py-4 px-4 text-sm font-bold text-slate-700">${htmlSafe(s.nameZh || '-')}</td>
                         <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(s.nameEn || '-')}</td>
+                        <td class="py-4 px-4">${supplierStageBadgeHtml(details.stage)}</td>
+                        <td class="py-4 px-4 text-right">
+                            <div class="font-black text-sm text-slate-800">${details.totalScore.toFixed(1)}</div>
+                            <div class="text-[9px] text-slate-400 font-bold">建议 ${htmlSafe(getSupplierStageDef(details.suggestedStage).shortLabel)}</div>
+                        </td>
+                        <td class="py-4 px-4 text-xs text-slate-500">${htmlSafe(details.weakness)}</td>
                         <td class="py-4 px-4 text-xs text-slate-500">${htmlSafe(s.country || '-')}</td>
                         <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(s.contact || '-')}</td>
                         <td class="py-4 px-4 text-xs text-slate-500">${htmlSafe(s.contactInfo || '-')}</td>
@@ -7264,6 +7581,120 @@ I / We, the undersigned, hereby accept the Solar PV with Battery + Inverter Syst
                 `;
             }).join('');
             updateSupplierSelects();
+        }
+
+        function renderSupplierScoreFields(evaluation = {}) {
+            const wrap = document.getElementById('supplier-score-fields');
+            if (!wrap) return;
+            const scores = normalizeSupplierScores(evaluation.scores || {});
+            wrap.innerHTML = SUPPLIER_SCORE_FIELDS.map(field => {
+                const value = scores[field.key];
+                return `
+                    <div>
+                        <label class="flex items-center justify-between gap-2 text-[10px] font-black text-slate-400 uppercase mb-1">
+                            <span>${htmlSafe(field.label)}</span>
+                            <span>${field.weight}%</span>
+                        </label>
+                        <input id="supplier-score-${field.key}" type="number" min="0" max="10" step="0.5" value="${value}" oninput="updateSupplierEvaluationPreview()" class="w-full border border-slate-200 rounded-xl p-2 text-sm outline-none focus:border-purple-600 bg-white">
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function setSupplierCheck(id, checked) {
+            const el = document.getElementById(id);
+            if (el) el.checked = !!checked;
+        }
+
+        function setSupplierInputValue(id, value) {
+            const el = document.getElementById(id);
+            if (el) el.value = String(value ?? '');
+        }
+
+        function readSupplierScoresFromModal() {
+            return SUPPLIER_SCORE_FIELDS.reduce((acc, field) => {
+                acc[field.key] = normalizeSupplierScore(document.getElementById(`supplier-score-${field.key}`)?.value);
+                return acc;
+            }, {});
+        }
+
+        function readSupplierEvidenceFromModal() {
+            return normalizeSupplierEvidence({
+                factoryVisited: !!document.getElementById('supplier-evidence-factory-visited')?.checked,
+                accurateQuote: !!document.getElementById('supplier-evidence-accurate-quote')?.checked,
+                firstOrderDone: !!document.getElementById('supplier-evidence-first-order')?.checked,
+                longTermCooperation: !!document.getElementById('supplier-evidence-long-term')?.checked,
+                preferredPrice: !!document.getElementById('supplier-evidence-preferred-price')?.checked,
+                orderCount: document.getElementById('supplier-evidence-order-count')?.value || 0,
+                creditTermDays: document.getElementById('supplier-evidence-credit-days')?.value || 0
+            });
+        }
+
+        function readSupplierEvaluationDraft({ touch = false } = {}) {
+            return normalizeSupplierEvaluation({
+                scores: readSupplierScoresFromModal(),
+                evidence: readSupplierEvidenceFromModal(),
+                lastReviewedAt: touch ? new Date().toISOString() : String(window.__supplierLastReviewedAt || '')
+            });
+        }
+
+        window.updateSupplierEvaluationPreview = () => {
+            const preview = document.getElementById('supplier-evaluation-preview');
+            if (!preview) return;
+            const evaluation = readSupplierEvaluationDraft();
+            const requestedStage = normalizeSupplierStage(document.getElementById('supplier-stage')?.value || 'info');
+            const cappedStage = capSupplierStage(requestedStage, evaluation.evidence);
+            const suggestedStage = getSupplierSuggestedStage(evaluation.scores, evaluation.evidence);
+            const evidenceMaxStage = getSupplierEvidenceMaxStage(evaluation.evidence);
+            const missing = getSupplierMissingEvidenceForStage(requestedStage, evaluation.evidence);
+            const capNote = requestedStage === cappedStage
+                ? `可保存为 ${getSupplierStageDef(cappedStage).label}`
+                : `证据不足，保存时将降为 ${getSupplierStageDef(cappedStage).label}`;
+            const reviewedAt = window.__supplierLastReviewedAt ? new Date(window.__supplierLastReviewedAt).toLocaleDateString('zh-CN') : '未评估';
+            preview.innerHTML = `
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="text-2xl font-black text-purple-800">${evaluation.totalScore.toFixed(1)}</span>
+                        <span class="text-[10px] font-black text-slate-400 uppercase">/ 100</span>
+                        <span class="text-xs font-bold text-slate-500">建议：${htmlSafe(getSupplierStageDef(suggestedStage).label)}</span>
+                        <span class="text-xs font-bold text-slate-500">证据上限：${htmlSafe(getSupplierStageDef(evidenceMaxStage).label)}</span>
+                    </div>
+                    <span class="text-[10px] font-bold text-slate-400">上次评估：${htmlSafe(reviewedAt)}</span>
+                </div>
+                <div class="mt-2 text-xs font-bold ${requestedStage === cappedStage ? 'text-emerald-700' : 'text-amber-700'}">${htmlSafe(capNote)}</div>
+                ${missing.length ? `<div class="mt-1 text-[11px] text-red-500 font-bold">缺少：${missing.map(htmlSafe).join('、')}</div>` : ''}
+            `;
+        };
+
+        function setSupplierEvaluationToModal(supplier) {
+            const details = getSupplierEvaluationDetails(supplier || {});
+            const evaluation = details.evaluation;
+            window.__supplierLastReviewedAt = evaluation.lastReviewedAt || '';
+            renderSupplierScoreFields(evaluation);
+            setSupplierInputValue('supplier-stage', details.stage);
+            const e = normalizeSupplierEvidence(evaluation.evidence);
+            setSupplierCheck('supplier-evidence-factory-visited', e.factoryVisited);
+            setSupplierCheck('supplier-evidence-accurate-quote', e.accurateQuote);
+            setSupplierCheck('supplier-evidence-first-order', e.firstOrderDone);
+            setSupplierCheck('supplier-evidence-long-term', e.longTermCooperation);
+            setSupplierCheck('supplier-evidence-preferred-price', e.preferredPrice);
+            setSupplierInputValue('supplier-evidence-order-count', e.orderCount);
+            setSupplierInputValue('supplier-evidence-credit-days', e.creditTermDays);
+            window.updateSupplierEvaluationPreview();
+        }
+
+        function readSupplierAssessmentFromModal() {
+            const evaluation = readSupplierEvaluationDraft({ touch: true });
+            const requestedStage = normalizeSupplierStage(document.getElementById('supplier-stage')?.value || 'info');
+            const stage = capSupplierStage(requestedStage, evaluation.evidence);
+            return {
+                stage,
+                evaluation: {
+                    ...evaluation,
+                    totalScore: calculateSupplierTotalScore(evaluation.scores),
+                    suggestedStage: getSupplierSuggestedStage(evaluation.scores, evaluation.evidence)
+                }
+            };
         }
 
         window.openSupplierModal = (code = '') => {
@@ -7283,6 +7714,7 @@ I / We, the undersigned, hereby accept the Solar PV with Battery + Inverter Syst
             setVal('supplier-website', supplier?.website || '');
             setVal('supplier-address', supplier?.address || '');
             setVal('supplier-notes', supplier?.notes || '');
+            setSupplierEvaluationToModal(supplier || {});
             window.__supplierLogoDraft = supplier ? getSupplierLogo(supplier) : '';
             const fileEl = document.getElementById('supplier-logo-file');
             if (fileEl) fileEl.value = '';
@@ -7295,6 +7727,7 @@ I / We, the undersigned, hereby accept the Solar PV with Battery + Inverter Syst
             if (modal) modal.classList.add('hidden');
             window.__editingSupplierCode = '';
             window.__supplierLogoDraft = '';
+            window.__supplierLastReviewedAt = '';
         };
 
         window.uploadSupplierLogo = async (input) => {
@@ -7321,12 +7754,15 @@ I / We, the undersigned, hereby accept the Solar PV with Battery + Inverter Syst
             if (duplicate) return alert('供应商编码已存在，请换一个编码');
             const prev = oldCode ? getSupplierByCode(oldCode) : null;
             const prevDisplay = prev ? getSupplierDisplayName(prev) : '';
+            const assessment = readSupplierAssessmentFromModal();
             const next = normalizeSupplierRecord({
                 ...(prev || {}),
                 id: prev?.id || `supplier_${code}`,
                 code,
                 nameZh,
                 nameEn,
+                stage: assessment.stage,
+                evaluation: assessment.evaluation,
                 logoDataUrl: String(window.__supplierLogoDraft || ''),
                 country: document.getElementById('supplier-country')?.value || '',
                 contact: document.getElementById('supplier-contact')?.value || '',

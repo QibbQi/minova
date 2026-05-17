@@ -8,6 +8,22 @@ function fromBase64Utf8(b64) {
   return decodeURIComponent(escape(atob(b64)))
 }
 
+function base64ToBytes(b64) {
+  const bin = atob(b64)
+  const bytes = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+  return bytes
+}
+
+function fromBase64Utf8Safe(b64) {
+  const clean = String(b64 || '').replaceAll('\n', '')
+  try {
+    return new TextDecoder().decode(base64ToBytes(clean))
+  } catch {
+    return fromBase64Utf8(clean)
+  }
+}
+
 function encodeContentPath(path) {
   return String(path || '')
     .split('/')
@@ -23,10 +39,53 @@ function encodeRefPath(ref) {
 }
 
 export function createRepoStore({ api }) {
+  async function getFileViaGitDataApi({ owner, repo, path, branch }) {
+    const cleanPath = String(path || '').replace(/^\//, '')
+    const ref = await api.get(`/repos/${owner}/${repo}/git/ref/heads/${encodeRefPath(branch || '')}`)
+    const headSha = ref?.object?.sha
+    if (!headSha) throw new Error('Unable to resolve branch head')
+
+    const headCommit = await api.get(`/repos/${owner}/${repo}/git/commits/${headSha}`)
+    const baseTreeSha = headCommit?.tree?.sha
+    if (!baseTreeSha) throw new Error('Unable to resolve base tree')
+
+    const tree = await api.get(`/repos/${owner}/${repo}/git/trees/${baseTreeSha}?recursive=1`)
+    const items = Array.isArray(tree?.tree) ? tree.tree : []
+    const hit = items.find((it) => String(it?.path || '') === cleanPath && String(it?.type || '') === 'blob')
+    const blobSha = hit?.sha
+    if (!blobSha) throw new Error('Unable to resolve blob sha')
+
+    const blob = await api.get(`/repos/${owner}/${repo}/git/blobs/${blobSha}`)
+    const encoding = String(blob?.encoding || '')
+    const content = encoding === 'base64' ? fromBase64Utf8Safe(blob?.content || '') : String(blob?.content || '')
+    return { sha: blobSha, content, raw: blob }
+  }
+
   async function getFile({ owner, repo, path, branch }) {
+    const cleanPath = String(path || '').replace(/^\//, '')
     const ref = branch ? `?ref=${encodeURIComponent(branch)}` : ''
-    const data = await api.get(`/repos/${owner}/${repo}/contents/${encodeContentPath(path)}${ref}`)
-    const content = data?.content ? fromBase64Utf8(data.content.replaceAll('\n', '')) : ''
+    let data = null
+    try {
+      data = await api.get(`/repos/${owner}/${repo}/contents/${encodeContentPath(cleanPath)}${ref}`)
+    } catch (e) {
+      if (e?.status === 403 && branch) return getFileViaGitDataApi({ owner, repo, path: cleanPath, branch })
+      throw e
+    }
+    let content = ''
+    if (data?.content) {
+      content = fromBase64Utf8Safe(data.content)
+    } else if (data?.download_url && typeof api.fetchText === 'function') {
+      try {
+        content = await api.fetchText(data.download_url, { method: 'GET' })
+      } catch (e) {
+        content = ''
+      }
+    }
+    if (!content && branch) {
+      try {
+        return await getFileViaGitDataApi({ owner, repo, path: cleanPath, branch })
+      } catch (e) {}
+    }
     return { sha: data?.sha || null, content, raw: data }
   }
 

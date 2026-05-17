@@ -700,21 +700,6 @@
         </div>
     </div>
 
-    <div class="border border-slate-200 rounded-xl mb-4">
-        <div class="flex items-center justify-between p-4">
-            <span class="text-sm font-bold text-slate-700">【导出选项】</span>
-        </div>
-        <div class="px-4 pb-4">
-            <label class="flex items-start gap-2 py-1 cursor-pointer">
-                <input id="qa-rotate-siteoverview" type="checkbox" class="w-4 h-4 text-purple-600 mt-0.5" onchange="onRotateSiteOverviewPrintChanged(this.checked)">
-                <div class="flex flex-col">
-                    <span class="text-sm text-slate-700">第 5 页画布旋转打印（右转 90°）</span>
-                    <span class="text-xs text-slate-400">仅影响 PDF 导出，不影响网页端显示</span>
-                </div>
-            </label>
-        </div>
-    </div>
-
     <!-- 公司级认证 -->
     <div class="border border-slate-200 rounded-xl mb-4">
         <div class="flex items-center justify-between p-4 cursor-pointer" onclick="toggleCertSection('company')">
@@ -1327,8 +1312,8 @@
 
         let quoteRows = [{ id: Date.now(), description: '', vendor: '', spec: '', batchNo: '', quantity: 1, price: 0, cost: 0, productId: '', inventoryId: '' }];
         let dbGroupMode = 'category';
-        let currentLang = 'en';
-        let currentCurrency = 'MYR';
+        let currentLang = 'zh';
+        let currentCurrency = 'CNY';
         let paymentTermsConfirmed = true;
         let quoteSplit = { enabled: false, afterRowId: null };
         let validityDays = 30;
@@ -1344,16 +1329,6 @@
             renderValidityBadge();
         };
         const apiKey = ""; 
-        const QUOTE_TERMS_DEFAULT_EN = "Terms:\nThis quotation is subject to a thorough site assessment. Costs may vary if non-standard installation is required, including but not limited to additional hacking, cabling, trunking, customization, or any work outside the standard installation scope.\n\nConfirmation:\nI / We, the undersigned, hereby accept the Solar PV with Battery + Inverter System and the aforementioned price, specifications, terms and conditions, and agree for Minova Holdings Sdn. Bhd. to commence the system design, procurement and installation.";
-        const QUOTE_TERMS_OLD_DEFAULT_ZH = "条款：\n本报价以现场全面勘察为准。如需采用非标准安装方式（包括但不限于额外开槽/破拆、布线、线槽/桥架、定制加工或任何超出标准安装范围的工作），费用可能调整。\n\n确认：\n本人/本公司（签署人）确认接受“光伏+电池+逆变器系统”及上述价格、规格、条款与条件，并同意由 Minova Holdings Sdn. Bhd. 开始进行系统设计、采购与安装。";
-        const QUOTE_TERMS_OLD_DEFAULT_EN = "Conditions:\nThis quotation is subject to a thorough site assessment. The cost may vary if non-standard installation is applied which require additional hacking, cabling, trunking, customization, or any other out of our standard installation.\n\nConfirmation:\nI / We, the undersigned hereby accept the Solar PV with Battery + Inverter System and the aforementioned price, specification, terms and conditions and would like to commence with the design, procurement and installation of the system by Minova Holdings. Sdn. Bhd.";
-        const normalizeQuoteTermsDefaultText = (value, fallback = QUOTE_TERMS_DEFAULT_EN) => {
-            const raw = String(value ?? '');
-            const norm = raw.replace(/\r\n/g, '\n').trim();
-            if (!norm) return fallback;
-            if (norm === QUOTE_TERMS_OLD_DEFAULT_ZH.trim() || norm === QUOTE_TERMS_OLD_DEFAULT_EN.trim()) return fallback;
-            return raw;
-        };
         try {
             const savedSplit = localStorage.getItem('minova_quote_split');
             if (savedSplit) {
@@ -1399,90 +1374,7 @@
                 email: "邮箱",
                 nricPassport: "身份证/护照",
                 signatureDate: "日期",
-                termsDefault: QUOTE_TERMS_DEFAULT_EN,
-                siteOverview: {
-                    uploadBg: "上传背景",
-                    addPv: "添加PV",
-                    addComp: "其他组件",
-                    copy: "复制",
-                    del: "删除",
-                    toTop: "置顶",
-                    moveUp: "上移",
-                    rotL: "左90°",
-                    rotR: "右90°",
-                    undo: "撤销",
-                    redo: "重做",
-                    clearMarks: "清除标注",
-                    deleteMarks: "删除标注",
-                    clearAll: "清除全部",
-                    toolbarMode: "模式",
-                    toolbarSelect: "选择组件",
-                    toolbarMarks: "选择标注",
-                    toolbarDist: "测距",
-                    toolbarArea: "面积",
-                    toolbarEditVertices: "编辑顶点",
-                    toolbarScaleLock: "缩放锁定",
-                    toolbarMoveLock: "移动锁定",
-                    toolbarRulers: "标尺",
-                    toolbarSnap: "磁吸",
-                    toolbarGrid: "网格",
-                    cardModule: "组件",
-                    cardText: "文字",
-                    cardMeasure: "测距/面积",
-                    moduleRoof: "屋顶 (m)",
-                    moduleDims: "组件 (m)",
-                    qty: "数量",
-                    opacity: "透明度",
-                    vertexLock: "顶点锁定",
-                    textSize: "字号",
-                    textWeight: "粗细",
-                    weightThin: "极细",
-                    weightReg: "细",
-                    weightSemi: "中",
-                    weightBold: "粗",
-                    textColor: "字色",
-                    bg: "底色",
-                    noBg: "无背景",
-                    content: "内容",
-                    distColor: "颜色",
-                    distMarker: "端点",
-                    markerCross: "十",
-                    markerDot: "点",
-                    markerDiamond: "菱",
-                    markerArrowA: "起点箭头",
-                    markerArrowB: "终点箭头",
-                    markerArrowAB: "双端箭头",
-                    distConstraint: "约束",
-                    constraintFree: "自由",
-                    constraintH: "水平",
-                    constraintV: "垂直",
-                    areaBg: "底色",
-                    areaVerts: "顶点",
-                    areaOpacity: "透明",
-                    areaHatch: "底纹",
-                    hatchSolid: "纯色",
-                    hatchDiag: "斜线",
-                    hatchCross: "交叉",
-                    hatchGrid: "网格",
-                    areaText: "文字",
-                    customTitle: "添加其他组件",
-                    customText: "文字",
-                    customShape: "图形",
-                    shapeRect: "矩形",
-                    shapeCircle: "圆形",
-                    shapeTriangle: "三角形",
-                    shapeDiamond: "菱形",
-                    shapeHex: "六边形",
-                    shapeArrow: "箭头",
-                    shapePolygon: "多边形",
-                    customPolyVerts: "顶点数",
-                    customVLock: "顶点锁定",
-                    customBg: "背景色",
-                    customNoBg: "无背景",
-                    customFg: "字体色",
-                    cancel: "取消",
-                    add: "添加"
-                }
+                termsDefault: "条款：\n本报价以现场全面勘察为准。如需采用非标准安装方式（包括但不限于额外开槽/破拆、布线、线槽/桥架、定制加工或任何超出标准安装范围的工作），费用可能调整。\n\n确认：\n本人/本公司（签署人）确认接受“光伏+电池+逆变器系统”及上述价格、规格、条款与条件，并同意由 Minova Holdings Sdn. Bhd. 开始进行系统设计、采购与安装。"
             },
             en: {
                 title: "QUOTATION", toCustomer: "To Customer:", quoteNo: "Quote No.:", quoteDate: "Date:",
@@ -1520,90 +1412,7 @@
                 email: "Email",
                 nricPassport: "NRIC/Passport",
                 signatureDate: "Date",
-                termsDefault: QUOTE_TERMS_DEFAULT_EN,
-                siteOverview: {
-                    uploadBg: "Upload BG",
-                    addPv: "Add PV",
-                    addComp: "Add Comp",
-                    copy: "Copy",
-                    del: "Delete",
-                    toTop: "To Top",
-                    moveUp: "Up",
-                    rotL: "Left 90°",
-                    rotR: "Right 90°",
-                    undo: "Undo",
-                    redo: "Redo",
-                    clearMarks: "Clear Marks",
-                    deleteMarks: "Delete Marks",
-                    clearAll: "Clear All",
-                    toolbarMode: "Mode",
-                    toolbarSelect: "Select",
-                    toolbarMarks: "Marks",
-                    toolbarDist: "Dist",
-                    toolbarArea: "Area",
-                    toolbarEditVertices: "Edit vertices",
-                    toolbarScaleLock: "Scale lock",
-                    toolbarMoveLock: "Move lock",
-                    toolbarRulers: "Rulers",
-                    toolbarSnap: "Snap",
-                    toolbarGrid: "Grid",
-                    cardModule: "Module",
-                    cardText: "Text",
-                    cardMeasure: "Distance / Area",
-                    moduleRoof: "Roof (m)",
-                    moduleDims: "Module (m)",
-                    qty: "Qty",
-                    opacity: "Opacity",
-                    vertexLock: "Vertex lock",
-                    textSize: "Size",
-                    textWeight: "Weight",
-                    weightThin: "Thin",
-                    weightReg: "Regular",
-                    weightSemi: "Semi",
-                    weightBold: "Bold",
-                    textColor: "Text",
-                    bg: "BG",
-                    noBg: "No BG",
-                    content: "Content",
-                    distColor: "Color",
-                    distMarker: "Marker",
-                    markerCross: "Cross",
-                    markerDot: "Dot",
-                    markerDiamond: "Diamond",
-                    markerArrowA: "Arrow A",
-                    markerArrowB: "Arrow B",
-                    markerArrowAB: "Double",
-                    distConstraint: "Constraint",
-                    constraintFree: "Free",
-                    constraintH: "Horizontal",
-                    constraintV: "Vertical",
-                    areaBg: "BG",
-                    areaVerts: "Verts",
-                    areaOpacity: "Opacity",
-                    areaHatch: "Hatch",
-                    hatchSolid: "Solid",
-                    hatchDiag: "Diag",
-                    hatchCross: "Cross",
-                    hatchGrid: "Grid",
-                    areaText: "Text",
-                    customTitle: "Add Component",
-                    customText: "Text",
-                    customShape: "Shape",
-                    shapeRect: "Rect",
-                    shapeCircle: "Circle",
-                    shapeTriangle: "Triangle",
-                    shapeDiamond: "Diamond",
-                    shapeHex: "Hex",
-                    shapeArrow: "Arrow",
-                    shapePolygon: "Polygon",
-                    customPolyVerts: "Verts",
-                    customVLock: "Vertex lock",
-                    customBg: "Background",
-                    customNoBg: "No BG",
-                    customFg: "Text color",
-                    cancel: "Cancel",
-                    add: "Add"
-                }
+                termsDefault: "Conditions:\nThis quotation is subject to a thorough site assessment. The cost may vary if non-standard installation is applied which require additional hacking, cabling, trunking, customization, or any other out of our standard installation.\n\nConfirmation:\nI / We, the undersigned hereby accept the Solar PV with Battery + Inverter System and the aforementioned price, specification, terms and conditions and would like to commence with the design, procurement and installation of the system by Minova Holdings. Sdn. Bhd."
             }
         };
 
@@ -1655,15 +1464,9 @@
             openCertAttachmentModal();
         };
 
-        window.renderCurrencyButton = () => {
-            const btn = document.getElementById('btn-currency');
-            if (!btn) return;
-            btn.textContent = currentCurrency === 'CNY' ? '¥ / RM' : 'RM / ¥';
-        };
-
         window.toggleCurrency = () => {
             currentCurrency = currentCurrency === 'CNY' ? 'MYR' : 'CNY';
-            window.renderCurrencyButton?.();
+            document.getElementById('btn-currency').textContent = currentCurrency === 'CNY' ? '¥ / RM' : 'RM / ¥';
             renderQuote();
         };
 
@@ -1682,25 +1485,6 @@
             calculateQuote();
         };
 
-        window.resetPaymentTermsToDefault = () => {
-            const c = document.getElementById('payment-confirmation-percent');
-            const i = document.getElementById('payment-installation-percent');
-            const t = document.getElementById('payment-testing-percent');
-            const f = document.getElementById('payment-final-percent');
-            if (c) c.value = 30;
-            if (i) i.value = 40;
-            if (t) t.value = 30;
-            if (f) f.value = 0;
-
-            const finalContainer = document.getElementById('payment-final-container');
-            const addBtn = document.getElementById('btn-add-payment');
-            if (finalContainer) finalContainer.classList.add('hidden');
-            if (addBtn) addBtn.classList.remove('hidden');
-
-            paymentTermsConfirmed = true;
-            calculateQuote();
-        };
-
         window.toggleFinalPayment = (show) => {
             const container = document.getElementById('payment-final-container');
             const addBtn = document.getElementById('btn-add-payment');
@@ -1709,12 +1493,6 @@
             if (show) {
                 container.classList.remove('hidden');
                 addBtn.classList.add('hidden');
-                const t = i18n[currentLang];
-                const label = document.getElementById('lbl-final');
-                if (label && !String(label.value || '').trim()) {
-                    label.value = t.final;
-                }
-                try { autosizeAllTextareas(container); } catch (e) {}
             } else {
                 container.classList.add('hidden');
                 addBtn.classList.remove('hidden');
@@ -1930,10 +1708,8 @@
             if (termsEl) {
                 try {
                     const prevLang = termsEl.dataset.lang || currentLang;
-                    localStorage.setItem(`minova_terms_text_${prevLang}`, normalizeQuoteTermsDefaultText(termsEl.value, t.termsDefault));
-                    const storedVal = localStorage.getItem(`minova_terms_text_${currentLang}`);
-                    const nextVal = storedVal == null ? t.termsDefault : normalizeQuoteTermsDefaultText(storedVal, t.termsDefault);
-                    localStorage.setItem(`minova_terms_text_${currentLang}`, nextVal);
+                    localStorage.setItem(`minova_terms_text_${prevLang}`, termsEl.value);
+                    const nextVal = localStorage.getItem(`minova_terms_text_${currentLang}`) ?? t.termsDefault;
                     termsEl.value = nextVal;
                 } catch (e) {
                     termsEl.value = t.termsDefault;
@@ -1968,118 +1744,11 @@
             const p2 = document.getElementById('lbl-page2-title');
             if(p2) p2.textContent = currentLang === 'zh' ? '投资回报分析' : 'ROI / FINANCIAL ANALYSIS';
             const p3 = document.getElementById('lbl-page3-title');
-            if(p3) p3.innerHTML = currentLang === 'zh' ? '产品明细与质保' : 'PART BREAKDOWN<br>&amp; WARRANTY';
+            if(p3) p3.textContent = currentLang === 'zh' ? '产品明细与质保' : 'PART BREAKDOWN & WARRANTY';
             const p4 = document.getElementById('lbl-page4-title');
             if(p4) p4.textContent = currentLang === 'zh' ? '参考信息' : 'REFERENCE';
             const p5 = document.getElementById('lbl-page5-title');
             if(p5) p5.textContent = currentLang === 'zh' ? '现场概览' : 'SITE OVERVIEW';
-
-            const so = t.siteOverview;
-            if (so) {
-                const set = (id, v) => {
-                    const el = document.getElementById(id);
-                    if (el) el.textContent = String(v ?? '');
-                };
-                const setOpt = (selectId, value, label) => {
-                    const sel = document.getElementById(selectId);
-                    if (!sel) return;
-                    const opt = Array.from(sel.options || []).find(o => String(o.value) === String(value));
-                    if (opt) opt.textContent = String(label ?? '');
-                };
-
-                set('so-btn-upload', so.uploadBg);
-                set('so-btn-add-pv', so.addPv);
-                set('so-btn-add-custom', so.addComp);
-                set('so-btn-copy', so.copy);
-                set('so-btn-delete', so.del);
-                set('so-btn-to-top', so.toTop);
-                set('so-btn-move-up', so.moveUp);
-                set('so-btn-rot-l', so.rotL);
-                set('so-btn-rot-r', so.rotR);
-                set('so-btn-undo', so.undo);
-                set('so-btn-redo', so.redo);
-                set('so-btn-clear-measures', so.clearMarks);
-                set('so-btn-delete-measures', so.deleteMarks);
-                set('so-btn-clear-all', so.clearAll);
-
-                set('so-toolbar-mode', so.toolbarMode);
-                set('so-toolbar-lock-scale', so.toolbarScaleLock);
-                set('so-toolbar-lock-move', so.toolbarMoveLock);
-                set('so-toolbar-rulers', so.toolbarRulers);
-                set('so-toolbar-snap', so.toolbarSnap);
-                set('so-toolbar-grid', so.toolbarGrid);
-
-                setOpt('roof-tool-mode', 'select_modules', so.toolbarSelect);
-                setOpt('roof-tool-mode', 'select_measures', so.toolbarMarks);
-                setOpt('roof-tool-mode', 'measure_dist', so.toolbarDist);
-                setOpt('roof-tool-mode', 'measure_area', so.toolbarArea);
-                setOpt('roof-tool-mode', 'edit_vertices', so.toolbarEditVertices);
-
-                set('so-card-module-title', so.cardModule);
-                set('so-card-text-title', so.cardText);
-                set('so-card-measure-title', so.cardMeasure);
-
-                set('so-module-roof', so.moduleRoof);
-                set('so-module-dims', so.moduleDims);
-                set('so-module-qty', so.qty);
-                set('so-module-opacity', so.opacity);
-                set('so-module-vertex-lock', so.vertexLock);
-
-                set('so-text-size', so.textSize);
-                set('so-text-weight', so.textWeight);
-                set('so-text-color', so.textColor);
-                set('so-text-bg', so.bg);
-                set('so-text-content', so.content);
-
-                setOpt('roof-label-weight', '200', so.weightThin);
-                setOpt('roof-label-weight', '400', so.weightReg);
-                setOpt('roof-label-weight', '600', so.weightSemi);
-                setOpt('roof-label-weight', '900', so.weightBold);
-
-                set('so-dist-color', so.distColor);
-                set('so-dist-marker', so.distMarker);
-                set('so-dist-constraint', so.distConstraint);
-
-                setOpt('roof-dist-marker', 'cross', so.markerCross);
-                setOpt('roof-dist-marker', 'dot', so.markerDot);
-                setOpt('roof-dist-marker', 'diamond', so.markerDiamond);
-                setOpt('roof-dist-marker', 'arrow_a', so.markerArrowA);
-                setOpt('roof-dist-marker', 'arrow_b', so.markerArrowB);
-                setOpt('roof-dist-marker', 'arrow_ab', so.markerArrowAB);
-
-                setOpt('roof-dist-constraint', 'free', so.constraintFree);
-                setOpt('roof-dist-constraint', 'horizontal', so.constraintH);
-                setOpt('roof-dist-constraint', 'vertical', so.constraintV);
-
-                set('so-area-bg', so.areaBg);
-                set('so-area-verts', so.areaVerts);
-                set('so-area-opacity', so.areaOpacity);
-                set('so-area-pattern', so.areaHatch);
-                set('so-area-text', so.areaText);
-
-                setOpt('roof-area-pattern', 'none', so.hatchSolid);
-                setOpt('roof-area-pattern', 'diag', so.hatchDiag);
-                setOpt('roof-area-pattern', 'cross', so.hatchCross);
-                setOpt('roof-area-pattern', 'grid', so.hatchGrid);
-
-                set('so-custom-modal-title', so.customTitle);
-                set('so-custom-modal-text-label', so.customText);
-                set('so-custom-modal-shape-label', so.customShape);
-                setOpt('roof-custom-shape', 'rect', so.shapeRect);
-                setOpt('roof-custom-shape', 'circle', so.shapeCircle);
-                setOpt('roof-custom-shape', 'triangle', so.shapeTriangle);
-                setOpt('roof-custom-shape', 'diamond', so.shapeDiamond);
-                setOpt('roof-custom-shape', 'hex', so.shapeHex);
-                setOpt('roof-custom-shape', 'arrow', so.shapeArrow);
-                setOpt('roof-custom-shape', 'polygon', so.shapePolygon);
-                set('so-custom-modal-vertex-lock', so.customVLock);
-                set('so-custom-modal-polygon-n-label', so.customPolyVerts);
-                set('so-custom-modal-bg-label', so.customBg);
-                set('so-custom-modal-bg-none', so.customNoBg);
-                set('so-custom-modal-fg-label', so.customFg);
-                set('so-custom-modal-cancel', so.cancel);
-                set('so-custom-modal-add', so.add);
-            }
             
             const lblBefore = document.getElementById('lbl-roi-before');
             if(lblBefore) lblBefore.textContent = currentLang === 'zh' ? `安装前月均电费 (${currentCurrency === 'CNY' ? '¥' : 'RM'})` : `Monthly Bill Before (${currentCurrency === 'CNY' ? '¥' : 'RM'})`;
@@ -4948,7 +4617,7 @@
                        (!query || p.name.toLowerCase().includes(query) || p.category.toLowerCase().includes(query) || pid.includes(query));
             });
 
-            if(filtered.length === 0) { list.innerHTML = `<div class="p-8 text-center text-xs text-slate-400 italic">No in-stock products found...</div>`; return; }
+            if(filtered.length === 0) { list.innerHTML = `<div class="p-8 text-center text-xs text-slate-400 italic">未找到有库存的产品...</div>`; return; }
             
             list.innerHTML = filtered.map(item => {
                 const p = products.find(prod => prod.id === item.productId);
@@ -4965,8 +4634,8 @@
                             <div class="text-[10px] font-mono text-slate-400">${item.productId || ''}</div>
                         </div>
                         <div class="text-right">
-                            <span class="text-[10px] text-slate-400 block">Warehouse: ${item.location || '-'} | Batch: ${item.batchNo}</span>
-                            <span class="text-[10px] text-slate-400 block">Stock: <span class="text-green-700 font-black">${formatNumberAuto(item.quantity, 4)}</span></span>
+                            <span class="text-[10px] text-slate-400 block">仓库: ${item.location || '-'} | 批次: ${item.batchNo}</span>
+                            <span class="text-[10px] text-slate-400 block">库存: <span class="text-green-700 font-black">${formatNumberAuto(item.quantity, 4)}</span></span>
                         </div>
                     </div>
                     <div class="flex justify-between items-center mt-2">
@@ -4975,10 +4644,10 @@
                             <span class="text-[9px] uppercase px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded">${p.vendor}</span>
                         </div>
                         <div class="flex flex-wrap gap-2 justify-end">
-                            <button onclick="pickProduct('${item.id}', 'clearance_home')" class="px-3 py-1 bg-blue-700 text-white text-[10px] font-bold rounded-lg hover:bg-blue-800 transition-all shadow-sm">Clearance Home ¥${formatNumberAuto(ch, 4)}</button>
-                            <button onclick="pickProduct('${item.id}', 'clearance_biz')" class="px-3 py-1 bg-sky-700 text-white text-[10px] font-bold rounded-lg hover:bg-sky-800 transition-all shadow-sm">Clearance C&I ¥${formatNumberAuto(cb, 4)}</button>
-                            <button onclick="pickProduct('${item.id}', 'gray_home')" class="px-3 py-1 bg-indigo-700 text-white text-[10px] font-bold rounded-lg hover:bg-indigo-800 transition-all shadow-sm">Grey Home ¥${formatNumberAuto(gh, 4)}</button>
-                            <button onclick="pickProduct('${item.id}', 'gray_biz')" class="px-3 py-1 bg-violet-700 text-white text-[10px] font-bold rounded-lg hover:bg-violet-800 transition-all shadow-sm">Grey C&I ¥${formatNumberAuto(gb, 4)}</button>
+                            <button onclick="pickProduct('${item.id}', 'clearance_home')" class="px-3 py-1 bg-blue-700 text-white text-[10px] font-bold rounded-lg hover:bg-blue-800 transition-all shadow-sm">清关家用 ¥${formatNumberAuto(ch, 4)}</button>
+                            <button onclick="pickProduct('${item.id}', 'clearance_biz')" class="px-3 py-1 bg-sky-700 text-white text-[10px] font-bold rounded-lg hover:bg-sky-800 transition-all shadow-sm">清关工商业 ¥${formatNumberAuto(cb, 4)}</button>
+                            <button onclick="pickProduct('${item.id}', 'gray_home')" class="px-3 py-1 bg-indigo-700 text-white text-[10px] font-bold rounded-lg hover:bg-indigo-800 transition-all shadow-sm">灰清家用 ¥${formatNumberAuto(gh, 4)}</button>
+                            <button onclick="pickProduct('${item.id}', 'gray_biz')" class="px-3 py-1 bg-violet-700 text-white text-[10px] font-bold rounded-lg hover:bg-violet-800 transition-all shadow-sm">灰清工商业 ¥${formatNumberAuto(gb, 4)}</button>
                         </div>
                     </div>
                 </div>`}).join('');
@@ -5021,8 +4690,8 @@
             const vendors = [...new Set(products.map(p => p.vendor).filter(Boolean))];
             const categories = [...new Set(products.map(p => p.category).filter(Boolean))];
             const vS = document.getElementById('picker-vendor'), cS = document.getElementById('picker-category');
-            if(vS) vS.innerHTML = `<option value="">All Suppliers</option>` + vendors.map(v => `<option value="${v}">${v}</option>`).join('');
-            if(cS) cS.innerHTML = `<option value="">All Categories</option>` + categories.map(c => `<option value="${c}">${c}</option>`).join('');
+            if(vS) vS.innerHTML = `<option value="">全部供应商</option>` + vendors.map(v => `<option value="${v}">${v}</option>`).join('');
+            if(cS) cS.innerHTML = `<option value="">全部类目</option>` + categories.map(c => `<option value="${c}">${c}</option>`).join('');
         }
         function updateDatalists() {
             const cats = [...new Set(products.map(p => p.category))];
@@ -5055,233 +4724,6 @@
             document.getElementById('res-panels').textContent = panelCount; document.getElementById('summary-panels').textContent = panelCount;
             document.getElementById('res-battery').textContent = batteryCap.toFixed(2); document.getElementById('summary-battery').textContent = batteryCap.toFixed(2);
         };
-
-        window.switchPvcalcPage = (page) => {
-            const p = String(page || '1');
-            const s = document.getElementById('pvcalc-page-select');
-            if (s && s.value !== p) s.value = p;
-            const p1 = document.getElementById('pvcalc-page-1');
-            const p2 = document.getElementById('pvcalc-page-2');
-            if (p1) {
-                if (p === '1') {
-                    p1.classList.remove('hidden');
-                    p1.style.display = 'block';
-                } else {
-                    p1.classList.add('hidden');
-                    p1.style.display = 'none';
-                }
-            }
-            if (p2) {
-                if (p === '2') {
-                    p2.classList.remove('hidden');
-                    p2.style.display = 'block';
-                } else {
-                    p2.classList.add('hidden');
-                    p2.style.display = 'none';
-                }
-            }
-            if (p === '1') {
-                try { window.calculatePV?.(); } catch (e) {}
-            } else if (p === '2') {
-                try { window.recalcTnbFromActiveInput?.(); } catch (e) {}
-            }
-        };
-
-        window.tnbConstants = {
-            tiers: [
-                { cap: 200, rate: 0.218 },
-                { cap: 100, rate: 0.334 },
-                { cap: 300, rate: 0.516 },
-                { cap: 300, rate: 0.546 },
-                { cap: Infinity, rate: 0.571 }
-            ],
-            stRate: 0.08
-        };
-
-        window.getTnbIcptRate = (kwh) => {
-            const k = Number(kwh) || 0;
-            if (k <= 600) return -0.02;
-            if (k <= 1500) return 0;
-            return 0.10;
-        };
-
-        window.calcTnbForward = (kwh) => {
-            const k = Math.max(0, Number(kwh) || 0);
-            let remaining = k;
-            const tierCharges = [];
-            for (let i = 0; i < window.tnbConstants.tiers.length; i++) {
-                const t = window.tnbConstants.tiers[i];
-                const cap = Number.isFinite(t.cap) ? t.cap : remaining;
-                const used = Math.min(remaining, cap);
-                const charge = used * t.rate;
-                tierCharges.push({ used, rate: t.rate, charge });
-                remaining -= used;
-                if (remaining <= 0) break;
-            }
-            const energyCharge = tierCharges.reduce((sum, x) => sum + (x.charge || 0), 0);
-            const icptRate = window.getTnbIcptRate(k);
-            const icpt = k * icptRate;
-            const tier4Charge = tierCharges[3]?.charge || 0;
-            const tier5Charge = tierCharges[4]?.charge || 0;
-            const st = (tier4Charge + tier5Charge) * window.tnbConstants.stRate;
-            const total = energyCharge + icpt + st;
-            return { kwh: k, energyCharge, icpt, st, total, tierCharges };
-        };
-
-        window.calcTnbReverse = (bill) => {
-            const b = Math.max(0, Number(bill) || 0);
-            if (b >= 219.81 && b <= 232.38) return { bill: b, kwh: null, deadZone: '600' };
-            if (b >= 778.72 && b <= 930) return { bill: b, kwh: null, deadZone: '1500' };
-            if (b <= 39.60) return { bill: b, kwh: b / 0.198, deadZone: null };
-            if (b <= 71.00) return { bill: b, kwh: (b - 39.60) / 0.314 + 200, deadZone: null };
-            if (b <= 219.80) return { bill: b, kwh: (b - 71.00) / 0.496 + 300, deadZone: null };
-            if (b <= 408.70) return { bill: b, kwh: (b - 232.39) / 0.58968 + 601, deadZone: null };
-            if (b <= 778.71) return { bill: b, kwh: (b - 409.32) / 0.61668 + 901, deadZone: null };
-            if (b > 930) return { bill: b, kwh: (b - 930) / 0.72468 + 1501, deadZone: null };
-            return { bill: b, kwh: null, deadZone: '1500' };
-        };
-
-        window.__tnbMode = 'kwhToBill';
-        window.__tnbLastEdited = null;
-
-        const tnbPop = (el) => {
-            if (!el) return;
-            el.classList.remove('tnb-pop');
-            void el.offsetWidth;
-            el.classList.add('tnb-pop');
-            el.addEventListener('animationend', () => el.classList.remove('tnb-pop'), { once: true });
-        };
-
-        const tnbSetText = (id, text) => {
-            const el = document.getElementById(id);
-            if (!el) return;
-            const v = String(text);
-            if (el.textContent !== v) {
-                el.textContent = v;
-                tnbPop(el);
-            }
-        };
-
-        const tnbMoney = (n) => {
-            const v = Number(n);
-            if (!Number.isFinite(v)) return '0.00';
-            return v.toFixed(2);
-        };
-
-        const tnbKwhFmt = (n) => {
-            const v = Number(n);
-            if (!Number.isFinite(v)) return '0.00';
-            return v.toFixed(2);
-        };
-
-        window.setTnbMode = (mode) => {
-            const m = mode === 'billToKwh' ? 'billToKwh' : 'kwhToBill';
-            window.__tnbMode = m;
-            const btnK = document.getElementById('tnb-mode-btn-kwh');
-            const btnB = document.getElementById('tnb-mode-btn-bill');
-            const secK = document.getElementById('tnb-mode-kwh');
-            const secB = document.getElementById('tnb-mode-bill');
-
-            if (btnK) {
-                if (m === 'kwhToBill') {
-                    btnK.classList.add('bg-orange-500', 'text-slate-950');
-                    btnK.classList.remove('text-slate-200');
-                } else {
-                    btnK.classList.remove('bg-orange-500', 'text-slate-950');
-                    btnK.classList.add('text-slate-200');
-                }
-            }
-            if (btnB) {
-                if (m === 'billToKwh') {
-                    btnB.classList.add('bg-orange-500', 'text-slate-950');
-                    btnB.classList.remove('text-slate-200');
-                } else {
-                    btnB.classList.remove('bg-orange-500', 'text-slate-950');
-                    btnB.classList.add('text-slate-200');
-                }
-            }
-
-            if (secK) {
-                if (m === 'kwhToBill') {
-                    secK.classList.remove('hidden');
-                    secK.style.display = 'block';
-                } else {
-                    secK.classList.add('hidden');
-                    secK.style.display = 'none';
-                }
-            }
-            if (secB) {
-                if (m === 'billToKwh') {
-                    secB.classList.remove('hidden');
-                    secB.style.display = 'block';
-                } else {
-                    secB.classList.add('hidden');
-                    secB.style.display = 'none';
-                }
-            }
-            window.recalcTnbFromActiveInput?.();
-        };
-
-        window.onTnbKwhInput = (raw) => {
-            window.__tnbLastEdited = 'kwh';
-            const s = String(raw ?? '');
-            if (!s.trim()) {
-                tnbSetText('tnb-out-bill-total', '0.00');
-                tnbSetText('tnb-out-energy', '0.00');
-                tnbSetText('tnb-out-icpt', '0.00');
-                tnbSetText('tnb-out-st', '0.00');
-                tnbSetText('tnb-out-total', '0.00');
-                return;
-            }
-            const kwh = Number(s);
-            const r = window.calcTnbForward(kwh);
-            tnbSetText('tnb-out-bill-total', tnbMoney(r.total));
-            tnbSetText('tnb-out-energy', tnbMoney(r.energyCharge));
-            tnbSetText('tnb-out-icpt', tnbMoney(r.icpt));
-            tnbSetText('tnb-out-st', tnbMoney(r.st));
-            tnbSetText('tnb-out-total', tnbMoney(r.total));
-        };
-
-        window.onTnbBillInput = (raw) => {
-            window.__tnbLastEdited = 'bill';
-            const s = String(raw ?? '');
-            const tip = document.getElementById('tnb-deadzone-tip');
-            if (!s.trim()) {
-                if (tip) {
-                    tip.classList.add('hidden');
-                    tip.textContent = '';
-                }
-                tnbSetText('tnb-out-kwh', '0.00');
-                return;
-            }
-            const bill = Number(s);
-            const r = window.calcTnbReverse(bill);
-            if (r.deadZone) {
-                if (tip) {
-                    tip.classList.remove('hidden');
-                    tip.textContent = r.deadZone === '600'
-                        ? "This amount is rare due to TNB's 600kWh ICPT policy jump."
-                        : "This amount is rare due to TNB's 1500kWh ICPT policy jump.";
-                }
-                return;
-            }
-            if (tip) {
-                tip.classList.add('hidden');
-                tip.textContent = '';
-            }
-            tnbSetText('tnb-out-kwh', tnbKwhFmt(r.kwh));
-        };
-
-        window.recalcTnbFromActiveInput = () => {
-            if (window.__tnbMode === 'billToKwh') {
-                const v = document.getElementById('tnb-bill-input')?.value ?? '';
-                window.onTnbBillInput(v);
-            } else {
-                const v = document.getElementById('tnb-kwh-input')?.value ?? '';
-                window.onTnbKwhInput(v);
-            }
-        };
-
         let costData = {
             pv: [{ name: '光伏板', price: 1, freight: 5, importTax: 0, sst: 10, profit: 1.1 }, { name: '支架', price: 0.4, freight: 5, importTax: 0, sst: 10, profit: 1.1 }, { name: '逆变器', price: 0.275, freight: 5, importTax: 0, sst: 10, profit: 1.1 }, { name: '辅材', price: 0.2, freight: 5, importTax: 0, sst: 10, profit: 1.1 }, { name: '并网柜', price: 0.1, freight: 5, importTax: 0, sst: 10, profit: 1.1 }, { name: '安装管理费', price: 0.3, freight: 0, importTax: 0, sst: 0, profit: 1.1 }, { name: '其他管理费', price: 0.1, freight: 0, importTax: 0, sst: 0, profit: 1.1 }, { name: '安装费', price: 0.4, freight: 0, importTax: 0, sst: 0, profit: 1.1 }],
             bat: [{ name: '纯电池', price: 0.55, freight: 5, importTax: 20, sst: 10, profit: 1.2 }, { name: '并机柜防逆流', price: 0.2, freight: 5, importTax: 0, sst: 10, profit: 1.2 }, { name: '其他材料', price: 0.15, freight: 5, importTax: 0, sst: 10, profit: 1.2 }]
@@ -5324,8 +4766,6 @@
 
         document.getElementById('currentDate').valueAsDate = new Date();
         generateQuoteNo();
-        try { window.switchPvcalcPage?.('1'); } catch (e) {}
-        try { window.setTnbMode?.('kwhToBill'); } catch (e) {}
         const trSearch = document.getElementById('transport-search');
         if (trSearch) trSearch.addEventListener('input', () => renderTransport());
         const trStatus = document.getElementById('transport-status-filter');
@@ -5338,7 +4778,6 @@
             if (Number.isInteger(n) && n >= 1 && n <= 999) validityDays = n;
         } catch (e) {}
         updateLanguageLabels();
-        window.renderCurrencyButton?.();
         const termsEl = document.getElementById('val-terms');
         if (termsEl) { 
             requestAnimationFrame(() => {
@@ -6161,10 +5600,6 @@
             updateCertSelectedSummary();
         };
 
-        window.onRotateSiteOverviewPrintChanged = (checked) => {
-            if (checked) showToast('已开启：导出 PDF 时第 5 页画布将向右旋转 90°（仅影响PDF，不影响网页显示）', 'info');
-        };
-
         window.buildAttachmentHtml = (selectedFiles) => {
             if (!selectedFiles || selectedFiles.length === 0) return '';
 
@@ -6253,8 +5688,6 @@
 
         window.confirmAndGeneratePDF = async () => {
             const modal = document.getElementById('cert-attachment-modal');
-            const rotateSiteOverview = !!document.getElementById('qa-rotate-siteoverview')?.checked;
-            if (rotateSiteOverview) showToast('提示：本次导出第 5 页画布将向右旋转 90°（仅影响PDF）', 'info');
             
             if (modal) {
                 const pageCheckboxes = modal.querySelectorAll('.print-page-checkbox:checked');
@@ -6320,14 +5753,6 @@
                 const mergedDoc = await PDFDocument.create();
                 const quoteNo = document.getElementById('quote-no').value || 'Quotation';
                 const titleEl = document.getElementById('pdf-progress-title');
-                const StandardFonts = PDFLibRef.StandardFonts;
-                const rgb = PDFLibRef.rgb;
-                const degrees = PDFLibRef.degrees;
-                let pdfHeaderFont = null;
-                let pdfHeaderFontBold = null;
-                let pdfHeaderLogoImg = null;
-                let pdfHeaderLogoDims = null;
-                let pdfHeaderLogoTried = false;
 
                 const opt = {
                     margin: 0,
@@ -6348,9 +5773,6 @@
                             clonedDoc.body.style.padding = '0';
                             clonedDoc.body.style.width = '210mm';
                             clonedDoc.body.style.maxWidth = '210mm';
-                            const exportingPageNum = parseInt(String(window.__pdfExportingPageNum ?? ''), 10);
-                            const roofSnap = String(window.__pdfRoofSnapshotDataUrl || '');
-                            const useRoofSnap = exportingPageNum === 5 && !!roofSnap;
                             
                             const wrappers = clonedDoc.querySelectorAll('.quote-page');
                             wrappers.forEach(page => {
@@ -6378,7 +5800,7 @@
                             const style = clonedDoc.createElement('style');
                             style.innerHTML = `
                                 @page { size: A4; margin: 0; }
-                                input, textarea { overflow-wrap: break-word !important; word-break: normal !important; hyphens: none !important; }
+                                input, textarea { overflow-wrap: anywhere !important; word-break: break-word !important; }
                                 textarea { white-space: pre-wrap !important; overflow: visible !important; }
                                 #val-terms { white-space: pre-wrap !important; }
                                 tr, h1, h2, h3, h4, h5, h6 { page-break-inside: avoid !important; break-inside: avoid !important; }
@@ -6391,98 +5813,6 @@
 
                             try {
                                 const win = clonedDoc.defaultView || window;
-                                try {
-                                    if (useRoofSnap) {
-                                        const grid = clonedDoc.getElementById('roof-editor-grid');
-                                        if (grid) {
-                                            grid.innerHTML = '';
-                                            grid.style.display = 'block';
-                                            const img = clonedDoc.createElement('img');
-                                            img.src = roofSnap;
-                                            img.style.position = 'absolute';
-                                            img.style.left = '0';
-                                            img.style.top = '0';
-                                            img.style.right = '0';
-                                            img.style.bottom = '0';
-                                            img.style.width = '100%';
-                                            img.style.height = '100%';
-                                            img.style.objectFit = 'contain';
-                                            img.style.objectPosition = 'left top';
-                                            img.style.display = 'block';
-                                            const prevPos = grid.style.position;
-                                            if (!prevPos) grid.style.position = 'relative';
-                                            grid.appendChild(img);
-                                        }
-                                    }
-                                } catch (e) {}
-                                try {
-                                    if (!useRoofSnap) {
-                                        const viewport = clonedDoc.getElementById('roof-viewport');
-                                        const img = clonedDoc.getElementById('roof-image');
-                                        if (viewport && img) {
-                                            const vr = viewport.getBoundingClientRect ? viewport.getBoundingClientRect() : null;
-                                            const vw = (vr?.width || 0) || (viewport.clientWidth || 0);
-                                            const vh = (vr?.height || 0) || (viewport.clientHeight || 0);
-                                            const iw = parseFloat(String(img.dataset.iw || img.naturalWidth || '0')) || 0;
-                                            const ih = parseFloat(String(img.dataset.ih || img.naturalHeight || '0')) || 0;
-                                            if (vw && vh && iw && ih) {
-                                                const s = Math.min(vw / iw, vh / ih);
-                                                const w = iw * s;
-                                                const h = ih * s;
-                                                img.style.right = 'auto';
-                                                img.style.bottom = 'auto';
-                                                img.style.left = '0';
-                                                img.style.top = '0';
-                                                img.style.width = `${w}px`;
-                                                img.style.height = `${h}px`;
-                                                img.style.objectFit = 'contain';
-                                                img.style.objectPosition = 'left top';
-                                            }
-                                        }
-                                    }
-                                } catch (e) {}
-                                try {
-                                    if (!useRoofSnap) {
-                                        const parseClipPoly = (s) => {
-                                            const m = String(s || '').match(/polygon\((.+)\)/);
-                                            if (!m) return null;
-                                            const pts = m[1].split(',').map((raw) => {
-                                                const parts = String(raw || '').trim().split(/\s+/).filter(Boolean);
-                                                if (parts.length < 2) return null;
-                                                const x = parseFloat(parts[0]);
-                                                const y = parseFloat(parts[1]);
-                                                if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
-                                                return { x, y };
-                                            }).filter(Boolean);
-                                            return pts.length >= 3 ? pts : null;
-                                        };
-                                        const shapes = Array.from(clonedDoc.querySelectorAll('.pv-module.is-custom .pv-module-shape'));
-                                        shapes.forEach((shape) => {
-                                            const cs = win.getComputedStyle ? win.getComputedStyle(shape) : null;
-                                            const clip = shape.style.clipPath || (cs ? cs.clipPath : '') || '';
-                                            const pts = parseClipPoly(clip);
-                                            if (!pts) return;
-                                            const svg = clonedDoc.createElementNS('http://www.w3.org/2000/svg', 'svg');
-                                            svg.setAttribute('viewBox', '0 0 100 100');
-                                            svg.setAttribute('preserveAspectRatio', 'none');
-                                            svg.style.position = 'absolute';
-                                            svg.style.inset = '0';
-                                            svg.style.width = '100%';
-                                            svg.style.height = '100%';
-                                            const poly = clonedDoc.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-                                            poly.setAttribute('points', pts.map(p => `${p.x},${p.y}`).join(' '));
-                                            const fill = cs ? String(cs.backgroundColor || 'transparent') : 'transparent';
-                                            const stroke = cs ? String(cs.borderTopColor || 'rgba(15,23,42,0.25)') : 'rgba(15,23,42,0.25)';
-                                            const sw = cs ? (parseFloat(String(cs.borderTopWidth || '1')) || 1) : 1;
-                                            poly.setAttribute('fill', fill);
-                                            poly.setAttribute('stroke', stroke);
-                                            poly.setAttribute('stroke-width', String(sw));
-                                            poly.setAttribute('vector-effect', 'non-scaling-stroke');
-                                            svg.appendChild(poly);
-                                            shape.replaceWith(svg);
-                                        });
-                                    }
-                                } catch (e) {}
                                 const list = Array.from(clonedDoc.querySelectorAll('textarea'));
                                 list.forEach((ta) => {
                                     const cs = win.getComputedStyle ? win.getComputedStyle(ta) : null;
@@ -6509,9 +5839,8 @@
                                     }
                                     repl.style.boxSizing = 'border-box';
                                     repl.style.whiteSpace = 'pre-wrap';
-                                    repl.style.overflowWrap = 'break-word';
-                                    repl.style.wordBreak = 'normal';
-                                    repl.style.hyphens = 'none';
+                                    repl.style.overflowWrap = 'anywhere';
+                                    repl.style.wordBreak = 'break-all';
                                     repl.style.overflow = 'visible';
                                     repl.style.background = 'transparent';
                                     repl.style.height = 'auto';
@@ -6521,364 +5850,6 @@
                         }
                     },
                     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true }
-                };
-
-                const buildRoofSnapshotForPdf = async () => {
-                    try {
-                        const grid = document.getElementById('roof-editor-grid');
-                        const viewport = document.getElementById('roof-viewport');
-                        const img = document.getElementById('roof-image');
-                        if (!grid || !viewport || !img || !siteOverview) return '';
-                        const r0 = grid.getBoundingClientRect ? grid.getBoundingClientRect() : null;
-                        const w0 = r0?.width || grid.offsetWidth || 0;
-                        const h0 = r0?.height || grid.offsetHeight || 0;
-                        if (!w0 || !h0) return '';
-
-                        const scale = 4;
-                        const canvas = document.createElement('canvas');
-                        canvas.width = Math.max(1, Math.round(w0 * scale));
-                        canvas.height = Math.max(1, Math.round(h0 * scale));
-                        const ctx = canvas.getContext('2d');
-                        if (!ctx) return '';
-                        ctx.scale(scale, scale);
-                        ctx.imageSmoothingEnabled = true;
-                        ctx.imageSmoothingQuality = 'high';
-
-                        const ruler = 20;
-                        const vp = { x: ruler, y: ruler, w: Math.max(0, w0 - ruler), h: Math.max(0, h0 - ruler) };
-
-                        const roofWm = parsePositiveFloat(siteOverview.roof?.widthM, 1);
-                        const roofHm = parsePositiveFloat(siteOverview.roof?.heightM, 1);
-
-                        ctx.fillStyle = '#ffffff';
-                        ctx.fillRect(0, 0, w0, h0);
-
-                        const drawRoundRect = (x, y, w, h, r) => {
-                            const rr = Math.max(0, Math.min(r, w / 2, h / 2));
-                            ctx.beginPath();
-                            ctx.moveTo(x + rr, y);
-                            ctx.arcTo(x + w, y, x + w, y + h, rr);
-                            ctx.arcTo(x + w, y + h, x, y + h, rr);
-                            ctx.arcTo(x, y + h, x, y, rr);
-                            ctx.arcTo(x, y, x + w, y, rr);
-                            ctx.closePath();
-                        };
-
-                        const computeBgRect = (vw, vh, iw, ih) => {
-                            const s = Math.min(vw / iw, vh / ih);
-                            const w = iw * s;
-                            const h = ih * s;
-                            return { x: 0, y: 0, w, h, vw, vh };
-                        };
-
-                        const bgIw = img.naturalWidth || parseFloat(String(img.dataset.iw || '0')) || 0;
-                        const bgIh = img.naturalHeight || parseFloat(String(img.dataset.ih || '0')) || 0;
-                        if (!img.complete) {
-                            await new Promise(r => {
-                                img.onload = () => r();
-                                img.onerror = () => r();
-                            });
-                        }
-                        const bgRect = (vp.w && vp.h && bgIw && bgIh) ? computeBgRect(vp.w, vp.h, bgIw, bgIh) : { x: 0, y: 0, w: vp.w, h: vp.h, vw: vp.w, vh: vp.h };
-                        const pxPerM = Math.min((bgRect.w || 1) / roofWm, (bgRect.h || 1) / roofHm);
-                        const worldToPxExport = (xM, yM) => ({ x: vp.x + bgRect.x + xM * pxPerM, y: vp.y + bgRect.y + yM * pxPerM });
-
-                        const show = !!siteOverview.settings?.showRulers;
-                        const step = parsePositiveFloat(siteOverview.settings?.gridStepM, 1);
-                        let minorStep = step / 10;
-                        const minorPx = minorStep * pxPerM;
-                        if (!Number.isFinite(minorPx) || minorPx < 4) minorStep = 0;
-                        const tickEvery = minorStep ? minorStep : step;
-                        const maxTicksX = tickEvery > 0 ? Math.ceil(roofWm / tickEvery) : 0;
-                        const maxTicksY = tickEvery > 0 ? Math.ceil(roofHm / tickEvery) : 0;
-                        if (maxTicksX > 6000 || maxTicksY > 6000) minorStep = 0;
-                        const majorPx = step * pxPerM;
-                        const labelEvery = majorPx > 0 ? Math.ceil(40 / majorPx) : 1;
-
-                        if (show) {
-                            ctx.strokeStyle = 'rgba(148,163,184,0.25)';
-                            ctx.lineWidth = 1;
-                            for (let m = 0; m <= roofWm + 1e-6; m += step) {
-                                const x = vp.x + m * pxPerM;
-                                ctx.beginPath();
-                                ctx.moveTo(x, vp.y);
-                                ctx.lineTo(x, vp.y + vp.h);
-                                ctx.stroke();
-                            }
-                            for (let m = 0; m <= roofHm + 1e-6; m += step) {
-                                const y = vp.y + m * pxPerM;
-                                ctx.beginPath();
-                                ctx.moveTo(vp.x, y);
-                                ctx.lineTo(vp.x + vp.w, y);
-                                ctx.stroke();
-                            }
-
-                            ctx.fillStyle = '#ffffff';
-                            ctx.fillRect(0, 0, w0, ruler);
-                            ctx.fillRect(0, 0, ruler, h0);
-                            ctx.strokeStyle = 'rgba(148,163,184,0.7)';
-                            ctx.beginPath();
-                            ctx.moveTo(ruler, ruler);
-                            ctx.lineTo(w0, ruler);
-                            ctx.moveTo(ruler, ruler);
-                            ctx.lineTo(ruler, h0);
-                            ctx.stroke();
-
-                            const drawTicksX = minorStep ? minorStep : step;
-                            for (let m = 0, idx = 0; m <= roofWm + 1e-6; m += drawTicksX, idx++) {
-                                const isMajor = Math.abs((m / step) - Math.round(m / step)) < 1e-6;
-                                const x = vp.x + m * pxPerM;
-                                ctx.strokeStyle = isMajor ? 'rgba(100,116,139,0.45)' : 'rgba(148,163,184,0.35)';
-                                ctx.lineWidth = 1;
-                                ctx.beginPath();
-                                ctx.moveTo(x, isMajor ? 0 : ruler * 0.6);
-                                ctx.lineTo(x, ruler);
-                                ctx.stroke();
-                                if (isMajor) {
-                                    const majorIdx = Math.round(m / step);
-                                    if (majorIdx % labelEvery === 0) {
-                                        ctx.fillStyle = 'rgba(71,85,105,0.9)';
-                                        ctx.font = '700 8px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
-                                        ctx.fillText(String(Math.round(m * 1000) / 1000), x + 2, 10);
-                                    }
-                                }
-                            }
-
-                            const drawTicksY = minorStep ? minorStep : step;
-                            for (let m = 0, idx = 0; m <= roofHm + 1e-6; m += drawTicksY, idx++) {
-                                const isMajor = Math.abs((m / step) - Math.round(m / step)) < 1e-6;
-                                const y = vp.y + m * pxPerM;
-                                ctx.strokeStyle = isMajor ? 'rgba(100,116,139,0.45)' : 'rgba(148,163,184,0.35)';
-                                ctx.lineWidth = 1;
-                                ctx.beginPath();
-                                ctx.moveTo(isMajor ? 0 : ruler * 0.6, y);
-                                ctx.lineTo(ruler, y);
-                                ctx.stroke();
-                                if (isMajor) {
-                                    const majorIdx = Math.round(m / step);
-                                    if (majorIdx % labelEvery === 0) {
-                                        ctx.fillStyle = 'rgba(71,85,105,0.9)';
-                                        ctx.font = '700 8px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
-                                        ctx.fillText(String(Math.round(m * 1000) / 1000), 2, y - 2);
-                                    }
-                                }
-                            }
-                        }
-
-                        if (bgIw && bgIh) {
-                            ctx.drawImage(img, vp.x + bgRect.x, vp.y + bgRect.y, bgRect.w, bgRect.h);
-                        }
-
-                        const alpha = clamp(parseFloat(String(siteOverview.settings?.moduleOpacity ?? 0.35)), 0.05, 1.0);
-                        const drawPoly = (pts, fill, stroke, sw) => {
-                            if (!Array.isArray(pts) || pts.length < 3) return;
-                            ctx.beginPath();
-                            ctx.moveTo(pts[0].x, pts[0].y);
-                            for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-                            ctx.closePath();
-                            if (fill && fill !== 'transparent') {
-                                ctx.fillStyle = fill;
-                                ctx.fill();
-                            }
-                            if (stroke) {
-                                ctx.strokeStyle = stroke;
-                                ctx.lineWidth = sw || 1;
-                                ctx.stroke();
-                            }
-                        };
-
-                        const modules = Array.isArray(siteOverview.modules) ? siteOverview.modules : [];
-                        modules.forEach((m) => {
-                            const type = String(m?.type || 'pv');
-                            const dims = getModuleDimsM(m);
-                            if (type === 'pv') {
-                                const p = worldToPxExport(parsePositiveFloat(m.xM, 0), parsePositiveFloat(m.yM, 0));
-                                const w = dims.wM * pxPerM;
-                                const h = dims.hM * pxPerM;
-                                ctx.fillStyle = `rgba(88, 44, 131, ${alpha})`;
-                                ctx.fillRect(p.x, p.y, w, h);
-                                ctx.strokeStyle = '#4B236F';
-                                ctx.lineWidth = 2;
-                                ctx.strokeRect(p.x, p.y, w, h);
-                                ctx.fillStyle = '#ffffff';
-                                ctx.font = '900 14px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
-                                const t = 'PV';
-                                const tw = ctx.measureText(t).width;
-                                ctx.fillText(t, p.x + (w - tw) / 2, p.y + h / 2 + 5);
-                                return;
-                            }
-                            if (type === 'custom') {
-                                const bg = m.bgColor ? hexToRgba(m.bgColor, alpha) : 'transparent';
-                                const stroke = 'rgba(15,23,42,0.25)';
-                                const shape = String(m.shape || (m.polyN ? 'polygon' : 'rect'));
-                                const ptsW = (Array.isArray(m.points) && m.points.length >= 3)
-                                    ? m.points
-                                    : getCustomShapePointsFromRect(shape, m.xM, m.yM, dims.wM, dims.hM, m.polyN);
-                                const pts = ptsW.map(p => worldToPxExport(p.xM, p.yM));
-                                drawPoly(pts, bg, stroke, 2);
-                                const labelText = String(m.text || '').trim();
-                                if (labelText) {
-                                    const c0 = polygonCentroidM(ptsW) || { xM: m.xM + dims.wM / 2, yM: m.yM + dims.hM / 2 };
-                                    const cp = worldToPxExport(c0.xM, c0.yM);
-                                    ctx.fillStyle = String(m.textColor || siteOverview.settings?.labelColor || '#FFFFFF');
-                                    ctx.font = '900 12px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
-                                    const tw = ctx.measureText(labelText).width;
-                                    ctx.fillText(labelText, cp.x - tw / 2, cp.y + 4);
-                                }
-                            }
-                        });
-
-                        const drawMarkerCanvas = (p, style, color) => {
-                            const s = String(style || 'cross');
-                            ctx.strokeStyle = color;
-                            ctx.fillStyle = color;
-                            ctx.lineWidth = 2;
-                            if (s === 'diamond') {
-                                ctx.save();
-                                ctx.translate(p.x, p.y);
-                                ctx.rotate(Math.PI / 4);
-                                ctx.fillRect(-5, -5, 10, 10);
-                                ctx.restore();
-                                return;
-                            }
-                            if (s === 'cross') {
-                                ctx.beginPath();
-                                ctx.moveTo(p.x - 6, p.y);
-                                ctx.lineTo(p.x + 6, p.y);
-                                ctx.moveTo(p.x, p.y - 6);
-                                ctx.lineTo(p.x, p.y + 6);
-                                ctx.stroke();
-                                return;
-                            }
-                            ctx.beginPath();
-                            ctx.arc(p.x, p.y, 5, 0, 2 * Math.PI);
-                            ctx.fill();
-                        };
-
-                        const drawArrowCanvas = (tip, toward, color) => {
-                            const dx = (toward?.x ?? tip.x) - tip.x;
-                            const dy = (toward?.y ?? tip.y) - tip.y;
-                            const ang = Math.atan2(dy, dx);
-                            ctx.save();
-                            ctx.translate(tip.x, tip.y);
-                            ctx.rotate(ang);
-                            ctx.fillStyle = color;
-                            ctx.beginPath();
-                            ctx.moveTo(0, 0);
-                            ctx.lineTo(10, 4);
-                            ctx.lineTo(10, -4);
-                            ctx.closePath();
-                            ctx.fill();
-                            ctx.restore();
-                        };
-
-                        const drawPill = (x, y, text) => {
-                            ctx.font = '700 10px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
-                            const tw = ctx.measureText(text).width;
-                            const padX = 6;
-                            const padY = 3;
-                            const w = tw + padX * 2;
-                            const h = 16;
-                            drawRoundRect(x - w / 2, y - h / 2, w, h, 8);
-                            ctx.fillStyle = 'rgba(15,23,42,0.82)';
-                            ctx.fill();
-                            ctx.fillStyle = '#ffffff';
-                            ctx.fillText(text, x - tw / 2, y + 3);
-                        };
-
-                        const ms = Array.isArray(siteOverview.measurements) ? siteOverview.measurements : [];
-                        ms.forEach((m) => {
-                            if (m?.type === 'dist' && m.a && m.b) {
-                                const p1 = worldToPxExport(m.a.xM, m.a.yM);
-                                const p2 = worldToPxExport(m.b.xM, m.b.yM);
-                                const style = m.markerStyle || siteOverview.settings?.distMarkerStyle || 'cross';
-                                const base = String(m.color || siteOverview.settings?.distColor || '#582C83');
-                                const c = hexToRgba(base, 0.95) || 'rgba(88,44,131,0.95)';
-                                ctx.beginPath();
-                                ctx.moveTo(p1.x, p1.y);
-                                ctx.lineTo(p2.x, p2.y);
-                                ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-                                ctx.lineWidth = 6;
-                                ctx.stroke();
-                                ctx.strokeStyle = c;
-                                ctx.lineWidth = 3;
-                                ctx.stroke();
-                                if (String(style) === 'arrow_a') {
-                                    drawArrowCanvas(p1, p2, 'rgba(0,0,0,0.35)');
-                                    drawArrowCanvas(p1, p2, c);
-                                } else if (String(style) === 'arrow_b') {
-                                    drawArrowCanvas(p2, p1, 'rgba(0,0,0,0.35)');
-                                    drawArrowCanvas(p2, p1, c);
-                                } else if (String(style) === 'arrow_ab') {
-                                    drawArrowCanvas(p1, p2, 'rgba(0,0,0,0.35)');
-                                    drawArrowCanvas(p2, p1, 'rgba(0,0,0,0.35)');
-                                    drawArrowCanvas(p1, p2, c);
-                                    drawArrowCanvas(p2, p1, c);
-                                } else {
-                                    drawMarkerCanvas(p1, style, 'rgba(0,0,0,0.35)');
-                                    drawMarkerCanvas(p2, style, 'rgba(0,0,0,0.35)');
-                                    drawMarkerCanvas(p1, style, c);
-                                    drawMarkerCanvas(p2, style, c);
-                                }
-                                const dx = m.b.xM - m.a.xM;
-                                const dy = m.b.yM - m.a.yM;
-                                const d = Math.sqrt(dx * dx + dy * dy);
-                                const text = formatDistanceM(d + getDistExtraLenM(style));
-                                drawPill((p1.x + p2.x) / 2, (p1.y + p2.y) / 2, text);
-                            }
-                            if (m?.type === 'area') {
-                                const vc = clamp(parseInt(String(siteOverview.settings?.areaVertexCount ?? 4), 10) || 4, 4, 12);
-                                const ptsW = Array.isArray(m.points) && m.points.length >= 3 ? m.points : (m.a && m.b ? (vc === 4 ? getRectPointsFromAB(m.a, m.b) : getRegularPolygonPointsFromRect(m.a, m.b, vc)) : []);
-                                if (ptsW.length < 3) return;
-                                const pts = ptsW.map(p => worldToPxExport(p.xM, p.yM));
-                                const baseFill = String(m.bgColor || siteOverview.settings?.areaDefaultBgColor || '#FFC107');
-                                const opacity0 = clamp(parseFloat(String(m.opacity ?? siteOverview.settings?.areaDefaultOpacity ?? 0.18)), 0.05, 1);
-                                const opacity = Math.max(0.22, opacity0);
-                                const fill = hexToRgba(baseFill, opacity) || 'rgba(255,193,7,0.18)';
-                                ctx.beginPath();
-                                ctx.moveTo(pts[0].x, pts[0].y);
-                                for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-                                ctx.closePath();
-                                ctx.fillStyle = fill;
-                                ctx.fill();
-                                ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-                                ctx.lineWidth = 6;
-                                ctx.stroke();
-                                ctx.strokeStyle = 'rgba(88,44,131,0.95)';
-                                ctx.lineWidth = 3;
-                                ctx.stroke();
-                                const area0 = polygonAreaM2(ptsW);
-                                const perim0 = polygonPerimeterM(ptsW);
-                                const area = getAreaOuterAreaM2(area0, perim0, 2);
-                                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-                                pts.forEach((p) => { minX = Math.min(minX, p.x); minY = Math.min(minY, p.y); maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y); });
-                                const areaStr = `${(Math.round(area * 100) / 100).toFixed(2)}m²`;
-                                const label = String(m.label || '').trim();
-                                drawPill((minX + maxX) / 2, (minY + maxY) / 2, label ? `${label} ${areaStr}` : areaStr);
-                            }
-                        });
-
-                        try {
-                            return canvas.toDataURL('image/png');
-                        } catch (e) {
-                            return '';
-                        }
-                    } catch (e) {
-                        return '';
-                    }
-                };
-
-                const dataUrlToBytes = (dataUrl) => {
-                    try {
-                        const parts = String(dataUrl || '').split(',');
-                        if (parts.length < 2) return null;
-                        const bin = atob(parts[1]);
-                        const bytes = new Uint8Array(bin.length);
-                        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-                        return bytes;
-                    } catch (e) {
-                        return null;
-                    }
                 };
 
                 // Render internal pages sequentially
@@ -6906,103 +5877,15 @@
                     } catch (e) {}
 
                     // Await next frame to ensure DOM updates
-                    if (pageNum === 5) {
-                        try { renderRoof(); } catch (e) {}
-                        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-                        await new Promise(r => setTimeout(r, 120));
-                    } else {
-                        await new Promise(r => setTimeout(r, 100));
-                    }
+                    await new Promise(r => setTimeout(r, 100));
 
                     const container = document.getElementById('pdf-content-wrapper');
-                    if (pageNum === 5) {
-                        try {
-                            const dataUrl = await buildRoofSnapshotForPdf();
-                            const bytes = dataUrlToBytes(dataUrl);
-                            if (bytes) {
-                                const img = await mergedDoc.embedPng(bytes);
-                                const dims = img.scale(1);
-                                const A4 = [595.28, 841.89];
-                                const page = mergedDoc.addPage(A4);
-                                const pw = page.getWidth();
-                                const ph = page.getHeight();
-                                if (!pdfHeaderFont && StandardFonts?.Helvetica) {
-                                    try { pdfHeaderFont = await mergedDoc.embedFont(StandardFonts.Helvetica); } catch (e) {}
-                                }
-                                if (!pdfHeaderFontBold && StandardFonts?.HelveticaBold) {
-                                    try { pdfHeaderFontBold = await mergedDoc.embedFont(StandardFonts.HelveticaBold); } catch (e) {}
-                                }
-                                if (!pdfHeaderLogoImg && !pdfHeaderLogoTried) {
-                                    pdfHeaderLogoTried = true;
-                                    try {
-                                        let res = await fetch('./logo-horizontal.png', { cache: 'no-store' });
-                                        if (!res.ok) res = await fetch('./logo.png', { cache: 'no-store' });
-                                        if (res.ok) {
-                                            const logoBytes = await res.arrayBuffer();
-                                            const u8 = new Uint8Array(logoBytes);
-                                            pdfHeaderLogoImg = await mergedDoc.embedPng(u8);
-                                            pdfHeaderLogoDims = pdfHeaderLogoImg.scale(1);
-                                        }
-                                    } catch (e) {}
-                                }
-
-                                const padX = 48;
-                                const padTop = 56;
-                                const padBottom = 24;
-                                const headerH = 120;
-                                const topY = ph - padTop;
-                                const titleText = String(document.getElementById('lbl-page5-title')?.textContent || 'SITE OVERVIEW').trim() || 'SITE OVERVIEW';
-                                const tagline = 'Solar System Solution | Storage Battery';
-
-                                if (pdfHeaderLogoImg && pdfHeaderLogoDims) {
-                                    const logoH = 36;
-                                    const s = logoH / Math.max(1e-9, pdfHeaderLogoDims.height);
-                                    const logoW = pdfHeaderLogoDims.width * s;
-                                    page.drawImage(pdfHeaderLogoImg, { x: padX, y: topY - logoH, width: logoW, height: logoH });
-                                }
-                                if (pdfHeaderFontBold && rgb) {
-                                    page.drawText(tagline, { x: padX, y: topY - 58, size: 10, font: pdfHeaderFontBold, color: rgb(0.651, 0.478, 0.796) });
-                                }
-                                if (pdfHeaderFont && rgb) {
-                                    const titleSize = 36;
-                                    const tw = pdfHeaderFont.widthOfTextAtSize(titleText, titleSize);
-                                    page.drawText(titleText, { x: Math.max(padX, pw - padX - tw), y: topY - 34, size: titleSize, font: pdfHeaderFont, color: rgb(0.796, 0.835, 0.882) });
-                                }
-
-                                const availH = Math.max(1, ph - headerH - padBottom);
-                                if (rotateSiteOverview && degrees) {
-                                    const ratio = Math.min(pw / dims.height, availH / dims.width);
-                                    const w = dims.width * ratio;
-                                    const h = dims.height * ratio;
-                                    const x = (pw - h) / 2;
-                                    const y = padBottom + (availH + w) / 2;
-                                    page.drawImage(img, { x, y, width: w, height: h, rotate: degrees(-90) });
-                                } else {
-                                    const ratio = Math.min(pw / dims.width, availH / dims.height);
-                                    const w = dims.width * ratio;
-                                    const h = dims.height * ratio;
-                                    const x = (pw - w) / 2;
-                                    const y = padBottom + (availH - h) / 2;
-                                    page.drawImage(img, { x, y, width: w, height: h });
-                                }
-                                continue;
-                            }
-                        } catch (e) {}
-                    }
-
-                    let pdfData;
-                    try {
-                        pdfData = await html2pdf().set(opt).from(container).toPdf().get('pdf').then(pdf => {
-                            const total = pdf.internal.getNumberOfPages();
-                            const last = pdf.internal.pages?.[total];
-                            if (last && last.length <= 1) pdf.deletePage(total);
-                            return pdf.output('arraybuffer');
-                        });
-                    } finally {
-                        if (pageNum === 5) {
-                            try { renderRoof(); } catch (e) {}
-                        }
-                    }
+                    const pdfData = await html2pdf().set(opt).from(container).toPdf().get('pdf').then(pdf => {
+                        const total = pdf.internal.getNumberOfPages();
+                        const last = pdf.internal.pages?.[total];
+                        if (last && last.length <= 1) pdf.deletePage(total);
+                        return pdf.output('arraybuffer');
+                    });
 
                     const tempDoc = await PDFDocument.load(pdfData);
                     const copiedPages = await mergedDoc.copyPages(tempDoc, tempDoc.getPageIndices());

@@ -1,0 +1,1084 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minova 报价网页培训 | Quotation Webpage Training</title>
+    <style>
+        :root {
+            --brand-purple: #582C83;
+            --brand-purple-dark: #432165;
+            --brand-yellow: #FFC107;
+            --ink: #172033;
+            --muted: #64748b;
+            --line: #e2e8f0;
+            --surface: #ffffff;
+            --soft: #f8fafc;
+            --success: #0f766e;
+            --warning: #b45309;
+            --blue: #1d4ed8;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            margin: 0;
+            background: var(--soft);
+            color: var(--ink);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif;
+            line-height: 1.6;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        img {
+            max-width: 100%;
+            display: block;
+        }
+
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background: rgba(255, 255, 255, 0.96);
+            border-bottom: 1px solid var(--line);
+            backdrop-filter: blur(12px);
+        }
+
+        .shell {
+            width: min(1160px, calc(100% - 32px));
+            margin: 0 auto;
+        }
+
+        .topbar-inner {
+            min-height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            min-width: 220px;
+        }
+
+        .brand-mark {
+            width: 42px;
+            height: 42px;
+            border-radius: 8px;
+            background: var(--brand-purple);
+            color: white;
+            display: grid;
+            place-items: center;
+            font-weight: 900;
+            letter-spacing: 0;
+        }
+
+        .brand-text strong {
+            display: block;
+            font-size: 15px;
+            line-height: 1.2;
+        }
+
+        .brand-text span {
+            display: block;
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.3;
+        }
+
+        .nav {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        .nav a {
+            border-radius: 8px;
+            padding: 8px 10px;
+            color: #475569;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .nav a:hover,
+        .nav a:focus-visible {
+            background: #f1f5f9;
+            color: var(--brand-purple);
+            outline: none;
+        }
+
+        .open-app {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 40px;
+            border-radius: 8px;
+            padding: 0 14px;
+            background: var(--brand-purple);
+            color: white;
+            font-size: 13px;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .open-app:hover,
+        .open-app:focus-visible {
+            background: var(--brand-purple-dark);
+            outline: none;
+        }
+
+        .hero {
+            background: #fff;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .hero-inner {
+            min-height: 560px;
+            display: grid;
+            grid-template-columns: minmax(0, 1.02fr) minmax(360px, 0.98fr);
+            gap: 48px;
+            align-items: center;
+            padding: 70px 0 48px;
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            border: 1px solid #efe4fb;
+            border-radius: 999px;
+            color: var(--brand-purple);
+            background: #fbf7ff;
+            font-size: 12px;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        h1 {
+            margin: 18px 0 16px;
+            font-size: clamp(34px, 6vw, 62px);
+            line-height: 1.04;
+            letter-spacing: 0;
+        }
+
+        .hero-copy {
+            max-width: 690px;
+            color: #475569;
+            font-size: 18px;
+        }
+
+        .hero-actions {
+            margin-top: 28px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 46px;
+            border-radius: 8px;
+            padding: 0 18px;
+            border: 1px solid var(--line);
+            background: #fff;
+            color: var(--ink);
+            font-weight: 850;
+            font-size: 14px;
+        }
+
+        .button.primary {
+            background: var(--brand-purple);
+            color: white;
+            border-color: var(--brand-purple);
+        }
+
+        .button.yellow {
+            background: var(--brand-yellow);
+            color: #2f1950;
+            border-color: var(--brand-yellow);
+        }
+
+        .hero-panel {
+            border: 1px solid var(--line);
+            background: var(--surface);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 24px 60px rgba(15, 23, 42, 0.10);
+        }
+
+        .mock-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 14px;
+            border-bottom: 1px solid var(--line);
+            background: #f8fafc;
+        }
+
+        .mock-logo {
+            height: 32px;
+            width: auto;
+        }
+
+        .mock-dots {
+            display: flex;
+            gap: 5px;
+        }
+
+        .mock-dots span {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #cbd5e1;
+        }
+
+        .mock-body {
+            padding: 18px;
+        }
+
+        .mock-tabs {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 18px;
+        }
+
+        .mock-tabs span {
+            min-height: 42px;
+            display: grid;
+            place-items: center;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            color: #475569;
+            font-size: 12px;
+            font-weight: 900;
+            text-align: center;
+        }
+
+        .mock-tabs span:first-child {
+            border-color: var(--brand-purple);
+            color: var(--brand-purple);
+            background: #fbf7ff;
+        }
+
+        .quote-preview {
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 16px;
+            background: #fff;
+        }
+
+        .quote-preview h2 {
+            margin: 0 0 12px;
+            color: #94a3b8;
+            font-size: 30px;
+            font-weight: 250;
+            text-align: right;
+        }
+
+        .preview-line {
+            height: 12px;
+            border-radius: 999px;
+            background: #e2e8f0;
+            margin: 10px 0;
+        }
+
+        .preview-line.short {
+            width: 46%;
+        }
+
+        .preview-line.medium {
+            width: 68%;
+        }
+
+        .preview-table {
+            margin-top: 16px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .preview-row {
+            display: grid;
+            grid-template-columns: 1.5fr 0.8fr 0.8fr;
+            gap: 1px;
+            background: var(--line);
+        }
+
+        .preview-row span {
+            min-height: 34px;
+            background: white;
+            padding: 9px;
+            font-size: 11px;
+            color: #64748b;
+            font-weight: 750;
+        }
+
+        .section {
+            padding: 64px 0;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .section.white {
+            background: white;
+        }
+
+        .section-head {
+            display: flex;
+            align-items: end;
+            justify-content: space-between;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            margin: 0;
+            font-size: clamp(26px, 4vw, 38px);
+            line-height: 1.16;
+            letter-spacing: 0;
+        }
+
+        .section-note {
+            max-width: 420px;
+            margin: 0;
+            color: var(--muted);
+            font-size: 15px;
+        }
+
+        .grid {
+            display: grid;
+            gap: 16px;
+        }
+
+        .grid.two {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .grid.three {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .card {
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--surface);
+            padding: 20px;
+        }
+
+        .card h3 {
+            margin: 0 0 10px;
+            font-size: 18px;
+            line-height: 1.25;
+        }
+
+        .card p {
+            margin: 0;
+            color: #475569;
+            font-size: 14px;
+        }
+
+        .cn {
+            font-weight: 750;
+            color: var(--ink);
+        }
+
+        .en {
+            margin-top: 6px;
+            color: #64748b;
+            font-size: 13px;
+        }
+
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            min-height: 24px;
+            border-radius: 999px;
+            padding: 0 9px;
+            margin-bottom: 12px;
+            background: #f1f5f9;
+            color: #475569;
+            font-size: 11px;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .tag.purple {
+            background: #f3e8ff;
+            color: var(--brand-purple);
+        }
+
+        .tag.yellow {
+            background: #fffbeb;
+            color: var(--warning);
+        }
+
+        .steps {
+            counter-reset: step;
+            display: grid;
+            gap: 12px;
+        }
+
+        .step {
+            counter-increment: step;
+            display: grid;
+            grid-template-columns: 44px minmax(0, 1fr);
+            gap: 14px;
+            align-items: start;
+            padding: 16px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: white;
+        }
+
+        .step::before {
+            content: counter(step);
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            display: grid;
+            place-items: center;
+            background: var(--brand-purple);
+            color: white;
+            font-weight: 900;
+        }
+
+        .step h3 {
+            margin: 2px 0 4px;
+            font-size: 16px;
+        }
+
+        .step p {
+            margin: 0;
+            color: #475569;
+            font-size: 14px;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: white;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 760px;
+        }
+
+        th,
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--line);
+            text-align: left;
+            vertical-align: top;
+            font-size: 14px;
+        }
+
+        th {
+            background: #f8fafc;
+            color: #334155;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0;
+        }
+
+        tr:last-child td {
+            border-bottom: 0;
+        }
+
+        .callout {
+            border-left: 4px solid var(--brand-yellow);
+            background: #fffbeb;
+            padding: 16px 18px;
+            border-radius: 8px;
+            color: #62420f;
+        }
+
+        .callout strong {
+            color: #3f2a05;
+        }
+
+        .module-map {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(120px, 1fr));
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+        }
+
+        .module-pill {
+            min-height: 86px;
+            border-radius: 8px;
+            border: 1px solid var(--line);
+            background: white;
+            padding: 12px;
+        }
+
+        .module-pill strong {
+            display: block;
+            color: var(--brand-purple);
+            font-size: 14px;
+        }
+
+        .module-pill span {
+            display: block;
+            color: #64748b;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .checklist {
+            display: grid;
+            gap: 10px;
+        }
+
+        .check-item {
+            display: grid;
+            grid-template-columns: 22px minmax(0, 1fr);
+            gap: 10px;
+            align-items: start;
+            padding: 13px 14px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: white;
+            font-size: 14px;
+        }
+
+        .check-item input {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--brand-purple);
+            margin-top: 2px;
+        }
+
+        .kbd {
+            display: inline-flex;
+            align-items: center;
+            min-height: 22px;
+            padding: 0 7px;
+            border: 1px solid #cbd5e1;
+            border-bottom-width: 2px;
+            border-radius: 6px;
+            background: white;
+            color: #334155;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .footer {
+            padding: 44px 0;
+            background: #111827;
+            color: white;
+        }
+
+        .footer-inner {
+            display: flex;
+            justify-content: space-between;
+            gap: 24px;
+            align-items: center;
+        }
+
+        .footer p {
+            margin: 0;
+            color: #cbd5e1;
+            font-size: 14px;
+        }
+
+        .print-only {
+            display: none;
+        }
+
+        @media (max-width: 980px) {
+            .topbar-inner,
+            .section-head,
+            .footer-inner {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .hero-inner,
+            .grid.two,
+            .grid.three {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-inner {
+                min-height: auto;
+                padding-top: 42px;
+            }
+
+            .nav {
+                justify-content: flex-start;
+            }
+        }
+
+        @media (max-width: 620px) {
+            .shell {
+                width: min(100% - 20px, 1160px);
+            }
+
+            .section {
+                padding: 42px 0;
+            }
+
+            h1 {
+                font-size: 34px;
+            }
+
+            .hero-copy {
+                font-size: 16px;
+            }
+
+            .hero-actions {
+                flex-direction: column;
+            }
+
+            .button,
+            .open-app {
+                width: 100%;
+            }
+
+            .mock-tabs {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media print {
+            body {
+                background: white;
+            }
+
+            .topbar,
+            .hero-actions,
+            .footer,
+            .no-print {
+                display: none !important;
+            }
+
+            .print-only {
+                display: block;
+            }
+
+            .section,
+            .hero {
+                border-bottom: 1px solid #ddd;
+                page-break-inside: avoid;
+            }
+
+            .hero-inner {
+                min-height: auto;
+                padding: 24px 0;
+                grid-template-columns: 1fr;
+            }
+
+            .card,
+            .step,
+            .table-wrap,
+            .module-pill {
+                box-shadow: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="topbar">
+        <div class="shell topbar-inner">
+            <a class="brand" href="#top" aria-label="Minova training home">
+                <span class="brand-mark">M</span>
+                <span class="brand-text">
+                    <strong>Minova Training</strong>
+                    <span>报价网页功能培训</span>
+                </span>
+            </a>
+            <nav class="nav" aria-label="Training sections">
+                <a href="#workflow">流程</a>
+                <a href="#modules">模块</a>
+                <a href="#quotation">报价</a>
+                <a href="#data">数据</a>
+                <a href="#pdf">PDF</a>
+                <a href="#practice">练习</a>
+            </nav>
+            <a class="open-app" href="./index.html">打开报价网页 / Open App</a>
+        </div>
+    </header>
+
+    <main id="top">
+        <section class="hero">
+            <div class="shell hero-inner">
+                <div>
+                    <span class="eyebrow">Internal Training Guide</span>
+                    <h1>Minova 报价网页培训</h1>
+                    <p class="hero-copy">
+                        这是一页给同事快速上手的双语培训页：先理解工作流程，再按模块练习，最后可以独立完成产品选择、库存价格确认、报价保存和 PDF 输出。
+                    </p>
+                    <p class="hero-copy">
+                        This bilingual guide helps teammates learn the quotation webpage step by step: understand the workflow, practice each module, then create, save, and export a quotation confidently.
+                    </p>
+                    <div class="hero-actions no-print">
+                        <a class="button primary" href="./index.html">进入报价网页 / Open Quotation Webpage</a>
+                        <a class="button yellow" href="#workflow">开始培训 / Start Training</a>
+                        <button class="button" type="button" onclick="window.print()">打印讲义 / Print Handout</button>
+                    </div>
+                </div>
+
+                <aside class="hero-panel" aria-label="Quotation webpage preview">
+                    <div class="mock-header">
+                        <img class="mock-logo" src="./logo-horizontal.png" alt="Minova" onerror="this.style.display='none'">
+                        <div class="mock-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+                    </div>
+                    <div class="mock-body">
+                        <div class="mock-tabs" aria-label="Main navigation preview">
+                            <span>报价生成<br>Quotation</span>
+                            <span>光储计算<br>PV Calc</span>
+                            <span>报价设置<br>Settings</span>
+                            <span>产品清单<br>Products</span>
+                            <span>库存管理<br>Inventory</span>
+                            <span>运输管理<br>Transport</span>
+                        </div>
+                        <div class="quote-preview">
+                            <h2>报价单</h2>
+                            <div class="preview-line medium"></div>
+                            <div class="preview-line short"></div>
+                            <div class="preview-table">
+                                <div class="preview-row">
+                                    <span>产品 / Product</span>
+                                    <span>数量 / Qty</span>
+                                    <span>金额 / Amount</span>
+                                </div>
+                                <div class="preview-row">
+                                    <span>Solar Module</span>
+                                    <span>12</span>
+                                    <span>RM</span>
+                                </div>
+                                <div class="preview-row">
+                                    <span>Battery System</span>
+                                    <span>1</span>
+                                    <span>RM</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+        </section>
+
+        <section id="workflow" class="section white">
+            <div class="shell">
+                <div class="section-head">
+                    <div>
+                        <span class="tag purple">01 Workflow</span>
+                        <h2 class="section-title">先记住一条主线</h2>
+                    </div>
+                    <p class="section-note">大多数同事只要按这个顺序操作，就能完成标准报价。Most users can finish a standard quotation by following this flow.</p>
+                </div>
+
+                <div class="steps">
+                    <div class="step">
+                        <div>
+                            <h3>打开网页并确认同步状态 / Open the page and check sync</h3>
+                            <p>进入 <span class="kbd">index.html</span> 后先看右上角 GitHub 状态。显示未连接时，可以先做本地培训；正式保存或发布前再连接同步。</p>
+                            <p class="en">After opening <span class="kbd">index.html</span>, check the GitHub status on the top right. Training can continue offline, but publishing needs sync connected.</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div>
+                            <h3>确认语言与币种 / Confirm language and currency</h3>
+                            <p>用“中 / EN”切换页面文字，用“¥ / RM”切换显示币种。给客户看的报价通常用 RM，内部核算常看 ¥。</p>
+                            <p class="en">Use “中 / EN” for language and “¥ / RM” for currency. Customer quotations usually use RM; internal costing often uses RMB.</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div>
+                            <h3>从库存或产品选择报价项目 / Add quote items from inventory or products</h3>
+                            <p>优先选库存中已有批次，因为库存带有采购成本、税费、运费和可销售价格。没有库存时，再手动新增空白行。</p>
+                            <p class="en">Pick existing inventory first because it carries cost, tax, freight, and selling price information. Use blank rows only when needed.</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div>
+                            <h3>检查报价页面 1 到 5 / Review pages 1 to 5</h3>
+                            <p>报价单、财务分析、部件清单与质保、参考信息、Site Overview 都要看一遍。不要只看第一页。</p>
+                            <p class="en">Review Quotation, Financial Analysis, Part Breakdown &amp; Warranty, Reference, and Site Overview. Do not check only page one.</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div>
+                            <h3>保存报价并生成 PDF / Save and export PDF</h3>
+                            <p>先用“保存”保留报价记录，再点“生成报价（PDF）”。导出前确认客户名、地址、报价有效期、付款条款和附件。</p>
+                            <p class="en">Save the quote record first, then click “Generate Quotation (PDF)”. Check customer, address, validity, payment terms, and attachments before export.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="modules" class="section">
+            <div class="shell">
+                <div class="section-head">
+                    <div>
+                        <span class="tag purple">02 Module Map</span>
+                        <h2 class="section-title">导航栏每个按钮是做什么的</h2>
+                    </div>
+                    <p class="section-note">培训时可以按从左到右讲。During training, explain the modules from left to right.</p>
+                </div>
+
+                <div class="module-map" aria-label="Module map">
+                    <div class="module-pill"><strong>报价生成</strong><span>Create quote, save quote, export PDF.</span></div>
+                    <div class="module-pill"><strong>光储计算</strong><span>Estimate PV, battery, savings and return.</span></div>
+                    <div class="module-pill"><strong>报价设置</strong><span>Profit, exchange rate, install options.</span></div>
+                    <div class="module-pill"><strong>产品清单</strong><span>Product files, specs, images, certificates.</span></div>
+                    <div class="module-pill"><strong>Price List</strong><span>Customer-facing price reference.</span></div>
+                    <div class="module-pill"><strong>库存管理</strong><span>Inbound, outbound, cost, stock history.</span></div>
+                    <div class="module-pill"><strong>运输管理</strong><span>Shipping records, freight and tracking.</span></div>
+                </div>
+
+                <div class="grid three" style="margin-top: 16px;">
+                    <article class="card">
+                        <span class="tag yellow">For sales</span>
+                        <h3>销售同事重点 / Sales focus</h3>
+                        <p class="cn">熟悉报价生成、Price List、保存报价、PDF 输出。</p>
+                        <p class="en">Focus on quotation, price list, saved quotes, and PDF export.</p>
+                    </article>
+                    <article class="card">
+                        <span class="tag yellow">For operations</span>
+                        <h3>运营同事重点 / Operations focus</h3>
+                        <p class="cn">熟悉产品清单、库存管理、运输管理、认证附件。</p>
+                        <p class="en">Focus on product files, inventory, transport, and certificate attachments.</p>
+                    </article>
+                    <article class="card">
+                        <span class="tag yellow">For managers</span>
+                        <h3>管理同事重点 / Manager focus</h3>
+                        <p class="cn">熟悉报价设置、利润规则、汇率和 GitHub 同步状态。</p>
+                        <p class="en">Focus on quote settings, profit rules, exchange rate, and GitHub sync.</p>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section id="quotation" class="section white">
+            <div class="shell">
+                <div class="section-head">
+                    <div>
+                        <span class="tag purple">03 Quotation</span>
+                        <h2 class="section-title">报价单怎么做</h2>
+                    </div>
+                    <p class="section-note">把它当成“填客户信息、选方案、加产品、检查页面、导出 PDF”的五步。</p>
+                </div>
+
+                <div class="grid two">
+                    <div class="card">
+                        <h3>页面 1：报价单 / Page 1: Quotation</h3>
+                        <p class="cn">填写客户公司、现场地址、报价日期、有效期和付款条款。选择 Solar Program 后，系统会按不同方案显示相关内容。</p>
+                        <p class="en">Fill customer, site address, quote date, validity, and payment terms. Choose the Solar Program to match the project type.</p>
+                    </div>
+                    <div class="card">
+                        <h3>添加产品 / Add products</h3>
+                        <p class="cn">从库存价格按钮选择产品最稳妥。数量可以自动带出，也可以点击数量单元格手动确认修改。</p>
+                        <p class="en">Adding from inventory price buttons is safest. Quantity can be automatic or manually confirmed from the quantity cell.</p>
+                    </div>
+                    <div class="card">
+                        <h3>页面 2：财务分析 / Page 2: Financial Analysis</h3>
+                        <p class="cn">用于展示节省、电费、回本周期和 10 年 / 25 年收益。培训时提醒同事：这些数字要先核对项目参数。</p>
+                        <p class="en">Shows savings, tariff, payback, and 10-year / 25-year returns. Always verify project inputs before sharing numbers.</p>
+                    </div>
+                    <div class="card">
+                        <h3>页面 5：Site Overview</h3>
+                        <p class="cn">可以上传屋顶图、添加 PV 组件、旋转/复制/删除组件，并做现场示意。适合屋顶或安装方案展示。</p>
+                        <p class="en">Upload a roof image, add PV modules, rotate/copy/delete modules, and create a site layout for installation discussion.</p>
+                    </div>
+                </div>
+
+                <div class="callout" style="margin-top: 16px;">
+                    <strong>培训口径 / Training wording:</strong>
+                    先保存报价，再导出 PDF。保存是为了以后能加载和修改；PDF 是发给客户的文件。Save first for future editing; export PDF for customer delivery.
+                </div>
+            </div>
+        </section>
+
+        <section id="data" class="section">
+            <div class="shell">
+                <div class="section-head">
+                    <div>
+                        <span class="tag purple">04 Data</span>
+                        <h2 class="section-title">产品、库存、运输与认证</h2>
+                    </div>
+                    <p class="section-note">这些模块影响报价准确性。These modules decide whether the quote is accurate.</p>
+                </div>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>模块 / Module</th>
+                                <th>什么时候用 / When to use</th>
+                                <th>关键注意事项 / Key reminder</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>产品清单 / Products</strong></td>
+                                <td>新增产品、维护型号、供应商、图片、规格书和认证文件。</td>
+                                <td>产品编号、类目、子类目和供应商要统一，否则库存和报价不容易匹配。</td>
+                            </tr>
+                            <tr>
+                                <td><strong>库存管理 / Inventory</strong></td>
+                                <td>产品入库、销售出库、修改库存价格、查看历史库存。</td>
+                                <td>入库时认真填采购价、数量、税率、运费和存放位置；出库会影响可用库存。</td>
+                            </tr>
+                            <tr>
+                                <td><strong>运输管理 / Transport</strong></td>
+                                <td>从库存勾选货物生成运输单，记录货运公司、方式、运费、重量和体积。</td>
+                                <td>运输状态要及时更新：草稿、运输中、已到货、已取消。</td>
+                            </tr>
+                            <tr>
+                                <td><strong>认证附件 / Certificates</strong></td>
+                                <td>报价 PDF 需要附带 ISO、产品认证、规格书或运输附件时使用。</td>
+                                <td>导出 PDF 前在附件弹窗勾选需要的页面，不需要的不要勾。</td>
+                            </tr>
+                            <tr>
+                                <td><strong>GitHub 同步 / GitHub Sync</strong></td>
+                                <td>多人共用同一份数据，或需要发布到 GitHub Pages 时使用。</td>
+                                <td>正式改数据前确认同步正常；遇到冲突先看提示，不要重复点击。</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section id="settings" class="section white">
+            <div class="shell">
+                <div class="section-head">
+                    <div>
+                        <span class="tag purple">05 Settings</span>
+                        <h2 class="section-title">报价设置不是每天都改</h2>
+                    </div>
+                    <p class="section-note">利润和汇率会影响所有报价，培训时要强调权限和复核。Profit and exchange rate affect all quotes, so changes need review.</p>
+                </div>
+
+                <div class="grid three">
+                    <article class="card">
+                        <h3>汇率 / Exchange rate</h3>
+                        <p class="cn">用于人民币成本和马币报价的换算。正式报价前请确认是否使用最新汇率。</p>
+                        <p class="en">Used for RMB cost to RM quotation conversion. Confirm the rate before issuing formal quotes.</p>
+                    </article>
+                    <article class="card">
+                        <h3>利润设置 / Profit rules</h3>
+                        <p class="cn">可按公司主体、家用/工商业、类目和子类目设置利润。普通销售不建议随意修改。</p>
+                        <p class="en">Profit can be configured by company, home/C&amp;I, category, and subcategory. Sales users should not change it casually.</p>
+                    </article>
+                    <article class="card">
+                        <h3>安装费用 / Installation cost</h3>
+                        <p class="cn">海外施工费、国内施工费等可以加入报价单。加入前确认项目范围是否包含安装。</p>
+                        <p class="en">Installation options can be added to the quote. Confirm whether the project scope includes installation.</p>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section id="pdf" class="section">
+            <div class="shell">
+                <div class="section-head">
+                    <div>
+                        <span class="tag purple">06 PDF Export</span>
+                        <h2 class="section-title">发客户前的最后检查</h2>
+                    </div>
+                    <p class="section-note">PDF 是客户看到的版本。导出前多花一分钟，能少很多返工。</p>
+                </div>
+
+                <div class="grid two">
+                    <div class="checklist">
+                        <label class="check-item"><input type="checkbox"><span>客户名称和现场地址正确。Customer name and site address are correct.</span></label>
+                        <label class="check-item"><input type="checkbox"><span>报价编号、日期、有效期正确。Quote number, date, and validity are correct.</span></label>
+                        <label class="check-item"><input type="checkbox"><span>产品型号、规格、数量和价格正确。Product model, specification, quantity, and price are correct.</span></label>
+                        <label class="check-item"><input type="checkbox"><span>付款条款、质保和备注没有漏项。Payment terms, warranty, and remarks are complete.</span></label>
+                    </div>
+                    <div class="checklist">
+                        <label class="check-item"><input type="checkbox"><span>财务分析数字已核对。Financial analysis numbers have been reviewed.</span></label>
+                        <label class="check-item"><input type="checkbox"><span>Site Overview 图片和组件位置正确。Site Overview image and module positions are correct.</span></label>
+                        <label class="check-item"><input type="checkbox"><span>需要附带的认证文件已勾选。Required certificates or specs are selected.</span></label>
+                        <label class="check-item"><input type="checkbox"><span>先保存报价，再生成 PDF。Save the quote before generating PDF.</span></label>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="practice" class="section white">
+            <div class="shell">
+                <div class="section-head">
+                    <div>
+                        <span class="tag purple">07 Practice</span>
+                        <h2 class="section-title">建议培训练习</h2>
+                    </div>
+                    <p class="section-note">让同事真正点一遍，比只听讲更有效。Hands-on practice works better than only watching.</p>
+                </div>
+
+                <div class="steps">
+                    <div class="step">
+                        <div>
+                            <h3>练习 1：生成一份简单报价 / Create a simple quote</h3>
+                            <p>输入一个模拟客户，选择 On-Grid System，从库存选择 2 到 3 个产品，检查总价。</p>
+                            <p class="en">Enter a demo customer, choose On-Grid System, add 2 to 3 inventory products, and review the total.</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div>
+                            <h3>练习 2：保存和重新加载 / Save and reload</h3>
+                            <p>把报价保存为“Training Demo - 姓名”，切换到新报价后再加载回来。</p>
+                            <p class="en">Save as “Training Demo - Name”, switch to a new quote, then load it again.</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div>
+                            <h3>练习 3：导出前检查 / Pre-export review</h3>
+                            <p>逐页查看 1 到 5 页，勾选需要的附件，生成 PDF 前口头复述检查清单。</p>
+                            <p class="en">Review pages 1 to 5, select needed attachments, and read the checklist before export.</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div>
+                            <h3>练习 4：数据维护演示 / Data maintenance demo</h3>
+                            <p>由管理员演示产品清单、库存入库、销售出库和运输单，不建议所有新人直接修改正式数据。</p>
+                            <p class="en">An admin demonstrates products, inbound stock, outbound stock, and transport records. New users should not edit live data immediately.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="callout" style="margin-top: 16px;">
+                    <strong>常见问题 / Common issue:</strong>
+                    如果页面看起来没有更新，先刷新浏览器；如果保存失败，检查 GitHub 是否连接；如果 PDF 排版不对，回到报价页逐页检查文字是否过长。
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="shell footer-inner">
+            <div>
+                <strong>Minova Quotation Webpage Training</strong>
+                <p>Standalone training page. It does not change quotation data.</p>
+            </div>
+            <a class="button yellow" href="./index.html">打开报价网页 / Open App</a>
+        </div>
+    </footer>
+</body>
+</html>

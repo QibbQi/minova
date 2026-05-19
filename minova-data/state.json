@@ -101,7 +101,7 @@
         "name": "堆叠式配件",
         "category": "配件",
         "vendor": "明匠 / SunC",
-        "spec": "个",
+        "spec": "pcs",
         "scenario": "堆叠式产品配件",
         "warrantyYears": "",
         "warrantyCycles": "",
@@ -361,6 +361,42 @@
         "note": "采购入库 2026-04-10 | 入库到 马来西亚仓库 | 总成本¥7749.00"
       }
     ],
+    "marketPrices": {
+      "records": [],
+      "categoryUnits": {
+        "光伏组件": {
+          "unit": "W",
+          "source": "auto",
+          "updatedAt": 1778842747606
+        },
+        "电池": {
+          "unit": "kWh",
+          "source": "auto",
+          "updatedAt": 1778842747606
+        },
+        "逆变器": {
+          "unit": "kW",
+          "source": "auto",
+          "updatedAt": 1778842747606
+        },
+        "配件": {
+          "unit": "pcs",
+          "source": "auto",
+          "updatedAt": 1778842747606
+        },
+        "一体机": {
+          "unit": "套",
+          "source": "auto",
+          "updatedAt": 1778842747606
+        },
+        "工商储": {
+          "unit": "kWh",
+          "source": "auto",
+          "updatedAt": 1778842747606
+        }
+      },
+      "deletedRecordIds": []
+    },
     "salesRecords": [],
     "historicalInventory": [],
     "suppliers": [

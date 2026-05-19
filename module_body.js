@@ -1,7 +1,64 @@
-
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+const localStorage = (() => {
+            const memory = new Map();
+            let native = null;
+            try {
+                native = globalThis.localStorage;
+                const k = '__minova_storage_probe__';
+                native.setItem(k, '1');
+                native.removeItem(k);
+            } catch (e) {
+                native = null;
+            }
+            const fallback = {
+                getItem: (key) => memory.has(String(key)) ? memory.get(String(key)) : null,
+                setItem: (key, value) => { memory.set(String(key), String(value)); },
+                removeItem: (key) => { memory.delete(String(key)); },
+                clear: () => { memory.clear(); },
+                key: (index) => Array.from(memory.keys())[Number(index)] ?? null,
+                get length() { return memory.size; }
+            };
+            const safe = {
+                getItem(key) {
+                    if (native) {
+                        try { return native.getItem(key); } catch (e) {}
+                    }
+                    return fallback.getItem(key);
+                },
+                setItem(key, value) {
+                    if (native) {
+                        try { native.setItem(key, value); return; } catch (e) {}
+                    }
+                    fallback.setItem(key, value);
+                },
+                removeItem(key) {
+                    if (native) {
+                        try { native.removeItem(key); return; } catch (e) {}
+                    }
+                    fallback.removeItem(key);
+                },
+                clear() {
+                    if (native) {
+                        try { native.clear(); return; } catch (e) {}
+                    }
+                    fallback.clear();
+                },
+                key(index) {
+                    if (native) {
+                        try { return native.key(index); } catch (e) {}
+                    }
+                    return fallback.key(index);
+                },
+                get length() {
+                    if (native) {
+                        try { return native.length; } catch (e) {}
+                    }
+                    return fallback.length;
+                },
+                get isFallback() { return !native; }
+            };
+            globalThis.__minovaSafeLocalStorage = safe;
+            return safe;
+        })();
 
         const initGitHubSync = (() => {
             const KEY = {
@@ -455,7 +512,7 @@
                 modal.append(card);
 
                 const title = el('div', { class: 'text-lg font-black text-slate-800', text: 'GitHub 数据同步' });
-                const tip = el('div', { class: 'text-xs text-slate-500 mt-1', text: '使用 PAT + 加密本地存储，将当前页面发布到 GitHub Pages（覆盖 index.html）。' });
+                const tip = el('div', { class: 'text-xs text-slate-500 mt-1', text: '默认使用 Sync Data：只同步 minova-data/state.json，不覆盖 index.html，也不等待 GitHub Pages 部署。只有代码或页面布局更新后才使用 Publish Page。' });
 
                 const form = el('div', { class: 'mt-5 grid grid-cols-1 gap-4' });
                 const repoHint = el('div', { class: 'rounded-xl border border-slate-200 p-4 bg-slate-50 text-xs text-slate-600' });
@@ -484,11 +541,13 @@
                 const btnClose = el('button', { class: 'px-4 py-2 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50', text: '关闭' });
                 const btnCheck = el('button', { class: 'px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 border border-slate-200', text: '连接自检' });
                 const btnConnectPat = el('button', { class: 'px-4 py-2 rounded-xl bg-slate-900 text-white font-bold hover:bg-black', text: '使用 PAT 连接' });
-                const btnPublish = el('button', { class: 'px-4 py-2 rounded-xl bg-purple-700 text-white font-bold hover:bg-purple-800', text: '发布到 Pages' });
+                const btnSyncData = el('button', { class: 'px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700', text: 'Sync Data' });
+                const btnPublish = el('button', { class: 'px-4 py-2 rounded-xl bg-purple-700 text-white font-bold hover:bg-purple-800', text: 'Publish Page' });
                 const btnDisconnect = el('button', { class: 'px-4 py-2 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700', text: '断开' });
 
-                footer.append(btnConnectPat, btnPublish, btnCheck, btnDisconnect, btnClose);
-                card.append(title, tip, form, msg, footer);
+                footer.append(btnConnectPat, btnSyncData, btnPublish, btnCheck, btnDisconnect, btnClose);
+                const actionGuide = el('div', { class: 'mt-4 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-xs leading-relaxed text-emerald-800', text: 'Recommended: Sync Data writes only the data file and is much faster. Publish Page writes index.html plus the data file, and should be used only after code/layout changes.' });
+                card.append(title, tip, form, actionGuide, msg, footer);
 
                 function formatErr(e) {
                     const m = String(e?.message || e || '');
@@ -502,18 +561,19 @@
 
                 const refresh = () => {
                     const s = state();
+                    const localFileMode = window.location.protocol === 'file:';
                     btn.textContent = s.connected
                         ? `GH 已连(${s.queueSize})`
-                        : `GH 未连${s.hasTokenStored ? '·token' : ''}`;
+                        : 'GH 未连';
                     btn.className = `${btnBaseClass} ${s.connected ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700' : 'bg-red-600 hover:bg-red-700 text-white border-red-700'}`;
-                    const restrictedTabs = ['quotation', 'costcalc', 'database', 'inventory', 'transport'];
+                    const restrictedTabs = ['quotation', 'costcalc', 'database', 'pricelist', 'inventory', 'transport'];
                     for (const t of restrictedTabs) {
                         const tabBtn = document.getElementById(`tab-${t}`);
-                        if (tabBtn) tabBtn.style.display = s.connected ? '' : 'none';
+                        if (tabBtn) tabBtn.style.display = (s.connected || localFileMode) ? '' : 'none';
                     }
                     const pdfBtn = document.getElementById('btn-generate-pdf');
-                    if (pdfBtn) pdfBtn.style.display = s.connected ? '' : 'none';
-                    if (!s.connected) {
+                    if (pdfBtn) pdfBtn.style.display = (s.connected || localFileMode) ? '' : 'none';
+                    if (!s.connected && !localFileMode) {
                         const activeRestricted = restrictedTabs.some(t => {
                             const view = document.getElementById(`view-${t}`);
                             return view && !view.classList.contains('hidden') && view.style.display !== 'none';
@@ -523,6 +583,7 @@
                         }
                     }
                     btnCheck.style.display = s.connected ? '' : 'none';
+                    btnSyncData.style.display = s.connected ? '' : 'none';
                     btnPublish.style.display = s.connected ? '' : 'none';
                     const cfg = s.config || {};
                     repoHint.textContent = `目标仓库：${cfg.owner || defaults.owner}/${cfg.repo || defaults.repo}（分支：${cfg.branch || defaults.branch}）`;
@@ -592,6 +653,31 @@
                     refresh();
                 };
 
+                btnSyncData.onclick = async () => {
+                    stopDots();
+                    btnSyncData.disabled = true;
+                    btnSyncData.classList.add('opacity-60');
+                    try {
+                        ensureConfig();
+                        startDots('同步数据中');
+                        const result = await sync.syncStateJson();
+                        stopDots();
+                        const sha = result?.commit?.sha || result?.sha || '';
+                        if (sha) window.__lastGitHubCommitSha = sha;
+                        msg.textContent = `已同步数据：minova-data/state.json${sha ? `\nCommit SHA：${sha}` : ''}\n未重新发布 index.html，因此速度更快。`;
+                    } catch (e) {
+                        stopDots();
+                        if (e?.status === 401) {
+                            try { await sync.lock(); } catch (e2) {}
+                        }
+                        msg.textContent = formatErr(e);
+                    } finally {
+                        btnSyncData.disabled = false;
+                        btnSyncData.classList.remove('opacity-60');
+                    }
+                    refresh();
+                };
+
                 btnPublish.onclick = async () => {
                     stopDots();
                     btnPublish.disabled = true;
@@ -601,7 +687,9 @@
                         const html = window.buildUpdatedHtml?.();
                         if (!html) { msg.textContent = '生成 HTML 失败'; return; }
                         startDots('提交中，请稍等');
-                        await sync.publishIndexHtml(html);
+                        const published = await sync.publishIndexHtml(html);
+                        const publishSha = published?.sha || published?.commit?.sha || '';
+                        if (publishSha) window.__lastGitHubCommitSha = publishSha;
                         startDots('已提交，请稍等');
                         const expectedAt = (() => {
                             const m = html.match(/\x3Cscript id="minova-embedded-state" type="application\/json">([\s\S]*?)<\/script>/);
@@ -682,7 +770,7 @@
                 </label>
                 <label class="flex items-center gap-2 py-1 cursor-pointer">
                     <input type="checkbox" value="2" class="print-page-checkbox w-4 h-4 text-purple-600" checked onchange="updateCertSelectedSummary()">
-                    <span class="text-sm text-slate-700">2. ROI / Financial Analysis</span>
+                    <span class="text-sm text-slate-700">2. Financial Analysis</span>
                 </label>
                 <label class="flex items-center gap-2 py-1 cursor-pointer">
                     <input type="checkbox" value="3" class="print-page-checkbox w-4 h-4 text-purple-600" checked onchange="updateCertSelectedSummary()">
@@ -697,6 +785,21 @@
                     <span class="text-sm text-slate-700">5. Site Overview</span>
                 </label>
             </div>
+        </div>
+    </div>
+
+    <div class="border border-slate-200 rounded-xl mb-4">
+        <div class="flex items-center justify-between p-4">
+            <span class="text-sm font-bold text-slate-700">【导出选项】</span>
+        </div>
+        <div class="px-4 pb-4">
+            <label class="flex items-start gap-2 py-1 cursor-pointer">
+                <input id="qa-rotate-siteoverview" type="checkbox" class="w-4 h-4 text-purple-600 mt-0.5" onchange="onRotateSiteOverviewPrintChanged(this.checked)">
+                <div class="flex flex-col">
+                    <span class="text-sm text-slate-700">第 5 页画布旋转打印（右转 90°）</span>
+                    <span class="text-xs text-slate-400">仅影响 PDF 导出，不影响网页端显示</span>
+                </div>
+            </label>
         </div>
     </div>
 
@@ -806,6 +909,31 @@
                     return { login, rateLimit: { remaining: core.remaining, limit: core.limit, reset: core.reset } };
                 }
 
+                function buildStateSnapshot() {
+                    return {
+                        v: 1,
+                        updatedAt: new Date().toISOString(),
+                        data: getLocalState()
+                    };
+                }
+
+                async function syncStateJson() {
+                    if (!unlockedToken) throw new Error('Not connected');
+                    const { owner, repo: repoName, branch, path } = config;
+                    const statePath = path || 'minova-data/state.json';
+                    const content = JSON.stringify(buildStateSnapshot(), null, 2);
+                    const result = await repo.upsertText({
+                        owner,
+                        repo: repoName,
+                        branch,
+                        path: statePath,
+                        message: `minova: sync data (${new Date().toLocaleString()})`,
+                        content
+                    });
+                    appendAudit('sync_data', `${owner}/${repoName}:${statePath}`);
+                    return result;
+                }
+
                 async function publishIndexHtml(html) {
                     if (!unlockedToken) throw new Error('Not connected');
                     const { owner, repo: repoName, branch } = config;
@@ -818,7 +946,7 @@
                     }
                     const files = [{ path: 'index.html', content: html }];
                     if (stateJson) files.push({ path: 'minova-data/state.json', content: stateJson });
-                    await repo.commitTextFiles({
+                    const result = await repo.commitTextFiles({
                         owner,
                         repo: repoName,
                         branch,
@@ -826,13 +954,14 @@
                         files
                     });
                     appendAudit('publish', `${owner}/${repoName}:${files.map((f) => f.path).join(',')}`);
+                    return result;
                 }
 
                 function getStatus() {
                     return { connected: !!unlockedToken, config, queueSize: queue.items.length, hasTokenStored: !!storage.get(KEY.token) };
                 }
 
-                const sync = { storage, getStatus, saveConfig, lock, storeToken, selfCheck, publishIndexHtml, repo, config };
+                const sync = { storage, getStatus, saveConfig, lock, storeToken, selfCheck, syncStateJson, publishIndexHtml, repo, config };
                 mountGitHubSyncUi({ sync });
                 return sync;
             };
@@ -842,8 +971,10 @@
         let products = [];
         let inventory = [];
         let inventoryHistory = [];
+        let marketPrices = { records: [], categoryUnits: {} };
         let salesRecords = [];
         let historicalInventory = [];
+        let suppliers = [];
         let companyCerts = { isoCerts: [], transportCerts: [] };
         let transportRecords = [];
         let fileDeleteLogs = [];
@@ -860,6 +991,720 @@
         function safeJsonParseLoose(raw, fallback) {
             try { return raw ? JSON.parse(raw) : fallback; } catch { return fallback; }
         }
+        function htmlSafe(v) {
+            return String(v ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+        }
+        function normalizeUnitLabel(unit) {
+            const raw = String(unit || '').trim();
+            if (!raw || raw === '个') return 'pcs';
+            if (raw.toLowerCase() === 'pc' || raw.toLowerCase() === 'piece' || raw.toLowerCase() === 'pieces') return 'pcs';
+            return raw;
+        }
+        function normalizeMarketUnit(unit) {
+            return normalizeUnitLabel(unit);
+        }
+        function normalizeMarketPrices(data) {
+            const raw = data && typeof data === 'object' ? data : {};
+            const unitSource = raw.categoryUnits && typeof raw.categoryUnits === 'object' ? raw.categoryUnits : {};
+            const categoryUnits = {};
+            const deletedRecordIds = Array.from(new Set((Array.isArray(raw.deletedRecordIds) ? raw.deletedRecordIds : [])
+                .map(id => String(id || '').trim())
+                .filter(Boolean)));
+            const deleted = new Set(deletedRecordIds);
+            Object.entries(unitSource).forEach(([category, meta]) => {
+                const cat = String(category || '').trim();
+                if (!cat) return;
+                const m = meta && typeof meta === 'object' ? meta : {};
+                const unit = normalizeMarketUnit(m.unit || '');
+                if (!unit) return;
+                categoryUnits[cat] = {
+                    unit,
+                    source: m.source === 'manual' ? 'manual' : 'auto',
+                    updatedAt: Number.isFinite(parseFloat(m.updatedAt)) ? parseFloat(m.updatedAt) : Date.now()
+                };
+            });
+            const records = (Array.isArray(raw.records) ? raw.records : []).map((record, index) => {
+                const r = record && typeof record === 'object' ? record : {};
+                const category = String(r.category || '').trim();
+                const id = String(r.id || `mp_${r.ts || Date.now()}_${index}`).trim();
+                const unit = normalizeMarketUnit(r.unit || categoryUnits[category]?.unit || '');
+                const currency = String(r.currency || 'CNY').toUpperCase() === 'MYR' ? 'MYR' : 'CNY';
+                const price = Number.isFinite(parseFloat(r.price)) ? parseFloat(r.price) : 0;
+                const rate = Number.isFinite(parseFloat(r.rateCnyPerMyr)) ? parseFloat(r.rateCnyPerMyr) : 1.53;
+                const priceCnyRaw = Number.isFinite(parseFloat(r.priceCny)) ? parseFloat(r.priceCny) : (currency === 'MYR' ? price * rate : price);
+                const ts = Number.isFinite(parseFloat(r.ts)) ? parseFloat(r.ts) : (r.quotedAt ? Date.parse(r.quotedAt) : Date.now());
+                const quotedAt = String(r.quotedAt || '').trim() || new Date(ts || Date.now()).toISOString().slice(0, 10);
+                if (deleted.has(id) || !category || !unit || price <= 0 || priceCnyRaw <= 0) return null;
+                return {
+                    id,
+                    category,
+                    unit,
+                    price,
+                    currency,
+                    rateCnyPerMyr: rate > 0 ? rate : 1.53,
+                    priceCny: priceCnyRaw,
+                    quotedAt,
+                    ts: ts || Date.now(),
+                    note: String(r.note || '').trim()
+                };
+            }).filter(Boolean).sort((a, b) => (a.ts || 0) - (b.ts || 0));
+            return { records, categoryUnits, deletedRecordIds };
+        }
+        function normalizeProductUnitFields() {
+            if (Array.isArray(products)) {
+                products = products.map(p => {
+                    if (!p || typeof p !== 'object') return p;
+                    return String(p.spec || '').trim() === '个' ? { ...p, spec: 'pcs' } : p;
+                });
+            }
+            if (marketPrices?.categoryUnits?.配件?.unit === '个') {
+                marketPrices.categoryUnits.配件 = { ...marketPrices.categoryUnits.配件, unit: 'pcs' };
+            }
+        }
+        function getMarketCategoryUnitMeta(category) {
+            const cat = String(category || '').trim();
+            marketPrices = normalizeMarketPrices(marketPrices);
+            if (!cat) return { unit: 'pcs', source: 'auto', updatedAt: Date.now() };
+            const existing = marketPrices.categoryUnits?.[cat];
+            if (existing?.unit) return { ...existing, unit: normalizeMarketUnit(existing.unit) };
+            const unit = inferMarketUnitForCategory(cat);
+            marketPrices.categoryUnits[cat] = { unit, source: 'auto', updatedAt: Date.now() };
+            return marketPrices.categoryUnits[cat];
+        }
+        function inferMarketUnitForCategory(category) {
+            const cat = String(category || '').trim();
+            const categoryProducts = products.filter(p => String(p.category || '').trim() === cat);
+            const categoryInventory = inventory.filter(item => {
+                const product = products.find(p => p.id === item.productId);
+                return String(product?.category || '').trim() === cat;
+            });
+            const sample = [...categoryInventory.map(i => String(i.spec || '')), ...categoryProducts.map(p => String(p.spec || ''))].join(' ').toLowerCase();
+            if (cat.includes('一体机')) return '套';
+            if (cat.includes('配件')) return 'pcs';
+            if (cat.includes('工商储') || cat.includes('储能')) return /\bkwh\b/i.test(sample) ? 'kWh' : 'kW';
+            if (cat.includes('光伏组件') || /\b\d{3,4}\s*w\b/i.test(sample)) return 'W';
+            if (cat.includes('逆变器') || /\bkw\b/i.test(sample)) {
+                return 'kW';
+            }
+            if (cat.includes('电池') || cat.includes('储') || /\bkwh\b/i.test(sample)) return 'kWh';
+            return 'pcs';
+        }
+        function upsertMarketCategoryUnit(category, unit) {
+            const cat = String(category || '').trim();
+            const u = normalizeMarketUnit(unit || '');
+            if (!cat || !u) return;
+            marketPrices = normalizeMarketPrices(marketPrices);
+            marketPrices.categoryUnits[cat] = { unit: u, source: 'manual', updatedAt: Date.now() };
+        }
+        function addMarketPriceRecord(input) {
+            const raw = input && typeof input === 'object' ? input : {};
+            const category = String(raw.category || '').trim();
+            const unit = normalizeMarketUnit(raw.unit || getMarketCategoryUnitMeta(category).unit || '');
+            const currency = String(raw.currency || 'CNY').toUpperCase() === 'MYR' ? 'MYR' : 'CNY';
+            const price = Number.isFinite(parseFloat(raw.price)) ? parseFloat(raw.price) : 0;
+            const rate = Number.isFinite(parseFloat(raw.rateCnyPerMyr)) ? parseFloat(raw.rateCnyPerMyr) : 1.53;
+            const quotedAt = String(raw.quotedAt || '').trim() || new Date().toISOString().slice(0, 10);
+            const ts = Date.parse(quotedAt) || Date.now();
+            if (!category) throw new Error('请选择类目');
+            if (!unit) throw new Error('请选择单位');
+            if (price <= 0) throw new Error('请输入有效市场价');
+            marketPrices = normalizeMarketPrices(marketPrices);
+            upsertMarketCategoryUnit(category, unit);
+            marketPrices.records.push({
+                id: `mp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                category,
+                unit,
+                price,
+                currency,
+                rateCnyPerMyr: rate > 0 ? rate : 1.53,
+                priceCny: currency === 'MYR' ? price * (rate > 0 ? rate : 1.53) : price,
+                quotedAt,
+                ts,
+                note: String(raw.note || '').trim()
+            });
+            marketPrices = normalizeMarketPrices(marketPrices);
+        }
+        function updateMarketPriceRecord(id, input) {
+            const recordId = String(id || '').trim();
+            if (!recordId) throw new Error('Missing market price record id');
+            const raw = input && typeof input === 'object' ? input : {};
+            marketPrices = normalizeMarketPrices(marketPrices);
+            const idx = marketPrices.records.findIndex(r => String(r.id) === recordId);
+            if (idx === -1) throw new Error('Market price record not found');
+            const prev = marketPrices.records[idx];
+            const category = String(raw.category || prev.category || '').trim();
+            const unit = normalizeMarketUnit(raw.unit || prev.unit || getMarketCategoryUnitMeta(category).unit || '');
+            const currency = String(raw.currency || prev.currency || 'CNY').toUpperCase() === 'MYR' ? 'MYR' : 'CNY';
+            const price = Number.isFinite(parseFloat(raw.price)) ? parseFloat(raw.price) : 0;
+            const rate = Number.isFinite(parseFloat(raw.rateCnyPerMyr)) ? parseFloat(raw.rateCnyPerMyr) : getSalesOutRateCnyPerMyr();
+            const quotedAt = String(raw.quotedAt || prev.quotedAt || '').trim() || new Date().toISOString().slice(0, 10);
+            const ts = Date.parse(quotedAt) || prev.ts || Date.now();
+            if (!category) throw new Error('请选择类目');
+            if (!unit) throw new Error('请选择单位');
+            if (price <= 0) throw new Error('请输入有效市场价');
+            upsertMarketCategoryUnit(category, unit);
+            marketPrices.records[idx] = {
+                ...prev,
+                category,
+                unit,
+                price,
+                currency,
+                rateCnyPerMyr: rate > 0 ? rate : 1.53,
+                priceCny: currency === 'MYR' ? price * (rate > 0 ? rate : 1.53) : price,
+                quotedAt,
+                ts,
+                note: String(raw.note || '').trim()
+            };
+            marketPrices = normalizeMarketPrices(marketPrices);
+        }
+        function deleteMarketPriceRecord(id) {
+            const recordId = String(id || '').trim();
+            if (!recordId) return;
+            marketPrices = normalizeMarketPrices(marketPrices);
+            marketPrices.records = marketPrices.records.filter(r => String(r.id) !== recordId);
+            marketPrices.deletedRecordIds = Array.from(new Set([...(marketPrices.deletedRecordIds || []), recordId]));
+        }
+        function getMarketPriceSummary(category, options = {}) {
+            const cat = String(category || '').trim();
+            const days = Number.isFinite(parseFloat(options.days)) ? parseFloat(options.days) : 30;
+            marketPrices = normalizeMarketPrices(marketPrices);
+            const unit = getMarketCategoryUnitMeta(cat).unit;
+            const all = marketPrices.records
+                .filter(r => String(r.category || '').trim() === cat)
+                .sort((a, b) => (a.ts || 0) - (b.ts || 0));
+            const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+            const recent = all.filter(r => (r.ts || Date.parse(r.quotedAt) || 0) >= cutoff);
+            const base = recent.length ? recent : [];
+            const avgCny = base.length ? base.reduce((sum, r) => sum + (parseFloat(r.priceCny) || 0), 0) / base.length : 0;
+            const latest = all[all.length - 1] || null;
+            const firstRecent = recent[0] || null;
+            const latestRecent = recent[recent.length - 1] || null;
+            const trendCny = firstRecent && latestRecent ? (latestRecent.priceCny || 0) - (firstRecent.priceCny || 0) : 0;
+            const trendPct = firstRecent && firstRecent.priceCny ? (trendCny / firstRecent.priceCny) * 100 : 0;
+            return { category: cat, unit, days, records: recent, allRecords: all, avgCny, latest, latestRecent, trendCny, trendPct };
+        }
+        function getMarketTrendRecords(category, range = 'day') {
+            const cat = String(category || '').trim();
+            const mode = ['day', 'month', 'year'].includes(String(range || '').toLowerCase()) ? String(range).toLowerCase() : 'day';
+            const days = mode === 'year' ? 365 * 5 : mode === 'month' ? 365 : 30;
+            const summary = getMarketPriceSummary(cat, { days });
+            return { ...summary, range: mode, records: summary.records, days };
+        }
+        function formatMarketPrice(valueCny, unit, currency = 'CNY') {
+            const n = Number.isFinite(parseFloat(valueCny)) ? parseFloat(valueCny) : 0;
+            const u = normalizeUnitLabel(unit || '');
+            if (String(currency || '').toUpperCase() === 'MYR') {
+                const rate = typeof getSalesOutRateCnyPerMyr === 'function' ? getSalesOutRateCnyPerMyr() : 1.53;
+                return `RM ${(n / rate).toFixed(4)}/${u}`;
+            }
+            return `¥${n.toFixed(4)}/${u}`;
+        }
+        function normalizeSupplierCode(raw) {
+            return String(raw || '').trim().toUpperCase().replace(/\s+/g, '-').replace(/[^A-Z0-9_-]/g, '');
+        }
+        function hashStringToNumber(raw) {
+            let h = 0;
+            const s = String(raw || '');
+            for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+            return Math.abs(h);
+        }
+        function getSupplierDisplayName(supplier) {
+            if (!supplier || typeof supplier !== 'object') return '';
+            const s = supplier && typeof supplier === 'object' ? supplier : {};
+            const zh = String(s.nameZh || s.nameCn || '').trim();
+            const en = String(s.nameEn || s.name || '').trim();
+            if (zh && en && zh !== en) return `${zh} / ${en}`;
+            return zh || en || String(s.code || '').trim() || '未命名供应商';
+        }
+        function getSupplierDisplayNameForLang(supplier, lang = currentLang) {
+            if (!supplier || typeof supplier !== 'object') return '';
+            const s = supplier && typeof supplier === 'object' ? supplier : {};
+            const zh = String(s.nameZh || s.nameCn || '').trim();
+            const en = String(s.nameEn || s.name || '').trim();
+            const code = String(s.code || '').trim();
+            return lang === 'en'
+                ? (en || zh || code || 'Unnamed Supplier')
+                : (zh || en || code || '未命名供应商');
+        }
+        function getSupplierLogo(supplier) {
+            const s = supplier && typeof supplier === 'object' ? supplier : {};
+            return String(s.logoDataUrl || s.brandLogo || s.logo || '').trim();
+        }
+        const SUPPLIER_STAGES = [
+            { key: 'info', label: '资料储备级', shortLabel: '资料', desc: '资料 / 简单报价' },
+            { key: 'research', label: '实地调研级', shortLabel: '调研', desc: '到访 / 准确报价' },
+            { key: 'trial', label: '试单合作级', shortLabel: '试单', desc: '至少 1 次下单' },
+            { key: 'core', label: '战略核心级', shortLabel: '核心', desc: '长期合作 / 账期' }
+        ];
+        const SUPPLIER_SCORE_FIELDS = [
+            { key: 'quality', label: '产品质量', weight: 18 },
+            { key: 'price', label: '价格优势', weight: 14 },
+            { key: 'technical', label: '技术研发', weight: 12 },
+            { key: 'willingness', label: '合作意愿', weight: 12 },
+            { key: 'capacity', label: '生产产能', weight: 10 },
+            { key: 'afterSales', label: '售后支持', weight: 10 },
+            { key: 'coverage', label: '类型覆盖', weight: 9 },
+            { key: 'export', label: '出口经验', weight: 8 },
+            { key: 'scale', label: '公司规模', weight: 7 }
+        ];
+        const SUPPLIER_STAGE_CLASS = {
+            info: 'bg-slate-100 text-slate-600 border-slate-200',
+            research: 'bg-blue-50 text-blue-700 border-blue-100',
+            trial: 'bg-amber-50 text-amber-700 border-amber-100',
+            core: 'bg-purple-50 text-purple-700 border-purple-100'
+        };
+        function normalizeSupplierStage(stage) {
+            const raw = String(stage || '').trim();
+            const mapped = {
+                info: 'info',
+                research: 'research',
+                trial: 'trial',
+                core: 'core',
+                '资料级': 'info',
+                '资料储备级': 'info',
+                '调研级': 'research',
+                '实地调研级': 'research',
+                '初步合作级': 'trial',
+                '试单合作级': 'trial',
+                '核心供应商级': 'core',
+                '战略核心级': 'core'
+            };
+            return mapped[raw] || 'info';
+        }
+        function getSupplierStageDef(stage) {
+            return SUPPLIER_STAGES.find(s => s.key === normalizeSupplierStage(stage)) || SUPPLIER_STAGES[0];
+        }
+        function supplierStageIndex(stage) {
+            const key = normalizeSupplierStage(stage);
+            return Math.max(0, SUPPLIER_STAGES.findIndex(s => s.key === key));
+        }
+        function supplierStageByIndex(index) {
+            return SUPPLIER_STAGES[Math.min(Math.max(parseInt(index, 10) || 0, 0), SUPPLIER_STAGES.length - 1)]?.key || 'info';
+        }
+        function normalizeSupplierScore(value) {
+            const n = parseFloat(value);
+            if (!Number.isFinite(n)) return 0;
+            return Math.min(Math.max(n, 0), 10);
+        }
+        function normalizeSupplierScores(raw) {
+            const base = raw && typeof raw === 'object' ? raw : {};
+            return SUPPLIER_SCORE_FIELDS.reduce((acc, field) => {
+                acc[field.key] = normalizeSupplierScore(base[field.key]);
+                return acc;
+            }, {});
+        }
+        function normalizeSupplierEvidence(raw) {
+            const base = raw && typeof raw === 'object' ? raw : {};
+            const orderCount = Math.max(0, parseInt(base.orderCount ?? base.orders ?? 0, 10) || 0);
+            const creditTermDays = Math.max(0, parseInt(base.creditTermDays ?? base.creditDays ?? 0, 10) || 0);
+            return {
+                factoryVisited: !!base.factoryVisited,
+                accurateQuote: !!base.accurateQuote,
+                firstOrderDone: !!base.firstOrderDone || orderCount > 0,
+                longTermCooperation: !!base.longTermCooperation,
+                preferredPrice: !!base.preferredPrice,
+                creditTermDays,
+                orderCount
+            };
+        }
+        function calculateSupplierTotalScore(scores) {
+            const normalized = normalizeSupplierScores(scores);
+            const total = SUPPLIER_SCORE_FIELDS.reduce((sum, field) => sum + (normalized[field.key] / 10 * field.weight), 0);
+            return Math.round(total * 10) / 10;
+        }
+        function getSupplierScoreStage(totalScore) {
+            const score = Number.isFinite(parseFloat(totalScore)) ? parseFloat(totalScore) : 0;
+            if (score >= 85) return 'core';
+            if (score >= 70) return 'trial';
+            if (score >= 50) return 'research';
+            return 'info';
+        }
+        function getSupplierEvidenceMaxStage(evidence) {
+            const e = normalizeSupplierEvidence(evidence);
+            const hasResearch = e.factoryVisited && e.accurateQuote;
+            const hasTrial = hasResearch && (e.firstOrderDone || e.orderCount > 0);
+            const hasCore = hasTrial && e.longTermCooperation && e.preferredPrice && e.creditTermDays > 0;
+            if (hasCore) return 'core';
+            if (hasTrial) return 'trial';
+            if (hasResearch) return 'research';
+            return 'info';
+        }
+        function minSupplierStage(stageA, stageB) {
+            return supplierStageByIndex(Math.min(supplierStageIndex(stageA), supplierStageIndex(stageB)));
+        }
+        function capSupplierStage(stage, evidence) {
+            return minSupplierStage(normalizeSupplierStage(stage), getSupplierEvidenceMaxStage(evidence));
+        }
+        function getSupplierSuggestedStage(scores, evidence) {
+            return minSupplierStage(getSupplierScoreStage(calculateSupplierTotalScore(scores)), getSupplierEvidenceMaxStage(evidence));
+        }
+        function normalizeSupplierEvaluation(input) {
+            const base = input && typeof input === 'object' ? input : {};
+            const scores = normalizeSupplierScores(base.scores || base);
+            const evidence = normalizeSupplierEvidence(base.evidence || base);
+            const totalScore = calculateSupplierTotalScore(scores);
+            return {
+                scores,
+                evidence,
+                totalScore,
+                suggestedStage: getSupplierSuggestedStage(scores, evidence),
+                lastReviewedAt: String(base.lastReviewedAt || '').trim()
+            };
+        }
+        function getSupplierMissingEvidenceForStage(stage, evidence) {
+            const target = supplierStageIndex(stage);
+            const e = normalizeSupplierEvidence(evidence);
+            const missing = [];
+            if (target >= supplierStageIndex('research')) {
+                if (!e.factoryVisited) missing.push('完成工厂到访');
+                if (!e.accurateQuote) missing.push('获取准确报价');
+            }
+            if (target >= supplierStageIndex('trial') && !(e.firstOrderDone || e.orderCount > 0)) missing.push('完成至少 1 次下单');
+            if (target >= supplierStageIndex('core')) {
+                if (!e.longTermCooperation) missing.push('确认长期合作关系');
+                if (!e.preferredPrice) missing.push('获得优惠价格');
+                if (!(e.creditTermDays > 0)) missing.push('记录长期账期天数');
+            }
+            return missing;
+        }
+        function getSupplierWeakness(scores) {
+            const normalized = normalizeSupplierScores(scores);
+            const sorted = SUPPLIER_SCORE_FIELDS
+                .map(field => ({ ...field, value: normalized[field.key] }))
+                .sort((a, b) => (a.value - b.value) || (b.weight - a.weight));
+            const worst = sorted[0];
+            return worst ? `${worst.label} ${worst.value.toFixed(1)}` : '-';
+        }
+        function supplierStageBadgeHtml(stage) {
+            const def = getSupplierStageDef(stage);
+            const cls = SUPPLIER_STAGE_CLASS[def.key] || SUPPLIER_STAGE_CLASS.info;
+            return `<span class="inline-flex items-center px-2.5 py-1 rounded-full border text-[10px] font-black whitespace-nowrap ${cls}">${htmlSafe(def.label)}</span>`;
+        }
+        function normalizeSupplierRecord(input, idx = 0) {
+            const base = input && typeof input === 'object' ? input : {};
+            const nameZh = String(base.nameZh || base.nameCn || base.zhName || base.vendor || base.name || '').trim();
+            const nameEn = String(base.nameEn || base.enName || '').trim();
+            const seed = nameZh || nameEn || base.code || `SUP${idx + 1}`;
+            const asciiSeed = normalizeSupplierCode(seed).replace(/[^A-Z0-9]/g, '').slice(0, 10);
+            const fallback = asciiSeed || `SUP${String(hashStringToNumber(seed) % 10000).padStart(4, '0')}`;
+            const code = normalizeSupplierCode(base.code || fallback) || fallback;
+            const evaluation = normalizeSupplierEvaluation(base.evaluation || {});
+            const stage = capSupplierStage(base.stage || base.level || evaluation.suggestedStage || 'info', evaluation.evidence);
+            const finalEvaluation = {
+                ...evaluation,
+                suggestedStage: getSupplierSuggestedStage(evaluation.scores, evaluation.evidence),
+                totalScore: calculateSupplierTotalScore(evaluation.scores)
+            };
+            return {
+                id: String(base.id || `supplier_${code}`),
+                code,
+                nameZh,
+                nameEn,
+                stage,
+                evaluation: finalEvaluation,
+                logoDataUrl: getSupplierLogo(base),
+                country: String(base.country || base.region || '').trim(),
+                contact: String(base.contact || '').trim(),
+                contactInfo: String(base.contactInfo || base.phoneEmail || '').trim(),
+                website: String(base.website || '').trim(),
+                address: String(base.address || '').trim(),
+                notes: String(base.notes || '').trim(),
+                ts: parseInt(base.ts, 10) || Date.now()
+            };
+        }
+        function getSupplierByCode(code) {
+            const c = normalizeSupplierCode(code);
+            return (Array.isArray(suppliers) ? suppliers : []).find(s => normalizeSupplierCode(s?.code) === c) || null;
+        }
+        function findSupplierByDisplayName(name) {
+            const n = String(name || '').trim();
+            if (!n) return null;
+            return (Array.isArray(suppliers) ? suppliers : []).find(s => {
+                const label = getSupplierDisplayName(s);
+                return label === n || String(s?.nameZh || '').trim() === n || String(s?.nameEn || '').trim() === n || String(s?.code || '').trim() === n;
+            }) || null;
+        }
+        function makeUniqueSupplierCode(seed, ignoreCode = '') {
+            const normalizedSeed = normalizeSupplierCode(seed).replace(/[^A-Z0-9]/g, '').slice(0, 10);
+            const fallback = `SUP${String(hashStringToNumber(seed || Date.now()) % 10000).padStart(4, '0')}`;
+            const base = normalizedSeed || fallback;
+            const used = new Set((Array.isArray(suppliers) ? suppliers : [])
+                .map(s => normalizeSupplierCode(s?.code))
+                .filter(c => c && c !== normalizeSupplierCode(ignoreCode)));
+            let code = base;
+            let i = 1;
+            while (used.has(code)) code = `${base}${String(i++).padStart(2, '0')}`;
+            return code;
+        }
+        function ensureSupplierForVendorName(vendorName) {
+            const name = String(vendorName || '').trim();
+            if (!name) return null;
+            let found = findSupplierByDisplayName(name);
+            if (found) return found;
+            const code = makeUniqueSupplierCode(name);
+            found = normalizeSupplierRecord({ code, nameZh: name, ts: Date.now() }, suppliers.length);
+            suppliers.push(found);
+            return found;
+        }
+        function ensureSupplierData() {
+            const normalized = [];
+            const usedCodes = new Set();
+            (Array.isArray(suppliers) ? suppliers : []).forEach((raw, idx) => {
+                let s = normalizeSupplierRecord(raw, idx);
+                if (!s.code) s.code = makeUniqueSupplierCode(s.nameZh || s.nameEn || `SUP${idx + 1}`);
+                if (usedCodes.has(s.code)) {
+                    const base = s.code || 'SUP';
+                    let seq = 1;
+                    while (usedCodes.has(`${base}${String(seq).padStart(2, '0')}`)) seq++;
+                    s.code = `${base}${String(seq).padStart(2, '0')}`;
+                }
+                usedCodes.add(s.code);
+                normalized.push(s);
+            });
+            suppliers = normalized;
+            (Array.isArray(products) ? products : []).forEach(p => {
+                if (!p || typeof p !== 'object') return;
+                let supplier = getSupplierByCode(p.supplierCode);
+                if (!supplier) supplier = ensureSupplierForVendorName(p.vendor || p.supplier || '');
+                if (supplier) {
+                    p.supplierCode = supplier.code;
+                    p.vendor = getSupplierDisplayName(supplier);
+                }
+                if (p.productImageDataUrl === undefined && p.imageDataUrl) p.productImageDataUrl = p.imageDataUrl;
+            });
+            suppliers.sort((a, b) => String(a.code || '').localeCompare(String(b.code || '')));
+        }
+        function getProductSupplier(product) {
+            const p = product && typeof product === 'object' ? product : {};
+            return getSupplierByCode(p.supplierCode) || findSupplierByDisplayName(p.vendor) || null;
+        }
+        function getProductSupplierDisplay(product) {
+            return getSupplierDisplayName(getProductSupplier(product)) || String(product?.vendor || '').trim() || '-';
+        }
+        function getProductSupplierBrandForLang(product, lang = currentLang) {
+            const supplier = getProductSupplier(product);
+            return getSupplierDisplayNameForLang(supplier, lang) || String(product?.vendor || '').trim() || '-';
+        }
+        const CERTIFICATION_COUNTRIES = [
+            { code: 'MY', label: 'Malaysia' },
+            { code: 'US', label: 'United States' },
+            { code: 'EU', label: 'European Union' },
+            { code: 'UK', label: 'United Kingdom' },
+            { code: 'AU', label: 'Australia' }
+        ];
+        const CERTIFICATION_DEFAULTS_FALLBACK = {
+            v: 1,
+            updatedAt: '2026-05-15',
+            rules: {
+                pvModule: {
+                    match: ['光伏组件', 'pv module', 'solar panel', 'module'],
+                    common: ['IEC 61215', 'IEC 61730'],
+                    countries: {
+                        MY: ['SIRIM / MS IEC 61215', 'SIRIM / MS IEC 61730', 'IEC TS 62804-1 (PID, when applicable)'],
+                        US: ['UL 61730-1', 'UL 61730-2', 'IEC/UL 61215 series'],
+                        EU: ['CE declaration', 'EN IEC 61215', 'EN IEC 61730', 'RoHS'],
+                        UK: ['UKCA declaration', 'BS EN IEC 61215', 'BS EN IEC 61730'],
+                        AU: ['CEC Approved PV Modules list', 'IEC 61215', 'IEC 61730']
+                    }
+                },
+                inverter: {
+                    match: ['逆变器', 'inverter', 'pcs', 'converter'],
+                    common: ['IEC 62109-1', 'IEC 62109-2', 'IEC 62477 (when applicable)'],
+                    countries: {
+                        MY: ['IEC 62109-1/2', 'SIRIM / local utility requirements where applicable'],
+                        US: ['UL 1741', 'IEEE 1547 / 1547.1', 'UL 1699B where applicable'],
+                        EU: ['CE declaration', 'Low Voltage Directive 2014/35/EU', 'EMC Directive 2014/30/EU', 'EN IEC 62109-1/2'],
+                        UK: ['UKCA declaration', 'Electrical Equipment (Safety) Regulations 2016', 'EMC Regulations 2016', 'ENA G98/G99 where grid-tied'],
+                        AU: ['CEC Approved Inverters/PCE list', 'AS/NZS 4777.2', 'IEC 62109-1/2']
+                    }
+                },
+                battery: {
+                    match: ['电池', 'battery', '储能', 'energy storage', 'ess'],
+                    common: ['IEC 62619', 'UN 38.3', 'MSDS'],
+                    countries: {
+                        MY: ['IEC 62619', 'UN 38.3', 'MSDS', 'SIRIM / local battery requirements where applicable'],
+                        US: ['UL 1973', 'UL 9540', 'UL 9540A', 'UN 38.3'],
+                        EU: ['CE declaration', 'EN IEC 62619', 'UN 38.3', 'RoHS'],
+                        UK: ['UKCA declaration', 'EN IEC 62619', 'UN 38.3'],
+                        AU: ['CEC Approved Batteries list', 'IEC 62619', 'UN 38.3']
+                    }
+                },
+                accessory: {
+                    match: ['配件', 'accessory', 'mounting', 'bracket', 'cable'],
+                    common: ['Project-specific electrical/import compliance review'],
+                    countries: {
+                        MY: ['SIRIM / local import compliance where applicable'],
+                        US: ['NRTL listing where applicable'],
+                        EU: ['CE/RoHS where applicable'],
+                        UK: ['UKCA where applicable'],
+                        AU: ['AS/NZS compliance where applicable']
+                    }
+                }
+            }
+        };
+        let certificationDefaultsCatalog = CERTIFICATION_DEFAULTS_FALLBACK;
+        function certificationCategoryKey(product = {}) {
+            const text = `${product.category || ''} ${product.scenario || ''} ${product.name || ''}`.toLowerCase();
+            const rules = certificationDefaultsCatalog?.rules || CERTIFICATION_DEFAULTS_FALLBACK.rules;
+            for (const [key, rule] of Object.entries(rules)) {
+                const matches = Array.isArray(rule?.match) ? rule.match : [];
+                if (matches.some(m => text.includes(String(m || '').toLowerCase()))) return key;
+            }
+            return 'accessory';
+        }
+        function certificationCountriesFromUi() {
+            const checks = Array.from(document.querySelectorAll('.m-cert-country'));
+            const selected = checks.filter(el => el.checked).map(el => String(el.value || '').trim()).filter(Boolean);
+            return selected.length ? selected : CERTIFICATION_COUNTRIES.map(c => c.code);
+        }
+        function uniqueCertList(list) {
+            const seen = new Set();
+            const out = [];
+            (Array.isArray(list) ? list : []).forEach(v => {
+                const text = String(v || '').trim();
+                const key = text.toLowerCase();
+                if (!text || seen.has(key)) return;
+                seen.add(key);
+                out.push(text);
+            });
+            return out;
+        }
+        function defaultCertificationRequirementsForProduct(product = {}, countries = CERTIFICATION_COUNTRIES.map(c => c.code)) {
+            const rules = certificationDefaultsCatalog?.rules || CERTIFICATION_DEFAULTS_FALLBACK.rules;
+            const rule = rules[certificationCategoryKey(product)] || rules.accessory || {};
+            const standards = [];
+            standards.push(...(Array.isArray(rule.common) ? rule.common : []));
+            countries.forEach(code => standards.push(...(Array.isArray(rule.countries?.[code]) ? rule.countries[code] : [])));
+            return {
+                countries: countries.slice(),
+                standards: uniqueCertList(standards),
+                source: certificationDefaultsCatalog === CERTIFICATION_DEFAULTS_FALLBACK ? 'embedded-defaults' : 'online-catalog',
+                updatedAt: certificationDefaultsCatalog?.updatedAt || ''
+            };
+        }
+        function normalizeCertificationRequirements(value, product = {}) {
+            if (value && typeof value === 'object') {
+                const countries = Array.isArray(value.countries) && value.countries.length
+                    ? value.countries.map(v => String(v || '').trim()).filter(Boolean)
+                    : CERTIFICATION_COUNTRIES.map(c => c.code);
+                const standards = Array.isArray(value.standards)
+                    ? value.standards
+                    : String(value.standards || value.text || '').split(/[\n;,]+/);
+                return {
+                    countries,
+                    standards: uniqueCertList(standards),
+                    source: String(value.source || ''),
+                    updatedAt: String(value.updatedAt || '')
+                };
+            }
+            if (typeof value === 'string' && value.trim()) {
+                return {
+                    countries: CERTIFICATION_COUNTRIES.map(c => c.code),
+                    standards: uniqueCertList(value.split(/[\n;,]+/)),
+                    source: 'manual',
+                    updatedAt: ''
+                };
+            }
+            return defaultCertificationRequirementsForProduct(product);
+        }
+        function certificationText(req) {
+            return uniqueCertList(req?.standards || []).join('\n');
+        }
+        function getProductCertificationRequirements(product = {}) {
+            return normalizeCertificationRequirements(product.certificationRequirements, product);
+        }
+        function renderCertificationCountryChoices(selected = CERTIFICATION_COUNTRIES.map(c => c.code)) {
+            const box = document.getElementById('m-cert-country-list');
+            if (!box) return;
+            const chosen = new Set((Array.isArray(selected) ? selected : []).map(v => String(v || '').trim()));
+            box.innerHTML = CERTIFICATION_COUNTRIES.map(c => `
+                <label class="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-600">
+                    <input type="checkbox" class="m-cert-country h-4 w-4 accent-purple-700" value="${c.code}" ${chosen.has(c.code) ? 'checked' : ''} onchange="onCertificationCountryChange()">
+                    <span>${c.label}</span>
+                </label>
+            `).join('');
+        }
+        function readProductCertificationRequirementsFromModal() {
+            const text = String(document.getElementById('m-cert-requirements')?.value || '').trim();
+            return {
+                countries: certificationCountriesFromUi(),
+                standards: uniqueCertList(text.split(/[\n;,]+/)),
+                source: window.__certificationAutoFilled ? (certificationDefaultsCatalog === CERTIFICATION_DEFAULTS_FALLBACK ? 'embedded-defaults' : 'online-catalog') : 'manual',
+                updatedAt: certificationDefaultsCatalog?.updatedAt || ''
+            };
+        }
+        window.applyDefaultProductCertifications = () => {
+            const product = {
+                name: document.getElementById('m-name')?.value || '',
+                category: document.getElementById('m-category')?.value || '',
+                scenario: document.getElementById('m-scenario')?.value || ''
+            };
+            const req = defaultCertificationRequirementsForProduct(product, certificationCountriesFromUi());
+            const textarea = document.getElementById('m-cert-requirements');
+            if (textarea) textarea.value = certificationText(req);
+            const note = document.getElementById('m-cert-source-note');
+            if (note) note.textContent = `Defaults loaded from ${req.source === 'online-catalog' ? 'online catalog' : 'embedded fallback'}${req.updatedAt ? ` (${req.updatedAt})` : ''}. Edit as needed.`;
+            window.__certificationAutoFilled = true;
+        };
+        window.maybeFillProductCertificationDefaults = () => {
+            const textarea = document.getElementById('m-cert-requirements');
+            if (!textarea) return;
+            if (String(textarea.value || '').trim() && !window.__certificationAutoFilled) return;
+            window.applyDefaultProductCertifications?.();
+        };
+        window.onCertificationCountryChange = () => {
+            if (window.__certificationAutoFilled || !String(document.getElementById('m-cert-requirements')?.value || '').trim()) {
+                window.applyDefaultProductCertifications?.();
+            }
+        };
+        window.refreshCertificationDefaults = async () => {
+            const note = document.getElementById('m-cert-source-note');
+            try {
+                const url = new URL('minova-data/certification-defaults.json', window.location.href);
+                url.searchParams.set('v', String(Date.now()));
+                const res = await fetch(url.toString(), { cache: 'no-store' });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                if (!data?.rules) throw new Error('Invalid catalog');
+                certificationDefaultsCatalog = data;
+                if (note) note.textContent = `Online certification defaults loaded${data.updatedAt ? ` (${data.updatedAt})` : ''}.`;
+                window.applyDefaultProductCertifications?.();
+            } catch (e) {
+                certificationDefaultsCatalog = CERTIFICATION_DEFAULTS_FALLBACK;
+                if (note) note.textContent = 'Online catalog unavailable; embedded fallback defaults are in use.';
+                window.applyDefaultProductCertifications?.();
+            }
+        };
+        function renderSupplierOptions(selectedCode = '') {
+            ensureSupplierData();
+            const cur = normalizeSupplierCode(selectedCode);
+            const options = [`<option value="">请选择供应商</option>`].concat((suppliers || []).map(s => {
+                const label = `${s.code} · ${getSupplierDisplayName(s)}`;
+                return `<option value="${htmlSafe(s.code)}" ${normalizeSupplierCode(s.code) === cur ? 'selected' : ''}>${htmlSafe(label)}</option>`;
+            }));
+            return options.join('');
+        }
+        function updateSupplierSelects(selectedCode = '') {
+            const productSel = document.getElementById('m-supplier-code');
+            if (productSel) {
+                const cur = selectedCode || productSel.value || '';
+                productSel.innerHTML = renderSupplierOptions(cur);
+                if (cur && getSupplierByCode(cur)) productSel.value = normalizeSupplierCode(cur);
+            }
+        }
+        window.__minovaGetProducts = () => products;
+        window.__minovaGetInventory = () => inventory;
+        window.__minovaSupplierUtils = {
+            htmlSafe,
+            getSupplierDisplayName,
+            getSupplierDisplayNameForLang,
+            getSupplierLogo,
+            getSupplierByCode,
+            findSupplierByDisplayName,
+            getProductSupplier,
+            getProductSupplierDisplay,
+            getProductSupplierBrandForLang
+        };
         function normalizeInstallerProfitSettings(next) {
             const base = next && typeof next === 'object' ? next : {};
             const cnPct = Number.isFinite(parseFloat(base.cnPct)) ? parseFloat(base.cnPct) : 0;
@@ -1112,9 +1957,12 @@
                     products = Array.isArray(embedded.data.products) ? embedded.data.products : [];
                     inventory = Array.isArray(embedded.data.inventory) ? embedded.data.inventory : [];
                     inventoryHistory = Array.isArray(embedded.data.inventoryHistory) ? embedded.data.inventoryHistory : [];
+                    marketPrices = normalizeMarketPrices(embedded.data.marketPrices || marketPrices);
+                    normalizeProductUnitFields();
                     if (inventoryHistory.length > 1000) inventoryHistory = inventoryHistory.slice(inventoryHistory.length - 1000);
                     salesRecords = Array.isArray(embedded.data.salesRecords) ? embedded.data.salesRecords : [];
                     historicalInventory = Array.isArray(embedded.data.historicalInventory) ? embedded.data.historicalInventory : [];
+                    suppliers = Array.isArray(embedded.data.suppliers) ? embedded.data.suppliers : [];
                     subcategoriesByCategory = embedded.data.subcategoriesByCategory && typeof embedded.data.subcategoriesByCategory === 'object' ? embedded.data.subcategoriesByCategory : {};
                     profitSettings = normalizeProfitSettings(embedded.data.profitSettings || null);
                     installerProfitSettings = normalizeInstallerProfitSettings(embedded.data.installerProfitSettings || installerProfitSettings || null);
@@ -1123,8 +1971,10 @@
                         localStorage.setItem('minova_products', JSON.stringify(products));
                         localStorage.setItem('minova_inventory', JSON.stringify(inventory));
                         localStorage.setItem('minova_inventory_history', JSON.stringify(inventoryHistory));
+                        localStorage.setItem('minova_market_prices_v1', JSON.stringify(marketPrices));
                         localStorage.setItem('minova_sales_records_v1', JSON.stringify(salesRecords));
                         localStorage.setItem('minova_historical_inventory_v1', JSON.stringify(historicalInventory));
+                        localStorage.setItem('minova_suppliers_v1', JSON.stringify(suppliers));
                         localStorage.setItem('minova_subcategories_v1', JSON.stringify(subcategoriesByCategory));
                         localStorage.setItem('minova_profit_settings_v1', JSON.stringify(profitSettings));
                         localStorage.setItem('minova_installer_profit_v1', JSON.stringify(installerProfitSettings));
@@ -1150,6 +2000,16 @@
             const raw = localStorage.getItem('minova_file_delete_logs_v1');
             if (raw) fileDeleteLogs = Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : fileDeleteLogs;
         } catch (e) {}
+        try {
+            const raw = localStorage.getItem('minova_market_prices_v1');
+            if (raw) marketPrices = normalizeMarketPrices(JSON.parse(raw));
+        } catch (e) {}
+        normalizeProductUnitFields();
+        try {
+            const raw = localStorage.getItem('minova_suppliers_v1');
+            if (raw && (!Array.isArray(suppliers) || suppliers.length === 0)) suppliers = Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : suppliers;
+        } catch (e) {}
+        ensureSupplierData();
         function rebuildSubcategoryIndexFromProducts() {
             const map = {};
             products.forEach(p => {
@@ -1187,6 +2047,78 @@
 
         loadSubcategoryIndex();
 
+        const TOP_LEVEL_TABS = ['quotation', 'database', 'pricelist', 'pvcalc', 'costcalc', 'inventory', 'transport'];
+
+        function getActiveTopLevelTab() {
+            for (const tab of TOP_LEVEL_TABS) {
+                const view = document.getElementById(`view-${tab}`);
+                if (view && !view.classList.contains('hidden') && view.style.display !== 'none') return tab;
+            }
+            return 'database';
+        }
+
+        function renderTopLevelData(tab, opts = {}) {
+            const key = String(tab || getActiveTopLevelTab());
+            window.__minovaRenderedTabs = window.__minovaRenderedTabs || {};
+            if (!opts.force && window.__minovaRenderedTabs[key]) return;
+            try {
+                if (key === 'database') {
+                    renderSuppliers();
+                    renderDb();
+                    updateDatalists();
+                } else if (key === 'inventory') {
+                    renderInventory();
+                    renderSalesRecords();
+                    renderHistoricalInventory();
+                    renderInventoryHistory();
+                } else if (key === 'transport') {
+                    renderTransport();
+                } else if (key === 'pricelist') {
+                    renderPriceList();
+                } else if (key === 'costcalc') {
+                    renderProfitSettingsUI();
+                    renderCostCalcUI();
+                } else if (key === 'quotation') {
+                    updatePickerFilters();
+                    updateDatalists();
+                    renderPicker();
+                    try { renderPartBreakdown(); } catch (e) {}
+                    try { calculateROI(); } catch (e) {}
+                } else if (key === 'pvcalc') {
+                    calculatePV();
+                }
+                window.__minovaRenderedTabs[key] = true;
+            } catch (e) {
+                console.warn(`Render failed for ${key}`, e);
+            }
+        }
+
+        function scheduleDeferredTopLevelRenders() {
+            if (window.__minovaDeferredRenderScheduled) return;
+            window.__minovaDeferredRenderScheduled = true;
+            const run = () => {
+                window.__minovaDeferredRenderScheduled = false;
+                const active = getActiveTopLevelTab();
+                ['database', 'inventory', 'transport', 'pricelist', 'costcalc'].forEach(tab => {
+                    if (tab !== active) renderTopLevelData(tab);
+                });
+            };
+            if ('requestIdleCallback' in window) {
+                window.requestIdleCallback(run, { timeout: 2500 });
+            } else {
+                setTimeout(run, 900);
+            }
+        }
+
+        function refreshAfterDataChange() {
+            window.__minovaRenderedTabs = {};
+            updateDatalists();
+            updatePickerFilters();
+            try { renderCompanyCertUploadSelectors(); renderCompanyCertList(); } catch (e) {}
+            renderTopLevelData(getActiveTopLevelTab(), { force: true });
+            scheduleDeferredTopLevelRenders();
+        }
+
         let suppressGitHubSync = false;
         let lastPublishedStateAt = 0;
         let publishedStatePollingStarted = false;
@@ -1201,9 +2133,13 @@
             products = Array.isArray(data?.products) ? data.products : [];
             inventory = Array.isArray(data?.inventory) ? data.inventory : [];
             inventoryHistory = Array.isArray(data?.inventoryHistory) ? data.inventoryHistory : [];
+            marketPrices = normalizeMarketPrices(data?.marketPrices || marketPrices);
+            normalizeProductUnitFields();
             if (inventoryHistory.length > 1000) inventoryHistory = inventoryHistory.slice(inventoryHistory.length - 1000);
             salesRecords = Array.isArray(data?.salesRecords) ? data.salesRecords : [];
             historicalInventory = Array.isArray(data?.historicalInventory) ? data.historicalInventory : [];
+            suppliers = Array.isArray(data?.suppliers) ? data.suppliers : [];
+            ensureSupplierData();
             subcategoriesByCategory = data?.subcategoriesByCategory && typeof data.subcategoriesByCategory === 'object' ? data.subcategoriesByCategory : {};
             profitSettings = normalizeProfitSettings(data?.profitSettings || profitSettings || null);
             installerProfitSettings = normalizeInstallerProfitSettings(data?.installerProfitSettings || installerProfitSettings || null);
@@ -1212,8 +2148,10 @@
                 localStorage.setItem('minova_products', JSON.stringify(products));
                 localStorage.setItem('minova_inventory', JSON.stringify(inventory));
                 localStorage.setItem('minova_inventory_history', JSON.stringify(inventoryHistory));
+                localStorage.setItem('minova_market_prices_v1', JSON.stringify(marketPrices));
                 localStorage.setItem('minova_sales_records_v1', JSON.stringify(salesRecords));
                 localStorage.setItem('minova_historical_inventory_v1', JSON.stringify(historicalInventory));
+                localStorage.setItem('minova_suppliers_v1', JSON.stringify(suppliers));
                 localStorage.setItem('minova_subcategories_v1', JSON.stringify(subcategoriesByCategory));
                 localStorage.setItem('minova_profit_settings_v1', JSON.stringify(profitSettings));
                 localStorage.setItem('minova_installer_profit_v1', JSON.stringify(installerProfitSettings));
@@ -1231,23 +2169,14 @@
                 fileDeleteLogs = data.fileDeleteLogs;
                 try { localStorage.setItem('minova_file_delete_logs_v1', JSON.stringify(fileDeleteLogs)); } catch (e) {}
             }
-            renderDb();
-            renderInventory();
-            renderTransport();
-            renderSalesRecords();
-            renderHistoricalInventory();
-            renderInventoryHistory();
-            updatePickerFilters();
-            renderPicker();
-            updateDatalists();
-            renderProfitSettingsUI();
             applyInstallerProfitSettingsToUi();
-            renderCostCalcUI();
             suppressGitHubSync = false;
+            refreshAfterDataChange();
         }
 
         async function tryLoadPublishedState(force = false, allowWhenConnected = false) {
             try {
+                if (window.location.protocol === 'file:') return false;
                 const isConnected = !!window.__minovaSync?.getStatus?.()?.connected;
                 if (isConnected && !allowWhenConnected) return false;
                 const url = new URL('minova-data/state.json', window.location.href);
@@ -1268,6 +2197,7 @@
             }
         }
         function startPublishedStatePolling() {
+            if (window.location.protocol === 'file:') return;
             if (publishedStatePollingStarted) return;
             publishedStatePollingStarted = true;
 
@@ -1285,11 +2215,16 @@
         }
 
         function saveToLocal() {
+            ensureSupplierData();
+            normalizeProductUnitFields();
             localStorage.setItem('minova_products', JSON.stringify(products));
             localStorage.setItem('minova_inventory', JSON.stringify(inventory));
             localStorage.setItem('minova_inventory_history', JSON.stringify(inventoryHistory));
+            marketPrices = normalizeMarketPrices(marketPrices);
+            localStorage.setItem('minova_market_prices_v1', JSON.stringify(marketPrices));
             localStorage.setItem('minova_sales_records_v1', JSON.stringify(salesRecords));
             localStorage.setItem('minova_historical_inventory_v1', JSON.stringify(historicalInventory));
+            localStorage.setItem('minova_suppliers_v1', JSON.stringify(suppliers));
             localStorage.setItem('minova_company_certs', JSON.stringify(companyCerts));
             try { localStorage.setItem('minova_transport_records_v1', JSON.stringify(transportRecords)); } catch (e) {}
             try { localStorage.setItem('minova_file_delete_logs_v1', JSON.stringify(fileDeleteLogs)); } catch (e) {}
@@ -1297,23 +2232,16 @@
             saveSubcategoryIndex();
             ensureProfitSettingsCoverage();
             try { localStorage.setItem('minova_profit_settings_v1', JSON.stringify(profitSettings)); } catch (e) {}
-            renderDb();
-            renderInventory();
-            renderTransport();
-            renderSalesRecords();
-            renderHistoricalInventory();
-            renderInventoryHistory();
-            updatePickerFilters();
-            renderPicker();
-            updateDatalists();
-            renderProfitSettingsUI();
+            refreshAfterDataChange();
             try { if (!suppressGitHubSync) window.__minovaSync?.enqueueSnapshot('state update'); } catch (e) {}
         }
 
         let quoteRows = [{ id: Date.now(), description: '', vendor: '', spec: '', batchNo: '', quantity: 1, price: 0, cost: 0, productId: '', inventoryId: '' }];
         let dbGroupMode = 'category';
-        let currentLang = 'zh';
-        let currentCurrency = 'CNY';
+        let supplierStageFilter = 'all';
+        let supplierSortMode = 'score_desc';
+        let currentLang = 'en';
+        let currentCurrency = 'MYR';
         let paymentTermsConfirmed = true;
         let quoteSplit = { enabled: false, afterRowId: null };
         let validityDays = 30;
@@ -1322,13 +2250,25 @@
             quoteRows = Array.isArray(rows) ? rows : [];
             window.quoteRows = quoteRows;
         };
+        window.__getQuoteCurrency = () => currentCurrency;
+        window.__getQuoteRate = () => parseFloat(document.getElementById('rate-myr-cny')?.value) || 1.53;
         window.__getValidityDays = () => validityDays;
         window.__setValidityDays = (n) => {
             const v = parseInt(n, 10);
             if (Number.isInteger(v) && v >= 1 && v <= 999) validityDays = v;
             renderValidityBadge();
         };
-        const apiKey = ""; 
+        const apiKey = "";
+        const QUOTE_TERMS_DEFAULT_EN = "Terms:\nThis quotation is subject to a thorough site assessment. Costs may vary if non-standard installation is required, including but not limited to additional hacking, cabling, trunking, customization, or any work outside the standard installation scope.\n\nConfirmation:\nI / We, the undersigned, hereby accept the Solar PV with Battery + Inverter System and the aforementioned price, specifications, terms and conditions, and agree for Minova Holdings Sdn. Bhd. to commence the system design, procurement and installation.";
+        const QUOTE_TERMS_OLD_DEFAULT_ZH = "条款：\n本报价以现场全面勘察为准。如需采用非标准安装方式（包括但不限于额外开槽/破拆、布线、线槽/桥架、定制加工或任何超出标准安装范围的工作），费用可能调整。\n\n确认：\n本人/本公司（签署人）确认接受“光伏+电池+逆变器系统”及上述价格、规格、条款与条件，并同意由 Minova Holdings Sdn. Bhd. 开始进行系统设计、采购与安装。";
+        const QUOTE_TERMS_OLD_DEFAULT_EN = "Conditions:\nThis quotation is subject to a thorough site assessment. The cost may vary if non-standard installation is applied which require additional hacking, cabling, trunking, customization, or any other out of our standard installation.\n\nConfirmation:\nI / We, the undersigned hereby accept the Solar PV with Battery + Inverter System and the aforementioned price, specification, terms and conditions and would like to commence with the design, procurement and installation of the system by Minova Holdings. Sdn. Bhd.";
+        const normalizeQuoteTermsDefaultText = (value, fallback = QUOTE_TERMS_DEFAULT_EN) => {
+            const raw = String(value ?? '');
+            const norm = raw.replace(/\r\n/g, '\n').trim();
+            if (!norm) return fallback;
+            if (norm === QUOTE_TERMS_OLD_DEFAULT_ZH.trim() || norm === QUOTE_TERMS_OLD_DEFAULT_EN.trim()) return fallback;
+            return raw;
+        };
         try {
             const savedSplit = localStorage.getItem('minova_quote_split');
             if (savedSplit) {
@@ -1374,7 +2314,90 @@
                 email: "邮箱",
                 nricPassport: "身份证/护照",
                 signatureDate: "日期",
-                termsDefault: "条款：\n本报价以现场全面勘察为准。如需采用非标准安装方式（包括但不限于额外开槽/破拆、布线、线槽/桥架、定制加工或任何超出标准安装范围的工作），费用可能调整。\n\n确认：\n本人/本公司（签署人）确认接受“光伏+电池+逆变器系统”及上述价格、规格、条款与条件，并同意由 Minova Holdings Sdn. Bhd. 开始进行系统设计、采购与安装。"
+                termsDefault: QUOTE_TERMS_DEFAULT_EN,
+                siteOverview: {
+                    uploadBg: "上传背景",
+                    addPv: "添加PV",
+                    addComp: "其他组件",
+                    copy: "复制",
+                    del: "删除",
+                    toTop: "置顶",
+                    moveUp: "上移",
+                    rotL: "左90°",
+                    rotR: "右90°",
+                    undo: "撤销",
+                    redo: "重做",
+                    clearMarks: "清除标注",
+                    deleteMarks: "删除标注",
+                    clearAll: "清除全部",
+                    toolbarMode: "模式",
+                    toolbarSelect: "选择组件",
+                    toolbarMarks: "选择标注",
+                    toolbarDist: "测距",
+                    toolbarArea: "面积",
+                    toolbarEditVertices: "编辑顶点",
+                    toolbarScaleLock: "缩放锁定",
+                    toolbarMoveLock: "移动锁定",
+                    toolbarRulers: "标尺",
+                    toolbarSnap: "磁吸",
+                    toolbarGrid: "网格",
+                    cardModule: "组件",
+                    cardText: "文字",
+                    cardMeasure: "测距/面积",
+                    moduleRoof: "屋顶 (m)",
+                    moduleDims: "组件 (m)",
+                    qty: "数量",
+                    opacity: "透明度",
+                    vertexLock: "顶点锁定",
+                    textSize: "字号",
+                    textWeight: "粗细",
+                    weightThin: "极细",
+                    weightReg: "细",
+                    weightSemi: "中",
+                    weightBold: "粗",
+                    textColor: "字色",
+                    bg: "底色",
+                    noBg: "无背景",
+                    content: "内容",
+                    distColor: "颜色",
+                    distMarker: "端点",
+                    markerCross: "十",
+                    markerDot: "点",
+                    markerDiamond: "菱",
+                    markerArrowA: "起点箭头",
+                    markerArrowB: "终点箭头",
+                    markerArrowAB: "双端箭头",
+                    distConstraint: "约束",
+                    constraintFree: "自由",
+                    constraintH: "水平",
+                    constraintV: "垂直",
+                    areaBg: "底色",
+                    areaVerts: "顶点",
+                    areaOpacity: "透明",
+                    areaHatch: "底纹",
+                    hatchSolid: "纯色",
+                    hatchDiag: "斜线",
+                    hatchCross: "交叉",
+                    hatchGrid: "网格",
+                    areaText: "文字",
+                    customTitle: "添加其他组件",
+                    customText: "文字",
+                    customShape: "图形",
+                    shapeRect: "矩形",
+                    shapeCircle: "圆形",
+                    shapeTriangle: "三角形",
+                    shapeDiamond: "菱形",
+                    shapeHex: "六边形",
+                    shapeArrow: "箭头",
+                    shapePolygon: "多边形",
+                    customPolyVerts: "顶点数",
+                    customVLock: "顶点锁定",
+                    customBg: "背景色",
+                    customNoBg: "无背景",
+                    customFg: "字体色",
+                    cancel: "取消",
+                    add: "添加"
+                }
             },
             en: {
                 title: "QUOTATION", toCustomer: "To Customer:", quoteNo: "Quote No.:", quoteDate: "Date:",
@@ -1412,13 +2435,102 @@
                 email: "Email",
                 nricPassport: "NRIC/Passport",
                 signatureDate: "Date",
-                termsDefault: "Conditions:\nThis quotation is subject to a thorough site assessment. The cost may vary if non-standard installation is applied which require additional hacking, cabling, trunking, customization, or any other out of our standard installation.\n\nConfirmation:\nI / We, the undersigned hereby accept the Solar PV with Battery + Inverter System and the aforementioned price, specification, terms and conditions and would like to commence with the design, procurement and installation of the system by Minova Holdings. Sdn. Bhd."
+                termsDefault: QUOTE_TERMS_DEFAULT_EN,
+                siteOverview: {
+                    uploadBg: "Upload BG",
+                    addPv: "Add PV",
+                    addComp: "Add Comp",
+                    copy: "Copy",
+                    del: "Delete",
+                    toTop: "To Top",
+                    moveUp: "Up",
+                    rotL: "Left 90°",
+                    rotR: "Right 90°",
+                    undo: "Undo",
+                    redo: "Redo",
+                    clearMarks: "Clear Marks",
+                    deleteMarks: "Delete Marks",
+                    clearAll: "Clear All",
+                    toolbarMode: "Mode",
+                    toolbarSelect: "Select",
+                    toolbarMarks: "Marks",
+                    toolbarDist: "Dist",
+                    toolbarArea: "Area",
+                    toolbarEditVertices: "Edit vertices",
+                    toolbarScaleLock: "Scale lock",
+                    toolbarMoveLock: "Move lock",
+                    toolbarRulers: "Rulers",
+                    toolbarSnap: "Snap",
+                    toolbarGrid: "Grid",
+                    cardModule: "Module",
+                    cardText: "Text",
+                    cardMeasure: "Distance / Area",
+                    moduleRoof: "Roof (m)",
+                    moduleDims: "Module (m)",
+                    qty: "Qty",
+                    opacity: "Opacity",
+                    vertexLock: "Vertex lock",
+                    textSize: "Size",
+                    textWeight: "Weight",
+                    weightThin: "Thin",
+                    weightReg: "Regular",
+                    weightSemi: "Semi",
+                    weightBold: "Bold",
+                    textColor: "Text",
+                    bg: "BG",
+                    noBg: "No BG",
+                    content: "Content",
+                    distColor: "Color",
+                    distMarker: "Marker",
+                    markerCross: "Cross",
+                    markerDot: "Dot",
+                    markerDiamond: "Diamond",
+                    markerArrowA: "Arrow A",
+                    markerArrowB: "Arrow B",
+                    markerArrowAB: "Double",
+                    distConstraint: "Constraint",
+                    constraintFree: "Free",
+                    constraintH: "Horizontal",
+                    constraintV: "Vertical",
+                    areaBg: "BG",
+                    areaVerts: "Verts",
+                    areaOpacity: "Opacity",
+                    areaHatch: "Hatch",
+                    hatchSolid: "Solid",
+                    hatchDiag: "Diag",
+                    hatchCross: "Cross",
+                    hatchGrid: "Grid",
+                    areaText: "Text",
+                    customTitle: "Add Component",
+                    customText: "Text",
+                    customShape: "Shape",
+                    shapeRect: "Rect",
+                    shapeCircle: "Circle",
+                    shapeTriangle: "Triangle",
+                    shapeDiamond: "Diamond",
+                    shapeHex: "Hex",
+                    shapeArrow: "Arrow",
+                    shapePolygon: "Polygon",
+                    customPolyVerts: "Verts",
+                    customVLock: "Vertex lock",
+                    customBg: "Background",
+                    customNoBg: "No BG",
+                    customFg: "Text color",
+                    cancel: "Cancel",
+                    add: "Add"
+                }
             }
         };
 
         // --- Core UI Logic ---
         window.switchTab = (tab) => {
-            const tabs = ['quotation', 'database', 'pvcalc', 'costcalc', 'inventory', 'transport'];
+            const localFileMode = window.location.protocol === 'file:';
+            const connected = !!window.__minovaSync?.getStatus?.()?.connected;
+            const restrictedTabs = ['quotation', 'costcalc', 'database', 'pricelist', 'inventory', 'transport'];
+            if (restrictedTabs.includes(tab) && !connected && !localFileMode) {
+                tab = 'pvcalc';
+            }
+            const tabs = TOP_LEVEL_TABS;
             tabs.forEach(t => {
                 const el = document.getElementById(`view-${t}`);
                 if (el) {
@@ -1441,17 +2553,10 @@
                     }
                 }
             });
+            renderTopLevelData(tab, { force: true });
             if(tab === 'costcalc') {
-                renderProfitSettingsUI();
-                renderCostCalcUI();
                 const rateBtn = document.getElementById('btn-fetch-rate');
                 if(rateBtn) fetchLiveRate(rateBtn);
-            }
-            if(tab === 'inventory') {
-                renderInventory();
-            }
-            if(tab === 'transport') {
-                renderTransport();
             }
             if (tab === 'quotation') {
                 const page = document.getElementById('quote-page-select')?.value || '1';
@@ -1464,9 +2569,15 @@
             openCertAttachmentModal();
         };
 
+        window.renderCurrencyButton = () => {
+            const btn = document.getElementById('btn-currency');
+            if (!btn) return;
+            btn.textContent = currentCurrency === 'CNY' ? '¥ / RM' : 'RM / ¥';
+        };
+
         window.toggleCurrency = () => {
             currentCurrency = currentCurrency === 'CNY' ? 'MYR' : 'CNY';
-            document.getElementById('btn-currency').textContent = currentCurrency === 'CNY' ? '¥ / RM' : 'RM / ¥';
+            window.renderCurrencyButton?.();
             renderQuote();
         };
 
@@ -1485,14 +2596,39 @@
             calculateQuote();
         };
 
+        window.resetPaymentTermsToDefault = () => {
+            const c = document.getElementById('payment-confirmation-percent');
+            const i = document.getElementById('payment-installation-percent');
+            const t = document.getElementById('payment-testing-percent');
+            const f = document.getElementById('payment-final-percent');
+            if (c) c.value = 30;
+            if (i) i.value = 40;
+            if (t) t.value = 30;
+            if (f) f.value = 0;
+
+            const finalContainer = document.getElementById('payment-final-container');
+            const addBtn = document.getElementById('btn-add-payment');
+            if (finalContainer) finalContainer.classList.add('hidden');
+            if (addBtn) addBtn.classList.remove('hidden');
+
+            paymentTermsConfirmed = true;
+            calculateQuote();
+        };
+
         window.toggleFinalPayment = (show) => {
             const container = document.getElementById('payment-final-container');
             const addBtn = document.getElementById('btn-add-payment');
             const percentInput = document.getElementById('payment-final-percent');
-            
+
             if (show) {
                 container.classList.remove('hidden');
                 addBtn.classList.add('hidden');
+                const t = i18n[currentLang];
+                const label = document.getElementById('lbl-final');
+                if (label && !String(label.value || '').trim()) {
+                    label.value = t.final;
+                }
+                try { autosizeAllTextareas(container); } catch (e) {}
             } else {
                 container.classList.add('hidden');
                 addBtn.classList.remove('hidden');
@@ -1638,6 +2774,64 @@
             updateQuoteSplitUI();
         };
 
+        function quoteResolveProductForRow(row) {
+            const r = row && typeof row === 'object' ? row : {};
+            const productId = String(r.productId || '').trim();
+            if (productId) {
+                const product = (Array.isArray(products) ? products : []).find(p => String(p?.id || '') === productId);
+                if (product) return product;
+            }
+            const inventoryId = String(r.inventoryId || '').trim();
+            if (inventoryId) {
+                const item = (Array.isArray(inventory) ? inventory : []).find(i => String(i?.id || '') === inventoryId);
+                if (item) {
+                    const product = (Array.isArray(products) ? products : []).find(p => String(p?.id || '') === String(item.productId || ''));
+                    if (product) return product;
+                }
+            }
+            return null;
+        }
+
+        function quoteResolveSupplierForRow(row) {
+            const r = row && typeof row === 'object' ? row : {};
+            return getSupplierByCode(r.supplierCode)
+                || getProductSupplier(quoteResolveProductForRow(r))
+                || findSupplierByDisplayName(r.vendor || '')
+                || null;
+        }
+
+        function quoteSupplierAutoNameSet(supplier) {
+            const labels = [
+                getSupplierDisplayName(supplier),
+                getSupplierDisplayNameForLang(supplier, 'zh'),
+                getSupplierDisplayNameForLang(supplier, 'en'),
+                supplier?.nameZh,
+                supplier?.nameCn,
+                supplier?.nameEn,
+                supplier?.name,
+                supplier?.code
+            ];
+            return new Set(labels.map(v => String(v || '').trim()).filter(Boolean));
+        }
+
+        function quoteBrandDisplayForRow(row) {
+            const r = row && typeof row === 'object' ? row : {};
+            const supplier = quoteResolveSupplierForRow(r);
+            if (!supplier) return String(r.vendor || '').trim();
+            const current = String(r.vendor || '').trim();
+            const autoNames = quoteSupplierAutoNameSet(supplier);
+            const isManual = !!r.vendorManualOverride && current && !autoNames.has(current);
+            if (isManual) return current;
+            const next = getSupplierDisplayNameForLang(supplier, currentLang);
+            if (next) {
+                r.supplierCode = r.supplierCode || supplier.code || '';
+                r.vendor = next;
+                r.vendorManualOverride = false;
+                return next;
+            }
+            return current;
+        }
+
         const updateLanguageLabels = () => {
             const t = i18n[currentLang];
             document.getElementById('lbl-title').textContent = t.title;
@@ -1658,8 +2852,6 @@
             if (siteAddressLabelEl) siteAddressLabelEl.textContent = t.siteAddressLabel;
             const siteAddressInputEl = document.getElementById('input-site-address');
             if (siteAddressInputEl) siteAddressInputEl.placeholder = t.siteAddressPlaceholder;
-            const customerContactEl = document.getElementById('input-customer-contact');
-            if (customerContactEl) customerContactEl.placeholder = t.customerContactPlaceholder;
             document.getElementById('lbl-quote-no').textContent = t.quoteNo;
             document.getElementById('lbl-quote-date').textContent = t.quoteDate;
             const validityLabelEl = document.getElementById('lbl-quote-validity');
@@ -1678,9 +2870,11 @@
             document.getElementById('lbl-total-items').textContent = t.totalItems;
             document.getElementById('lbl-avg-margin').textContent = t.avgMargin;
             document.getElementById('lbl-grand-total').textContent = t.grandTotal;
-            document.getElementById('lbl-auth-sign').textContent = t.authSign;
-            document.getElementById('lbl-sign-date').textContent = t.signDate;
- 
+            const authSignEl = document.getElementById('lbl-auth-sign');
+            if (authSignEl) authSignEl.textContent = t.authSign;
+            const signDateEl = document.getElementById('lbl-sign-date');
+            if (signDateEl) signDateEl.textContent = t.signDate;
+
             document.getElementById('lbl-timeline').textContent = t.timeline;
             document.getElementById('val-step1').value = t.step1;
             document.getElementById('val-step2').value = t.step2;
@@ -1708,8 +2902,10 @@
             if (termsEl) {
                 try {
                     const prevLang = termsEl.dataset.lang || currentLang;
-                    localStorage.setItem(`minova_terms_text_${prevLang}`, termsEl.value);
-                    const nextVal = localStorage.getItem(`minova_terms_text_${currentLang}`) ?? t.termsDefault;
+                    localStorage.setItem(`minova_terms_text_${prevLang}`, normalizeQuoteTermsDefaultText(termsEl.value, t.termsDefault));
+                    const storedVal = localStorage.getItem(`minova_terms_text_${currentLang}`);
+                    const nextVal = storedVal == null ? t.termsDefault : normalizeQuoteTermsDefaultText(storedVal, t.termsDefault);
+                    localStorage.setItem(`minova_terms_text_${currentLang}`, nextVal);
                     termsEl.value = nextVal;
                 } catch (e) {
                     termsEl.value = t.termsDefault;
@@ -1742,14 +2938,121 @@
             renderQuote();
 
             const p2 = document.getElementById('lbl-page2-title');
-            if(p2) p2.textContent = currentLang === 'zh' ? '投资回报分析' : 'ROI / FINANCIAL ANALYSIS';
+            if(p2) p2.textContent = currentLang === 'zh' ? '投资回报分析' : 'FINANCIAL ANALYSIS';
             const p3 = document.getElementById('lbl-page3-title');
-            if(p3) p3.textContent = currentLang === 'zh' ? '产品明细与质保' : 'PART BREAKDOWN & WARRANTY';
+            if(p3) p3.innerHTML = currentLang === 'zh' ? '产品明细与质保' : 'PART BREAKDOWN<br>&amp; WARRANTY';
             const p4 = document.getElementById('lbl-page4-title');
             if(p4) p4.textContent = currentLang === 'zh' ? '参考信息' : 'REFERENCE';
             const p5 = document.getElementById('lbl-page5-title');
             if(p5) p5.textContent = currentLang === 'zh' ? '现场概览' : 'SITE OVERVIEW';
-            
+
+            const so = t.siteOverview;
+            if (so) {
+                const set = (id, v) => {
+                    const el = document.getElementById(id);
+                    if (el) el.textContent = String(v ?? '');
+                };
+                const setOpt = (selectId, value, label) => {
+                    const sel = document.getElementById(selectId);
+                    if (!sel) return;
+                    const opt = Array.from(sel.options || []).find(o => String(o.value) === String(value));
+                    if (opt) opt.textContent = String(label ?? '');
+                };
+
+                set('so-btn-upload', so.uploadBg);
+                set('so-btn-add-pv', so.addPv);
+                set('so-btn-add-custom', so.addComp);
+                set('so-btn-copy', so.copy);
+                set('so-btn-delete', so.del);
+                set('so-btn-to-top', so.toTop);
+                set('so-btn-move-up', so.moveUp);
+                set('so-btn-rot-l', so.rotL);
+                set('so-btn-rot-r', so.rotR);
+                set('so-btn-undo', so.undo);
+                set('so-btn-redo', so.redo);
+                set('so-btn-clear-measures', so.clearMarks);
+                set('so-btn-delete-measures', so.deleteMarks);
+                set('so-btn-clear-all', so.clearAll);
+
+                set('so-toolbar-mode', so.toolbarMode);
+                set('so-toolbar-lock-scale', so.toolbarScaleLock);
+                set('so-toolbar-lock-move', so.toolbarMoveLock);
+                set('so-toolbar-rulers', so.toolbarRulers);
+                set('so-toolbar-snap', so.toolbarSnap);
+                set('so-toolbar-grid', so.toolbarGrid);
+
+                setOpt('roof-tool-mode', 'select_modules', so.toolbarSelect);
+                setOpt('roof-tool-mode', 'select_measures', so.toolbarMarks);
+                setOpt('roof-tool-mode', 'measure_dist', so.toolbarDist);
+                setOpt('roof-tool-mode', 'measure_area', so.toolbarArea);
+                setOpt('roof-tool-mode', 'edit_vertices', so.toolbarEditVertices);
+
+                set('so-card-module-title', so.cardModule);
+                set('so-card-text-title', so.cardText);
+                set('so-card-measure-title', so.cardMeasure);
+
+                set('so-module-roof', so.moduleRoof);
+                set('so-module-dims', so.moduleDims);
+                set('so-module-qty', so.qty);
+                set('so-module-opacity', so.opacity);
+                set('so-module-vertex-lock', so.vertexLock);
+
+                set('so-text-size', so.textSize);
+                set('so-text-weight', so.textWeight);
+                set('so-text-color', so.textColor);
+                set('so-text-bg', so.bg);
+                set('so-text-content', so.content);
+
+                setOpt('roof-label-weight', '200', so.weightThin);
+                setOpt('roof-label-weight', '400', so.weightReg);
+                setOpt('roof-label-weight', '600', so.weightSemi);
+                setOpt('roof-label-weight', '900', so.weightBold);
+
+                set('so-dist-color', so.distColor);
+                set('so-dist-marker', so.distMarker);
+                set('so-dist-constraint', so.distConstraint);
+
+                setOpt('roof-dist-marker', 'cross', so.markerCross);
+                setOpt('roof-dist-marker', 'dot', so.markerDot);
+                setOpt('roof-dist-marker', 'diamond', so.markerDiamond);
+                setOpt('roof-dist-marker', 'arrow_a', so.markerArrowA);
+                setOpt('roof-dist-marker', 'arrow_b', so.markerArrowB);
+                setOpt('roof-dist-marker', 'arrow_ab', so.markerArrowAB);
+
+                setOpt('roof-dist-constraint', 'free', so.constraintFree);
+                setOpt('roof-dist-constraint', 'horizontal', so.constraintH);
+                setOpt('roof-dist-constraint', 'vertical', so.constraintV);
+
+                set('so-area-bg', so.areaBg);
+                set('so-area-verts', so.areaVerts);
+                set('so-area-opacity', so.areaOpacity);
+                set('so-area-pattern', so.areaHatch);
+                set('so-area-text', so.areaText);
+
+                setOpt('roof-area-pattern', 'none', so.hatchSolid);
+                setOpt('roof-area-pattern', 'diag', so.hatchDiag);
+                setOpt('roof-area-pattern', 'cross', so.hatchCross);
+                setOpt('roof-area-pattern', 'grid', so.hatchGrid);
+
+                set('so-custom-modal-title', so.customTitle);
+                set('so-custom-modal-text-label', so.customText);
+                set('so-custom-modal-shape-label', so.customShape);
+                setOpt('roof-custom-shape', 'rect', so.shapeRect);
+                setOpt('roof-custom-shape', 'circle', so.shapeCircle);
+                setOpt('roof-custom-shape', 'triangle', so.shapeTriangle);
+                setOpt('roof-custom-shape', 'diamond', so.shapeDiamond);
+                setOpt('roof-custom-shape', 'hex', so.shapeHex);
+                setOpt('roof-custom-shape', 'arrow', so.shapeArrow);
+                setOpt('roof-custom-shape', 'polygon', so.shapePolygon);
+                set('so-custom-modal-vertex-lock', so.customVLock);
+                set('so-custom-modal-polygon-n-label', so.customPolyVerts);
+                set('so-custom-modal-bg-label', so.customBg);
+                set('so-custom-modal-bg-none', so.customNoBg);
+                set('so-custom-modal-fg-label', so.customFg);
+                set('so-custom-modal-cancel', so.cancel);
+                set('so-custom-modal-add', so.add);
+            }
+
             const lblBefore = document.getElementById('lbl-roi-before');
             if(lblBefore) lblBefore.textContent = currentLang === 'zh' ? `安装前月均电费 (${currentCurrency === 'CNY' ? '¥' : 'RM'})` : `Monthly Bill Before (${currentCurrency === 'CNY' ? '¥' : 'RM'})`;
             const lblAfter = document.getElementById('lbl-roi-after');
@@ -1759,6 +3062,111 @@
         };
 
         // --- 报价单逻辑 ---
+        const BATTERY_SOLAR_PROGRAMS = ['offgrid', 'hybrid', 'microgrid'];
+        const NON_BATTERY_SOLAR_PROGRAMS = ['gridtied', 'directdrive'];
+        window.__lastBatterySolarProgram = window.__lastBatterySolarProgram || 'offgrid';
+        window.__pendingBatteryPick = null;
+        window.__quoteQtyEditRowId = null;
+
+        function resolveQuoteProduct(row) {
+            const r = row && typeof row === 'object' ? row : {};
+            const pid = String(r.productId || '').trim();
+            if (pid) {
+                const found = products.find(p => String(p?.id || '').trim() === pid);
+                if (found) return found;
+            }
+            const invId = String(r.inventoryId || '').trim();
+            if (invId) {
+                const item = inventory.find(i => String(i?.id || '').trim() === invId);
+                if (item?.productId) {
+                    const found = products.find(p => String(p?.id || '').trim() === String(item.productId).trim());
+                    if (found) return found;
+                }
+            }
+            const desc = String(r.description || '').trim().toLowerCase();
+            const spec = String(r.spec || '').trim().toLowerCase();
+            if (!desc && !spec) return null;
+            return products.find(p => {
+                const name = String(p?.name || '').trim().toLowerCase();
+                const id = String(p?.id || '').trim().toLowerCase();
+                const pspec = String(p?.spec || '').trim().toLowerCase();
+                return (name && (desc === name || desc.includes(name) || name.includes(desc)))
+                    || (id && (desc === id || spec === id))
+                    || (pspec && spec && spec === pspec);
+            }) || null;
+        }
+
+        function resolveQuoteInventory(row) {
+            const r = row && typeof row === 'object' ? row : {};
+            const invId = String(r.inventoryId || '').trim();
+            if (invId) {
+                const found = inventory.find(i => String(i?.id || '').trim() === invId);
+                if (found) return found;
+            }
+            const pid = String(r.productId || '').trim();
+            if (pid) return inventory.find(i => String(i?.productId || '').trim() === pid) || null;
+            return null;
+        }
+
+        function quoteProductHasBattery(product, item, row) {
+            const hay = `${product?.category || ''} ${product?.name || ''} ${product?.spec || ''} ${product?.scenario || ''} ${item?.spec || ''} ${row?.description || ''} ${row?.spec || ''}`.toLowerCase();
+            return hay.includes('电池') || hay.includes('储能') || hay.includes('battery') || hay.includes('bess') || /\bk\s*w\s*h\b/i.test(hay) || /kwh/i.test(hay);
+        }
+
+        function quoteRowHasBattery(row) {
+            const product = resolveQuoteProduct(row);
+            const item = resolveQuoteInventory(row);
+            return quoteProductHasBattery(product, item, row);
+        }
+
+        function quoteRowIsPvModule(row) {
+            const product = resolveQuoteProduct(row);
+            const hay = `${product?.category || ''} ${product?.name || ''} ${product?.spec || ''} ${row?.description || ''} ${row?.spec || ''}`.toLowerCase();
+            return hay.includes('光伏组件') || hay.includes('光伏板') || hay.includes('photovoltaic') || hay.includes('solar panel') || hay.includes('pv module') || hay.includes('panel') || hay.includes('组件');
+        }
+
+        function quoteRowIsInverter(row) {
+            const product = resolveQuoteProduct(row);
+            const hay = `${product?.category || ''} ${product?.name || ''} ${product?.spec || ''} ${row?.description || ''} ${row?.spec || ''}`.toLowerCase();
+            return hay.includes('逆变器') || hay.includes('inverter');
+        }
+
+        function quoteRowHasProtectedQty(row) {
+            return quoteRowIsPvModule(row) || quoteRowIsInverter(row);
+        }
+
+        function quoteHasBatteryRows() {
+            return quoteRows.some(r => r && !r.isBlank && quoteRowHasBattery(r));
+        }
+        window.quoteHasBatteryRows = quoteHasBatteryRows;
+
+        window.updateQuoteSolarProgramAvailability = (opts = {}) => {
+            const select = document.getElementById('select-solar-program');
+            if (!select) return;
+            const hasBattery = quoteHasBatteryRows();
+            const previousValue = select.value;
+            Array.from(select.options || []).forEach(option => {
+                option.disabled = hasBattery && NON_BATTERY_SOLAR_PROGRAMS.includes(option.value);
+            });
+            if (BATTERY_SOLAR_PROGRAMS.includes(select.value)) {
+                window.__lastBatterySolarProgram = select.value;
+            }
+            if (hasBattery && NON_BATTERY_SOLAR_PROGRAMS.includes(select.value)) {
+                select.value = window.__lastBatterySolarProgram || 'offgrid';
+            }
+            if (select.value !== previousValue) {
+                window.resetQuoteExportFactorForProgram?.({ recalc: false });
+            }
+            const hint = document.getElementById('quote-solar-program-hint');
+            if (hint) {
+                hint.textContent = '';
+                hint.classList.add('hidden');
+            }
+            if (opts.fromUser && hasBattery && BATTERY_SOLAR_PROGRAMS.includes(select.value)) {
+                window.__lastBatterySolarProgram = select.value;
+            }
+        };
+
         window.removeRow = (id) => {
             quoteRows = quoteRows.filter(r => r.id !== id);
             if(quoteRows.length === 0) quoteRows.push({ id: Date.now(), description: '', vendor: '', spec: '', batchNo: '', quantity: 1, price: 0, cost: 0, productId: '', inventoryId: '' });
@@ -1780,6 +3188,56 @@
             for (let i = 0; i < n; i++) {
                 quoteRows.push({ id: Date.now() + i, description: '', vendor: '', spec: '', batchNo: '', quantity: 0, price: 0, cost: 0, productId: '', inventoryId: '', isBlank: true });
             }
+            renderQuote();
+        };
+
+        window.openQuoteQtyEditModal = (id) => {
+            const row = quoteRows.find(r => r.id === id);
+            if (!row) return;
+            window.__quoteQtyEditRowId = id;
+            const modal = document.getElementById('quote-qty-edit-modal');
+            const title = document.getElementById('quote-qty-edit-title');
+            const desc = document.getElementById('quote-qty-edit-desc');
+            const input = document.getElementById('quote-qty-edit-value');
+            if (title) title.textContent = quoteRowIsPvModule(row) ? '确认修改光伏组件 QTY' : '确认修改逆变器 QTY';
+            if (desc) desc.textContent = `${row.description || '当前产品'} 的数量由公式自动计算。确认后将改为手动值，直到恢复自动。`;
+            if (input) input.value = formatNumberAuto(row.quantity, 4);
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                setTimeout(() => { try { input?.focus(); input?.select(); } catch (e) {} }, 30);
+            }
+        };
+
+        window.closeQuoteQtyEditModal = () => {
+            const modal = document.getElementById('quote-qty-edit-modal');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+            window.__quoteQtyEditRowId = null;
+        };
+
+        window.confirmQuoteQtyEdit = () => {
+            const row = quoteRows.find(r => r.id === window.__quoteQtyEditRowId);
+            const input = document.getElementById('quote-qty-edit-value');
+            const raw = String(input?.value || '').replace(/[^0-9.]/g, '');
+            const qty = parseFloat(raw);
+            if (!row || !(qty > 0)) return alert('请输入有效数量');
+            row.quantity = qty;
+            row.qtyManualOverride = true;
+            window.setQuoteDirty?.(true);
+            window.closeQuoteQtyEditModal();
+            renderQuote();
+        };
+
+        window.restoreQuoteQtyAuto = () => {
+            const row = quoteRows.find(r => r.id === window.__quoteQtyEditRowId);
+            if (!row) return;
+            row.qtyManualOverride = false;
+            window.setQuoteDirty?.(true);
+            window.closeQuoteQtyEditModal();
+            try { window.calculateROI?.(); } catch (e) {}
             renderQuote();
         };
         let translateCache = {};
@@ -1819,6 +3277,7 @@
                 else row.description = val;
             } else if (field === 'vendor') {
                 row.vendor = String(val || '');
+                row.vendorManualOverride = true;
             } else if (field === 'spec' || field === 'batchNo') {
                 row[field] = val;
             } else {
@@ -1833,6 +3292,64 @@
             const s = n.toFixed(maxDecimals);
             return s.replace(/\.?0+$/, '');
         }
+
+        function quoteQtyFontSize(value) {
+            const len = String(value ?? '').replace(/\s+/g, '').length;
+            if (len >= 7) return '10px';
+            if (len >= 6) return '11px';
+            if (len >= 5) return '12px';
+            return '13px';
+        }
+
+        function quoteProtectedQtyHtml(row) {
+            const qtyText = formatNumberAuto(row?.quantity, 4);
+            const fontSize = quoteQtyFontSize(qtyText);
+            const manualBadge = row?.qtyManualOverride
+                ? `<span class="absolute -top-1 -right-1 text-[8px] font-black text-purple-700 bg-white border border-purple-100 px-1 rounded-full shadow-sm">M</span>`
+                : '';
+            return `<button id="quote-qty-${row.id}" type="button" onclick="openQuoteQtyEditModal(${row.id})" class="quote-qty-protected relative w-full rounded-lg border border-purple-100 bg-purple-50/70 px-1 py-1 text-center font-black text-purple-700 hover:bg-purple-100 transition-colors" style="font-size:${fontSize};" title="点击确认后手动修改数量"><span class="quote-qty-number">${htmlSafe(qtyText)}</span>${manualBadge}</button>`;
+        }
+
+        function fitGrandTotalAmount() {
+            const el = document.getElementById('grand-total');
+            if (!el) return;
+            const wrap = el.parentElement;
+            const currencyEl = wrap?.querySelector('.currency-symbol');
+            const compactLen = String(el.textContent || '').replace(/[^0-9.]/g, '').length;
+            let size = 0.92;
+            if (compactLen >= 15) size = 0.66;
+            else if (compactLen >= 13) size = 0.74;
+            else if (compactLen >= 11) size = 0.82;
+
+            if (wrap) {
+                wrap.style.setProperty('min-width', '0', 'important');
+                wrap.style.setProperty('overflow', 'hidden', 'important');
+                wrap.style.setProperty('white-space', 'nowrap', 'important');
+                wrap.style.setProperty('gap', '0.18rem', 'important');
+            }
+            if (currencyEl) {
+                currencyEl.style.setProperty('flex-shrink', '0', 'important');
+                currencyEl.style.setProperty('font-size', `${Math.min(size * 0.76, 0.72).toFixed(2)}rem`, 'important');
+                currencyEl.style.setProperty('line-height', '1', 'important');
+            }
+            el.style.setProperty('display', 'inline-block', 'important');
+            el.style.setProperty('min-width', '0', 'important');
+            el.style.setProperty('max-width', '100%', 'important');
+            el.style.setProperty('font-size', `${size.toFixed(2)}rem`, 'important');
+            el.style.setProperty('line-height', '1', 'important');
+            if (!wrap || !wrap.clientWidth) return;
+            const currencyWidth = currencyEl ? currencyEl.getBoundingClientRect().width : 0;
+            const available = Math.max(24, wrap.clientWidth - currencyWidth - 8);
+            while (size > 0.5 && el.scrollWidth > available) {
+                size -= 0.04;
+                el.style.setProperty('font-size', `${size.toFixed(2)}rem`, 'important');
+                if (currencyEl) {
+                    currencyEl.style.setProperty('font-size', `${Math.min(size * 0.76, 0.72).toFixed(2)}rem`, 'important');
+                }
+            }
+        }
+        window.fitGrandTotalAmount = fitGrandTotalAmount;
+
         function calculateQuote() {
             let total = 0, totalCost = 0;
             const rate = parseFloat(document.getElementById('rate-myr-cny').value) || 1.53;
@@ -1840,21 +3357,25 @@
             quoteRows.forEach(r => {
                 if (r.isBlank) return;
                 const priceInCurrentCurrency = currentCurrency === 'MYR' ? r.price / rate : r.price;
-                const sub = r.quantity * priceInCurrentCurrency;
+                const isIncluded = !!r.included;
+                const sub = isIncluded ? 0 : r.quantity * priceInCurrentCurrency;
                 total += sub;
-                totalCost += r.quantity * r.cost;
+                if (!isIncluded) totalCost += r.quantity * r.cost;
                 const subEl = document.getElementById(`sub-${r.id}`);
-                const marginEl = document.getElementById(`margin-${r.id}`);
-                if(subEl) subEl.textContent = sub.toFixed(2);
-                if(marginEl) {
+                const marginTipEl = document.getElementById(`margin-tip-${r.id}`);
+                const amountCellEl = document.getElementById(`amount-cell-${r.id}`);
+                if(subEl) subEl.textContent = isIncluded ? 'INCLUDED' : sub.toFixed(2);
+                if(amountCellEl) amountCellEl.title = '';
+                if(marginTipEl) {
                     // 更新计算公式：(售价 - 成本) / 成本
                     const margin = r.cost > 0 ? ((r.price - r.cost) / r.cost * 100) : 0;
-                    marginEl.textContent = margin.toFixed(1) + '%';
-                    marginEl.className = `no-print py-4 px-2 text-center text-[10px] font-bold ${margin < 15 ? 'text-red-500 bg-red-50 rounded-lg animate-pulse' : 'text-slate-400'}`;
+                    marginTipEl.textContent = `Margin ${margin.toFixed(1)}%`;
+                    marginTipEl.className = `no-print hidden group-hover:block pointer-events-none absolute right-0 -top-7 rounded-lg text-white text-[10px] font-bold px-2 py-1 shadow-lg z-20 ${margin < 15 ? 'bg-red-600' : 'bg-slate-900'}`;
+                    if(amountCellEl) amountCellEl.title = `Margin ${margin.toFixed(1)}%`;
                 }
             });
             const currencySymbol = currentCurrency === 'CNY' ? '¥' : 'RM';
-            
+
             // Sub-Total and SST calculations
             const subTotal = total;
             const sst = subTotal * 0.06;
@@ -1866,22 +3387,24 @@
             const formattedGrandTotal = grandTotal.toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
             document.getElementById('grand-total').textContent = formattedGrandTotal;
             document.getElementById('payment-grand-total').textContent = formattedGrandTotal;
+            fitGrandTotalAmount();
+            requestAnimationFrame(fitGrandTotalAmount);
 
             const confirmationPercent = parseFloat(document.getElementById('payment-confirmation-percent').value) || 0;
             const installationPercent = parseFloat(document.getElementById('payment-installation-percent').value) || 0;
             const testingPercent = parseFloat(document.getElementById('payment-testing-percent').value) || 0;
-            
+
             const finalContainer = document.getElementById('payment-final-container');
             const finalPercent = finalContainer && !finalContainer.classList.contains('hidden') ? (parseFloat(document.getElementById('payment-final-percent').value) || 0) : 0;
 
             const totalPercent = confirmationPercent + installationPercent + testingPercent + finalPercent;
             const warningEl = document.getElementById('payment-warning');
-            
+
             const percentInputs = ['payment-confirmation-percent', 'payment-installation-percent', 'payment-testing-percent'];
             if (finalContainer && !finalContainer.classList.contains('hidden')) {
                 percentInputs.push('payment-final-percent');
             }
-            
+
             const t = i18n[currentLang];
 
             if (!paymentTermsConfirmed) {
@@ -1922,7 +3445,93 @@
             document.getElementById('stat-count').textContent = itemCount;
             const avgMargin = totalCost > 0 ? ((total * (currentCurrency === 'MYR' ? rate : 1) - totalCost) / totalCost * 100) : 0;
             document.getElementById('stat-avg-margin').textContent = avgMargin.toFixed(1) + '%';
+            try { window.calculateROI?.(); } catch (e) {}
+            try { window.updateQuoteA4PageBreakWarning?.(); } catch (e) {}
         }
+
+        function quotePageIsVisible(page) {
+            if (!page) return false;
+            const style = page.ownerDocument?.defaultView?.getComputedStyle?.(page);
+            return style?.display !== 'none' && !page.classList.contains('hidden');
+        }
+
+        function quoteA4PageHeightPx(page) {
+            const rect = page?.getBoundingClientRect?.();
+            const width = rect?.width || page?.clientWidth || 794;
+            return Math.max(900, width * 297 / 210);
+        }
+
+        function quoteFindCrossingBlock(doc = document) {
+            const page = doc.getElementById('quote-page-1');
+            if (!quotePageIsVisible(page)) return null;
+            const pageRect = page.getBoundingClientRect();
+            const pageHeight = quoteA4PageHeightPx(page);
+            const candidates = Array.from(page.querySelectorAll('#quote-body .quote-detail-row, .grand-total-container, #section-after-details, .signature-container'))
+                .filter(el => {
+                    if (el.classList.contains('quote-page-break-before')) return false;
+                    const style = doc.defaultView?.getComputedStyle?.(el);
+                    return style?.display !== 'none';
+                });
+            for (const el of candidates) {
+                const rect = el.getBoundingClientRect();
+                if (!rect.height || rect.height >= pageHeight * 0.94) continue;
+                const top = rect.top - pageRect.top;
+                const bottom = rect.bottom - pageRect.top;
+                if (top < 0 || bottom <= pageHeight) continue;
+                const topPage = Math.floor(Math.max(0, top) / pageHeight);
+                const bottomPage = Math.floor(Math.max(0, bottom - 1) / pageHeight);
+                if (topPage !== bottomPage && top % pageHeight > 24) return el;
+            }
+            return null;
+        }
+
+        window.updateQuoteA4PageBreakWarning = () => {
+            const warning = document.getElementById('quote-a4-warning');
+            if (!warning) return;
+            const block = quoteFindCrossingBlock(document);
+            if (!block) {
+                warning.classList.add('hidden');
+                warning.textContent = '';
+                return;
+            }
+            const label = block.matches?.('.quote-detail-row')
+                ? `Row ${block.querySelector('td')?.textContent?.trim() || ''}`
+                : (block.classList.contains('grand-total-container') ? 'Grand Total' : 'Terms / Signature');
+            warning.textContent = `A4 page break warning: ${label} may cross the page edge. It will be moved to the next PDF page automatically.`;
+            warning.classList.remove('hidden');
+        };
+
+        window.applyQuotePdfPageBreaks = (doc) => {
+            const clonedDoc = doc || document;
+            const page = clonedDoc.getElementById('quote-page-1');
+            if (!quotePageIsVisible(page)) return;
+            Array.from(clonedDoc.querySelectorAll('.quote-auto-page-break-marker')).forEach(el => el.remove());
+            Array.from(clonedDoc.querySelectorAll('.quote-page-break-before')).forEach(el => {
+                el.classList.remove('quote-page-break-before');
+                el.style.breakBefore = '';
+                el.style.pageBreakBefore = '';
+            });
+            for (let i = 0; i < 12; i++) {
+                const block = quoteFindCrossingBlock(clonedDoc);
+                if (!block) break;
+                block.classList.add('quote-page-break-before');
+                block.style.breakBefore = 'page';
+                block.style.pageBreakBefore = 'always';
+                if (block.tagName === 'TR') {
+                    const marker = clonedDoc.createElement('tr');
+                    marker.className = 'quote-auto-page-break-marker html2pdf__page-break';
+                    marker.innerHTML = '<td colspan="8" style="padding:0;border:0;height:0;line-height:0;"></td>';
+                    block.parentNode?.insertBefore(marker, block);
+                } else {
+                    const marker = clonedDoc.createElement('div');
+                    marker.className = 'quote-auto-page-break-marker html2pdf__page-break';
+                    marker.style.height = '0';
+                    block.parentNode?.insertBefore(marker, block);
+                }
+                void page.offsetHeight;
+            }
+        };
+
         function renderQuote() {
             const container = document.getElementById('quote-body');
             const rate = parseFloat(document.getElementById('rate-myr-cny').value) || 1.53;
@@ -1947,6 +3556,7 @@
 
             container.innerHTML = quoteRows.map((r, idx) => {
                 const priceInCurrentCurrency = currentCurrency === 'MYR' ? r.price / rate : r.price;
+                const brandVal = quoteBrandDisplayForRow(r);
                 const descVal = currentLang === 'en'
                     ? (r.descEn || r.description || '')
                     : (r.description || '');
@@ -1959,41 +3569,48 @@
                     });
                 }
                 const displayNo = isCountedRow(r) ? (++displayIndex) : '';
+                const protectedQty = !r.isBlank && quoteRowHasProtectedQty(r);
+                const qtyHtml = protectedQty
+                    ? quoteProtectedQtyHtml(r)
+                    : `<input id="quote-qty-${r.id}" type="number" value="${r.quantity}" oninput="updateRow(${r.id}, 'quantity', this.value)" class="w-full bg-transparent outline-none text-center text-sm">`;
+                const priceHtml = r.included
+                    ? `<span class="block text-right text-[10px] font-black text-slate-400 uppercase">Included</span>`
+                    : `<input type="number" step="0.01" value="${formatNumberAuto(priceInCurrentCurrency, 4)}" oninput="updateRow(${r.id}, 'price', this.value)" class="w-full bg-transparent outline-none text-right text-sm font-bold">`;
+                const amountHtml = r.included
+                    ? `<span id="sub-${r.id}" class="text-slate-500">INCLUDED</span>`
+                    : `<span class="currency-symbol mr-1"></span><span id="sub-${r.id}">0.00</span><div id="margin-tip-${r.id}" class="no-print hidden group-hover:block pointer-events-none absolute right-0 -top-7 rounded-lg bg-slate-900 text-white text-[10px] font-bold px-2 py-1 shadow-lg z-20">Margin 0%</div>`;
+                const marketHoverAttrs = r.productId ? ` onmousemove="showMarketPriceTooltip(event, '${htmlSafe(r.productId)}')" onmouseleave="hidePriceListTooltip()"` : '';
                 const rowHtml = r.isBlank ? `
-                <tr class="group transition-colors hover:bg-slate-50/50">
+                <tr class="quote-detail-row group transition-colors hover:bg-slate-50/50" data-quote-row-id="${r.id}">
                     <td class="py-4 px-2 text-center text-[10px] font-mono text-slate-200"></td>
                     <td class="py-4 px-2 select-none">&nbsp;</td>
                     <td class="py-4 px-2 select-none">&nbsp;</td>
                     <td class="py-4 px-2 select-none">&nbsp;</td>
-                    <td class="py-4 px-2 no-print select-none">&nbsp;</td>
                     <td class="py-4 px-2 text-center select-none">&nbsp;</td>
                     <td class="py-4 px-2 text-right select-none print:hidden no-print">&nbsp;</td>
-                    <td class="no-print py-4 px-2 text-center select-none">&nbsp;</td>
                     <td class="py-4 px-2 text-right select-none">&nbsp;</td>
                     <td class="no-print py-4 px-2 text-center">
-                        <div class="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                            <button onclick="moveRow(${r.id}, -1)" class="px-2 py-1 text-[10px] font-black text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-md border border-slate-200" title="上移">↑</button>
-                            <button onclick="moveRow(${r.id}, 1)" class="px-2 py-1 text-[10px] font-black text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-md border border-slate-200" title="下移">↓</button>
-                            <button onclick="removeRow(${r.id})" class="px-2 py-1 text-[10px] font-black text-red-500 bg-red-50 hover:bg-red-100 rounded-md border border-red-200" title="删除">✕</button>
+                        <div class="quote-row-actions flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                            <button type="button" onclick="moveRow(${r.id}, -1)" class="px-2 py-1 text-[10px] font-black text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-md border border-slate-200" title="上移">↑</button>
+                            <button type="button" onclick="moveRow(${r.id}, 1)" class="px-2 py-1 text-[10px] font-black text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-md border border-slate-200" title="下移">↓</button>
+                            <button type="button" onclick="removeRow(${r.id})" class="px-2 py-1 text-[10px] font-black text-red-500 bg-red-50 hover:bg-red-100 rounded-md border border-red-200" title="删除">✕</button>
                         </div>
                     </td>
                 </tr>
                 ` : `
-                <tr class="border-b border-slate-50 group transition-colors hover:bg-slate-50/50">
+                <tr class="quote-detail-row border-b border-slate-50 group transition-colors hover:bg-slate-50/50" data-quote-row-id="${r.id}"${marketHoverAttrs}>
                     <td class="py-2 px-2 text-center text-[10px] font-mono text-slate-300">${displayNo}</td>
-                    <td class="py-2 px-2"><input type="text" value="${descVal}" oninput="updateRow(${r.id}, 'description', this.value)" class="w-full bg-transparent outline-none text-sm font-medium focus:text-blue-600" placeholder="${currentLang === 'en' ? 'Description' : '描述'}"></td>
-                    <td class="py-2 px-2"><input type="text" value="${String(r.vendor || '')}" oninput="updateRow(${r.id}, 'vendor', this.value)" class="w-full bg-transparent outline-none text-center text-sm focus:text-blue-600" placeholder="${currentLang === 'en' ? 'Brand' : '品牌'}"></td>
+                    <td class="py-2 px-2" style="vertical-align:top;"><textarea rows="1" oninput="updateRow(${r.id}, 'description', this.value); this.style.height=''; this.style.height=this.scrollHeight + 'px';" class="quote-desc-textarea w-full bg-transparent outline-none text-sm font-medium focus:text-blue-600 resize-none overflow-hidden" placeholder="${currentLang === 'en' ? 'Description' : '描述'}">${htmlSafe(descVal)}</textarea></td>
+                    <td class="py-2 px-2"><input type="text" value="${htmlSafe(brandVal)}" oninput="updateRow(${r.id}, 'vendor', this.value)" class="w-full bg-transparent outline-none text-center text-sm focus:text-blue-600" placeholder="${currentLang === 'en' ? 'Brand' : '品牌'}"></td>
                     <td class="py-2 px-2"><input type="text" value="${r.spec}" oninput="updateRow(${r.id}, 'spec', this.value)" class="w-full bg-transparent outline-none text-center text-sm focus:text-blue-600" placeholder="${currentLang === 'en' ? 'Spec' : '规格'}"></td>
-                    <td class="py-2 px-2 no-print"><input type="text" value="${r.batchNo}" oninput="updateRow(${r.id}, 'batchNo', this.value)" class="w-full bg-transparent outline-none text-sm focus:text-blue-600" placeholder="${currentLang === 'en' ? 'Batch' : '采购批次'}"></td>
-                    <td class="py-2 px-2"><input type="number" value="${r.quantity}" oninput="updateRow(${r.id}, 'quantity', this.value)" class="w-full bg-transparent outline-none text-center text-sm"></td>
-                    <td class="py-2 px-2 print:hidden no-print whitespace-nowrap"><input type="number" step="0.01" value="${formatNumberAuto(priceInCurrentCurrency, 4)}" oninput="updateRow(${r.id}, 'price', this.value)" class="w-full bg-transparent outline-none text-right text-sm font-bold"></td>
-                    <td id="margin-${r.id}" class="no-print py-2 px-2 text-center text-[10px] font-bold text-slate-400">0%</td>
-                    <td class="py-2 px-2 text-right font-black text-slate-700 text-sm whitespace-nowrap"><span class="currency-symbol mr-1"></span><span id="sub-${r.id}">0.00</span></td>
+                    <td class="py-2 px-2">${qtyHtml}</td>
+                    <td class="py-2 px-2 print:hidden no-print whitespace-nowrap">${priceHtml}</td>
+                    <td id="amount-cell-${r.id}" class="py-2 px-2 text-right font-black text-slate-700 text-sm whitespace-nowrap relative">${amountHtml}</td>
                     <td class="no-print py-2 px-2 text-center">
-                        <div class="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                            <button onclick="moveRow(${r.id}, -1)" class="px-2 py-1 text-[10px] font-black text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-md border border-slate-200" title="上移">↑</button>
-                            <button onclick="moveRow(${r.id}, 1)" class="px-2 py-1 text-[10px] font-black text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-md border border-slate-200" title="下移">↓</button>
-                            <button onclick="removeRow(${r.id})" class="px-2 py-1 text-[10px] font-black text-red-500 bg-red-50 hover:bg-red-100 rounded-md border border-red-200" title="删除">✕</button>
+                        <div class="quote-row-actions flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                            <button type="button" onclick="moveRow(${r.id}, -1)" class="px-2 py-1 text-[10px] font-black text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-md border border-slate-200" title="上移">↑</button>
+                            <button type="button" onclick="moveRow(${r.id}, 1)" class="px-2 py-1 text-[10px] font-black text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-md border border-slate-200" title="下移">↓</button>
+                            <button type="button" onclick="removeRow(${r.id})" class="px-2 py-1 text-[10px] font-black text-red-500 bg-red-50 hover:bg-red-100 rounded-md border border-red-200" title="删除">✕</button>
                         </div>
                     </td>
                 </tr>
@@ -2001,13 +3618,13 @@
 
                 const splitHtml = (quoteSplit.enabled && r.id === splitAfterId) ? `
                 <tr id="quote-split-row" class="quote-split-row">
-                    <td colspan="10" class="py-4 px-2">
+                    <td colspan="8" class="py-4 px-2">
                         <div class="flex items-center gap-3">
                             <div class="flex-grow border-t border-dashed border-purple-200"></div>
-                            <div class="no-print flex items-center gap-1">
-                                <button onclick="moveQuoteSplit(-1)" class="px-2 py-1 text-[10px] font-black text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-md border border-slate-200" title="上移">↑</button>
-                                <button onclick="moveQuoteSplit(1)" class="px-2 py-1 text-[10px] font-black text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-md border border-slate-200" title="下移">↓</button>
-                                <button onclick="toggleQuoteSplit()" class="px-2 py-1 text-[10px] font-black text-red-500 bg-red-50 hover:bg-red-100 rounded-md border border-red-200" title="删除">✕</button>
+                            <div class="quote-row-actions no-print flex items-center gap-1">
+                                <button type="button" onclick="moveQuoteSplit(-1)" class="px-2 py-1 text-[10px] font-black text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-md border border-slate-200" title="上移">↑</button>
+                                <button type="button" onclick="moveQuoteSplit(1)" class="px-2 py-1 text-[10px] font-black text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-md border border-slate-200" title="下移">↓</button>
+                                <button type="button" onclick="toggleQuoteSplit()" class="px-2 py-1 text-[10px] font-black text-red-500 bg-red-50 hover:bg-red-100 rounded-md border border-red-200" title="删除">✕</button>
                             </div>
                         </div>
                     </td>
@@ -2016,13 +3633,417 @@
 
                 return rowHtml + splitHtml;
             }).join('');
+            window.updateQuoteSolarProgramAvailability?.();
+            requestAnimationFrame(() => window.autosizeAllTextareas?.(container));
             calculateQuote();
             updateQuoteSplitUI();
+            requestAnimationFrame(() => window.updateQuoteA4PageBreakWarning?.());
         }
         window.renderQuote = renderQuote;
         window.calculateQuote = calculateQuote;
 
-        // --- 库管理逻辑 ---
+        // --- 供应商与库管理逻辑 ---
+        async function readMinovaImageFile(file) {
+            if (typeof window.handleImageUpload === 'function') return window.handleImageUpload(file);
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function renderSupplierLogoPreview() {
+            const el = document.getElementById('supplier-logo-preview');
+            if (!el) return;
+            const src = String(window.__supplierLogoDraft || '').trim();
+            el.innerHTML = src
+                ? `<img src="${htmlSafe(src)}" class="max-h-full max-w-full object-contain" alt="Supplier logo">`
+                : 'No Logo';
+        }
+
+        function renderProductImagePreview() {
+            const el = document.getElementById('m-product-image-preview');
+            if (!el) return;
+            const src = String(window.__productImageDraft || '').trim();
+            el.innerHTML = src
+                ? `<img src="${htmlSafe(src)}" class="max-h-full max-w-full object-contain" alt="Product image">`
+                : 'No Product Image';
+        }
+
+        function getSupplierEvaluationDetails(supplier) {
+            const s = supplier && typeof supplier === 'object' ? supplier : {};
+            const evaluation = normalizeSupplierEvaluation(s.evaluation || {});
+            const stage = capSupplierStage(s.stage || 'info', evaluation.evidence);
+            const totalScore = calculateSupplierTotalScore(evaluation.scores);
+            return {
+                stage,
+                evaluation: { ...evaluation, totalScore, suggestedStage: getSupplierSuggestedStage(evaluation.scores, evaluation.evidence) },
+                totalScore,
+                suggestedStage: getSupplierSuggestedStage(evaluation.scores, evaluation.evidence),
+                evidenceMaxStage: getSupplierEvidenceMaxStage(evaluation.evidence),
+                weakness: getSupplierWeakness(evaluation.scores)
+            };
+        }
+
+        function renderSupplierFunnelSummary(allSuppliers) {
+            const wrap = document.getElementById('supplier-funnel-summary');
+            if (!wrap) return;
+            const list = Array.isArray(allSuppliers) ? allSuppliers : [];
+            const totalAll = list.length;
+            wrap.innerHTML = SUPPLIER_STAGES.map(stage => {
+                const rows = list.filter(s => getSupplierEvaluationDetails(s).stage === stage.key);
+                const avg = rows.length
+                    ? rows.reduce((sum, s) => sum + getSupplierEvaluationDetails(s).totalScore, 0) / rows.length
+                    : 0;
+                const active = supplierStageFilter === stage.key;
+                const cls = active
+                    ? 'border-purple-200 bg-white text-purple-800 shadow-sm'
+                    : 'border-slate-200 bg-white/70 text-slate-600 hover:border-purple-200';
+                return `
+                    <button type="button" onclick="setSupplierStageFilter('${stage.key}')" class="text-left rounded-xl border px-4 py-3 transition-all ${cls}">
+                        <div class="flex items-center justify-between gap-3">
+                            <span class="text-xs font-black">${htmlSafe(stage.label)}</span>
+                            <span class="text-lg font-black">${rows.length}</span>
+                        </div>
+                        <div class="mt-1 flex items-center justify-between gap-2 text-[10px] font-bold text-slate-400">
+                            <span>${htmlSafe(stage.desc)}</span>
+                            <span>均分 ${avg.toFixed(1)}</span>
+                        </div>
+                    </button>
+                `;
+            }).join('');
+            const allBtn = document.getElementById('supplier-filter-all');
+            if (allBtn) {
+                allBtn.className = supplierStageFilter === 'all'
+                    ? 'px-3 py-2 rounded-xl border border-purple-200 bg-white text-xs font-black text-purple-800 shadow-sm'
+                    : 'px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-black text-slate-600 hover:border-purple-200';
+                allBtn.textContent = `全部供应商 (${totalAll})`;
+            }
+        }
+
+        window.setSupplierStageFilter = (stage) => {
+            supplierStageFilter = stage === 'all' ? 'all' : normalizeSupplierStage(stage);
+            renderSuppliers();
+        };
+
+        window.setSupplierSortMode = (mode) => {
+            supplierSortMode = String(mode || 'score_desc');
+            renderSuppliers();
+        };
+
+        function renderSuppliers() {
+            const list = document.getElementById('supplier-list');
+            if (!list) return;
+            ensureSupplierData();
+            renderSupplierFunnelSummary(suppliers);
+            if (!suppliers.length) {
+                list.innerHTML = `<tr><td colspan="13" class="py-12 text-center text-slate-400 text-sm">暂无供应商，请先新增供应商后再维护产品档案。</td></tr>`;
+                updateSupplierSelects();
+                return;
+            }
+            const searchEl = document.getElementById('supplier-search');
+            const sortEl = document.getElementById('supplier-sort');
+            const query = String(searchEl?.value || '').trim().toLowerCase();
+            supplierSortMode = String(sortEl?.value || supplierSortMode || 'score_desc');
+            const rows = suppliers.map(s => {
+                const details = getSupplierEvaluationDetails(s);
+                const linked = products.filter(p => normalizeSupplierCode(p.supplierCode) === normalizeSupplierCode(s.code)).length;
+                const hay = [
+                    s.code, s.nameZh, s.nameEn, s.country, s.contact, s.contactInfo, s.website, s.address, s.notes,
+                    getSupplierStageDef(details.stage).label, getSupplierStageDef(details.suggestedStage).label
+                ].filter(Boolean).map(v => String(v).toLowerCase()).join(' | ');
+                return { supplier: s, details, linked, hay };
+            }).filter(row => {
+                if (supplierStageFilter !== 'all' && row.details.stage !== supplierStageFilter) return false;
+                return !query || row.hay.includes(query);
+            });
+            rows.sort((a, b) => {
+                if (supplierSortMode === 'stage_desc') {
+                    const stageDiff = supplierStageIndex(b.details.stage) - supplierStageIndex(a.details.stage);
+                    if (stageDiff) return stageDiff;
+                    return b.details.totalScore - a.details.totalScore;
+                }
+                if (supplierSortMode === 'name_asc') return getSupplierDisplayName(a.supplier).localeCompare(getSupplierDisplayName(b.supplier));
+                return (b.details.totalScore - a.details.totalScore) || supplierStageIndex(b.details.stage) - supplierStageIndex(a.details.stage);
+            });
+            if (!rows.length) {
+                list.innerHTML = `<tr><td colspan="13" class="py-12 text-center text-slate-400 text-sm">没有匹配当前筛选条件的供应商。</td></tr>`;
+                updateSupplierSelects();
+                return;
+            }
+            list.innerHTML = rows.map(row => {
+                const s = row.supplier;
+                const details = row.details;
+                const linked = row.linked;
+                const logo = getSupplierLogo(s)
+                    ? `<img src="${htmlSafe(getSupplierLogo(s))}" class="h-10 w-20 object-contain rounded-lg bg-white border border-slate-100" alt="${htmlSafe(getSupplierDisplayName(s))} logo">`
+                    : `<div class="h-10 w-20 rounded-lg bg-slate-50 border border-dashed border-slate-200 flex items-center justify-center text-[10px] text-slate-300">No Logo</div>`;
+                const website = s.website
+                    ? `<a href="${htmlSafe(s.website)}" target="_blank" rel="noopener noreferrer" class="text-purple-700 hover:underline">${htmlSafe(s.website)}</a>`
+                    : '-';
+                return `
+                    <tr class="hover:bg-slate-50 transition-colors group">
+                        <td class="py-4 px-4 text-xs font-mono text-slate-600">${htmlSafe(s.code)}</td>
+                        <td class="py-4 px-4">${logo}</td>
+                        <td class="py-4 px-4 text-sm font-bold text-slate-700">${htmlSafe(s.nameZh || '-')}</td>
+                        <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(s.nameEn || '-')}</td>
+                        <td class="py-4 px-4">${supplierStageBadgeHtml(details.stage)}</td>
+                        <td class="py-4 px-4 text-right">
+                            <div class="font-black text-sm text-slate-800">${details.totalScore.toFixed(1)}</div>
+                            <div class="text-[9px] text-slate-400 font-bold">建议 ${htmlSafe(getSupplierStageDef(details.suggestedStage).shortLabel)}</div>
+                        </td>
+                        <td class="py-4 px-4 text-xs text-slate-500">${htmlSafe(details.weakness)}</td>
+                        <td class="py-4 px-4 text-xs text-slate-500">${htmlSafe(s.country || '-')}</td>
+                        <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(s.contact || '-')}</td>
+                        <td class="py-4 px-4 text-xs text-slate-500">${htmlSafe(s.contactInfo || '-')}</td>
+                        <td class="py-4 px-4 text-xs max-w-[180px] truncate">${website}</td>
+                        <td class="py-4 px-4 text-center"><span class="text-[10px] font-black px-2 py-1 rounded-full bg-purple-50 text-purple-700">${linked}</span></td>
+                        <td class="py-4 px-4 text-center">
+                            <div class="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                                <button onclick="editSupplier('${htmlSafe(s.code)}')" class="text-purple-700 hover:bg-purple-50 p-1 rounded">✎</button>
+                                <button onclick="deleteSupplier('${htmlSafe(s.code)}')" class="text-red-300 hover:text-red-500 p-1 rounded">🗑</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            updateSupplierSelects();
+        }
+
+        function renderSupplierScoreFields(evaluation = {}) {
+            const wrap = document.getElementById('supplier-score-fields');
+            if (!wrap) return;
+            const scores = normalizeSupplierScores(evaluation.scores || {});
+            wrap.innerHTML = SUPPLIER_SCORE_FIELDS.map(field => {
+                const value = scores[field.key];
+                return `
+                    <div>
+                        <label class="flex items-center justify-between gap-2 text-[10px] font-black text-slate-400 uppercase mb-1">
+                            <span>${htmlSafe(field.label)}</span>
+                            <span>${field.weight}%</span>
+                        </label>
+                        <input id="supplier-score-${field.key}" type="number" min="0" max="10" step="0.5" value="${value}" oninput="updateSupplierEvaluationPreview()" class="w-full border border-slate-200 rounded-xl p-2 text-sm outline-none focus:border-purple-600 bg-white">
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function setSupplierCheck(id, checked) {
+            const el = document.getElementById(id);
+            if (el) el.checked = !!checked;
+        }
+
+        function setSupplierInputValue(id, value) {
+            const el = document.getElementById(id);
+            if (el) el.value = String(value ?? '');
+        }
+
+        function readSupplierScoresFromModal() {
+            return SUPPLIER_SCORE_FIELDS.reduce((acc, field) => {
+                acc[field.key] = normalizeSupplierScore(document.getElementById(`supplier-score-${field.key}`)?.value);
+                return acc;
+            }, {});
+        }
+
+        function readSupplierEvidenceFromModal() {
+            return normalizeSupplierEvidence({
+                factoryVisited: !!document.getElementById('supplier-evidence-factory-visited')?.checked,
+                accurateQuote: !!document.getElementById('supplier-evidence-accurate-quote')?.checked,
+                firstOrderDone: !!document.getElementById('supplier-evidence-first-order')?.checked,
+                longTermCooperation: !!document.getElementById('supplier-evidence-long-term')?.checked,
+                preferredPrice: !!document.getElementById('supplier-evidence-preferred-price')?.checked,
+                orderCount: document.getElementById('supplier-evidence-order-count')?.value || 0,
+                creditTermDays: document.getElementById('supplier-evidence-credit-days')?.value || 0
+            });
+        }
+
+        function readSupplierEvaluationDraft({ touch = false } = {}) {
+            return normalizeSupplierEvaluation({
+                scores: readSupplierScoresFromModal(),
+                evidence: readSupplierEvidenceFromModal(),
+                lastReviewedAt: touch ? new Date().toISOString() : String(window.__supplierLastReviewedAt || '')
+            });
+        }
+
+        window.updateSupplierEvaluationPreview = () => {
+            const preview = document.getElementById('supplier-evaluation-preview');
+            if (!preview) return;
+            const evaluation = readSupplierEvaluationDraft();
+            const requestedStage = normalizeSupplierStage(document.getElementById('supplier-stage')?.value || 'info');
+            const cappedStage = capSupplierStage(requestedStage, evaluation.evidence);
+            const suggestedStage = getSupplierSuggestedStage(evaluation.scores, evaluation.evidence);
+            const evidenceMaxStage = getSupplierEvidenceMaxStage(evaluation.evidence);
+            const missing = getSupplierMissingEvidenceForStage(requestedStage, evaluation.evidence);
+            const capNote = requestedStage === cappedStage
+                ? `可保存为 ${getSupplierStageDef(cappedStage).label}`
+                : `证据不足，保存时将降为 ${getSupplierStageDef(cappedStage).label}`;
+            const reviewedAt = window.__supplierLastReviewedAt ? new Date(window.__supplierLastReviewedAt).toLocaleDateString('zh-CN') : '未评估';
+            preview.innerHTML = `
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="text-2xl font-black text-purple-800">${evaluation.totalScore.toFixed(1)}</span>
+                        <span class="text-[10px] font-black text-slate-400 uppercase">/ 100</span>
+                        <span class="text-xs font-bold text-slate-500">建议：${htmlSafe(getSupplierStageDef(suggestedStage).label)}</span>
+                        <span class="text-xs font-bold text-slate-500">证据上限：${htmlSafe(getSupplierStageDef(evidenceMaxStage).label)}</span>
+                    </div>
+                    <span class="text-[10px] font-bold text-slate-400">上次评估：${htmlSafe(reviewedAt)}</span>
+                </div>
+                <div class="mt-2 text-xs font-bold ${requestedStage === cappedStage ? 'text-emerald-700' : 'text-amber-700'}">${htmlSafe(capNote)}</div>
+                ${missing.length ? `<div class="mt-1 text-[11px] text-red-500 font-bold">缺少：${missing.map(htmlSafe).join('、')}</div>` : ''}
+            `;
+        };
+
+        function setSupplierEvaluationToModal(supplier) {
+            const details = getSupplierEvaluationDetails(supplier || {});
+            const evaluation = details.evaluation;
+            window.__supplierLastReviewedAt = evaluation.lastReviewedAt || '';
+            renderSupplierScoreFields(evaluation);
+            setSupplierInputValue('supplier-stage', details.stage);
+            const e = normalizeSupplierEvidence(evaluation.evidence);
+            setSupplierCheck('supplier-evidence-factory-visited', e.factoryVisited);
+            setSupplierCheck('supplier-evidence-accurate-quote', e.accurateQuote);
+            setSupplierCheck('supplier-evidence-first-order', e.firstOrderDone);
+            setSupplierCheck('supplier-evidence-long-term', e.longTermCooperation);
+            setSupplierCheck('supplier-evidence-preferred-price', e.preferredPrice);
+            setSupplierInputValue('supplier-evidence-order-count', e.orderCount);
+            setSupplierInputValue('supplier-evidence-credit-days', e.creditTermDays);
+            window.updateSupplierEvaluationPreview();
+        }
+
+        function readSupplierAssessmentFromModal() {
+            const evaluation = readSupplierEvaluationDraft({ touch: true });
+            const requestedStage = normalizeSupplierStage(document.getElementById('supplier-stage')?.value || 'info');
+            const stage = capSupplierStage(requestedStage, evaluation.evidence);
+            return {
+                stage,
+                evaluation: {
+                    ...evaluation,
+                    totalScore: calculateSupplierTotalScore(evaluation.scores),
+                    suggestedStage: getSupplierSuggestedStage(evaluation.scores, evaluation.evidence)
+                }
+            };
+        }
+
+        window.openSupplierModal = (code = '') => {
+            ensureSupplierData();
+            window.__editingSupplierCode = normalizeSupplierCode(code || '');
+            const supplier = window.__editingSupplierCode ? getSupplierByCode(window.__editingSupplierCode) : null;
+            const modal = document.getElementById('supplier-modal');
+            const title = document.getElementById('supplier-modal-title');
+            if (title) title.textContent = supplier ? '编辑供应商' : '新增供应商';
+            const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+            setVal('supplier-code', supplier?.code || makeUniqueSupplierCode('SUP'));
+            setVal('supplier-name-zh', supplier?.nameZh || '');
+            setVal('supplier-name-en', supplier?.nameEn || '');
+            setVal('supplier-country', supplier?.country || '');
+            setVal('supplier-contact', supplier?.contact || '');
+            setVal('supplier-contact-info', supplier?.contactInfo || '');
+            setVal('supplier-website', supplier?.website || '');
+            setVal('supplier-address', supplier?.address || '');
+            setVal('supplier-notes', supplier?.notes || '');
+            setSupplierEvaluationToModal(supplier || {});
+            window.__supplierLogoDraft = supplier ? getSupplierLogo(supplier) : '';
+            const fileEl = document.getElementById('supplier-logo-file');
+            if (fileEl) fileEl.value = '';
+            renderSupplierLogoPreview();
+            if (modal) modal.classList.remove('hidden');
+        };
+
+        window.closeSupplierModal = () => {
+            const modal = document.getElementById('supplier-modal');
+            if (modal) modal.classList.add('hidden');
+            window.__editingSupplierCode = '';
+            window.__supplierLogoDraft = '';
+            window.__supplierLastReviewedAt = '';
+        };
+
+        window.uploadSupplierLogo = async (input) => {
+            if (!input.files || !input.files[0]) return;
+            window.__supplierLogoDraft = await readMinovaImageFile(input.files[0]);
+            renderSupplierLogoPreview();
+        };
+
+        window.clearSupplierLogo = () => {
+            window.__supplierLogoDraft = '';
+            const fileEl = document.getElementById('supplier-logo-file');
+            if (fileEl) fileEl.value = '';
+            renderSupplierLogoPreview();
+        };
+
+        window.saveSupplier = () => {
+            const oldCode = normalizeSupplierCode(window.__editingSupplierCode || '');
+            const code = normalizeSupplierCode(document.getElementById('supplier-code')?.value || '');
+            const nameZh = String(document.getElementById('supplier-name-zh')?.value || '').trim();
+            const nameEn = String(document.getElementById('supplier-name-en')?.value || '').trim();
+            if (!code) return alert('请输入供应商编码');
+            if (!nameZh && !nameEn) return alert('请至少填写中文名字或英文名字');
+            const duplicate = suppliers.find(s => normalizeSupplierCode(s.code) === code && normalizeSupplierCode(s.code) !== oldCode);
+            if (duplicate) return alert('供应商编码已存在，请换一个编码');
+            const prev = oldCode ? getSupplierByCode(oldCode) : null;
+            const prevDisplay = prev ? getSupplierDisplayName(prev) : '';
+            const assessment = readSupplierAssessmentFromModal();
+            const next = normalizeSupplierRecord({
+                ...(prev || {}),
+                id: prev?.id || `supplier_${code}`,
+                code,
+                nameZh,
+                nameEn,
+                stage: assessment.stage,
+                evaluation: assessment.evaluation,
+                logoDataUrl: String(window.__supplierLogoDraft || ''),
+                country: document.getElementById('supplier-country')?.value || '',
+                contact: document.getElementById('supplier-contact')?.value || '',
+                contactInfo: document.getElementById('supplier-contact-info')?.value || '',
+                website: document.getElementById('supplier-website')?.value || '',
+                address: document.getElementById('supplier-address')?.value || '',
+                notes: document.getElementById('supplier-notes')?.value || '',
+                ts: Date.now()
+            });
+            const nextDisplay = getSupplierDisplayName(next);
+            const idx = oldCode ? suppliers.findIndex(s => normalizeSupplierCode(s.code) === oldCode) : -1;
+            if (idx >= 0) suppliers[idx] = next;
+            else suppliers.push(next);
+            products.forEach(p => {
+                if (oldCode && (normalizeSupplierCode(p.supplierCode) === oldCode || (!p.supplierCode && prevDisplay && p.vendor === prevDisplay))) {
+                    p.supplierCode = next.code;
+                    p.vendor = nextDisplay;
+                }
+            });
+            (companyCerts.isoCerts || []).forEach(c => {
+                if (prevDisplay && c.vendor === prevDisplay) c.vendor = nextDisplay;
+            });
+            closeSupplierModal();
+            saveToLocal();
+            try { renderCompanyCertUploadSelectors(); renderCompanyCertList(); } catch (e) {}
+        };
+
+        window.editSupplier = (code) => openSupplierModal(code);
+
+        window.deleteSupplier = (code) => {
+            ensureSupplierData();
+            const c = normalizeSupplierCode(code);
+            const supplier = getSupplierByCode(c);
+            if (!supplier) return;
+            const used = products.filter(p => normalizeSupplierCode(p.supplierCode) === c);
+            if (used.length) return alert(`该供应商已关联 ${used.length} 个产品，不能删除。请先调整产品档案。`);
+            if (!confirm(`确定删除供应商：${getSupplierDisplayName(supplier)}？`)) return;
+            suppliers = suppliers.filter(s => normalizeSupplierCode(s.code) !== c);
+            saveToLocal();
+        };
+
+        window.uploadProductImage = async (input) => {
+            if (!input.files || !input.files[0]) return;
+            window.__productImageDraft = await readMinovaImageFile(input.files[0]);
+            renderProductImagePreview();
+        };
+
+        window.clearProductImage = () => {
+            window.__productImageDraft = '';
+            const fileEl = document.getElementById('m-product-image-file');
+            if (fileEl) fileEl.value = '';
+            renderProductImagePreview();
+        };
+
         window.setDbGroup = (mode) => {
             dbGroupMode = mode;
             document.getElementById('btn-group-category').className = mode === 'category' ? 'px-4 py-1.5 text-xs font-bold rounded-lg transition-all bg-white shadow-sm text-purple-700' : 'px-4 py-1.5 text-xs font-bold rounded-lg transition-all text-slate-500';
@@ -2031,8 +4052,9 @@
         };
         window.renderDb = () => {
             const list = document.getElementById('db-list');
+            ensureSupplierData();
             if(products.length === 0) {
-                list.innerHTML = `<tr><td colspan="12" class="py-20 text-center text-slate-400 text-sm">暂无入库产品...</td></tr>`;
+                list.innerHTML = `<tr><td colspan="15" class="py-20 text-center text-slate-400 text-sm">暂无入库产品...</td></tr>`;
                 return;
             }
             const sorted = [...products].sort((a,b) => (a[dbGroupMode] || '').localeCompare(b[dbGroupMode] || ''));
@@ -2040,18 +4062,29 @@
                 const margin = p.price > 0 ? ((p.price - p.cost) / p.price * 100).toFixed(1) : 0;
                 const warrantyY = p.warrantyYears ? `${p.warrantyYears}年` : '-';
                 const warrantyC = p.warrantyCycles ? `${p.warrantyCycles}次` : '-';
+                const supplier = getProductSupplier(p);
+                const supplierName = supplier ? getSupplierDisplayName(supplier) : (p.vendor || '-');
+                const productImg = String(p.productImageDataUrl || p.imageDataUrl || '').trim();
+                const productImgHtml = productImg
+                    ? `<img src="${htmlSafe(productImg)}" class="h-10 w-16 object-contain rounded-lg border border-slate-100 bg-white" alt="${htmlSafe(p.name || '')}">`
+                    : `<div class="h-10 w-16 rounded-lg border border-dashed border-slate-200 bg-slate-50 flex items-center justify-center text-[10px] text-slate-300">No Img</div>`;
+                const certReq = getProductCertificationRequirements(p);
+                const certTitle = `${(certReq.countries || []).join(', ')}\n${(certReq.standards || []).join('\n')}`;
+                const certBrief = (certReq.standards || []).slice(0, 2).join(', ') || '-';
                 const contactHtml = p.contact ? `<div class="relative group inline-block cursor-help"><span class="${p.contactInfo ? 'border-b border-dashed border-blue-400 text-blue-600' : ''}">${p.contact}</span>${p.contactInfo ? `<div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block px-3 py-2 bg-slate-800 text-white text-xs rounded-lg z-50 whitespace-nowrap">📞 ${p.contactInfo}</div>` : ''}</div>` : '-';
                 return `
                     <tr class="hover:bg-slate-50 transition-colors group">
                         <td class="py-4 px-4 text-xs font-mono text-slate-500">${p.id || '-'}</td>
+                        <td class="py-4 px-4">${productImgHtml}</td>
                         <td class="py-4 px-4 font-bold text-slate-700 text-sm max-w-[200px] truncate" title="${p.name}">${p.name}</td>
                         <td class="py-4 px-4 text-xs text-slate-600">${p.spec || '-'}</td>
                         <td class="py-4 px-4 text-xs text-slate-500 uppercase tracking-tighter">${p.category}</td>
                         <td class="py-4 px-4 text-xs text-slate-600">${p.scenario || '-'}</td>
                         <td class="py-4 px-4 text-xs text-slate-500 text-center">${warrantyY} / ${warrantyC}</td>
                         <td class="py-4 px-4 text-xs text-slate-600">${p.leadTime || '-'}</td>
-                        <td class="py-4 px-4 text-xs text-slate-500">${p.vendor}</td>
+                        <td class="py-4 px-4 text-xs text-slate-500">${supplierName}</td>
                         <td class="py-4 px-4 text-xs">${contactHtml}</td>
+                        <td class="py-4 px-4 text-xs text-slate-500 max-w-[200px] truncate" title="${htmlSafe(certTitle)}">${htmlSafe(certBrief)}</td>
                         <td class="py-4 px-4 text-right text-sm font-mono text-slate-400">¥${(p.cost||0).toFixed(2)}</td>
                         <td class="py-4 px-4 text-right text-sm font-bold text-purple-700">¥${(p.price||0).toFixed(2)}</td>
                         <td class="py-4 px-4 text-right"><span class="text-[10px] font-black px-2 py-1 rounded ${margin > 30 ? 'bg-green-50 text-green-600' : 'bg-slate-50 text-slate-400'}">${margin}%</span></td>
@@ -2113,7 +4146,7 @@
                             <td class="py-4 px-4 font-bold text-slate-700 text-sm">${p.name || '未知产品'}</td>
                             <td class="py-4 px-4 text-xs text-slate-500 uppercase tracking-tighter">${p.category || '-'}</td>
                             <td class="py-4 px-4 text-xs text-slate-600">${p.scenario || '-'}</td>
-                            <td class="py-4 px-4 text-xs text-slate-600">${p.vendor || '-'}</td>
+                            <td class="py-4 px-4 text-xs text-slate-600">${getProductSupplierDisplay(p)}</td>
                             <td class="py-4 px-4 text-xs text-slate-600">${specNum}</td>
                             <td class="py-4 px-4 text-center font-black text-green-700">${formatNumberAuto(r.quantity, 4)}</td>
                             <td class="py-4 px-4 text-right text-sm font-mono text-slate-700">¥${(parseFloat(avgCost) || 0).toFixed(4)}</td>
@@ -2134,7 +4167,7 @@
                 const checked = !locked && selectedInventoryForTransport.has(item.id) ? 'checked' : '';
                 const disabled = locked ? 'disabled' : '';
                 const lockTitle = locked ? 'title="已生成运输单"' : '';
-                
+
                 const unitPrice = item.unitPurchasePrice || ((item.purchasePrice || 0) * (item.spec || 1));
                 const purchaseDate = item.purchaseDate ? String(item.purchaseDate) : '-';
                 const spec = Number.isFinite(parseFloat(item.spec)) ? parseFloat(item.spec) : 1;
@@ -2151,15 +4184,15 @@
                         <td class="py-4 px-4 no-print">
                             <input type="checkbox" class="h-4 w-4 ${locked ? 'opacity-40 cursor-not-allowed' : ''}" ${checked} ${disabled} ${lockTitle} onchange="toggleInventoryForTransport('${item.id}', this.checked)">
                         </td>
-                        <td class="py-4 px-4 text-xs font-mono text-slate-500 cursor-help" 
-                            onmouseenter="showInventoryTooltip(event, '${item.productId}')" 
+                        <td class="py-4 px-4 text-xs font-mono text-slate-500 cursor-help"
+                            onmouseenter="showInventoryTooltip(event, '${item.productId}')"
                             onmouseleave="hideInventoryTooltip()">
                             ${item.productId}
                         </td>
                         <td class="py-4 px-4 font-bold text-slate-700 text-sm">${product.name || '未知产品'}</td>
                         <td class="py-4 px-4 text-xs text-slate-500 uppercase tracking-tighter">${product.category || '-'}</td>
                         <td class="py-4 px-4 text-xs text-slate-600">${product.scenario || '-'}</td>
-                        <td class="py-4 px-4 text-xs text-slate-600">${product.vendor || '-'}</td>
+                        <td class="py-4 px-4 text-xs text-slate-600">${getProductSupplierDisplay(product)}</td>
                         <td class="py-4 px-4 text-xs text-slate-600">${purchaseDate}</td>
                         <td class="py-4 px-4 text-center font-bold text-green-600">${item.quantity}</td>
                         <td class="py-4 px-4 text-xs text-slate-600">${item.batchNo || '-'}</td>
@@ -2540,7 +4573,7 @@
             const filtered = eligible.filter(it => {
                 if (!q) return true;
                 const p = products.find(x => x.id === it.productId) || {};
-                const hay = [it.productId, p.name, p.vendor, it.batchNo, it.location].filter(Boolean).map(x => String(x).toLowerCase()).join(' | ');
+                const hay = [it.productId, p.name, getProductSupplierDisplay(p), it.batchNo, it.location].filter(Boolean).map(x => String(x).toLowerCase()).join(' | ');
                 return hay.includes(q);
             });
             if (!filtered.length) {
@@ -2556,7 +4589,7 @@
                             <input type="checkbox" class="h-4 w-4" ${checked} onchange="toggleInventoryForTransportPicker('${it.id}', this.checked)">
                             <div class="min-w-0">
                                 <div class="text-sm font-bold text-slate-800 truncate">${p.name || '未知产品'}</div>
-                                <div class="text-[10px] text-slate-500 truncate">${it.productId || ''} ｜ ${p.vendor || '-'} ｜ 批次 ${it.batchNo || '-'} ｜ 库存 ${formatNumberAuto(it.quantity, 4)}</div>
+                                <div class="text-[10px] text-slate-500 truncate">${it.productId || ''} ｜ ${getProductSupplierDisplay(p)} ｜ 批次 ${it.batchNo || '-'} ｜ 库存 ${formatNumberAuto(it.quantity, 4)}</div>
                             </div>
                         </div>
                         <div class="text-[10px] text-slate-400 text-right whitespace-nowrap">${it.location || '-'}</div>
@@ -2603,7 +4636,7 @@
                     productName: p.name || '',
                     category: p.category || '',
                     subcategory: p.scenario || '',
-                    vendor: p.vendor || '',
+                    vendor: getProductSupplierDisplay(p),
                     quantity: Number.isFinite(parseFloat(it.quantity)) ? parseFloat(it.quantity) : 0,
                     weightKg: '',
                     volumeM3: ''
@@ -2628,7 +4661,7 @@
                     productName: p.name || '',
                     category: p.category || '',
                     subcategory: p.scenario || '',
-                    vendor: p.vendor || '',
+                    vendor: getProductSupplierDisplay(p),
                     quantity: Number.isFinite(parseFloat(it.quantity)) ? parseFloat(it.quantity) : 0,
                     weightKg: '',
                     volumeM3: ''
@@ -2746,7 +4779,7 @@
         window.showInventoryTooltip = (e, productId) => {
             const summary = getInventorySummary(productId);
             const tooltip = document.getElementById('global-tooltip');
-            
+
             tooltip.innerHTML = `
                 <p class="font-bold text-base mb-2 border-b border-slate-600 pb-1">库存汇总: ${productId}</p>
                 <div class="space-y-1">
@@ -2754,19 +4787,19 @@
                     <p class="flex justify-between"><span>平均采购价:</span> <span class="font-bold text-blue-400">¥${summary.avgPrice.toFixed(2)}</span></p>
                     <div class="pt-2">
                         <p class="font-bold text-slate-400 mb-1">位置分布:</p>
-                        ${Object.entries(summary.locations).map(([loc, qty]) => 
+                        ${Object.entries(summary.locations).map(([loc, qty]) =>
                             `<p class="flex justify-between text-[10px]"><span>${loc}:</span> <span>${qty}</span></p>`
                         ).join('') || '<p class="italic text-slate-500 text-[10px]">无位置信息</p>'}
                     </div>
                 </div>
             `;
-            
+
             tooltip.classList.remove('hidden');
-            
+
             // 计算位置：尽量显示在指针上方，防止超出边界
             const x = e.clientX + 15;
             const y = e.clientY - tooltip.offsetHeight - 15;
-            
+
             tooltip.style.left = `${x}px`;
             tooltip.style.top = `${y > 10 ? y : e.clientY + 15}px`;
         };
@@ -2792,7 +4825,8 @@
         }
         function computeInventoryPricing({ item, product }) {
             const spec = Number.isFinite(parseFloat(item?.spec)) ? parseFloat(item.spec) : 1;
-            const avgCost = getAverageInventoryCostPerSpec(item?.productId, spec);
+            const overrideCost = parseFloat(item?.avgCostOverride);
+            const avgCost = Number.isFinite(overrideCost) ? overrideCost : getAverageInventoryCostPerSpec(item?.productId, spec);
             const dutyPct = Number.isFinite(parseFloat(item?.importDutyPct)) ? parseFloat(item.importDutyPct) : getDefaultImportDutyPercent(product?.category);
             const sstPct = Number.isFinite(parseFloat(item?.sstPct)) ? parseFloat(item.sstPct) : getDefaultSstPercent();
             const grayPct = Number.isFinite(parseFloat(item?.grayTaxPct)) ? parseFloat(item.grayTaxPct) : getDefaultGrayTaxPercent();
@@ -2919,7 +4953,7 @@
                 batchNo: item.batchNo,
                 note: `定价 税率 关税:${oldDuty.toFixed(2)}→${dutyPct.toFixed(2)} SST:${oldSst.toFixed(2)}→${sstPct.toFixed(2)} 灰清:${oldGray.toFixed(2)}→${grayPct.toFixed(2)} | 清关家用:${oldCh.toFixed(2)}→${r.clearanceHomePrice.toFixed(2)} 清关工商:${oldCb.toFixed(2)}→${r.clearanceBizPrice.toFixed(2)} 灰清家用:${oldGh.toFixed(2)}→${r.grayHomePrice.toFixed(2)} 灰清工商:${oldGb.toFixed(2)}→${r.grayBizPrice.toFixed(2)}`
             });
-            
+
             saveToLocal();
             closeInventoryEditModal();
         };
@@ -2977,7 +5011,7 @@
             const p = products.find(x => x.id === productId);
             const vendorEl = document.getElementById('inv-vendor');
             const subEl = document.getElementById('inv-subcategory');
-            if (vendorEl) vendorEl.value = p?.vendor || '';
+            if (vendorEl) vendorEl.value = p ? getProductSupplierDisplay(p) : '';
             if (subEl) subEl.value = p?.scenario || '';
             if (p) {
                 const priceEl = document.getElementById('inv-price');
@@ -3089,6 +5123,56 @@
             return total > 0 ? total : 1;
         }
 
+        const DEFAULT_OVERSEAS_INSTALL_ITEMS = [
+            'Skylift, Labour Installation, Testing & Commissioning',
+            'Transportation',
+            'Design & Planning',
+            'Sturctural Assessment of Roof with Professional Engineer Endorsement',
+            'ATAP & TNB Submission'
+        ];
+        window.__installOptionItems = DEFAULT_OVERSEAS_INSTALL_ITEMS.map((text, idx) => ({ id: Date.now() + idx, text, checked: true, locked: idx === 0 }));
+
+        function resetInstallOptionItems() {
+            window.__installOptionItems = DEFAULT_OVERSEAS_INSTALL_ITEMS.map((text, idx) => ({ id: Date.now() + idx, text, checked: true, locked: idx === 0 }));
+            renderInstallOptionItems();
+        }
+
+        function renderInstallOptionItems() {
+            const list = document.getElementById('install-overseas-item-list');
+            if (!list) return;
+            const items = Array.isArray(window.__installOptionItems) ? window.__installOptionItems : [];
+            list.innerHTML = items.map((item, idx) => `
+                <div class="flex items-center gap-2 rounded-xl bg-white border border-purple-100 p-2">
+                    <input type="checkbox" ${item.checked ? 'checked' : ''} ${item.locked ? 'disabled' : ''} onchange="toggleInstallOptionItem(${item.id}, this.checked)" class="h-4 w-4 accent-purple-700">
+                    <input type="text" value="${htmlSafe(item.text || '')}" oninput="updateInstallOptionItem(${item.id}, this.value)" class="flex-1 bg-transparent outline-none text-xs font-bold text-slate-700">
+                    <span class="text-[9px] font-black ${idx === 0 ? 'text-purple-700 bg-purple-50 border-purple-100' : 'text-slate-400 bg-slate-50 border-slate-100'} border px-2 py-1 rounded-full">${idx === 0 ? 'AMOUNT' : 'INCLUDED'}</span>
+                    ${idx >= DEFAULT_OVERSEAS_INSTALL_ITEMS.length ? `<button type="button" onclick="removeInstallOptionItem(${item.id})" class="text-red-400 hover:text-red-600 text-xs font-black px-1">×</button>` : ''}
+                </div>
+            `).join('');
+        }
+
+        window.toggleInstallOptionItem = (id, checked) => {
+            const item = (window.__installOptionItems || []).find(x => x.id === id);
+            if (!item || item.locked) return;
+            item.checked = !!checked;
+        };
+
+        window.updateInstallOptionItem = (id, value) => {
+            const item = (window.__installOptionItems || []).find(x => x.id === id);
+            if (!item) return;
+            item.text = String(value || '');
+        };
+
+        window.addInstallOptionItem = () => {
+            window.__installOptionItems.push({ id: Date.now(), text: 'Others', checked: true, locked: false });
+            renderInstallOptionItems();
+        };
+
+        window.removeInstallOptionItem = (id) => {
+            window.__installOptionItems = (window.__installOptionItems || []).filter(x => x.id !== id);
+            renderInstallOptionItems();
+        };
+
         window.openInstallModal = (mode) => {
             window.installMode = mode === 'domestic' ? 'domestic' : 'overseas';
             const modal = document.getElementById('install-modal');
@@ -3099,10 +5183,13 @@
             const descEl = document.getElementById('install-desc');
             const unitEl = document.getElementById('install-unit-price');
             const qtyEl = document.getElementById('install-qty');
+            const itemsEl = document.getElementById('install-overseas-items');
 
             const isDomestic = window.installMode === 'domestic';
             if (titleEl) titleEl.textContent = isDomestic ? '施工安装 · 国内施工费' : '施工安装 · 海外施工费';
             if (descEl) descEl.value = isDomestic ? '国内施工费' : '海外施工费';
+            if (itemsEl) itemsEl.classList.toggle('hidden', isDomestic);
+            if (!isDomestic) resetInstallOptionItems();
 
             const overseasUnit = parseFloat(document.getElementById('installer-install-fee-cny')?.value) || 0;
             if (unitEl) {
@@ -3131,10 +5218,31 @@
             if (qty <= 0) return alert('请输入数量');
             if (unit < 0) return alert('单价不能为负数');
 
-            const row = { id: Date.now(), description: desc, spec: '', batchNo: '', quantity: qty, price: unit, cost: 0 };
             const firstBlankIdx = quoteRows.findIndex(r => r.isBlank);
             const insertIdx = firstBlankIdx === -1 ? quoteRows.length : firstBlankIdx;
-            quoteRows.splice(insertIdx, 0, row);
+            if (window.installMode === 'overseas') {
+                const items = (window.__installOptionItems || [])
+                    .filter(item => item.locked || item.checked)
+                    .map(item => String(item.text || '').trim())
+                    .filter(Boolean);
+                if (!items.length) return alert('请至少选择一个施工项目');
+                const rows = items.map((text, idx) => ({
+                    id: Date.now() + idx,
+                    description: text,
+                    vendor: '--',
+                    spec: '--',
+                    batchNo: '',
+                    quantity: idx === 0 ? qty : 1,
+                    price: idx === 0 ? unit : 0,
+                    cost: 0,
+                    included: idx !== 0,
+                    isInstallItem: true
+                }));
+                quoteRows.splice(insertIdx, 0, ...rows);
+            } else {
+                const row = { id: Date.now(), description: desc, spec: '', batchNo: '', quantity: qty, price: unit, cost: 0, isInstallItem: true };
+                quoteRows.splice(insertIdx, 0, row);
+            }
             closeInstallModal();
             renderQuote();
         };
@@ -3322,7 +5430,7 @@
                         <td class="py-3 px-4 text-xs font-bold text-slate-700 max-w-[180px] truncate" title="${p.name || ''}">${p.name || '-'}</td>
                         <td class="py-3 px-4 text-xs text-slate-600">${p.category || '-'}</td>
                         <td class="py-3 px-4 text-xs text-slate-600">${p.scenario || '-'}</td>
-                        <td class="py-3 px-4 text-xs text-slate-600">${p.vendor || '-'}</td>
+                        <td class="py-3 px-4 text-xs text-slate-600">${getProductSupplierDisplay(p)}</td>
                         <td class="py-3 px-4 text-xs text-slate-500">${it.purchaseDate || '-'}</td>
                         <td class="py-3 px-4 text-xs text-slate-500">${it.batchNo || '-'}</td>
                         <td class="py-3 px-4 text-xs text-right font-mono text-slate-700">${(parseFloat(it.spec) || 1).toFixed(2)}</td>
@@ -3343,7 +5451,7 @@
                     产品全称: p.name || '',
                     类目: p.category || '',
                     子类目: p.scenario || '',
-                    供应商: p.vendor || '',
+                    供应商: getProductSupplierDisplay(p),
                     采购入库时间: it.purchaseDate || '',
                     批次号: it.batchNo || '',
                     规格: parseFloat(it.spec) || 1,
@@ -3569,7 +5677,9 @@
             const purchasePrice = parseFloat(document.getElementById('inv-price').value) || 0;
             const location = document.getElementById('inv-location').value;
 
-            if(!productId) return alert("请选择或输入产品编号！");
+            if(!productId) return alert("请选择产品编号！");
+            const product = products.find(p => p.id === productId);
+            if(!product) return alert("请选择产品清单中已有的产品编号！");
             if (window.inventoryType === 'out') {
                 const outNature = String(document.getElementById('inv-out-nature')?.value || 'sale');
                 if (outNature === 'sale') {
@@ -3580,7 +5690,6 @@
             }
             if(quantity <= 0) return alert("请输入有效数量！");
 
-            const product = products.find(p => p.id === productId);
             const productName = product ? product.name : '未知产品';
 
             if(window.inventoryType === 'in') {
@@ -3603,11 +5712,11 @@
                 const totalCost = purchaseTotal + shippingCost + domesticTax;
 
                 const newId = `inv_${Date.now()}`;
-                inventory.push({ 
+                inventory.push({
                     id: newId,
-                    productId, 
-                    quantity, 
-                    batchNo: newBatchNo, 
+                    productId,
+                    quantity,
+                    batchNo: newBatchNo,
                     purchaseDate,
                     purchasePrice,
                     spec,
@@ -3618,7 +5727,7 @@
                     shippingCost,
                     domesticTax,
                     totalCost,
-                    location 
+                    location
                 });
 
                 pushInventoryHistory({
@@ -3745,7 +5854,7 @@
 
                 archiveZeroQtyInventoryItems(`批次出库 | ${outNature}`);
             }
-            
+
             saveToLocal();
             closeInventoryModal();
         };
@@ -3854,6 +5963,611 @@
             if (getSalesOutCurrency() === 'MYR') return n * getSalesOutRateCnyPerMyr();
             return n;
         }
+        let selectedPriceListProductIds = new Set();
+        let currentPriceListVisibleIds = [];
+        const PRICE_LIST_TYPES = [
+            { key: 'clearanceHomePrice', label: 'Clearance Home', costKey: 'clearanceCost', profitTarget: 'home' },
+            { key: 'clearanceBizPrice', label: 'Clearance C&I', costKey: 'clearanceCost', profitTarget: 'biz' },
+            { key: 'grayHomePrice', label: 'Grey Home', costKey: 'grayCost', profitTarget: 'home' },
+            { key: 'grayBizPrice', label: 'Grey C&I', costKey: 'grayCost', profitTarget: 'biz' }
+        ];
+        function formatCny(v, digits = 2) {
+            const n = Number.isFinite(parseFloat(v)) ? parseFloat(v) : 0;
+            return `¥${n.toFixed(digits)}`;
+        }
+        function formatMyrFromCny(v, digits = 2) {
+            const n = Number.isFinite(parseFloat(v)) ? parseFloat(v) : 0;
+            return `RM ${(n / getSalesOutRateCnyPerMyr()).toFixed(digits)}`;
+        }
+        function priceListProductPricing(product) {
+            const p = product || {};
+            const batches = getFifoBatchesForProduct(p.id);
+            const spec = batches.length
+                ? (Number.isFinite(parseFloat(batches[0].spec)) ? parseFloat(batches[0].spec) : 1)
+                : (Number.isFinite(parseFloat(p.spec)) ? parseFloat(p.spec) : 1);
+            const def = getDefaultTaxInputsForProduct(p);
+            const inventoryAvg = getAverageInventoryCostPerSpec(p.id, spec);
+            const avgFallback = Number.isFinite(parseFloat(p.cost)) ? parseFloat(p.cost) : 0;
+            const avgCost = inventoryAvg > 0 ? inventoryAvg : avgFallback;
+            const costUnit = getMarketCategoryUnitMeta(p.category || '').unit;
+            const pcsMultiplier = getProductSpecMultiplierForUnit(p, spec, costUnit);
+            const pcsCost = avgCost * pcsMultiplier;
+            const r = computeInventoryPricing({
+                item: {
+                    productId: p.id,
+                    spec,
+                    avgCostOverride: avgCost,
+                    importDutyPct: def.dutyPct,
+                    sstPct: def.sstPct,
+                    grayTaxPct: def.grayPct
+                },
+                product: p
+            });
+            return { ...r, spec, costUnit, pcsMultiplier, pcsCost, stockQty: getTotalStockQty(p.id), usedInventoryCost: inventoryAvg > 0 };
+        }
+        function getProductSpecMultiplierForUnit(product, fallbackSpec, unit) {
+            const p = product || {};
+            const u = normalizeUnitLabel(unit || '');
+            if (u === 'pcs' || u === '套') return 1;
+            const text = `${p.spec || ''} ${p.name || ''}`;
+            const escaped = u.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const re = new RegExp(`(\\d+(?:\\.\\d+)?)\\s*${escaped}\\b`, 'i');
+            const match = text.match(re);
+            const parsed = match ? parseFloat(match[1]) : NaN;
+            if (Number.isFinite(parsed) && parsed > 0) return parsed;
+            const fallback = Number.isFinite(parseFloat(fallbackSpec)) ? parseFloat(fallbackSpec) : 1;
+            return fallback > 0 ? fallback : 1;
+        }
+        function getPriceListCurrencyPriority() {
+            return window.priceListDisplayCurrency === 'CNY' ? 'CNY' : 'MYR';
+        }
+        function formatCurrencyFromCny(valueCny, currency, digits = 2) {
+            const n = Number.isFinite(parseFloat(valueCny)) ? parseFloat(valueCny) : 0;
+            if (String(currency || '').toUpperCase() === 'MYR') return `RM ${(n / getSalesOutRateCnyPerMyr()).toFixed(digits)}`;
+            return `¥${n.toFixed(digits)}`;
+        }
+        function renderDualCurrencyAmount(valueCny, digits = 2, unit = '') {
+            const primary = getPriceListCurrencyPriority();
+            const secondary = primary === 'MYR' ? 'CNY' : 'MYR';
+            const suffix = unit ? `/${normalizeUnitLabel(unit)}` : '';
+            return `
+                <div class="font-black text-slate-800">${formatCurrencyFromCny(valueCny, primary, digits)}${suffix}</div>
+                <div class="text-[10px] text-slate-400">${formatCurrencyFromCny(valueCny, secondary, digits)}${suffix}</div>
+            `;
+        }
+        function priceListCountryLabel(code) {
+            return CERTIFICATION_COUNTRIES.find(c => c.code === code)?.label || code;
+        }
+        function renderPriceListFilters() {
+            const catSel = document.getElementById('price-list-category-filter');
+            const brandSel = document.getElementById('price-list-brand-filter');
+            const countrySel = document.getElementById('price-list-country-filter');
+            const certSel = document.getElementById('price-list-cert-filter');
+            if (!catSel || !brandSel || !countrySel || !certSel) return;
+            const keep = {
+                cat: catSel.value,
+                brand: brandSel.value,
+                country: countrySel.value,
+                cert: certSel.value
+            };
+            const cats = [...new Set(products.map(p => String(p.category || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+            const brands = [...new Set(products.map(p => getProductSupplierDisplay(p)).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+            const countryOptions = CERTIFICATION_COUNTRIES.map(c => ({ value: c.code, label: c.label }));
+            const certSet = new Set();
+            products.forEach(p => {
+                const req = getProductCertificationRequirements(p);
+                const country = keep.country;
+                if (country && !(req.countries || []).includes(country)) return;
+                (req.standards || []).forEach(s => certSet.add(s));
+            });
+            const certs = [...certSet].sort((a, b) => a.localeCompare(b));
+            catSel.innerHTML = `<option value="">All Categories</option>` + cats.map(v => `<option value="${htmlSafe(v)}">${htmlSafe(v)}</option>`).join('');
+            brandSel.innerHTML = `<option value="">All Brands</option>` + brands.map(v => `<option value="${htmlSafe(v)}">${htmlSafe(v)}</option>`).join('');
+            countrySel.innerHTML = `<option value="">All Countries</option>` + countryOptions.map(c => `<option value="${c.value}">${c.label}</option>`).join('');
+            certSel.innerHTML = `<option value="">All Certifications</option>` + certs.map(v => `<option value="${htmlSafe(v)}">${htmlSafe(v)}</option>`).join('');
+            if (keep.cat && cats.includes(keep.cat)) catSel.value = keep.cat;
+            if (keep.brand && brands.includes(keep.brand)) brandSel.value = keep.brand;
+            if (keep.country && countryOptions.some(c => c.value === keep.country)) countrySel.value = keep.country;
+            if (keep.cert && certs.includes(keep.cert)) certSel.value = keep.cert;
+        }
+        function getFilteredPriceListProducts() {
+            const q = String(document.getElementById('price-list-search')?.value || '').trim().toLowerCase();
+            const category = String(document.getElementById('price-list-category-filter')?.value || '').trim();
+            const brand = String(document.getElementById('price-list-brand-filter')?.value || '').trim();
+            const country = String(document.getElementById('price-list-country-filter')?.value || '').trim();
+            const cert = String(document.getElementById('price-list-cert-filter')?.value || '').trim();
+            return products.filter(p => {
+                const req = getProductCertificationRequirements(p);
+                const text = `${p.id || ''} ${p.name || ''} ${p.spec || ''} ${p.category || ''} ${p.scenario || ''} ${getProductSupplierDisplay(p)} ${(req.standards || []).join(' ')}`.toLowerCase();
+                if (q && !text.includes(q)) return false;
+                if (category && String(p.category || '') !== category) return false;
+                if (brand && getProductSupplierDisplay(p) !== brand) return false;
+                if (country && !(req.countries || []).includes(country)) return false;
+                if (cert && !(req.standards || []).includes(cert)) return false;
+                return true;
+            }).sort((a, b) => String(a.category || '').localeCompare(String(b.category || '')) || String(a.name || '').localeCompare(String(b.name || '')));
+        }
+        function renderPriceCell(value, baseCost) {
+            const v = Number.isFinite(parseFloat(value)) ? parseFloat(value) : 0;
+            const base = Number.isFinite(parseFloat(baseCost)) ? parseFloat(baseCost) : 0;
+            const profit = v - base;
+            const pct = v > 0 ? (profit / v) * 100 : 0;
+            return `
+                ${renderDualCurrencyAmount(v, 2)}
+                <div class="text-[10px] ${profit >= 0 ? 'text-green-600' : 'text-red-500'}">Profit ${formatCurrencyFromCny(profit, getPriceListCurrencyPriority(), 2)} / ${pct.toFixed(1)}%</div>
+            `;
+        }
+        function renderMarketPriceForm() {
+            const catSel = document.getElementById('market-price-category');
+            const unitSel = document.getElementById('market-price-unit');
+            const dateEl = document.getElementById('market-price-date');
+            if (!catSel || !unitSel) return;
+            marketPrices = normalizeMarketPrices(marketPrices);
+            const keep = catSel.value;
+            const cats = [...new Set(products.map(p => String(p.category || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+            catSel.innerHTML = cats.map(cat => `<option value="${htmlSafe(cat)}">${htmlSafe(cat)}</option>`).join('');
+            const nextCat = keep && cats.includes(keep) ? keep : cats[0];
+            if (nextCat) catSel.value = nextCat;
+            const unit = getMarketCategoryUnitMeta(nextCat).unit;
+            unitSel.value = [...unitSel.options].some(o => o.value === unit) ? unit : 'pcs';
+            if (dateEl && !dateEl.value) dateEl.value = new Date().toISOString().slice(0, 10);
+            renderMarketPriceFormHint();
+        }
+        function renderMarketPriceFormHint() {
+            const hint = document.getElementById('market-price-form-hint');
+            const cat = String(document.getElementById('market-price-category')?.value || '').trim();
+            if (!hint || !cat) return;
+            const meta = getMarketCategoryUnitMeta(cat);
+            const summary = getMarketPriceSummary(cat, { days: 30 });
+            const source = meta.source === 'manual' ? 'manual override' : 'auto from inventory/spec';
+            const recent = summary.records.length
+                ? `30D avg ${formatMarketPrice(summary.avgCny, summary.unit, 'CNY')} / ${formatMarketPrice(summary.avgCny, summary.unit, 'MYR')}`
+                : '暂无30天市场价';
+            hint.textContent = `${cat} unit: /${summary.unit} (${source}). ${recent}.`;
+        }
+        window.onMarketPriceCategoryChange = () => {
+            const cat = String(document.getElementById('market-price-category')?.value || '').trim();
+            const unitSel = document.getElementById('market-price-unit');
+            if (cat && unitSel) unitSel.value = getMarketCategoryUnitMeta(cat).unit;
+            renderMarketPriceFormHint();
+        };
+        window.onMarketPriceUnitChange = () => {
+            const cat = String(document.getElementById('market-price-category')?.value || '').trim();
+            const unit = String(document.getElementById('market-price-unit')?.value || '').trim();
+            if (cat && unit) {
+                upsertMarketCategoryUnit(cat, unit);
+                try { localStorage.setItem('minova_market_prices_v1', JSON.stringify(marketPrices)); } catch (e) {}
+                renderMarketPriceFormHint();
+                renderPriceList();
+            }
+        };
+        window.saveMarketPriceFromPriceList = () => {
+            try {
+                const category = String(document.getElementById('market-price-category')?.value || '').trim();
+                const unit = String(document.getElementById('market-price-unit')?.value || '').trim();
+                const currency = String(document.getElementById('market-price-currency')?.value || 'MYR').trim();
+                const price = parseFloat(document.getElementById('market-price-value')?.value || '0') || 0;
+                const quotedAt = String(document.getElementById('market-price-date')?.value || '').trim();
+                const note = String(document.getElementById('market-price-note')?.value || '').trim();
+                addMarketPriceRecord({ category, unit, currency, price, quotedAt, note, rateCnyPerMyr: getSalesOutRateCnyPerMyr() });
+                const priceEl = document.getElementById('market-price-value');
+                const noteEl = document.getElementById('market-price-note');
+                if (priceEl) priceEl.value = '';
+                if (noteEl) noteEl.value = '';
+                saveToLocal();
+                renderMarketPriceForm();
+                renderPriceList();
+                showToast('市场价已保存', 'success');
+            } catch (e) {
+                alert(e?.message || '市场价保存失败');
+            }
+        };
+        function renderMarketSummaryCell(category) {
+            const summary = getMarketPriceSummary(category, { days: 30 });
+            const trendClass = summary.trendCny > 0 ? 'text-red-500' : summary.trendCny < 0 ? 'text-green-600' : 'text-slate-400';
+            const trendSign = summary.trendCny > 0 ? '+' : '';
+            if (!summary.records.length) {
+                const latest = summary.latest;
+                return `
+                    <button type="button" onclick="openMarketTrendModal('${htmlSafe(category)}')" class="text-right hover:underline">
+                        <div class="font-black text-slate-400">暂无30天市场价</div>
+                        <div class="text-[10px] text-slate-400">${latest ? `Latest ${formatMarketPrice(latest.priceCny, latest.unit || summary.unit, 'CNY')}` : `Unit /${summary.unit}`}</div>
+                    </button>
+                `;
+            }
+            return `
+                <button type="button" onclick="openMarketTrendModal('${htmlSafe(category)}')" class="text-right hover:underline">
+                    ${renderDualCurrencyAmount(summary.avgCny, 4, summary.unit)}
+                    <div class="text-[10px] ${trendClass}">${trendSign}${formatCurrencyFromCny(summary.trendCny, getPriceListCurrencyPriority(), 4)}/${summary.unit} / ${trendSign}${summary.trendPct.toFixed(1)}%</div>
+                </button>
+            `;
+        }
+        function marketTooltipHtml(category) {
+            const summary = getMarketPriceSummary(category, { days: 30 });
+            const latest = summary.latest;
+            const trendSign = summary.trendCny > 0 ? '+' : '';
+            const recentLine = summary.records.length
+                ? `<p>30D Avg: <span class="font-black text-white">${formatMarketPrice(summary.avgCny, summary.unit, 'CNY')}</span> (${formatMarketPrice(summary.avgCny, summary.unit, 'MYR')})</p>`
+                : '<p class="text-amber-200">暂无30天市场价</p>';
+            return `
+                <p class="font-black text-sm mb-2 border-b border-slate-600 pb-1">${htmlSafe(category || '-')} Market</p>
+                <div class="space-y-1">
+                    ${recentLine}
+                    <p>Unit: /${htmlSafe(summary.unit)}</p>
+                    <p>Trend: <span class="font-black">${trendSign}${formatMarketPrice(summary.trendCny, summary.unit, 'CNY')} / ${trendSign}${summary.trendPct.toFixed(1)}%</span></p>
+                    <p>Latest: ${latest ? `${formatMarketPrice(latest.priceCny, latest.unit || summary.unit, 'CNY')} on ${htmlSafe(latest.quotedAt || '-')}` : '-'}</p>
+                    <p>FX display: 1 MYR = ${getSalesOutRateCnyPerMyr().toFixed(4)} CNY</p>
+                </div>
+            `;
+        }
+        window.showMarketPriceTooltip = (event, categoryOrProductId) => {
+            const tooltip = document.getElementById('global-tooltip');
+            if (!tooltip) return;
+            const raw = String(categoryOrProductId || '').trim();
+            const product = products.find(p => String(p.id) === raw);
+            const category = product ? String(product.category || '').trim() : raw;
+            if (!category) return;
+            tooltip.innerHTML = marketTooltipHtml(category);
+            tooltip.classList.remove('hidden');
+            const x = event.clientX + 16;
+            const y = event.clientY + 16;
+            tooltip.style.left = `${Math.min(x, window.innerWidth - 300)}px`;
+            tooltip.style.top = `${Math.min(y, window.innerHeight - 240)}px`;
+        };
+        function marketRangeLabel(range) {
+            if (range === 'year') return 'Year · 近5年';
+            if (range === 'month') return 'Month · 近12个月';
+            return 'Day · 近30天';
+        }
+        function renderMarketLineChart(records, options = {}) {
+            const rows = (Array.isArray(records) ? records : []).slice().sort((a, b) => (a.ts || 0) - (b.ts || 0));
+            if (rows.length < 2) return '<div class="h-48 flex items-center justify-center text-xs text-slate-400 border border-slate-100 rounded-xl bg-slate-50">Need at least 2 records for trend</div>';
+            const currency = String(options.currency || getPriceListCurrencyPriority()).toUpperCase() === 'CNY' ? 'CNY' : 'MYR';
+            const unit = normalizeUnitLabel(options.unit || rows[0]?.unit || 'pcs');
+            const rate = getSalesOutRateCnyPerMyr();
+            const values = rows.map(r => {
+                const cny = parseFloat(r.priceCny) || 0;
+                return currency === 'MYR' ? cny / rate : cny;
+            });
+            const times = rows.map(r => r.ts || Date.parse(r.quotedAt) || Date.now());
+            const minV = Math.min(...values);
+            const maxV = Math.max(...values);
+            const minT = Math.min(...times);
+            const maxT = Math.max(...times);
+            const vPad = Math.max((maxV - minV) * 0.12, maxV * 0.03, 0.0001);
+            const yMin = Math.max(0, minV - vPad);
+            const yMax = maxV + vPad;
+            const tSpan = Math.max(1, maxT - minT);
+            const vSpan = Math.max(0.000001, yMax - yMin);
+            const w = 720, h = 300, left = 72, right = 24, top = 24, bottom = 54;
+            const plotW = w - left - right;
+            const plotH = h - top - bottom;
+            const xFor = t => left + ((t - minT) / tSpan) * plotW;
+            const yFor = v => top + plotH - ((v - yMin) / vSpan) * plotH;
+            const points = rows.map((r, idx) => `${xFor(times[idx]).toFixed(1)},${yFor(values[idx]).toFixed(1)}`).join(' ');
+            const yTicks = [0, 1, 2, 3, 4].map(i => yMin + (vSpan * i / 4));
+            const xTicks = rows.length <= 4 ? rows : [rows[0], rows[Math.floor(rows.length / 2)], rows[rows.length - 1]];
+            const fmtTick = v => `${currency === 'MYR' ? 'RM ' : '¥'}${v.toFixed(v >= 10 ? 2 : 4)}`;
+            return `
+                <svg viewBox="0 0 ${w} ${h}" class="w-full h-72 rounded-xl bg-slate-50 border border-slate-100">
+                    <line x1="${left}" y1="${top}" x2="${left}" y2="${top + plotH}" stroke="#94a3b8" stroke-width="1.5"></line>
+                    <line x1="${left}" y1="${top + plotH}" x2="${left + plotW}" y2="${top + plotH}" stroke="#94a3b8" stroke-width="1.5"></line>
+                    ${yTicks.map(v => {
+                        const y = yFor(v);
+                        return `<g><line x1="${left}" y1="${y}" x2="${left + plotW}" y2="${y}" stroke="#e2e8f0"></line><text x="${left - 10}" y="${y + 4}" text-anchor="end" font-size="11" fill="#64748b">${fmtTick(v)}</text></g>`;
+                    }).join('')}
+                    ${xTicks.map(r => {
+                        const x = xFor(r.ts || Date.parse(r.quotedAt) || minT);
+                        return `<g><line x1="${x}" y1="${top + plotH}" x2="${x}" y2="${top + plotH + 5}" stroke="#94a3b8"></line><text x="${x}" y="${top + plotH + 22}" text-anchor="middle" font-size="11" fill="#64748b">${htmlSafe(r.quotedAt || '')}</text></g>`;
+                    }).join('')}
+                    <text x="${left}" y="15" font-size="12" font-weight="800" fill="#475569">${currency}/${unit}</text>
+                    <polyline fill="none" stroke="#582C83" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" points="${points}"></polyline>
+                    ${rows.map((r, idx) => `<circle cx="${xFor(times[idx]).toFixed(1)}" cy="${yFor(values[idx]).toFixed(1)}" r="4" fill="#FFC107" stroke="#582C83" stroke-width="2"><title>${htmlSafe(r.quotedAt || '')}: ${fmtTick(values[idx])}/${unit}</title></circle>`).join('')}
+                </svg>
+            `;
+        }
+        function renderMarketTrendBody(category, range = 'day') {
+            const cat = String(category || '').trim();
+            const trend = getMarketTrendRecords(cat, range);
+            const summary30 = getMarketPriceSummary(cat, { days: 30 });
+            const rows = [...trend.records].reverse();
+            const modal = document.getElementById('market-trend-modal');
+            if (modal) {
+                modal.dataset.category = cat;
+                modal.dataset.range = trend.range;
+            }
+            document.getElementById('market-trend-title').textContent = `${cat} Market Trend`;
+            document.getElementById('market-trend-subtitle').textContent = `Unit /${trend.unit} | ${marketRangeLabel(trend.range)} | ${trend.records.length} in range | ${trend.allRecords.length} total`;
+            const rangeButtons = ['day', 'month', 'year'].map(mode => {
+                const active = trend.range === mode;
+                return `<button type="button" onclick="setMarketTrendRange('${mode}')" class="px-3 py-1.5 rounded-lg text-xs font-black border ${active ? 'bg-purple-700 text-white border-purple-700' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}">${marketRangeLabel(mode).split(' · ')[0]}</button>`;
+            }).join('');
+            document.getElementById('market-trend-body').innerHTML = `
+                <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
+                    <div class="flex gap-2">${rangeButtons}</div>
+                    <div class="text-[11px] font-bold text-slate-400">Chart display follows Price List: ${getPriceListCurrencyPriority()}</div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                    <div class="border border-slate-100 rounded-xl p-3"><div class="text-[10px] uppercase font-black text-slate-400">30D Avg</div><div class="font-black text-slate-800 mt-1">${summary30.records.length ? formatMarketPrice(summary30.avgCny, summary30.unit, getPriceListCurrencyPriority()) : '-'}</div></div>
+                    <div class="border border-slate-100 rounded-xl p-3"><div class="text-[10px] uppercase font-black text-slate-400">Current FX</div><div class="font-black text-slate-800 mt-1">1 MYR = ${getSalesOutRateCnyPerMyr().toFixed(4)} CNY</div></div>
+                    <div class="border border-slate-100 rounded-xl p-3"><div class="text-[10px] uppercase font-black text-slate-400">Latest</div><div class="font-black text-slate-800 mt-1">${trend.latest ? formatMarketPrice(trend.latest.priceCny, trend.latest.unit || trend.unit, getPriceListCurrencyPriority()) : '-'}</div></div>
+                </div>
+                <div class="mb-4">${renderMarketLineChart(trend.records, { currency: getPriceListCurrencyPriority(), unit: trend.unit })}</div>
+                <div class="overflow-x-auto border border-slate-100 rounded-xl">
+                    <table class="w-full text-left whitespace-nowrap">
+                        <thead class="bg-slate-50"><tr class="text-[10px] font-black uppercase text-slate-400"><th class="py-3 px-4">Date</th><th class="py-3 px-4 text-right">Original</th><th class="py-3 px-4 text-right">CNY</th><th class="py-3 px-4">Note</th><th class="py-3 px-4 text-right">Actions</th></tr></thead>
+                        <tbody class="divide-y divide-slate-50 text-sm">
+                            ${rows.length ? rows.map(r => `
+                                <tr id="market-record-row-${htmlSafe(r.id)}">
+                                    <td class="py-3 px-4 font-bold text-slate-700">${htmlSafe(r.quotedAt || '-')}</td>
+                                    <td class="py-3 px-4 text-right font-mono">${r.currency === 'MYR' ? 'RM ' : '¥'}${(parseFloat(r.price) || 0).toFixed(4)}/${htmlSafe(r.unit || trend.unit)}</td>
+                                    <td class="py-3 px-4 text-right font-mono">${formatMarketPrice(r.priceCny, r.unit || trend.unit, 'CNY')}</td>
+                                    <td class="py-3 px-4 text-xs text-slate-500">${htmlSafe(r.note || '-')}</td>
+                                    <td class="py-3 px-4 text-right">
+                                        <button type="button" onclick="editMarketPriceRecord('${htmlSafe(r.id)}')" class="text-xs font-black text-purple-700 hover:underline mr-3">Edit</button>
+                                        <button type="button" onclick="removeMarketPriceRecord('${htmlSafe(r.id)}')" class="text-xs font-black text-red-600 hover:underline">Delete</button>
+                                    </td>
+                                </tr>
+                            `).join('') : `<tr><td colspan="5" class="py-8 text-center text-sm text-slate-400">No market price records in this range.</td></tr>`}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+        window.openMarketTrendModal = (category) => {
+            const cat = String(category || '').trim();
+            if (!cat) return;
+            let modal = document.getElementById('market-trend-modal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'market-trend-modal';
+                modal.className = 'fixed inset-0 z-[220] hidden items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4';
+                modal.innerHTML = `
+                    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+                        <div class="p-5 border-b border-slate-100 flex items-center justify-between gap-3">
+                            <div><h3 id="market-trend-title" class="text-lg font-black text-slate-800">Market Trend</h3><p id="market-trend-subtitle" class="text-xs text-slate-400 mt-1"></p></div>
+                            <button onclick="closeMarketTrendModal()" class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 text-xs font-black hover:bg-slate-200">Close</button>
+                        </div>
+                        <div id="market-trend-body" class="p-5 overflow-y-auto"></div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+            }
+            renderMarketTrendBody(cat, 'day');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        };
+        window.setMarketTrendRange = (range) => {
+            const modal = document.getElementById('market-trend-modal');
+            const cat = modal?.dataset?.category || '';
+            if (cat) renderMarketTrendBody(cat, range);
+        };
+        window.editMarketPriceRecord = (id) => {
+            const recordId = String(id || '').trim();
+            marketPrices = normalizeMarketPrices(marketPrices);
+            const r = marketPrices.records.find(x => String(x.id) === recordId);
+            const row = document.getElementById(`market-record-row-${recordId}`);
+            if (!r || !row) return;
+            row.innerHTML = `
+                <td class="py-3 px-4"><input id="market-edit-date-${htmlSafe(recordId)}" type="date" value="${htmlSafe(r.quotedAt || '')}" class="border border-slate-200 rounded-lg px-2 py-1 text-xs"></td>
+                <td class="py-3 px-4 text-right">
+                    <div class="flex justify-end gap-2">
+                        <select id="market-edit-currency-${htmlSafe(recordId)}" class="border border-slate-200 rounded-lg px-2 py-1 text-xs"><option value="CNY" ${r.currency === 'CNY' ? 'selected' : ''}>CNY ¥</option><option value="MYR" ${r.currency === 'MYR' ? 'selected' : ''}>MYR RM</option></select>
+                        <input id="market-edit-price-${htmlSafe(recordId)}" type="number" step="0.0001" min="0" value="${htmlSafe(r.price)}" class="w-28 border border-slate-200 rounded-lg px-2 py-1 text-xs text-right font-mono">
+                    </div>
+                </td>
+                <td class="py-3 px-4 text-right">
+                    <select id="market-edit-unit-${htmlSafe(recordId)}" class="border border-slate-200 rounded-lg px-2 py-1 text-xs">
+                        ${['W', 'kW', 'kWh', 'pcs', '套', '件'].map(u => `<option value="${u}" ${normalizeUnitLabel(r.unit) === u ? 'selected' : ''}>/${u}</option>`).join('')}
+                    </select>
+                </td>
+                <td class="py-3 px-4"><input id="market-edit-note-${htmlSafe(recordId)}" type="text" value="${htmlSafe(r.note || '')}" class="w-full border border-slate-200 rounded-lg px-2 py-1 text-xs"></td>
+                <td class="py-3 px-4 text-right">
+                    <button type="button" onclick="saveMarketPriceRecordEdit('${htmlSafe(recordId)}')" class="text-xs font-black text-green-700 hover:underline mr-3">Save</button>
+                    <button type="button" onclick="setMarketTrendRange(document.getElementById('market-trend-modal')?.dataset?.range || 'day')" class="text-xs font-black text-slate-500 hover:underline">Cancel</button>
+                </td>
+            `;
+        };
+        window.saveMarketPriceRecordEdit = (id) => {
+            const recordId = String(id || '').trim();
+            try {
+                updateMarketPriceRecord(recordId, {
+                    quotedAt: document.getElementById(`market-edit-date-${recordId}`)?.value || '',
+                    currency: document.getElementById(`market-edit-currency-${recordId}`)?.value || 'CNY',
+                    price: parseFloat(document.getElementById(`market-edit-price-${recordId}`)?.value || '0') || 0,
+                    unit: document.getElementById(`market-edit-unit-${recordId}`)?.value || '',
+                    note: document.getElementById(`market-edit-note-${recordId}`)?.value || '',
+                    rateCnyPerMyr: getSalesOutRateCnyPerMyr()
+                });
+                saveToLocal();
+                renderPriceList();
+                const modal = document.getElementById('market-trend-modal');
+                renderMarketTrendBody(modal?.dataset?.category || '', modal?.dataset?.range || 'day');
+                showToast('市场价已更新', 'success');
+            } catch (e) {
+                alert(e?.message || '市场价更新失败');
+            }
+        };
+        window.removeMarketPriceRecord = (id) => {
+            const recordId = String(id || '').trim();
+            if (!recordId || !confirm('确定删除这条市场价记录吗？')) return;
+            deleteMarketPriceRecord(recordId);
+            saveToLocal();
+            renderPriceList();
+            const modal = document.getElementById('market-trend-modal');
+            renderMarketTrendBody(modal?.dataset?.category || '', modal?.dataset?.range || 'day');
+            showToast('市场价已删除', 'success');
+        };
+        window.closeMarketTrendModal = () => {
+            const modal = document.getElementById('market-trend-modal');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        };
+        window.renderPriceList = () => {
+            ensureSupplierData();
+            renderPriceListFilters();
+            renderMarketPriceForm();
+            const currencyBtn = document.getElementById('price-list-currency-toggle');
+            if (currencyBtn) currencyBtn.textContent = getPriceListCurrencyPriority() === 'MYR' ? 'RM / ¥' : '¥ / RM';
+            const body = document.getElementById('price-list-body');
+            const summary = document.getElementById('price-list-summary');
+            if (!body) return;
+            const rows = getFilteredPriceListProducts();
+            currentPriceListVisibleIds = rows.map(p => p.id).filter(Boolean);
+            if (summary) summary.textContent = `${rows.length} of ${products.length} products | Display ${getPriceListCurrencyPriority()} first | Rate: 1 MYR = ${getSalesOutRateCnyPerMyr().toFixed(4)} CNY`;
+            if (!rows.length) {
+                body.innerHTML = `<tr><td colspan="14" class="py-12 text-center text-slate-400 text-sm">No products match the current filters.</td></tr>`;
+                updatePriceListSelectionUi();
+                return;
+            }
+            body.innerHTML = rows.map(p => {
+                const req = getProductCertificationRequirements(p);
+                const pricing = priceListProductPricing(p);
+                const homeProfit = (pricing.cnHomePct || 0) + (pricing.myHomePct || 0);
+                const bizProfit = (pricing.cnBizPct || 0) + (pricing.myBizPct || 0);
+                const countries = (req.countries || []).map(priceListCountryLabel).join(', ');
+                const certBrief = (req.standards || []).slice(0, 3).join(', ');
+                const certTitle = `${countries}\n${(req.standards || []).join('\n')}`;
+                const checked = selectedPriceListProductIds.has(p.id) ? 'checked' : '';
+                return `
+                    <tr class="hover:bg-purple-50/40 transition-colors" onmousemove="showPriceListTooltip(event, '${htmlSafe(p.id)}')" onmouseleave="hidePriceListTooltip()">
+                        <td class="py-4 px-4 text-center"><input type="checkbox" class="price-list-row-check h-4 w-4 accent-purple-700" value="${htmlSafe(p.id)}" ${checked} onchange="togglePriceListProduct('${htmlSafe(p.id)}', this.checked)"></td>
+                        <td class="py-4 px-4">
+                            <div class="font-black text-slate-800 text-sm">${htmlSafe(p.name || '-')}</div>
+                            <div class="text-[10px] font-mono text-slate-400">${htmlSafe(p.id || '-')} | ${htmlSafe(p.spec || '-')} | Stock ${formatNumberAuto(pricing.stockQty, 4)}</div>
+                        </td>
+                        <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(p.category || '-')}<div class="text-[10px] text-slate-400">${htmlSafe(p.scenario || '-')}</div></td>
+                        <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(getProductSupplierDisplay(p))}</td>
+                        <td class="py-4 px-4 text-xs text-slate-500 max-w-[220px] truncate" title="${htmlSafe(certTitle)}">${htmlSafe(certBrief || '-')}<div class="text-[10px] text-slate-400">${htmlSafe(countries || '-')}</div></td>
+                        <td class="py-4 px-4 text-right">${renderDualCurrencyAmount(pricing.pcsCost, 4, 'pcs')}<div class="text-[10px] text-slate-400">${formatNumberAuto(pricing.pcsMultiplier, 4)} ${htmlSafe(pricing.costUnit)}/pcs</div></td>
+                        <td class="py-4 px-4 text-right">${renderDualCurrencyAmount(pricing.avgCost, 4, pricing.costUnit)}<div class="text-[10px] text-slate-400">${pricing.usedInventoryCost ? 'Inventory avg' : 'Base cost fallback'}</div></td>
+                        <td class="py-4 px-4 text-right">${renderMarketSummaryCell(p.category || '')}</td>
+                        <td class="py-4 px-4 text-right font-black text-green-700">${homeProfit.toFixed(2)}%</td>
+                        <td class="py-4 px-4 text-right font-black text-blue-700">${bizProfit.toFixed(2)}%</td>
+                        <td class="py-4 px-4 text-right">${renderPriceCell(pricing.clearanceHomePrice, pricing.clearanceCost)}</td>
+                        <td class="py-4 px-4 text-right">${renderPriceCell(pricing.clearanceBizPrice, pricing.clearanceCost)}</td>
+                        <td class="py-4 px-4 text-right">${renderPriceCell(pricing.grayHomePrice, pricing.grayCost)}</td>
+                        <td class="py-4 px-4 text-right">${renderPriceCell(pricing.grayBizPrice, pricing.grayCost)}</td>
+                    </tr>
+                `;
+            }).join('');
+            updatePriceListSelectionUi();
+        };
+        window.togglePriceListCurrency = () => {
+            window.priceListDisplayCurrency = getPriceListCurrencyPriority() === 'MYR' ? 'CNY' : 'MYR';
+            renderPriceList();
+        };
+        window.updatePriceListSelectionUi = () => {
+            const countEl = document.getElementById('price-list-selected-count');
+            if (countEl) countEl.textContent = `${selectedPriceListProductIds.size} selected`;
+            const selectVisible = document.getElementById('price-list-select-visible');
+            if (selectVisible) {
+                const visible = currentPriceListVisibleIds.filter(Boolean);
+                selectVisible.checked = visible.length > 0 && visible.every(id => selectedPriceListProductIds.has(id));
+                selectVisible.indeterminate = visible.some(id => selectedPriceListProductIds.has(id)) && !selectVisible.checked;
+            }
+        };
+        window.togglePriceListProduct = (id, checked) => {
+            if (checked) selectedPriceListProductIds.add(id);
+            else selectedPriceListProductIds.delete(id);
+            updatePriceListSelectionUi();
+        };
+        window.togglePriceListVisibleSelection = (checked) => {
+            currentPriceListVisibleIds.forEach(id => {
+                if (checked) selectedPriceListProductIds.add(id);
+                else selectedPriceListProductIds.delete(id);
+            });
+            renderPriceList();
+        };
+        window.clearPriceListFilters = () => {
+            ['price-list-search', 'price-list-category-filter', 'price-list-brand-filter', 'price-list-country-filter', 'price-list-cert-filter'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            renderPriceList();
+        };
+        window.showPriceListTooltip = (event, productId) => {
+            const tooltip = document.getElementById('global-tooltip');
+            const p = products.find(x => String(x.id) === String(productId));
+            if (!tooltip || !p) return;
+            const r = priceListProductPricing(p);
+            const req = getProductCertificationRequirements(p);
+            const market = getMarketPriceSummary(p.category || '', { days: 30 });
+            const homeProfit = (r.cnHomePct || 0) + (r.myHomePct || 0);
+            const bizProfit = (r.cnBizPct || 0) + (r.myBizPct || 0);
+            tooltip.innerHTML = `
+                <p class="font-black text-sm mb-2 border-b border-slate-600 pb-1">${htmlSafe(p.name || '-')}</p>
+                <div class="space-y-1">
+                    <p>PCS Price: <span class="font-black text-white">${formatCurrencyFromCny(r.pcsCost, getPriceListCurrencyPriority(), 4)}/pcs</span> (${formatCurrencyFromCny(r.pcsCost, getPriceListCurrencyPriority() === 'MYR' ? 'CNY' : 'MYR', 4)}/pcs)</p>
+                    <p>Avg Cost: <span class="font-black text-white">${formatCurrencyFromCny(r.avgCost, getPriceListCurrencyPriority(), 4)}/${r.costUnit}</span> (${formatCurrencyFromCny(r.avgCost, getPriceListCurrencyPriority() === 'MYR' ? 'CNY' : 'MYR', 4)}/${r.costUnit}; ${r.usedInventoryCost ? 'inventory average' : 'base cost'})</p>
+                    <p>Clearance Cost: ${formatCny(r.avgCost, 4)} × (1 + ${r.dutyPct}% duty + ${r.sstPct}% SST) = <span class="font-black text-blue-200">${formatCny(r.clearanceCost, 4)}</span></p>
+                    <p>Grey Cost: ${formatCny(r.avgCost, 4)} × (1 + ${r.grayPct}% grey tax) = <span class="font-black text-indigo-200">${formatCny(r.grayCost, 4)}</span></p>
+                    <p>Home Price: cost × (1 + ${r.cnHomePct}% CN + ${r.myHomePct}% MY) = +${homeProfit.toFixed(2)}%</p>
+                    <p>C&I Price: cost × (1 + ${r.cnBizPct}% CN + ${r.myBizPct}% MY) = +${bizProfit.toFixed(2)}%</p>
+                    <p>Market 30D: <span class="font-black text-amber-200">${market.records.length ? formatMarketPrice(market.avgCny, market.unit, 'CNY') : '暂无30天市场价'}</span></p>
+                    <p>FX: 1 MYR = ${getSalesOutRateCnyPerMyr().toFixed(4)} CNY</p>
+                    <p class="pt-1 text-slate-300">Certifications: ${(req.standards || []).slice(0, 5).map(htmlSafe).join(', ') || '-'}</p>
+                </div>
+            `;
+            tooltip.classList.remove('hidden');
+            const x = event.clientX + 16;
+            const y = event.clientY + 16;
+            tooltip.style.left = `${Math.min(x, window.innerWidth - 280)}px`;
+            tooltip.style.top = `${Math.min(y, window.innerHeight - 260)}px`;
+        };
+        window.hidePriceListTooltip = () => {
+            document.getElementById('global-tooltip')?.classList.add('hidden');
+        };
+        window.exportSelectedPriceListExcel = () => {
+            const selected = products.filter(p => selectedPriceListProductIds.has(p.id));
+            if (!selected.length) return alert('Please select at least one product to export.');
+            const rows = selected.map(p => {
+                const r = priceListProductPricing(p);
+                const req = getProductCertificationRequirements(p);
+                const market = getMarketPriceSummary(p.category || '', { days: 30 });
+                const homeProfit = (r.cnHomePct || 0) + (r.myHomePct || 0);
+                const bizProfit = (r.cnBizPct || 0) + (r.myBizPct || 0);
+                const out = {
+                    'Product ID': p.id || '',
+                    'Product Name': p.name || '',
+                    'Category': p.category || '',
+                    'Subcategory': p.scenario || '',
+                    'Brand': getProductSupplierDisplay(p),
+                    'Spec': p.spec || '',
+                    'Stock Qty': r.stockQty || 0,
+                    'Certification Countries': (req.countries || []).map(priceListCountryLabel).join(', '),
+                    'Certification Standards': (req.standards || []).join('; '),
+                    'Avg Cost Unit': r.costUnit,
+                    'Avg Cost CNY': r.avgCost || 0,
+                    'Avg Cost MYR': (r.avgCost || 0) / getSalesOutRateCnyPerMyr(),
+                    'PCS Price CNY': r.pcsCost || 0,
+                    'PCS Price MYR': (r.pcsCost || 0) / getSalesOutRateCnyPerMyr(),
+                    'PCS Multiplier': r.pcsMultiplier || 1,
+                    'Market Unit': market.unit,
+                    '30D Market Avg CNY': market.records.length ? market.avgCny : '',
+                    '30D Market Avg MYR': market.records.length ? market.avgCny / getSalesOutRateCnyPerMyr() : '',
+                    'Latest Market CNY': market.latest ? market.latest.priceCny : '',
+                    'Home Profit %': homeProfit,
+                    'C&I Profit %': bizProfit,
+                    'Clearance Home CNY': r.clearanceHomePrice || 0,
+                    'Clearance Home MYR': (r.clearanceHomePrice || 0) / getSalesOutRateCnyPerMyr(),
+                    'Clearance C&I CNY': r.clearanceBizPrice || 0,
+                    'Clearance C&I MYR': (r.clearanceBizPrice || 0) / getSalesOutRateCnyPerMyr(),
+                    'Grey Home CNY': r.grayHomePrice || 0,
+                    'Grey Home MYR': (r.grayHomePrice || 0) / getSalesOutRateCnyPerMyr(),
+                    'Grey C&I CNY': r.grayBizPrice || 0,
+                    'Grey C&I MYR': (r.grayBizPrice || 0) / getSalesOutRateCnyPerMyr(),
+                    'Formula Note': `Clearance cost = Avg Cost * (1 + duty ${r.dutyPct}% + SST ${r.sstPct}%); Grey cost = Avg Cost * (1 + grey tax ${r.grayPct}%); Home profit = CN ${r.cnHomePct}% + MY ${r.myHomePct}%; C&I profit = CN ${r.cnBizPct}% + MY ${r.myBizPct}%; FX 1 MYR = ${getSalesOutRateCnyPerMyr().toFixed(4)} CNY`
+                };
+                return out;
+            });
+            const worksheet = XLSX.utils.json_to_sheet(rows);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Price List');
+            XLSX.writeFile(workbook, 'Minova_Product_Price_List.xlsx');
+        };
         function updateSalesOutCurrencyUi() {
             const toggle = document.getElementById('sales-out-currency-toggle');
             const sym = document.getElementById('sales-out-currency-symbol');
@@ -3969,7 +6683,7 @@
             const breakdownEl = document.getElementById('sales-out-stock-breakdown');
             const specEl = document.getElementById('sales-out-spec');
             if (nameEl) nameEl.textContent = p?.name || '-';
-            if (metaEl) metaEl.textContent = p ? `${p.category || '-'} / ${p.scenario || '-'} | ${p.vendor || '-'}` : '-';
+            if (metaEl) metaEl.textContent = p ? `${p.category || '-'} / ${p.scenario || '-'} | ${getProductSupplierDisplay(p)}` : '-';
             const total = getTotalStockQty(productId);
             if (totalEl) totalEl.textContent = String(total || 0);
 
@@ -4202,7 +6916,7 @@
                 productName,
                 category: p.category || '',
                 subcategory: p.scenario || '',
-                vendor: p.vendor || '',
+                vendor: getProductSupplierDisplay(p),
                 outAt: editingPrev ? editingPrev.outAt : Date.now(),
                 outDate,
                 quantity: qty,
@@ -4265,6 +6979,13 @@
             }
         };
         window.openModal = () => {
+            ensureSupplierData();
+            if (!suppliers.length) {
+                alert('请先新增供应商，再创建产品档案。');
+                openSupplierModal();
+                return;
+            }
+            updateSupplierSelects(window.editId ? (products.find(p => p.id === window.editId)?.supplierCode || '') : '');
             updateSubcatSuggestions();
             if (!window.editId) {
                 ['tuv', 'specs'].forEach(type => {
@@ -4273,21 +6994,41 @@
                     if (list) list.innerHTML = '';
                     if (empty) empty.classList.remove('hidden');
                 });
+                window.__productImageDraft = '';
+                renderProductImagePreview();
+                renderCertificationCountryChoices();
+                const textarea = document.getElementById('m-cert-requirements');
+                if (textarea) textarea.value = '';
+                window.__certificationAutoFilled = true;
+                window.applyDefaultProductCertifications?.();
             }
             document.getElementById('modal').classList.remove('hidden');
         };
         window.closeModal = () => {
             document.getElementById('modal').classList.add('hidden');
             window.editId = null;
-            ['m-name', 'm-category', 'm-vendor', 'm-spec', 'm-scenario', 'm-warranty-years', 'm-warranty-cycles', 'm-lead-time', 'm-contact', 'm-contact-info', 'm-cost', 'm-price'].forEach(id => document.getElementById(id).value = '');
+            ['m-name', 'm-category', 'm-supplier-code', 'm-spec', 'm-scenario', 'm-warranty-years', 'm-warranty-cycles', 'm-lead-time', 'm-contact', 'm-contact-info', 'm-cost', 'm-price', 'm-cert-requirements'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            renderCertificationCountryChoices();
+            window.__certificationAutoFilled = false;
+            window.__productImageDraft = '';
+            const fileEl = document.getElementById('m-product-image-file');
+            if (fileEl) fileEl.value = '';
+            renderProductImagePreview();
         };
         window.saveProduct = () => {
             const category = document.getElementById('m-category').value || '未分类';
+            const supplierCode = normalizeSupplierCode(document.getElementById('m-supplier-code')?.value || '');
+            const supplier = getSupplierByCode(supplierCode);
+            if (!supplier) return alert('请选择供应商信息表单中的供应商');
             const data = {
                 id: window.editId || generateNextId(category),
                 name: document.getElementById('m-name').value,
                 category: category,
-                vendor: document.getElementById('m-vendor').value || '通用',
+                supplierCode: supplier.code,
+                vendor: getSupplierDisplayName(supplier),
                 spec: document.getElementById('m-spec').value,
                 scenario: document.getElementById('m-scenario').value,
                 warrantyYears: document.getElementById('m-warranty-years').value,
@@ -4297,6 +7038,8 @@
                 contactInfo: document.getElementById('m-contact-info').value,
                 cost: parseFloat(document.getElementById('m-cost').value) || 0,
                 price: parseFloat(document.getElementById('m-price').value) || 0,
+                certificationRequirements: readProductCertificationRequirementsFromModal(),
+                productImageDataUrl: String(window.__productImageDraft || ''),
                 ts: Date.now()
             };
             // For existing products, preserve existing certifications
@@ -4326,9 +7069,10 @@
             const p = products.find(prod => prod.id === id);
             if(!p) return;
             window.editId = id;
+            ensureSupplierData();
             document.getElementById('m-name').value = p.name || '';
             document.getElementById('m-category').value = p.category || '';
-            document.getElementById('m-vendor').value = p.vendor || '';
+            updateSupplierSelects(p.supplierCode || getProductSupplier(p)?.code || '');
             document.getElementById('m-spec').value = p.spec || '';
             updateSubcatSuggestions();
             document.getElementById('m-scenario').value = p.scenario || '';
@@ -4339,6 +7083,15 @@
             document.getElementById('m-contact-info').value = p.contactInfo || '';
             document.getElementById('m-cost').value = p.cost || 0;
             document.getElementById('m-price').value = p.price || 0;
+            const certReq = getProductCertificationRequirements(p);
+            renderCertificationCountryChoices(certReq.countries);
+            const certTextarea = document.getElementById('m-cert-requirements');
+            if (certTextarea) certTextarea.value = certificationText(certReq);
+            const certNote = document.getElementById('m-cert-source-note');
+            if (certNote) certNote.textContent = certReq.source === 'manual' ? 'Manual product certification requirements.' : `Defaults loaded from ${certReq.source === 'online-catalog' ? 'online catalog' : 'embedded fallback'}${certReq.updatedAt ? ` (${certReq.updatedAt})` : ''}.`;
+            window.__certificationAutoFilled = !p.certificationRequirements;
+            window.__productImageDraft = String(p.productImageDataUrl || p.imageDataUrl || '');
+            renderProductImagePreview();
             openModal();
             renderProductCertsInModal();
         };
@@ -4362,6 +7115,8 @@
             leadTime: '供货周期',
             contact: '联系人',
             contactInfo: '联系方式',
+            certificationCountries: '产品认证国家',
+            certificationStandards: '产品认证标准',
             cost: '基准采购价',
             price: '基准售价'
         };
@@ -4461,7 +7216,7 @@
                 const firstSheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[firstSheetName];
                 const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                
+
                 if (json.length < 2) {
                     alert('Excel 文件为空或没有数据');
                     return;
@@ -4487,7 +7242,11 @@
 
         function renderFieldMapping() {
             const container = document.getElementById('field-mapping-container');
-            const aliases = { scenario: ['子类目', '应用场景'] };
+            const aliases = {
+                scenario: ['子类目', '应用场景'],
+                certificationCountries: ['产品认证国家', '认证国家', 'Certification Countries'],
+                certificationStandards: ['产品认证标准', '产品认证', 'Certification Standards', 'Product Certification']
+            };
             container.innerHTML = Object.keys(systemFields).map(key => `
                 <div class="flex items-center">
                     <label class="w-28 font-bold text-slate-600">${systemFields[key]}:</label>
@@ -4508,7 +7267,7 @@
             const previewData = importData.slice(0, 10);
 
             header.innerHTML = `<tr>${importHeaders.map(h => `<th class="py-2 px-3">${h}</th>`).join('')}</tr>`;
-            body.innerHTML = previewData.map(row => 
+            body.innerHTML = previewData.map(row =>
                 `<tr>${importHeaders.map(h => `<td class="py-2 px-3">${row[h] || ''}</td>`).join('')}</tr>`
             ).join('');
         }
@@ -4544,6 +7303,23 @@
                     newProduct.id = String(newProduct.id);
                 }
 
+                const supplier = ensureSupplierForVendorName(newProduct.vendor || '未指定供应商');
+                if (supplier) {
+                    newProduct.supplierCode = supplier.code;
+                    newProduct.vendor = getSupplierDisplayName(supplier);
+                }
+                if (newProduct.certificationCountries || newProduct.certificationStandards) {
+                    const countries = uniqueCertList(String(newProduct.certificationCountries || '').split(/[\n;,/]+/)).map(v => v.toUpperCase());
+                    const standards = uniqueCertList(String(newProduct.certificationStandards || '').split(/[\n;,]+/));
+                    newProduct.certificationRequirements = {
+                        countries: countries.length ? countries : CERTIFICATION_COUNTRIES.map(c => c.code),
+                        standards,
+                        source: 'import',
+                        updatedAt: ''
+                    };
+                    delete newProduct.certificationCountries;
+                    delete newProduct.certificationStandards;
+                }
                 const existingIndex = products.findIndex(p => p.id === newProduct.id);
                 if (existingIndex !== -1) {
                     products[existingIndex] = { ...products[existingIndex], ...newProduct, ts: Date.now() };
@@ -4568,12 +7344,12 @@
         }
 
         window.downloadTemplate = () => {
-            const headers = ['产品编号', '产品全称', '类目', '供应商', '规格型号', '子类目', '质保年限', '循环次数', '供货周期', '联系人', '联系方式', '基准采购价', '基准售价'];
+            const headers = ['产品编号', '产品全称', '类目', '供应商', '规格型号', '子类目', '质保年限', '循环次数', '供货周期', '联系人', '联系方式', '产品认证国家', '产品认证标准', '基准采购价', '基准售价'];
             const data = products.map(p => [
                 p.id || '',
                 p.name || '',
                 p.category || '',
-                p.vendor || '',
+                getProductSupplierDisplay(p),
                 p.spec || '',
                 p.scenario || '',
                 p.warrantyYears || '',
@@ -4581,13 +7357,15 @@
                 p.leadTime || '',
                 p.contact || '',
                 p.contactInfo || '',
+                (getProductCertificationRequirements(p).countries || []).join(', '),
+                (getProductCertificationRequirements(p).standards || []).join('; '),
                 p.cost || 0,
                 p.price || 0
             ]);
-            
+
             // 如果没数据，加一行示例
             if (data.length === 0) {
-                data.push(['GFB001', '示例产品', '光伏板', '通用供应商', '550W', '屋顶', '10', '0', '15天', '张经理', '13800138000', 500, 650]);
+                data.push(['GFB001', '示例产品', '光伏板', '通用供应商', '550W', '屋顶', '10', '0', '15天', '张经理', '13800138000', 'MY, US, EU', 'IEC 61215; IEC 61730', 500, 650]);
             }
 
             const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
@@ -4597,7 +7375,25 @@
         };
 
         // --- 选择器逻辑 ---
+        function getPickerCurrency() {
+            return window.pickerDisplayCurrency || currentCurrency || 'MYR';
+        }
+        function formatPickerPrice(valueCny) {
+            const v = Number.isFinite(parseFloat(valueCny)) ? parseFloat(valueCny) : 0;
+            if (getPickerCurrency() === 'MYR') {
+                const rate = parseFloat(document.getElementById('rate-myr-cny')?.value) || 1.53;
+                return `RM ${formatNumberAuto(v / (rate > 0 ? rate : 1.53), 4)}`;
+            }
+            return `¥${formatNumberAuto(v, 4)}`;
+        }
+        window.togglePickerCurrency = () => {
+            window.pickerDisplayCurrency = getPickerCurrency() === 'MYR' ? 'CNY' : 'MYR';
+            renderPicker();
+        };
         window.renderPicker = () => {
+            if (!window.pickerDisplayCurrency) window.pickerDisplayCurrency = currentCurrency || 'MYR';
+            const currencyBtn = document.getElementById('picker-currency-toggle');
+            if (currencyBtn) currencyBtn.textContent = getPickerCurrency() === 'MYR' ? 'RM / ¥' : '¥ / RM';
             const query = (document.getElementById('picker-search')?.value || '').toLowerCase();
             const vendor = document.getElementById('picker-vendor')?.value || '';
             const category = document.getElementById('picker-category')?.value || '';
@@ -4612,13 +7408,13 @@
                 if (!p) return false;
 
                 const pid = String(item.productId || '').toLowerCase();
-                return (!vendor || p.vendor === vendor) && 
-                       (!category || p.category === category) && 
+                return (!vendor || getProductSupplierDisplay(p) === vendor) &&
+                       (!category || p.category === category) &&
                        (!query || p.name.toLowerCase().includes(query) || p.category.toLowerCase().includes(query) || pid.includes(query));
             });
 
-            if(filtered.length === 0) { list.innerHTML = `<div class="p-8 text-center text-xs text-slate-400 italic">未找到有库存的产品...</div>`; return; }
-            
+            if(filtered.length === 0) { list.innerHTML = `<div class="p-8 text-center text-xs text-slate-400 italic">No in-stock products found...</div>`; return; }
+
             list.innerHTML = filtered.map(item => {
                 const p = products.find(prod => prod.id === item.productId);
                 const r = computeInventoryPricing({ item, product: p || {} });
@@ -4627,35 +7423,35 @@
                 const gh = (item.grayHomePrice ?? r.grayHomePrice) || 0;
                 const gb = (item.grayBizPrice ?? r.grayBizPrice) || 0;
                 return `
-                <div class="p-3 hover:bg-purple-50 transition-colors group border-b border-slate-50">
+                <div class="p-3 hover:bg-purple-50 transition-colors group border-b border-slate-50" onmousemove="showMarketPriceTooltip(event, '${htmlSafe(item.productId || '')}')" onmouseleave="hidePriceListTooltip()">
                     <div class="flex justify-between items-start">
                         <div class="min-w-0">
                             <div class="text-sm font-bold text-slate-700 truncate" title="${p.name}">${p.name}</div>
                             <div class="text-[10px] font-mono text-slate-400">${item.productId || ''}</div>
                         </div>
                         <div class="text-right">
-                            <span class="text-[10px] text-slate-400 block">仓库: ${item.location || '-'} | 批次: ${item.batchNo}</span>
-                            <span class="text-[10px] text-slate-400 block">库存: <span class="text-green-700 font-black">${formatNumberAuto(item.quantity, 4)}</span></span>
+                            <span class="text-[10px] text-slate-400 block">Warehouse: ${item.location || '-'} | Batch: ${item.batchNo}</span>
+                            <span class="text-[10px] text-slate-400 block">Stock: <span class="text-green-700 font-black">${formatNumberAuto(item.quantity, 4)}</span></span>
                         </div>
                     </div>
                     <div class="flex justify-between items-center mt-2">
                         <div class="flex gap-2">
                             <span class="text-[9px] uppercase px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded">${p.category}</span>
-                            <span class="text-[9px] uppercase px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded">${p.vendor}</span>
+                            <span class="text-[9px] uppercase px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded">${getProductSupplierDisplay(p)}</span>
                         </div>
                         <div class="flex flex-wrap gap-2 justify-end">
-                            <button onclick="pickProduct('${item.id}', 'clearance_home')" class="px-3 py-1 bg-blue-700 text-white text-[10px] font-bold rounded-lg hover:bg-blue-800 transition-all shadow-sm">清关家用 ¥${formatNumberAuto(ch, 4)}</button>
-                            <button onclick="pickProduct('${item.id}', 'clearance_biz')" class="px-3 py-1 bg-sky-700 text-white text-[10px] font-bold rounded-lg hover:bg-sky-800 transition-all shadow-sm">清关工商业 ¥${formatNumberAuto(cb, 4)}</button>
-                            <button onclick="pickProduct('${item.id}', 'gray_home')" class="px-3 py-1 bg-indigo-700 text-white text-[10px] font-bold rounded-lg hover:bg-indigo-800 transition-all shadow-sm">灰清家用 ¥${formatNumberAuto(gh, 4)}</button>
-                            <button onclick="pickProduct('${item.id}', 'gray_biz')" class="px-3 py-1 bg-violet-700 text-white text-[10px] font-bold rounded-lg hover:bg-violet-800 transition-all shadow-sm">灰清工商业 ¥${formatNumberAuto(gb, 4)}</button>
+                            <button onclick="pickProduct('${item.id}', 'clearance_home')" class="px-3 py-1 bg-blue-700 text-white text-[10px] font-bold rounded-lg hover:bg-blue-800 transition-all shadow-sm">Clearance Home ${formatPickerPrice(ch)}</button>
+                            <button onclick="pickProduct('${item.id}', 'clearance_biz')" class="px-3 py-1 bg-sky-700 text-white text-[10px] font-bold rounded-lg hover:bg-sky-800 transition-all shadow-sm">Clearance C&I ${formatPickerPrice(cb)}</button>
+                            <button onclick="pickProduct('${item.id}', 'gray_home')" class="px-3 py-1 bg-indigo-700 text-white text-[10px] font-bold rounded-lg hover:bg-indigo-800 transition-all shadow-sm">Grey Home ${formatPickerPrice(gh)}</button>
+                            <button onclick="pickProduct('${item.id}', 'gray_biz')" class="px-3 py-1 bg-violet-700 text-white text-[10px] font-bold rounded-lg hover:bg-violet-800 transition-all shadow-sm">Grey C&I ${formatPickerPrice(gb)}</button>
                         </div>
                     </div>
                 </div>`}).join('');
         };
-        window.pickProduct = (inventoryId, priceType) => {
+        function addProductToQuote(inventoryId, priceType) {
             const item = inventory.find(i => i.id === inventoryId); if(!item) return;
             const p = products.find(prod => prod.id === item.productId); if(!p) return;
-            
+
             const cost = item.purchasePrice || 0;
             const r = computeInventoryPricing({ item, product: p });
             let price = 0;
@@ -4669,10 +7465,15 @@
             const insertIdx = firstBlankIdx === -1 ? quoteRows.length : firstBlankIdx;
             const candidateIdx = Math.min(Math.max(insertIdx - 1, 0), quoteRows.length - 1);
             const candidate = quoteRows[candidateIdx];
+            const supplier = getProductSupplier(p);
+            const supplierCode = p.supplierCode || supplier?.code || '';
+            const brand = getSupplierDisplayNameForLang(supplier, currentLang) || getProductSupplierBrandForLang(p, currentLang);
 
             if (candidate && !candidate.isBlank && !candidate.description && candidate.price === 0) {
                 candidate.description = p.name;
-                candidate.vendor = p.vendor || '';
+                candidate.vendor = brand;
+                candidate.vendorManualOverride = false;
+                candidate.supplierCode = supplierCode;
                 candidate.spec = p.spec || '';
                 candidate.batchNo = item.batchNo;
                 candidate.price = price;
@@ -4680,31 +7481,80 @@
                 candidate.productId = item.productId || '';
                 candidate.inventoryId = item.id || '';
             } else {
-                quoteRows.splice(insertIdx, 0, { id: Date.now(), description: p.name, vendor: p.vendor || '', spec: p.spec || '', batchNo: item.batchNo, quantity: 1, price: price, cost: cost, productId: item.productId || '', inventoryId: item.id || '' });
+                quoteRows.splice(insertIdx, 0, { id: Date.now(), description: p.name, vendor: brand, vendorManualOverride: false, supplierCode, spec: p.spec || '', batchNo: item.batchNo, quantity: 1, price: price, cost: cost, productId: item.productId || '', inventoryId: item.id || '' });
             }
             renderQuote();
+        }
+
+        window.openBatteryProgramModal = (inventoryId, priceType) => {
+            window.__pendingBatteryPick = { inventoryId, priceType };
+            const select = document.getElementById('battery-program-select');
+            const current = document.getElementById('select-solar-program')?.value || '';
+            if (select) select.value = BATTERY_SOLAR_PROGRAMS.includes(current) ? current : (window.__lastBatterySolarProgram || 'offgrid');
+            const modal = document.getElementById('battery-program-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+        };
+
+        window.closeBatteryProgramModal = () => {
+            window.__pendingBatteryPick = null;
+            const modal = document.getElementById('battery-program-modal');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        };
+
+        window.confirmBatteryProgramPick = () => {
+            const pending = window.__pendingBatteryPick;
+            if (!pending) return window.closeBatteryProgramModal();
+            const program = document.getElementById('battery-program-select')?.value || 'offgrid';
+            const quoteProgram = document.getElementById('select-solar-program');
+            if (quoteProgram) quoteProgram.value = BATTERY_SOLAR_PROGRAMS.includes(program) ? program : 'offgrid';
+            window.__lastBatterySolarProgram = quoteProgram?.value || 'offgrid';
+            window.resetQuoteExportFactorForProgram?.({ recalc: false });
+            window.closeBatteryProgramModal();
+            addProductToQuote(pending.inventoryId, pending.priceType);
+            window.updateQuoteSolarProgramAvailability?.({ fromUser: true });
+            try { window.calculateROI?.(); } catch (e) {}
+        };
+
+        window.pickProduct = (inventoryId, priceType) => {
+            const item = inventory.find(i => i.id === inventoryId); if(!item) return;
+            const p = products.find(prod => prod.id === item.productId); if(!p) return;
+            if (quoteProductHasBattery(p, item, null)) {
+                window.openBatteryProgramModal(inventoryId, priceType);
+                return;
+            }
+            addProductToQuote(inventoryId, priceType);
         };
 
         // --- 其他工具 ---
         function updatePickerFilters() {
-            const vendors = [...new Set(products.map(p => p.vendor).filter(Boolean))];
+            ensureSupplierData();
+            const vendors = [...new Set(products.map(p => getProductSupplierDisplay(p)).filter(Boolean))];
             const categories = [...new Set(products.map(p => p.category).filter(Boolean))];
             const vS = document.getElementById('picker-vendor'), cS = document.getElementById('picker-category');
-            if(vS) vS.innerHTML = `<option value="">全部供应商</option>` + vendors.map(v => `<option value="${v}">${v}</option>`).join('');
-            if(cS) cS.innerHTML = `<option value="">全部类目</option>` + categories.map(c => `<option value="${c}">${c}</option>`).join('');
+            if(vS) vS.innerHTML = `<option value="">All Suppliers</option>` + vendors.map(v => `<option value="${htmlSafe(v)}">${htmlSafe(v)}</option>`).join('');
+            if(cS) cS.innerHTML = `<option value="">All Categories</option>` + categories.map(c => `<option value="${htmlSafe(c)}">${htmlSafe(c)}</option>`).join('');
         }
         function updateDatalists() {
+            ensureSupplierData();
             const cats = [...new Set(products.map(p => p.category))];
-            document.getElementById('cat-suggestions').innerHTML = cats.map(c => `<option value="${c}">`).join('');
-            const vendors = [...new Set(products.map(p => p.vendor))];
-            document.getElementById('vendor-suggestions').innerHTML = vendors.map(v => `<option value="${v}">`).join('');
+            const catList = document.getElementById('cat-suggestions');
+            if (catList) catList.innerHTML = cats.map(c => `<option value="${htmlSafe(c)}">`).join('');
+            updateSupplierSelects();
             updateSubcatSuggestions();
-            
-            const invProds = products.map(p => `<option value="${p.id}">${p.name} (${p.vendor})</option>`).join('');
-            document.getElementById('inv-product-suggestions').innerHTML = invProds;
+
+            const invProds = products.map(p => `<option value="${htmlSafe(p.id)}">${htmlSafe(p.name)} (${htmlSafe(getProductSupplierDisplay(p))})</option>`).join('');
+            const invList = document.getElementById('inv-product-suggestions');
+            if (invList) invList.innerHTML = invProds;
 
             const locations = [...new Set(inventory.map(i => i.location).filter(Boolean))];
-            document.getElementById('location-suggestions').innerHTML = locations.map(l => `<option value="${l}">`).join('');
+            const locList = document.getElementById('location-suggestions');
+            if (locList) locList.innerHTML = locations.map(l => `<option value="${htmlSafe(l)}">`).join('');
         }
         window.aiImproveName = async () => {
             const nameEl = document.getElementById('m-name'); if(!nameEl.value) return;
@@ -4724,6 +7574,728 @@
             document.getElementById('res-panels').textContent = panelCount; document.getElementById('summary-panels').textContent = panelCount;
             document.getElementById('res-battery').textContent = batteryCap.toFixed(2); document.getElementById('summary-battery').textContent = batteryCap.toFixed(2);
         };
+
+        window.switchPvcalcPage = (page) => {
+            const p = ['1', '2', '3', '4'].includes(String(page || '1')) ? String(page || '1') : '1';
+            const s = document.getElementById('pvcalc-page-select');
+            if (s && s.value !== p) s.value = p;
+            ['1', '2', '3', '4'].forEach(n => {
+                const el = document.getElementById(`pvcalc-page-${n}`);
+                if (!el) return;
+                if (n === p) {
+                    el.classList.remove('hidden');
+                    el.style.display = 'block';
+                } else {
+                    el.classList.add('hidden');
+                    el.style.display = 'none';
+                }
+            });
+            if (p === '1') {
+                try { window.calculatePV?.(); } catch (e) {}
+            } else if (p === '2') {
+                try { window.recalcTnbFromActiveInput?.(); } catch (e) {}
+            } else {
+                try { window.recalcAtapViews?.(); } catch (e) {}
+            }
+        };
+
+        window.tnbConstants = {
+            tiers: [
+                { cap: 200, rate: 0.218 },
+                { cap: 100, rate: 0.334 },
+                { cap: 300, rate: 0.516 },
+                { cap: 300, rate: 0.546 },
+                { cap: Infinity, rate: 0.571 }
+            ],
+            stRate: 0.08
+        };
+
+        window.getTnbIcptRate = (kwh) => {
+            const k = Number(kwh) || 0;
+            if (k <= 600) return -0.02;
+            if (k <= 1500) return 0;
+            return 0.10;
+        };
+
+        window.calcTnbForward = (kwh) => {
+            const k = Math.max(0, Number(kwh) || 0);
+            let remaining = k;
+            const tierCharges = [];
+            for (let i = 0; i < window.tnbConstants.tiers.length; i++) {
+                const t = window.tnbConstants.tiers[i];
+                const cap = Number.isFinite(t.cap) ? t.cap : remaining;
+                const used = Math.min(remaining, cap);
+                const charge = used * t.rate;
+                tierCharges.push({ used, rate: t.rate, charge });
+                remaining -= used;
+                if (remaining <= 0) break;
+            }
+            const energyCharge = tierCharges.reduce((sum, x) => sum + (x.charge || 0), 0);
+            const icptRate = window.getTnbIcptRate(k);
+            const icpt = k * icptRate;
+            const tier4Charge = tierCharges[3]?.charge || 0;
+            const tier5Charge = tierCharges[4]?.charge || 0;
+            const st = (tier4Charge + tier5Charge) * window.tnbConstants.stRate;
+            const total = energyCharge + icpt + st;
+            return { kwh: k, energyCharge, icpt, st, total, tierCharges };
+        };
+
+        window.calcTnbReverse = (bill) => {
+            const b = Math.max(0, Number(bill) || 0);
+            if (b >= 219.81 && b <= 232.38) return { bill: b, kwh: null, deadZone: '600' };
+            if (b >= 778.72 && b <= 930) return { bill: b, kwh: null, deadZone: '1500' };
+            if (b <= 39.60) return { bill: b, kwh: b / 0.198, deadZone: null };
+            if (b <= 71.00) return { bill: b, kwh: (b - 39.60) / 0.314 + 200, deadZone: null };
+            if (b <= 219.80) return { bill: b, kwh: (b - 71.00) / 0.496 + 300, deadZone: null };
+            if (b <= 408.70) return { bill: b, kwh: (b - 232.39) / 0.58968 + 601, deadZone: null };
+            if (b <= 778.71) return { bill: b, kwh: (b - 409.32) / 0.61668 + 901, deadZone: null };
+            if (b > 930) return { bill: b, kwh: (b - 930) / 0.72468 + 1501, deadZone: null };
+            return { bill: b, kwh: null, deadZone: '1500' };
+        };
+
+        window.atapInputDefaults = {
+            monthlyConsumption: 1100,
+            targetGeneration: 1100,
+            peakSunHours: 4.5,
+            panelRating: 640,
+            lossFactor: 0.8,
+            investmentBaseKw: 10,
+            exportFactor: 0.6,
+            exportEnergyRate: 0.2708
+        };
+
+        window.atapPlans = {
+            solarOnly: {
+                domKey: 'solar-only',
+                label: 'Solar Only',
+                exportFactor: 0.6,
+                afaRate: -0.02,
+                eeiRate: 0,
+                exportEnergyRate: 0.2708,
+                retailCharge: 10,
+                pricePerKwp: 2500,
+                effectiveTariffs: [0.357, 0.393, 0.393, 0.547, 0.586, 0.586, 0.581, 0.623, 0.623, 0.617, 0.664, 0.664, 0.658, 0.709, 0.709, 0.701, 0.757, 0.757, 0.749, 0.81, 0.81, 0.801, 0.868, 0.868, 0.858]
+            },
+            solarBattery: {
+                domKey: 'solar-battery',
+                label: 'Solar with Battery',
+                exportFactor: 0.4,
+                afaRate: -0.0215,
+                eeiRate: 0.055,
+                exportEnergyRate: 0.2708,
+                retailCharge: 10,
+                pricePerKwp: 3500,
+                effectiveTariffs: [0.393, 0.393, 0.393, 0.586, 0.586, 0.586, 0.623, 0.623, 0.623, 0.664, 0.664, 0.664, 0.709, 0.709, 0.709, 0.757, 0.757, 0.757, 0.81, 0.81, 0.81, 0.868, 0.868, 0.868, 0.931]
+            }
+        };
+
+        const atapRound = (n, digits = 2) => {
+            const v = Number(n);
+            if (!Number.isFinite(v)) return 0;
+            const m = Math.pow(10, digits);
+            return Math.round((v + Number.EPSILON) * m) / m;
+        };
+
+        const atapNum = (n, fallback = 0) => {
+            const v = Number(n);
+            return Number.isFinite(v) ? v : fallback;
+        };
+
+        const atapFmtMoney = (n) => atapNum(n).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const atapFmtWhole = (n) => atapNum(n).toLocaleString('en-MY', { maximumFractionDigits: 0 });
+        const atapFmtKwh = (n) => atapNum(n).toLocaleString('en-MY', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+        const atapFmtPct = (n) => `${(atapNum(n) * 100).toFixed(1)}%`;
+
+        window.__atapInvestmentManual = false;
+
+        window.syncAtapInput = (source) => {
+            const key = source?.dataset?.atapInput;
+            if (!key) return;
+            if (key === 'investmentBaseKw') {
+                window.__atapInvestmentManual = true;
+            } else if (['targetGeneration', 'peakSunHours', 'lossFactor'].includes(key)) {
+                window.__atapInvestmentManual = false;
+            }
+            document.querySelectorAll(`[data-atap-input="${key}"]`).forEach(el => {
+                if (el !== source) el.value = source.value;
+            });
+            window.recalcAtapViews?.();
+        };
+
+        window.__atapExportRateEditConfirmed = false;
+
+        window.setAtapExportRateEditable = (isEditable) => {
+            window.__atapExportRateEditConfirmed = !!isEditable;
+            document.querySelectorAll('[data-atap-export-rate-input]').forEach(el => {
+                el.readOnly = !isEditable;
+                el.classList.toggle('bg-slate-50', !isEditable);
+                el.classList.toggle('text-slate-500', !isEditable);
+                el.classList.toggle('cursor-not-allowed', !isEditable);
+                el.classList.toggle('bg-white', !!isEditable);
+                el.classList.toggle('text-slate-800', !!isEditable);
+            });
+            document.querySelectorAll('[data-atap-export-rate-edit-btn]').forEach(btn => {
+                btn.textContent = isEditable ? 'Editable' : 'Change';
+                btn.disabled = !!isEditable;
+                btn.classList.toggle('opacity-50', !!isEditable);
+                btn.classList.toggle('cursor-not-allowed', !!isEditable);
+            });
+        };
+
+        window.confirmAtapExportRateEdit = () => {
+            if (window.__atapExportRateEditConfirmed) return;
+            const ok = window.confirm?.('Export Energy Rate is fixed by TNB. Confirm you want to edit it?') ?? false;
+            if (!ok) return;
+            window.setAtapExportRateEditable(true);
+        };
+
+        window.resetAtapInputs = () => {
+            window.__atapInvestmentManual = false;
+            Object.entries(window.atapInputDefaults).forEach(([key, value]) => {
+                document.querySelectorAll(`[data-atap-input="${key}"]`).forEach(el => { el.value = String(value); });
+            });
+            window.setAtapExportRateEditable(false);
+            window.recalcAtapViews?.();
+        };
+
+        window.getAtapInputs = () => {
+            const read = (key) => {
+                const el = document.querySelector(`[data-atap-input="${key}"]`);
+                const fallback = window.atapInputDefaults[key] ?? 0;
+                return Math.max(0, atapNum(el?.value, fallback));
+            };
+            return {
+                monthlyConsumption: read('monthlyConsumption'),
+                targetGeneration: read('targetGeneration'),
+                peakSunHours: read('peakSunHours'),
+                panelRating: read('panelRating'),
+                lossFactor: Math.max(0.01, read('lossFactor')),
+                investmentBaseKw: read('investmentBaseKw'),
+                exportFactor: Math.min(1, Math.max(0, read('exportFactor'))),
+                exportEnergyRate: read('exportEnergyRate'),
+                performanceRatio: 0.777765,
+                daysPerMonth: 30,
+                daysPerYear: 365
+            };
+        };
+
+        window.calcPvSizing = (inputs) => {
+            const targetMonthly = Math.max(0, atapNum(inputs?.targetGeneration));
+            const dailyGeneration = targetMonthly / (inputs?.daysPerMonth || 30);
+            const dailyWithLoss = dailyGeneration / Math.max(0.01, atapNum(inputs?.lossFactor, 0.8));
+            const pvSizeKwp = atapNum(inputs?.peakSunHours) > 0 ? dailyWithLoss / inputs.peakSunHours : 0;
+            const panelKw = atapNum(inputs?.panelRating) / 1000;
+            const panelCountRaw = panelKw > 0 ? pvSizeKwp / panelKw : 0;
+            const panelCount = panelCountRaw > 0 ? Math.ceil(panelCountRaw) : 0;
+            const installedKwp = panelKw * panelCount;
+            const yearOneGeneration = installedKwp * atapNum(inputs?.peakSunHours) * (inputs?.daysPerYear || 365) * atapNum(inputs?.performanceRatio, 0.777765);
+            return { targetMonthly, dailyGeneration, dailyWithLoss, pvSizeKwp, panelKw, panelCountRaw, panelCount, installedKwp, yearOneGeneration };
+        };
+
+        window.syncAtapInvestmentToSizing = (sizing) => {
+            if (window.__atapInvestmentManual) return false;
+            const nextValue = String(Math.round(Math.max(0, atapNum(sizing?.pvSizeKwp))));
+            let changed = false;
+            document.querySelectorAll('[data-atap-input="investmentBaseKw"]').forEach(el => {
+                if (el.value !== nextValue) {
+                    el.value = nextValue;
+                    changed = true;
+                }
+            });
+            return changed;
+        };
+
+        window.syncAtapUsageFromTnb = (kwh) => {
+            const value = Number(kwh);
+            if (!Number.isFinite(value) || value < 0) return;
+            const text = String(atapRound(value, 2));
+            window.__atapInvestmentManual = false;
+            ['monthlyConsumption', 'targetGeneration'].forEach(key => {
+                document.querySelectorAll(`[data-atap-input="${key}"]`).forEach(el => { el.value = text; });
+            });
+            window.recalcAtapViews?.();
+        };
+
+        window.calcAtapBill = (plan, inputs) => {
+            const before = window.calcTnbForward?.(inputs.monthlyConsumption) || { total: 0 };
+            const exportFactor = atapNum(inputs.exportFactor, plan.exportFactor ?? 0.6);
+            const exportEnergyRate = atapNum(inputs.exportEnergyRate, plan.exportEnergyRate ?? 0.2708);
+            const exportedEnergy = inputs.targetGeneration * exportFactor;
+            const selfConsumedSolar = Math.max(0, inputs.targetGeneration - exportedEnergy);
+            const importedEnergy = Math.max(inputs.monthlyConsumption - selfConsumedSolar, 0);
+            const blockKwh = [
+                Math.min(importedEnergy, 200),
+                Math.max(Math.min(importedEnergy - 201, 100), 0),
+                Math.max(Math.min(importedEnergy - 300, 300), 0),
+                Math.max(Math.min(importedEnergy - 600, 300), 0),
+                Math.max(Math.min(importedEnergy - 900, 999999), 0)
+            ];
+            const rates = (window.tnbConstants?.tiers || []).map(t => t.rate);
+            const powerCharge = atapRound(blockKwh.reduce((sum, kwh, idx) => sum + (kwh * (rates[idx] || 0)), 0), 2);
+            const exportCredit = atapRound(Math.min(importedEnergy, exportedEnergy) * exportEnergyRate, 2);
+            const afa = atapRound(importedEnergy * plan.afaRate, 2);
+            const eei = atapRound(-importedEnergy * plan.eeiRate, 2);
+            const st = powerCharge * 0.08;
+            const kwtbb = powerCharge * 0.016;
+            const afterBill = atapRound(powerCharge + eei + afa + plan.retailCharge - exportCredit + st + kwtbb, 2);
+            const beforeBill = atapRound(before.total, 2);
+            const saving = atapRound(beforeBill - afterBill, 2);
+            const savingPct = beforeBill ? saving / beforeBill : 0;
+            return { beforeBill, exportFactor, exportEnergyRate, exportedEnergy, selfConsumedSolar, importedEnergy, blockKwh, powerCharge, exportCredit, afa, eei, st, kwtbb, retailCharge: plan.retailCharge, afterBill, saving, savingPct };
+        };
+
+        window.calcAtap25Year = (plan, sizing, inputs) => {
+            const initialInvestment = plan.pricePerKwp * inputs.investmentBaseKw;
+            const baseGeneration = sizing.yearOneGeneration;
+            let accumulated = 0;
+            const rows = [];
+            for (let year = 1; year <= 25; year++) {
+                const generation = year === 1
+                    ? baseGeneration
+                    : year === 2
+                        ? baseGeneration * 0.98
+                        : baseGeneration * 0.98 * Math.pow(0.9975, year - 2);
+                const effectiveTariff = plan.effectiveTariffs[year - 1] ?? plan.effectiveTariffs[plan.effectiveTariffs.length - 1] ?? 0;
+                const energyCost = atapRound(generation * effectiveTariff, 2);
+                const investment = year === 1 ? initialInvestment : 0;
+                const annualSaving = atapRound(energyCost - investment, 2);
+                accumulated = atapRound(accumulated + annualSaving, 2);
+                rows.push({ year, generation, effectiveTariff, energyCost, investment, annualSaving, accumulated });
+            }
+            let paybackYear = null;
+            for (let i = 0; i < rows.length; i++) {
+                const current = rows[i];
+                const previous = rows[i - 1];
+                if (current.accumulated >= 0) {
+                    if (!previous) {
+                        paybackYear = current.year;
+                    } else {
+                        paybackYear = previous.year + ((-previous.accumulated) / (current.accumulated - previous.accumulated));
+                    }
+                    break;
+                }
+            }
+            return { initialInvestment, baseGeneration, rows, paybackYear };
+        };
+
+        const atapSetOut = (key, value) => {
+            document.querySelectorAll(`[data-atap-out="${key}"]`).forEach(el => { el.textContent = value; });
+        };
+
+        const atapRenderRows = (tbodyId, rows, cols) => {
+            const tbody = document.getElementById(tbodyId);
+            if (!tbody) return;
+            tbody.innerHTML = rows.map(row => `<tr class="hover:bg-slate-50 transition-colors">${cols.map(col => `<td class="${col.className || 'py-3 px-5'}">${col.value(row)}</td>`).join('')}</tr>`).join('');
+        };
+
+        window.__atapCashflowExpanded = window.__atapCashflowExpanded || {
+            solarOnly: { y4: false, y6to9: false, y11to24: false },
+            solarBattery: { y4: false, y6to9: false, y11to24: false }
+        };
+        window.__atapSnapshotView = window.__atapSnapshotView || {
+            solarOnly: '25',
+            solarBattery: '25'
+        };
+        window.__atapFormulaUnlocked = false;
+
+        const ensureAtapCashflowState = (planKey) => {
+            if (!window.__atapCashflowExpanded) window.__atapCashflowExpanded = {};
+            if (!window.__atapCashflowExpanded[planKey]) {
+                window.__atapCashflowExpanded[planKey] = { y4: false, y6to9: false, y11to24: false };
+            }
+            return window.__atapCashflowExpanded[planKey];
+        };
+
+        window.toggleAtapCashflowRange = (planKey, rangeKey) => {
+            const state = ensureAtapCashflowState(planKey);
+            state[rangeKey] = !state[rangeKey];
+            window.recalcAtapViews?.();
+        };
+
+        const ensureAtapSnapshotView = (planKey) => {
+            if (!window.__atapSnapshotView) window.__atapSnapshotView = {};
+            const view = window.__atapSnapshotView[planKey] === '10' ? '10' : '25';
+            window.__atapSnapshotView[planKey] = view;
+            return view;
+        };
+
+        window.setAtapSnapshotView = (planKey, viewKey) => {
+            if (!window.__atapSnapshotView) window.__atapSnapshotView = {};
+            window.__atapSnapshotView[planKey] = viewKey === '10' ? '10' : '25';
+            window.recalcAtapViews?.();
+        };
+
+        const atapRenderSnapshotControls = (planKey) => {
+            const view = ensureAtapSnapshotView(planKey);
+            document.querySelectorAll(`[data-atap-snapshot-title="${planKey}"]`).forEach(el => {
+                el.textContent = `${view}-Year Snapshot`;
+            });
+            document.querySelectorAll(`[data-atap-snapshot-plan="${planKey}"]`).forEach(btn => {
+                const active = btn.dataset.atapSnapshotView === view;
+                btn.classList.toggle('bg-[#582C83]', active);
+                btn.classList.toggle('text-white', active);
+                btn.classList.toggle('shadow-sm', active);
+                btn.classList.toggle('text-slate-500', !active);
+                btn.classList.toggle('hover:text-slate-600', !active);
+            });
+        };
+
+        window.buildAtapCashflowDisplayRows = (planKey, analysis) => {
+            const state = ensureAtapCashflowState(planKey);
+            const view = ensureAtapSnapshotView(planKey);
+            const rowsByYear = new Map((analysis.rows || []).map(row => [row.year, row]));
+            const firstPositive = (analysis.rows || []).find(row => atapNum(row.accumulated) >= 0);
+            const paybackPositiveYear = firstPositive?.year || null;
+            const display = [];
+            const addYear = (year) => {
+                const row = rowsByYear.get(year);
+                if (row) display.push({ type: 'year', row, isPayback: year === paybackPositiveYear });
+            };
+            const addToggle = (rangeKey, years, collapsedLabel, expandedLabel) => {
+                const expanded = !!state[rangeKey];
+                display.push({ type: 'toggle', planKey, rangeKey, years, expanded, label: expanded ? expandedLabel : collapsedLabel });
+                if (expanded) years.forEach(addYear);
+            };
+
+            if (view === '10') {
+                Array.from({ length: 10 }, (_, i) => i + 1).forEach(addYear);
+                return display;
+            }
+
+            [1, 2, 3].forEach(addYear);
+            addToggle('y4', [4], 'Show hidden Year 4', 'Hide Year 4');
+            addYear(5);
+            addToggle('y6to9', [6, 7, 8, 9], 'Show hidden Years 6-9', 'Hide Years 6-9');
+            addYear(10);
+            addToggle('y11to24', Array.from({ length: 14 }, (_, i) => i + 11), 'Show hidden Years 11-24', 'Hide Years 11-24');
+            addYear(25);
+            return display;
+        };
+
+        const atapRenderCashflow = (planKey, plan, analysis) => {
+            atapRenderSnapshotControls(planKey);
+            const tbody = document.getElementById(`atap-${plan.domKey}-cashflow`);
+            if (!tbody) return;
+            const displayRows = window.buildAtapCashflowDisplayRows(planKey, analysis);
+            tbody.innerHTML = displayRows.map(item => {
+                if (item.type === 'toggle') {
+                    const icon = item.expanded ? '−' : '+';
+                    return `<tr class="transition-colors">
+                        <td colspan="4" class="py-2 px-5">
+                            <button type="button" onclick="toggleAtapCashflowRange('${planKey}', '${item.rangeKey}')" class="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-xs font-black text-slate-600 hover:bg-purple-50 hover:text-purple-700">
+                                <span class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white border border-slate-200">${icon}</span>
+                                <span>${item.label}</span>
+                                <span class="text-slate-400">(${item.years.length} year${item.years.length > 1 ? 's' : ''})</span>
+                            </button>
+                        </td>
+                    </tr>`;
+                }
+                const r = item.row;
+                const rowClass = item.isPayback ? 'text-white' : 'hover:bg-slate-50 transition-colors';
+                const rowStyle = item.isPayback ? 'background:#582C83;' : '';
+                const mutedClass = item.isPayback ? 'text-white' : 'text-slate-700';
+                const strongClass = item.isPayback ? 'text-white' : 'text-slate-800';
+                return `<tr class="${rowClass}" style="${rowStyle}">
+                    <td class="py-3 px-5 font-bold ${strongClass}">Year ${r.year}</td>
+                    <td class="py-3 px-5 text-right font-mono ${mutedClass}">${atapFmtKwh(r.generation)}</td>
+                    <td class="py-3 px-5 text-right font-mono ${mutedClass}">RM ${atapFmtMoney(r.annualSaving)}</td>
+                    <td class="py-3 px-5 text-right font-black ${strongClass}">RM ${atapFmtMoney(r.accumulated)}</td>
+                </tr>`;
+            }).join('');
+        };
+
+        window.renderAtapFormulaLockPanels = () => {
+            const unlocked = !!window.__atapFormulaUnlocked;
+            document.querySelectorAll('[data-atap-formula-lock-panel]').forEach(el => {
+                if (unlocked) {
+                    el.classList.add('hidden');
+                    el.style.display = 'none';
+                } else {
+                    el.classList.remove('hidden');
+                    el.style.display = 'block';
+                }
+            });
+            document.querySelectorAll('[data-atap-formula-table]').forEach(el => {
+                if (unlocked) {
+                    el.classList.remove('hidden');
+                    el.style.display = 'block';
+                } else {
+                    el.classList.add('hidden');
+                    el.style.display = 'none';
+                }
+            });
+            document.querySelectorAll('[data-atap-formula-lock-action="lock"]').forEach(el => {
+                if (unlocked) {
+                    el.classList.remove('hidden');
+                    el.style.display = 'inline-flex';
+                } else {
+                    el.classList.add('hidden');
+                    el.style.display = 'none';
+                }
+            });
+        };
+
+        window.unlockAtapFormulaMap = (planKey) => {
+            const input = document.querySelector(`[data-atap-formula-password="${planKey}"]`);
+            const error = document.querySelector(`[data-atap-formula-error="${planKey}"]`);
+            if (String(input?.value || '') !== '0409') {
+                if (error) {
+                    error.textContent = 'Password incorrect. Please try again.';
+                    error.classList.remove('hidden');
+                }
+                return;
+            }
+            window.__atapFormulaUnlocked = true;
+            document.querySelectorAll('[data-atap-formula-password]').forEach(el => { el.value = ''; });
+            document.querySelectorAll('[data-atap-formula-error]').forEach(el => {
+                el.textContent = '';
+                el.classList.add('hidden');
+            });
+            window.renderAtapFormulaLockPanels();
+            window.recalcAtapViews?.();
+        };
+
+        window.lockAtapFormulaMap = () => {
+            window.__atapFormulaUnlocked = false;
+            document.querySelectorAll('#atap-solar-only-formulas, #atap-solar-battery-formulas').forEach(el => { el.innerHTML = ''; });
+            window.renderAtapFormulaLockPanels();
+            window.recalcAtapViews?.();
+        };
+
+        const atapRenderPlan = (planKey, plan, inputs, sizing, bill, analysis) => {
+            atapSetOut(`${planKey}.beforeBill`, atapFmtMoney(bill.beforeBill));
+            atapSetOut(`${planKey}.afterBill`, atapFmtMoney(bill.afterBill));
+            atapSetOut(`${planKey}.saving`, atapFmtMoney(bill.saving));
+            atapSetOut(`${planKey}.savingPct`, atapFmtPct(bill.savingPct));
+            atapSetOut(`${planKey}.pvSize`, sizing.pvSizeKwp.toFixed(2));
+            atapSetOut(`${planKey}.panelCount`, atapFmtWhole(sizing.panelCount));
+            atapSetOut(`${planKey}.initialInvestment`, atapFmtWhole(analysis.initialInvestment));
+            atapSetOut(`${planKey}.payback`, analysis.paybackYear ? analysis.paybackYear.toFixed(2) : 'Not within 25Y');
+
+            const breakdownRows = [
+                ['Exported Energy', `${atapFmtKwh(bill.exportedEnergy)} kWh`, 'Total Generation x Export Factor'],
+                ['Self-Consumed Solar', `${atapFmtKwh(bill.selfConsumedSolar)} kWh`, 'Total Generation - Exported Energy'],
+                ['Imported Energy', `${atapFmtKwh(bill.importedEnergy)} kWh`, 'Monthly Usage - Self-Consumed Solar'],
+                ['Power Consumption Charge', `RM ${atapFmtMoney(bill.powerCharge)}`, 'Imported Energy x TNB tariff blocks'],
+                ['Generation Export Credit', `RM ${atapFmtMoney(bill.exportCredit)}`, `MIN(Imported, Exported) x RM${bill.exportEnergyRate}`],
+                ['AFA', `RM ${atapFmtMoney(bill.afa)}`, 'Imported Energy x AFA Rate'],
+                ['EEI Rebate', `RM ${atapFmtMoney(bill.eei)}`, '-Imported Energy x EEI Rate'],
+                ['ST 8%', `RM ${atapFmtMoney(bill.st)}`, 'Power Consumption Charge x 8%'],
+                ['KWTBB 1.6%', `RM ${atapFmtMoney(bill.kwtbb)}`, 'Power Consumption Charge x 1.6%'],
+                ['Retail Charge', `RM ${atapFmtMoney(bill.retailCharge)}`, 'Fixed monthly charge']
+            ];
+            const lockedLogic = '<span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-slate-400">Locked</span>';
+            atapRenderRows(`atap-${plan.domKey}-breakdown`, breakdownRows, [
+                { className: 'py-3 px-5 font-bold text-slate-700', value: r => r[0] },
+                { className: 'py-3 px-5 text-right font-mono text-slate-800', value: r => r[1] },
+                { className: 'py-3 px-5 text-xs text-slate-500', value: r => window.__atapFormulaUnlocked ? r[2] : lockedLogic }
+            ]);
+
+            atapRenderCashflow(planKey, plan, analysis);
+
+            const formulaRows = [
+                ['TNB', 'Before Bill', `calcTnbForward(${inputs.monthlyConsumption} kWh).total`, `RM ${atapFmtMoney(bill.beforeBill)}`],
+                ['PV Sizing', 'Daily Generation', `Target Generation / 30`, `${sizing.dailyGeneration.toFixed(2)} kWh/day`],
+                ['PV Sizing', 'PV Size', `(Daily Generation / Loss Factor) / Peak Sun Hours`, `${sizing.pvSizeKwp.toFixed(2)} kWp`],
+                ['PV Sizing', 'Panel Count', `ROUNDUP(PV Size / (${inputs.panelRating} W / 1000), 0)`, `${atapFmtWhole(sizing.panelCount)} pcs`],
+                ['ATAP Bill', 'Exported Energy', `Total Generation x ${bill.exportFactor}`, `${atapFmtKwh(bill.exportedEnergy)} kWh`],
+                ['ATAP Bill', 'Export Credit', `MIN(Imported, Exported) x RM${bill.exportEnergyRate}`, `RM ${atapFmtMoney(bill.exportCredit)}`],
+                ['ATAP Bill', 'Imported Energy', `MAX(Monthly Usage - Self-Consumed Solar, 0)`, `${atapFmtKwh(bill.importedEnergy)} kWh`],
+                ['ATAP Bill', 'AFA RM', `Imported Energy x ${plan.afaRate}`, `RM ${atapFmtMoney(bill.afa)}`],
+                ['ATAP Bill', 'After Bill', `Power + EEI + AFA + Retail - Export Credit + ST + KWTBB`, `RM ${atapFmtMoney(bill.afterBill)}`],
+                ['25Y Analysis', 'Year 1 PV kWh', `Panel kW x Peak Sun Hours x Panels x 365 x 0.777765`, `${atapFmtKwh(analysis.baseGeneration)} kWh`],
+                ['25Y Analysis', 'Year 2+ PV kWh', `Year 2 = Year 1 x 0.98; Year 3+ = Year 1 x 0.98 x 0.9975^(Year-2)`, `${atapFmtKwh(analysis.rows[1]?.generation || 0)} kWh in Year 2`],
+                ['25Y Analysis', 'Payback Year', `Previous Year + (-Previous Cumulative) / (Current Cumulative - Previous Cumulative)`, analysis.paybackYear ? analysis.paybackYear.toFixed(2) : 'Not within 25Y']
+            ];
+            if (window.__atapFormulaUnlocked) {
+                atapRenderRows(`atap-${plan.domKey}-formulas`, formulaRows, [
+                    { className: 'py-3 px-5 font-black uppercase tracking-widest text-slate-400', value: r => r[0] },
+                    { className: 'py-3 px-5 font-bold text-slate-700', value: r => r[1] },
+                    { className: 'py-3 px-5 font-mono text-[11px] text-slate-600 whitespace-normal', value: r => r[2] },
+                    { className: 'py-3 px-5 text-right font-black text-slate-800 whitespace-nowrap', value: r => r[3] }
+                ]);
+            } else {
+                const tbody = document.getElementById(`atap-${plan.domKey}-formulas`);
+                if (tbody) tbody.innerHTML = '';
+            }
+            window.renderAtapFormulaLockPanels();
+        };
+
+        window.recalcAtapViews = () => {
+            let inputs = window.getAtapInputs();
+            const sizing = window.calcPvSizing(inputs);
+            if (window.syncAtapInvestmentToSizing?.(sizing)) {
+                inputs = window.getAtapInputs();
+            }
+            Object.entries(window.atapPlans).forEach(([planKey, plan]) => {
+                const bill = window.calcAtapBill(plan, inputs);
+                const analysis = window.calcAtap25Year(plan, sizing, inputs);
+                atapRenderPlan(planKey, plan, inputs, sizing, bill, analysis);
+            });
+        };
+
+        window.__tnbMode = 'kwhToBill';
+        window.__tnbLastEdited = null;
+
+        const tnbPop = (el) => {
+            if (!el) return;
+            el.classList.remove('tnb-pop');
+            void el.offsetWidth;
+            el.classList.add('tnb-pop');
+            el.addEventListener('animationend', () => el.classList.remove('tnb-pop'), { once: true });
+        };
+
+        const tnbSetText = (id, text) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const v = String(text);
+            if (el.textContent !== v) {
+                el.textContent = v;
+                tnbPop(el);
+            }
+        };
+
+        const tnbMoney = (n) => {
+            const v = Number(n);
+            if (!Number.isFinite(v)) return '0.00';
+            return v.toFixed(2);
+        };
+
+        const tnbKwhFmt = (n) => {
+            const v = Number(n);
+            if (!Number.isFinite(v)) return '0.00';
+            return v.toFixed(2);
+        };
+
+        const tnbAverageFmt = (bill, kwh) => {
+            const b = Number(bill);
+            const k = Number(kwh);
+            if (!Number.isFinite(b) || !Number.isFinite(k) || k <= 0) return '0.0000';
+            return (b / k).toFixed(4);
+        };
+
+        window.setTnbMode = (mode) => {
+            const m = mode === 'billToKwh' ? 'billToKwh' : 'kwhToBill';
+            window.__tnbMode = m;
+            const btnK = document.getElementById('tnb-mode-btn-kwh');
+            const btnB = document.getElementById('tnb-mode-btn-bill');
+            const secK = document.getElementById('tnb-mode-kwh');
+            const secB = document.getElementById('tnb-mode-bill');
+            const setBtn = (btn, active) => {
+                if (!btn) return;
+                btn.classList.toggle('bg-[#582C83]', !!active);
+                btn.classList.toggle('text-white', !!active);
+                btn.classList.toggle('shadow-sm', !!active);
+                btn.classList.toggle('text-slate-500', !active);
+                btn.classList.toggle('hover:text-slate-600', !active);
+            };
+
+            setBtn(btnK, m === 'kwhToBill');
+            setBtn(btnB, m === 'billToKwh');
+
+            if (secK) {
+                if (m === 'kwhToBill') {
+                    secK.classList.remove('hidden');
+                    secK.style.display = 'block';
+                } else {
+                    secK.classList.add('hidden');
+                    secK.style.display = 'none';
+                }
+            }
+            if (secB) {
+                if (m === 'billToKwh') {
+                    secB.classList.remove('hidden');
+                    secB.style.display = 'block';
+                } else {
+                    secB.classList.add('hidden');
+                    secB.style.display = 'none';
+                }
+            }
+            window.recalcTnbFromActiveInput?.();
+        };
+
+        window.onTnbKwhInput = (raw) => {
+            window.__tnbLastEdited = 'kwh';
+            const s = String(raw ?? '');
+            if (!s.trim()) {
+                tnbSetText('tnb-out-bill-total', '0.00');
+                tnbSetText('tnb-out-energy', '0.00');
+                tnbSetText('tnb-out-icpt', '0.00');
+                tnbSetText('tnb-out-st', '0.00');
+                tnbSetText('tnb-out-total', '0.00');
+                tnbSetText('tnb-out-average-kwh', '0.0000');
+                return;
+            }
+            const kwh = Number(s);
+            if (!Number.isFinite(kwh)) {
+                tnbSetText('tnb-out-bill-total', '0.00');
+                tnbSetText('tnb-out-energy', '0.00');
+                tnbSetText('tnb-out-icpt', '0.00');
+                tnbSetText('tnb-out-st', '0.00');
+                tnbSetText('tnb-out-total', '0.00');
+                tnbSetText('tnb-out-average-kwh', '0.0000');
+                return;
+            }
+            const r = window.calcTnbForward(kwh);
+            tnbSetText('tnb-out-bill-total', tnbMoney(r.total));
+            tnbSetText('tnb-out-energy', tnbMoney(r.energyCharge));
+            tnbSetText('tnb-out-icpt', tnbMoney(r.icpt));
+            tnbSetText('tnb-out-st', tnbMoney(r.st));
+            tnbSetText('tnb-out-total', tnbMoney(r.total));
+            tnbSetText('tnb-out-average-kwh', tnbAverageFmt(r.total, kwh));
+            window.syncAtapUsageFromTnb?.(kwh);
+        };
+
+        window.onTnbBillInput = (raw) => {
+            window.__tnbLastEdited = 'bill';
+            const s = String(raw ?? '');
+            const tip = document.getElementById('tnb-deadzone-tip');
+            if (!s.trim()) {
+                if (tip) {
+                    tip.classList.add('hidden');
+                    tip.textContent = '';
+                }
+                tnbSetText('tnb-out-kwh', '0.00');
+                tnbSetText('tnb-out-average-bill', '0.0000');
+                return;
+            }
+            const bill = Number(s);
+            if (!Number.isFinite(bill)) {
+                tnbSetText('tnb-out-kwh', '0.00');
+                tnbSetText('tnb-out-average-bill', '0.0000');
+                return;
+            }
+            const r = window.calcTnbReverse(bill);
+            if (r.deadZone) {
+                if (tip) {
+                    tip.classList.remove('hidden');
+                    tip.textContent = r.deadZone === '600'
+                        ? "This amount is rare due to TNB's 600kWh ICPT policy jump."
+                        : "This amount is rare due to TNB's 1500kWh ICPT policy jump.";
+                }
+                tnbSetText('tnb-out-kwh', 'N/A');
+                tnbSetText('tnb-out-average-bill', 'N/A');
+                return;
+            }
+            if (tip) {
+                tip.classList.add('hidden');
+                tip.textContent = '';
+            }
+            tnbSetText('tnb-out-kwh', tnbKwhFmt(r.kwh));
+            tnbSetText('tnb-out-average-bill', tnbAverageFmt(bill, r.kwh));
+            window.syncAtapUsageFromTnb?.(r.kwh);
+        };
+
+        window.recalcTnbFromActiveInput = () => {
+            if (window.__tnbMode === 'billToKwh') {
+                const v = document.getElementById('tnb-bill-input')?.value ?? '';
+                window.onTnbBillInput(v);
+            } else {
+                const v = document.getElementById('tnb-kwh-input')?.value ?? '';
+                window.onTnbKwhInput(v);
+            }
+        };
+
         let costData = {
             pv: [{ name: '光伏板', price: 1, freight: 5, importTax: 0, sst: 10, profit: 1.1 }, { name: '支架', price: 0.4, freight: 5, importTax: 0, sst: 10, profit: 1.1 }, { name: '逆变器', price: 0.275, freight: 5, importTax: 0, sst: 10, profit: 1.1 }, { name: '辅材', price: 0.2, freight: 5, importTax: 0, sst: 10, profit: 1.1 }, { name: '并网柜', price: 0.1, freight: 5, importTax: 0, sst: 10, profit: 1.1 }, { name: '安装管理费', price: 0.3, freight: 0, importTax: 0, sst: 0, profit: 1.1 }, { name: '其他管理费', price: 0.1, freight: 0, importTax: 0, sst: 0, profit: 1.1 }, { name: '安装费', price: 0.4, freight: 0, importTax: 0, sst: 0, profit: 1.1 }],
             bat: [{ name: '纯电池', price: 0.55, freight: 5, importTax: 20, sst: 10, profit: 1.2 }, { name: '并机柜防逆流', price: 0.2, freight: 5, importTax: 0, sst: 10, profit: 1.2 }, { name: '其他材料', price: 0.15, freight: 5, importTax: 0, sst: 10, profit: 1.2 }]
@@ -4766,6 +8338,10 @@
 
         document.getElementById('currentDate').valueAsDate = new Date();
         generateQuoteNo();
+        try { window.switchPvcalcPage?.('1'); } catch (e) {}
+        try { window.setTnbMode?.('kwhToBill'); } catch (e) {}
+        try { window.setAtapExportRateEditable?.(false); } catch (e) {}
+        try { window.recalcAtapViews?.(); } catch (e) {}
         const trSearch = document.getElementById('transport-search');
         if (trSearch) trSearch.addEventListener('input', () => renderTransport());
         const trStatus = document.getElementById('transport-status-filter');
@@ -4778,11 +8354,12 @@
             if (Number.isInteger(n) && n >= 1 && n <= 999) validityDays = n;
         } catch (e) {}
         updateLanguageLabels();
+        window.renderCurrencyButton?.();
         const termsEl = document.getElementById('val-terms');
-        if (termsEl) { 
+        if (termsEl) {
             requestAnimationFrame(() => {
-                termsEl.style.height = ''; 
-                termsEl.style.height = termsEl.scrollHeight + 'px'; 
+                termsEl.style.height = '';
+                termsEl.style.height = termsEl.scrollHeight + 'px';
             });
         }
         const addrEl = document.getElementById('company-address');
@@ -4831,8 +8408,10 @@
                 products,
                 inventory,
                 inventoryHistory,
+                marketPrices,
                 salesRecords,
                 historicalInventory,
+                suppliers,
                 companyCerts,
                 transportRecords,
                 fileDeleteLogs,
@@ -4853,8 +8432,10 @@
                     products,
                     inventory,
                     inventoryHistory,
+                    marketPrices,
                     salesRecords,
                     historicalInventory,
+                    suppliers,
                     companyCerts,
                     transportRecords,
                     fileDeleteLogs,
@@ -4916,18 +8497,8 @@
             a.remove();
             setTimeout(() => URL.revokeObjectURL(url), 120000);
         };
-        renderDb();
-        renderInventory();
-        renderTransport();
-        renderSalesRecords();
-        renderHistoricalInventory();
-        renderInventoryHistory();
-        updatePickerFilters();
-        renderPicker();
-        updateDatalists();
-        calculatePV();
-        renderProfitSettingsUI();
-        renderCostCalcUI();
+        renderTopLevelData(getActiveTopLevelTab(), { force: true });
+        scheduleDeferredTopLevelRenders();
         startPublishedStatePolling();
         tryLoadPublishedState(true);
 
@@ -4946,7 +8517,8 @@
             const isoSel = document.getElementById('iso-cert-vendor-select');
             if (isoSel) {
                 const cur = String(isoSel.value || '');
-                const vendors = [...new Set((Array.isArray(products) ? products : []).map(p => String(p?.vendor || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+                ensureSupplierData();
+                const vendors = [...new Set((Array.isArray(suppliers) ? suppliers : []).map(s => getSupplierDisplayName(s)).filter(Boolean))].sort((a, b) => a.localeCompare(b));
                 isoSel.innerHTML = `<option value="">选择供应商</option>` + vendors.map(v => `<option value="${safe(v)}">${safe(v)}</option>`).join('') + `<option value="未指定">未指定</option>`;
                 if (cur && (vendors.includes(cur) || cur === '未指定')) isoSel.value = cur;
                 isoSel.onchange = () => { try { renderCompanyCertList(); } catch (e) {} };
@@ -5524,7 +9096,7 @@
                     const pid = String(r.productId || '').trim();
                     if (pid) {
                         const p = products.find(x => String(x?.id || '').trim() === pid) || {};
-                        const vv = String(p.vendor || '').trim();
+                        const vv = String(getProductSupplierDisplay(p) || '').trim();
                         if (vv) vendors.add(vv);
                     } else {
                         const descVal = String(r.description || '').trim().toLowerCase();
@@ -5534,7 +9106,7 @@
                                 const pName = String(p.name || '').toLowerCase();
                                 const pId = String(p.id || '').toLowerCase();
                                 if (descVal.includes(pName) || descVal === pId || (pId && descVal.startsWith(pId))) {
-                                    const vv = String(p.vendor || '').trim();
+                                    const vv = String(getProductSupplierDisplay(p) || '').trim();
                                     if (vv) vendors.add(vv);
                                 }
                             }
@@ -5600,6 +9172,10 @@
             updateCertSelectedSummary();
         };
 
+        window.onRotateSiteOverviewPrintChanged = (checked) => {
+            if (checked) showToast('已开启：导出 PDF 时第 5 页画布将向右旋转 90°（仅影响PDF，不影响网页显示）', 'info');
+        };
+
         window.buildAttachmentHtml = (selectedFiles) => {
             if (!selectedFiles || selectedFiles.length === 0) return '';
 
@@ -5660,7 +9236,7 @@
             return html;
         };
 
-        
+
         const downloadFile = async (type, path, name) => {
             const cfgStr = localStorage.getItem('minova_github_sync_config_v1');
             const cfg = cfgStr ? JSON.parse(cfgStr) : {};
@@ -5688,7 +9264,9 @@
 
         window.confirmAndGeneratePDF = async () => {
             const modal = document.getElementById('cert-attachment-modal');
-            
+            const rotateSiteOverview = !!document.getElementById('qa-rotate-siteoverview')?.checked;
+            if (rotateSiteOverview) showToast('提示：本次导出第 5 页画布将向右旋转 90°（仅影响PDF）', 'info');
+
             if (modal) {
                 const pageCheckboxes = modal.querySelectorAll('.print-page-checkbox:checked');
                 window.selectedPrintPages = [1, ...Array.from(pageCheckboxes).map(cb => parseInt(cb.value, 10))];
@@ -5753,6 +9331,14 @@
                 const mergedDoc = await PDFDocument.create();
                 const quoteNo = document.getElementById('quote-no').value || 'Quotation';
                 const titleEl = document.getElementById('pdf-progress-title');
+                const StandardFonts = PDFLibRef.StandardFonts;
+                const rgb = PDFLibRef.rgb;
+                const degrees = PDFLibRef.degrees;
+                let pdfHeaderFont = null;
+                let pdfHeaderFontBold = null;
+                let pdfHeaderLogoImg = null;
+                let pdfHeaderLogoDims = null;
+                let pdfHeaderLogoTried = false;
 
                 const opt = {
                     margin: 0,
@@ -5773,7 +9359,10 @@
                             clonedDoc.body.style.padding = '0';
                             clonedDoc.body.style.width = '210mm';
                             clonedDoc.body.style.maxWidth = '210mm';
-                            
+                            const exportingPageNum = parseInt(String(window.__pdfExportingPageNum ?? ''), 10);
+                            const roofSnap = String(window.__pdfRoofSnapshotDataUrl || '');
+                            const useRoofSnap = exportingPageNum === 5 && !!roofSnap;
+
                             const wrappers = clonedDoc.querySelectorAll('.quote-page');
                             wrappers.forEach(page => {
                                 if (page.style.display !== 'none' && !page.classList.contains('hidden')) {
@@ -5782,7 +9371,7 @@
                                     page.style.margin = '0 auto';
                                     page.style.borderRadius = '0';
                                     page.style.boxSizing = 'border-box';
-                                    page.style.minHeight = '297mm';
+                                    page.style.minHeight = exportingPageNum === 1 ? 'auto' : '297mm';
                                     page.style.height = 'auto';
                                     page.style.overflow = 'visible';
                                     page.style.width = '210mm';
@@ -5796,26 +9385,147 @@
                                 cont.style.margin = '0 auto';
                             }
                             clonedDoc.querySelectorAll('.no-print').forEach(el => el.style.display = 'none');
+                            clonedDoc.querySelectorAll('#quote-body tr.quote-detail-row').forEach(row => {
+                                try {
+                                    const rowId = String(row.getAttribute('data-quote-row-id') || '').trim();
+                                    const liveRow = (Array.isArray(quoteRows) ? quoteRows : []).find(r => String(r?.id || '') === rowId) || null;
+                                    const product = liveRow?.productId ? (Array.isArray(products) ? products : []).find(p => String(p?.id || '') === String(liveRow.productId)) : null;
+                                    const descField = row.querySelector('textarea');
+                                    const desc = String(descField?.value || descField?.textContent || row.children?.[1]?.textContent || '').trim().toLowerCase();
+                                    const qtyCell = row.children?.[4];
+                                    if (!qtyCell) return;
+                                    if (desc.includes('skylift, labour installation, testing & commissioning')) {
+                                        qtyCell.innerHTML = '<span class="block text-center font-medium text-slate-700">1</span>';
+                                        return;
+                                    }
+                                    const rowSpec = String(liveRow?.spec || row.children?.[3]?.textContent || '').trim();
+                                    const hay = `${product?.category || ''} ${product?.name || ''} ${product?.spec || ''} ${liveRow?.description || ''} ${liveRow?.spec || ''} ${desc} ${rowSpec}`.toLowerCase();
+                                    const hasPanelRating = /(\d+(?:\.\d+)?)\s*(?:wp|w)(?!h)/i.test(hay) || /(\d+(?:\.\d+)?)\s*瓦/.test(hay);
+                                    const isPv = hay.includes('光伏组件') || hay.includes('光伏板') || hay.includes('photovoltaic') || hay.includes('solar panel') || hay.includes('pv module') || (hay.includes('panel') && hasPanelRating) || (hay.includes('组件') && hasPanelRating);
+                                    const isInverter = hay.includes('逆变器') || hay.includes('inverter');
+                                    if (isPv) {
+                                        const panelCount = String(document.getElementById('quote-panel-count')?.textContent || '').trim() || String(liveRow?.quantity || '');
+                                        qtyCell.innerHTML = `<span class="block text-center font-medium text-slate-700">${panelCount}</span>`;
+                                    } else if (isInverter) {
+                                        const currentQty = String(liveRow?.quantity ?? qtyCell.textContent ?? '').trim();
+                                        qtyCell.innerHTML = `<span class="block text-center font-medium text-slate-700">${currentQty}</span>`;
+                                    }
+                                } catch (e) {}
+                            });
 
                             const style = clonedDoc.createElement('style');
                             style.innerHTML = `
                                 @page { size: A4; margin: 0; }
-                                input, textarea { overflow-wrap: anywhere !important; word-break: break-word !important; }
+                                input, textarea { overflow-wrap: break-word !important; word-break: normal !important; hyphens: none !important; }
                                 textarea { white-space: pre-wrap !important; overflow: visible !important; }
                                 #val-terms { white-space: pre-wrap !important; }
                                 tr, h1, h2, h3, h4, h5, h6 { page-break-inside: avoid !important; break-inside: avoid !important; }
                                 .grand-total-container, .grand-total-container * { page-break-inside: avoid !important; break-inside: avoid !important; }
                                 .total-pill { page-break-inside: avoid !important; break-inside: avoid !important; }
                                 .signature-container { page-break-inside: avoid !important; break-inside: avoid !important; margin-bottom: 0 !important; }
+                                .reference-hero-media { display: flex !important; align-items: center !important; justify-content: center !important; width: 100% !important; height: 390px !important; background: #f8fafc !important; }
+                                .reference-hero-media img { width: auto !important; height: auto !important; max-width: 100% !important; max-height: 390px !important; object-fit: contain !important; object-position: center center !important; }
                                 .pv-module .resize-handle, .pv-module .delete-btn { display: none !important; }
                             `;
                             clonedDoc.head.appendChild(style);
 
                             try {
                                 const win = clonedDoc.defaultView || window;
+                                try {
+                                    if (useRoofSnap) {
+                                        const grid = clonedDoc.getElementById('roof-editor-grid');
+                                        if (grid) {
+                                            grid.innerHTML = '';
+                                            grid.style.display = 'block';
+                                            const img = clonedDoc.createElement('img');
+                                            img.src = roofSnap;
+                                            img.style.position = 'absolute';
+                                            img.style.left = '0';
+                                            img.style.top = '0';
+                                            img.style.right = '0';
+                                            img.style.bottom = '0';
+                                            img.style.width = '100%';
+                                            img.style.height = '100%';
+                                            img.style.objectFit = 'contain';
+                                            img.style.objectPosition = 'left top';
+                                            img.style.display = 'block';
+                                            const prevPos = grid.style.position;
+                                            if (!prevPos) grid.style.position = 'relative';
+                                            grid.appendChild(img);
+                                        }
+                                    }
+                                } catch (e) {}
+                                try {
+                                    if (!useRoofSnap) {
+                                        const viewport = clonedDoc.getElementById('roof-viewport');
+                                        const img = clonedDoc.getElementById('roof-image');
+                                        if (viewport && img) {
+                                            const vr = viewport.getBoundingClientRect ? viewport.getBoundingClientRect() : null;
+                                            const vw = (vr?.width || 0) || (viewport.clientWidth || 0);
+                                            const vh = (vr?.height || 0) || (viewport.clientHeight || 0);
+                                            const iw = parseFloat(String(img.dataset.iw || img.naturalWidth || '0')) || 0;
+                                            const ih = parseFloat(String(img.dataset.ih || img.naturalHeight || '0')) || 0;
+                                            if (vw && vh && iw && ih) {
+                                                const s = Math.min(vw / iw, vh / ih);
+                                                const w = iw * s;
+                                                const h = ih * s;
+                                                img.style.right = 'auto';
+                                                img.style.bottom = 'auto';
+                                                img.style.left = '0';
+                                                img.style.top = '0';
+                                                img.style.width = `${w}px`;
+                                                img.style.height = `${h}px`;
+                                                img.style.objectFit = 'contain';
+                                                img.style.objectPosition = 'left top';
+                                            }
+                                        }
+                                    }
+                                } catch (e) {}
+                                try {
+                                    if (!useRoofSnap) {
+                                        const parseClipPoly = (s) => {
+                                            const m = String(s || '').match(/polygon\((.+)\)/);
+                                            if (!m) return null;
+                                            const pts = m[1].split(',').map((raw) => {
+                                                const parts = String(raw || '').trim().split(/\s+/).filter(Boolean);
+                                                if (parts.length < 2) return null;
+                                                const x = parseFloat(parts[0]);
+                                                const y = parseFloat(parts[1]);
+                                                if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+                                                return { x, y };
+                                            }).filter(Boolean);
+                                            return pts.length >= 3 ? pts : null;
+                                        };
+                                        const shapes = Array.from(clonedDoc.querySelectorAll('.pv-module.is-custom .pv-module-shape'));
+                                        shapes.forEach((shape) => {
+                                            const cs = win.getComputedStyle ? win.getComputedStyle(shape) : null;
+                                            const clip = shape.style.clipPath || (cs ? cs.clipPath : '') || '';
+                                            const pts = parseClipPoly(clip);
+                                            if (!pts) return;
+                                            const svg = clonedDoc.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                                            svg.setAttribute('viewBox', '0 0 100 100');
+                                            svg.setAttribute('preserveAspectRatio', 'none');
+                                            svg.style.position = 'absolute';
+                                            svg.style.inset = '0';
+                                            svg.style.width = '100%';
+                                            svg.style.height = '100%';
+                                            const poly = clonedDoc.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                                            poly.setAttribute('points', pts.map(p => `${p.x},${p.y}`).join(' '));
+                                            const fill = cs ? String(cs.backgroundColor || 'transparent') : 'transparent';
+                                            const stroke = cs ? String(cs.borderTopColor || 'rgba(15,23,42,0.25)') : 'rgba(15,23,42,0.25)';
+                                            const sw = cs ? (parseFloat(String(cs.borderTopWidth || '1')) || 1) : 1;
+                                            poly.setAttribute('fill', fill);
+                                            poly.setAttribute('stroke', stroke);
+                                            poly.setAttribute('stroke-width', String(sw));
+                                            poly.setAttribute('vector-effect', 'non-scaling-stroke');
+                                            svg.appendChild(poly);
+                                            shape.replaceWith(svg);
+                                        });
+                                    }
+                                } catch (e) {}
                                 const list = Array.from(clonedDoc.querySelectorAll('textarea'));
-                                list.forEach((ta) => {
-                                    const cs = win.getComputedStyle ? win.getComputedStyle(ta) : null;
+	                                list.forEach((ta) => {
+	                                    const cs = win.getComputedStyle ? win.getComputedStyle(ta) : null;
                                     const tag = (cs && (cs.display === 'inline' || cs.display === 'inline-block')) ? 'span' : 'div';
                                     const repl = clonedDoc.createElement(tag);
                                     repl.id = ta.id;
@@ -5839,24 +9549,384 @@
                                     }
                                     repl.style.boxSizing = 'border-box';
                                     repl.style.whiteSpace = 'pre-wrap';
-                                    repl.style.overflowWrap = 'anywhere';
-                                    repl.style.wordBreak = 'break-all';
+                                    repl.style.overflowWrap = 'break-word';
+                                    repl.style.wordBreak = 'normal';
+                                    repl.style.hyphens = 'none';
                                     repl.style.overflow = 'visible';
                                     repl.style.background = 'transparent';
                                     repl.style.height = 'auto';
-                                    ta.replaceWith(repl);
-                                });
-                            } catch (e) {}
-                        }
+	                                    ta.replaceWith(repl);
+	                                });
+	                                try { window.applyQuotePdfPageBreaks?.(clonedDoc); } catch (e) {}
+	                            } catch (e) {}
+	                        }
                     },
                     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true }
+                };
+
+                const buildRoofSnapshotForPdf = async () => {
+                    try {
+                        const grid = document.getElementById('roof-editor-grid');
+                        const viewport = document.getElementById('roof-viewport');
+                        const img = document.getElementById('roof-image');
+                        if (!grid || !viewport || !img || !siteOverview) return '';
+                        const r0 = grid.getBoundingClientRect ? grid.getBoundingClientRect() : null;
+                        const w0 = r0?.width || grid.offsetWidth || 0;
+                        const h0 = r0?.height || grid.offsetHeight || 0;
+                        if (!w0 || !h0) return '';
+
+                        const scale = 4;
+                        const canvas = document.createElement('canvas');
+                        canvas.width = Math.max(1, Math.round(w0 * scale));
+                        canvas.height = Math.max(1, Math.round(h0 * scale));
+                        const ctx = canvas.getContext('2d');
+                        if (!ctx) return '';
+                        ctx.scale(scale, scale);
+                        ctx.imageSmoothingEnabled = true;
+                        ctx.imageSmoothingQuality = 'high';
+
+                        const ruler = 20;
+                        const vp = { x: ruler, y: ruler, w: Math.max(0, w0 - ruler), h: Math.max(0, h0 - ruler) };
+
+                        const roofWm = parsePositiveFloat(siteOverview.roof?.widthM, 1);
+                        const roofHm = parsePositiveFloat(siteOverview.roof?.heightM, 1);
+
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillRect(0, 0, w0, h0);
+
+                        const drawRoundRect = (x, y, w, h, r) => {
+                            const rr = Math.max(0, Math.min(r, w / 2, h / 2));
+                            ctx.beginPath();
+                            ctx.moveTo(x + rr, y);
+                            ctx.arcTo(x + w, y, x + w, y + h, rr);
+                            ctx.arcTo(x + w, y + h, x, y + h, rr);
+                            ctx.arcTo(x, y + h, x, y, rr);
+                            ctx.arcTo(x, y, x + w, y, rr);
+                            ctx.closePath();
+                        };
+
+                        const computeBgRect = (vw, vh, iw, ih) => {
+                            const s = Math.min(vw / iw, vh / ih);
+                            const w = iw * s;
+                            const h = ih * s;
+                            return { x: 0, y: 0, w, h, vw, vh };
+                        };
+
+                        const bgIw = img.naturalWidth || parseFloat(String(img.dataset.iw || '0')) || 0;
+                        const bgIh = img.naturalHeight || parseFloat(String(img.dataset.ih || '0')) || 0;
+                        if (!img.complete) {
+                            await new Promise(r => {
+                                img.onload = () => r();
+                                img.onerror = () => r();
+                            });
+                        }
+                        const bgRect = (vp.w && vp.h && bgIw && bgIh) ? computeBgRect(vp.w, vp.h, bgIw, bgIh) : { x: 0, y: 0, w: vp.w, h: vp.h, vw: vp.w, vh: vp.h };
+                        const pxPerM = Math.min((bgRect.w || 1) / roofWm, (bgRect.h || 1) / roofHm);
+                        const worldToPxExport = (xM, yM) => ({ x: vp.x + bgRect.x + xM * pxPerM, y: vp.y + bgRect.y + yM * pxPerM });
+
+                        const show = !!siteOverview.settings?.showRulers;
+                        const step = parsePositiveFloat(siteOverview.settings?.gridStepM, 1);
+                        let minorStep = step / 10;
+                        const minorPx = minorStep * pxPerM;
+                        if (!Number.isFinite(minorPx) || minorPx < 4) minorStep = 0;
+                        const tickEvery = minorStep ? minorStep : step;
+                        const maxTicksX = tickEvery > 0 ? Math.ceil(roofWm / tickEvery) : 0;
+                        const maxTicksY = tickEvery > 0 ? Math.ceil(roofHm / tickEvery) : 0;
+                        if (maxTicksX > 6000 || maxTicksY > 6000) minorStep = 0;
+                        const majorPx = step * pxPerM;
+                        const labelEvery = majorPx > 0 ? Math.ceil(40 / majorPx) : 1;
+
+                        if (show) {
+                            ctx.strokeStyle = 'rgba(148,163,184,0.25)';
+                            ctx.lineWidth = 1;
+                            for (let m = 0; m <= roofWm + 1e-6; m += step) {
+                                const x = vp.x + m * pxPerM;
+                                ctx.beginPath();
+                                ctx.moveTo(x, vp.y);
+                                ctx.lineTo(x, vp.y + vp.h);
+                                ctx.stroke();
+                            }
+                            for (let m = 0; m <= roofHm + 1e-6; m += step) {
+                                const y = vp.y + m * pxPerM;
+                                ctx.beginPath();
+                                ctx.moveTo(vp.x, y);
+                                ctx.lineTo(vp.x + vp.w, y);
+                                ctx.stroke();
+                            }
+
+                            ctx.fillStyle = '#ffffff';
+                            ctx.fillRect(0, 0, w0, ruler);
+                            ctx.fillRect(0, 0, ruler, h0);
+                            ctx.strokeStyle = 'rgba(148,163,184,0.7)';
+                            ctx.beginPath();
+                            ctx.moveTo(ruler, ruler);
+                            ctx.lineTo(w0, ruler);
+                            ctx.moveTo(ruler, ruler);
+                            ctx.lineTo(ruler, h0);
+                            ctx.stroke();
+
+                            const drawTicksX = minorStep ? minorStep : step;
+                            for (let m = 0, idx = 0; m <= roofWm + 1e-6; m += drawTicksX, idx++) {
+                                const isMajor = Math.abs((m / step) - Math.round(m / step)) < 1e-6;
+                                const x = vp.x + m * pxPerM;
+                                ctx.strokeStyle = isMajor ? 'rgba(100,116,139,0.45)' : 'rgba(148,163,184,0.35)';
+                                ctx.lineWidth = 1;
+                                ctx.beginPath();
+                                ctx.moveTo(x, isMajor ? 0 : ruler * 0.6);
+                                ctx.lineTo(x, ruler);
+                                ctx.stroke();
+                                if (isMajor) {
+                                    const majorIdx = Math.round(m / step);
+                                    if (majorIdx % labelEvery === 0) {
+                                        ctx.fillStyle = 'rgba(71,85,105,0.9)';
+                                        ctx.font = '700 8px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+                                        ctx.fillText(String(Math.round(m * 1000) / 1000), x + 2, 10);
+                                    }
+                                }
+                            }
+
+                            const drawTicksY = minorStep ? minorStep : step;
+                            for (let m = 0, idx = 0; m <= roofHm + 1e-6; m += drawTicksY, idx++) {
+                                const isMajor = Math.abs((m / step) - Math.round(m / step)) < 1e-6;
+                                const y = vp.y + m * pxPerM;
+                                ctx.strokeStyle = isMajor ? 'rgba(100,116,139,0.45)' : 'rgba(148,163,184,0.35)';
+                                ctx.lineWidth = 1;
+                                ctx.beginPath();
+                                ctx.moveTo(isMajor ? 0 : ruler * 0.6, y);
+                                ctx.lineTo(ruler, y);
+                                ctx.stroke();
+                                if (isMajor) {
+                                    const majorIdx = Math.round(m / step);
+                                    if (majorIdx % labelEvery === 0) {
+                                        ctx.fillStyle = 'rgba(71,85,105,0.9)';
+                                        ctx.font = '700 8px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+                                        ctx.fillText(String(Math.round(m * 1000) / 1000), 2, y - 2);
+                                    }
+                                }
+                            }
+                        }
+
+                        if (bgIw && bgIh) {
+                            ctx.drawImage(img, vp.x + bgRect.x, vp.y + bgRect.y, bgRect.w, bgRect.h);
+                        }
+
+                        const alpha = clamp(parseFloat(String(siteOverview.settings?.moduleOpacity ?? 0.35)), 0.05, 1.0);
+                        const drawPoly = (pts, fill, stroke, sw) => {
+                            if (!Array.isArray(pts) || pts.length < 3) return;
+                            ctx.beginPath();
+                            ctx.moveTo(pts[0].x, pts[0].y);
+                            for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+                            ctx.closePath();
+                            if (fill && fill !== 'transparent') {
+                                ctx.fillStyle = fill;
+                                ctx.fill();
+                            }
+                            if (stroke) {
+                                ctx.strokeStyle = stroke;
+                                ctx.lineWidth = sw || 1;
+                                ctx.stroke();
+                            }
+                        };
+
+                        const modules = Array.isArray(siteOverview.modules) ? siteOverview.modules : [];
+                        modules.forEach((m) => {
+                            const type = String(m?.type || 'pv');
+                            const dims = getModuleDimsM(m);
+                            if (type === 'pv') {
+                                const p = worldToPxExport(parsePositiveFloat(m.xM, 0), parsePositiveFloat(m.yM, 0));
+                                const w = dims.wM * pxPerM;
+                                const h = dims.hM * pxPerM;
+                                ctx.fillStyle = `rgba(88, 44, 131, ${alpha})`;
+                                ctx.fillRect(p.x, p.y, w, h);
+                                ctx.strokeStyle = '#4B236F';
+                                ctx.lineWidth = 2;
+                                ctx.strokeRect(p.x, p.y, w, h);
+                                ctx.fillStyle = '#ffffff';
+                                ctx.font = '900 14px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+                                const t = 'PV';
+                                const tw = ctx.measureText(t).width;
+                                ctx.fillText(t, p.x + (w - tw) / 2, p.y + h / 2 + 5);
+                                return;
+                            }
+                            if (type === 'custom') {
+                                const bg = m.bgColor ? hexToRgba(m.bgColor, alpha) : 'transparent';
+                                const stroke = 'rgba(15,23,42,0.25)';
+                                const shape = String(m.shape || (m.polyN ? 'polygon' : 'rect'));
+                                const ptsW = (Array.isArray(m.points) && m.points.length >= 3)
+                                    ? m.points
+                                    : getCustomShapePointsFromRect(shape, m.xM, m.yM, dims.wM, dims.hM, m.polyN);
+                                const pts = ptsW.map(p => worldToPxExport(p.xM, p.yM));
+                                drawPoly(pts, bg, stroke, 2);
+                                const labelText = String(m.text || '').trim();
+                                if (labelText) {
+                                    const c0 = polygonCentroidM(ptsW) || { xM: m.xM + dims.wM / 2, yM: m.yM + dims.hM / 2 };
+                                    const cp = worldToPxExport(c0.xM, c0.yM);
+                                    ctx.fillStyle = String(m.textColor || siteOverview.settings?.labelColor || '#FFFFFF');
+                                    ctx.font = '900 12px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+                                    const tw = ctx.measureText(labelText).width;
+                                    ctx.fillText(labelText, cp.x - tw / 2, cp.y + 4);
+                                }
+                            }
+                        });
+
+                        const drawMarkerCanvas = (p, style, color) => {
+                            const s = String(style || 'cross');
+                            ctx.strokeStyle = color;
+                            ctx.fillStyle = color;
+                            ctx.lineWidth = 2;
+                            if (s === 'diamond') {
+                                ctx.save();
+                                ctx.translate(p.x, p.y);
+                                ctx.rotate(Math.PI / 4);
+                                ctx.fillRect(-5, -5, 10, 10);
+                                ctx.restore();
+                                return;
+                            }
+                            if (s === 'cross') {
+                                ctx.beginPath();
+                                ctx.moveTo(p.x - 6, p.y);
+                                ctx.lineTo(p.x + 6, p.y);
+                                ctx.moveTo(p.x, p.y - 6);
+                                ctx.lineTo(p.x, p.y + 6);
+                                ctx.stroke();
+                                return;
+                            }
+                            ctx.beginPath();
+                            ctx.arc(p.x, p.y, 5, 0, 2 * Math.PI);
+                            ctx.fill();
+                        };
+
+                        const drawArrowCanvas = (tip, toward, color) => {
+                            const dx = (toward?.x ?? tip.x) - tip.x;
+                            const dy = (toward?.y ?? tip.y) - tip.y;
+                            const ang = Math.atan2(dy, dx);
+                            ctx.save();
+                            ctx.translate(tip.x, tip.y);
+                            ctx.rotate(ang);
+                            ctx.fillStyle = color;
+                            ctx.beginPath();
+                            ctx.moveTo(0, 0);
+                            ctx.lineTo(10, 4);
+                            ctx.lineTo(10, -4);
+                            ctx.closePath();
+                            ctx.fill();
+                            ctx.restore();
+                        };
+
+                        const drawPill = (x, y, text) => {
+                            ctx.font = '700 10px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+                            const tw = ctx.measureText(text).width;
+                            const padX = 6;
+                            const padY = 3;
+                            const w = tw + padX * 2;
+                            const h = 16;
+                            drawRoundRect(x - w / 2, y - h / 2, w, h, 8);
+                            ctx.fillStyle = 'rgba(15,23,42,0.82)';
+                            ctx.fill();
+                            ctx.fillStyle = '#ffffff';
+                            ctx.fillText(text, x - tw / 2, y + 3);
+                        };
+
+                        const ms = Array.isArray(siteOverview.measurements) ? siteOverview.measurements : [];
+                        ms.forEach((m) => {
+                            if (m?.type === 'dist' && m.a && m.b) {
+                                const p1 = worldToPxExport(m.a.xM, m.a.yM);
+                                const p2 = worldToPxExport(m.b.xM, m.b.yM);
+                                const style = m.markerStyle || siteOverview.settings?.distMarkerStyle || 'cross';
+                                const base = String(m.color || siteOverview.settings?.distColor || '#582C83');
+                                const c = hexToRgba(base, 0.95) || 'rgba(88,44,131,0.95)';
+                                ctx.beginPath();
+                                ctx.moveTo(p1.x, p1.y);
+                                ctx.lineTo(p2.x, p2.y);
+                                ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+                                ctx.lineWidth = 6;
+                                ctx.stroke();
+                                ctx.strokeStyle = c;
+                                ctx.lineWidth = 3;
+                                ctx.stroke();
+                                if (String(style) === 'arrow_a') {
+                                    drawArrowCanvas(p1, p2, 'rgba(0,0,0,0.35)');
+                                    drawArrowCanvas(p1, p2, c);
+                                } else if (String(style) === 'arrow_b') {
+                                    drawArrowCanvas(p2, p1, 'rgba(0,0,0,0.35)');
+                                    drawArrowCanvas(p2, p1, c);
+                                } else if (String(style) === 'arrow_ab') {
+                                    drawArrowCanvas(p1, p2, 'rgba(0,0,0,0.35)');
+                                    drawArrowCanvas(p2, p1, 'rgba(0,0,0,0.35)');
+                                    drawArrowCanvas(p1, p2, c);
+                                    drawArrowCanvas(p2, p1, c);
+                                } else {
+                                    drawMarkerCanvas(p1, style, 'rgba(0,0,0,0.35)');
+                                    drawMarkerCanvas(p2, style, 'rgba(0,0,0,0.35)');
+                                    drawMarkerCanvas(p1, style, c);
+                                    drawMarkerCanvas(p2, style, c);
+                                }
+                                const dx = m.b.xM - m.a.xM;
+                                const dy = m.b.yM - m.a.yM;
+                                const d = Math.sqrt(dx * dx + dy * dy);
+                                const text = formatDistanceM(d + getDistExtraLenM(style));
+                                drawPill((p1.x + p2.x) / 2, (p1.y + p2.y) / 2, text);
+                            }
+                            if (m?.type === 'area') {
+                                const vc = clamp(parseInt(String(siteOverview.settings?.areaVertexCount ?? 4), 10) || 4, 4, 12);
+                                const ptsW = Array.isArray(m.points) && m.points.length >= 3 ? m.points : (m.a && m.b ? (vc === 4 ? getRectPointsFromAB(m.a, m.b) : getRegularPolygonPointsFromRect(m.a, m.b, vc)) : []);
+                                if (ptsW.length < 3) return;
+                                const pts = ptsW.map(p => worldToPxExport(p.xM, p.yM));
+                                const baseFill = String(m.bgColor || siteOverview.settings?.areaDefaultBgColor || '#FFC107');
+                                const opacity0 = clamp(parseFloat(String(m.opacity ?? siteOverview.settings?.areaDefaultOpacity ?? 0.18)), 0.05, 1);
+                                const opacity = Math.max(0.22, opacity0);
+                                const fill = hexToRgba(baseFill, opacity) || 'rgba(255,193,7,0.18)';
+                                ctx.beginPath();
+                                ctx.moveTo(pts[0].x, pts[0].y);
+                                for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+                                ctx.closePath();
+                                ctx.fillStyle = fill;
+                                ctx.fill();
+                                ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+                                ctx.lineWidth = 6;
+                                ctx.stroke();
+                                ctx.strokeStyle = 'rgba(88,44,131,0.95)';
+                                ctx.lineWidth = 3;
+                                ctx.stroke();
+                                const area0 = polygonAreaM2(ptsW);
+                                const perim0 = polygonPerimeterM(ptsW);
+                                const area = getAreaOuterAreaM2(area0, perim0, 2);
+                                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                                pts.forEach((p) => { minX = Math.min(minX, p.x); minY = Math.min(minY, p.y); maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y); });
+                                const areaStr = `${(Math.round(area * 100) / 100).toFixed(2)}m²`;
+                                const label = String(m.label || '').trim();
+                                drawPill((minX + maxX) / 2, (minY + maxY) / 2, label ? `${label} ${areaStr}` : areaStr);
+                            }
+                        });
+
+                        try {
+                            return canvas.toDataURL('image/png');
+                        } catch (e) {
+                            return '';
+                        }
+                    } catch (e) {
+                        return '';
+                    }
+                };
+
+                const dataUrlToBytes = (dataUrl) => {
+                    try {
+                        const parts = String(dataUrl || '').split(',');
+                        if (parts.length < 2) return null;
+                        const bin = atob(parts[1]);
+                        const bytes = new Uint8Array(bin.length);
+                        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+                        return bytes;
+                    } catch (e) {
+                        return null;
+                    }
                 };
 
                 // Render internal pages sequentially
                 for (let i = 0; i < window.selectedPrintPages.length; i++) {
                     const pageNum = window.selectedPrintPages[i];
                     if (titleEl) titleEl.textContent = `正在生成页面 ${pageNum}... (${i + 1}/${window.selectedPrintPages.length})`;
-                    
+
                     // Hide all, show only current
                     [1, 2, 3, 4, 5].forEach(pn => {
                         const p = document.getElementById(`quote-page-${pn}`);
@@ -5877,15 +9947,119 @@
                     } catch (e) {}
 
                     // Await next frame to ensure DOM updates
-                    await new Promise(r => setTimeout(r, 100));
+                    if (pageNum === 5) {
+                        try { renderRoof(); } catch (e) {}
+                        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+                        await new Promise(r => setTimeout(r, 120));
+                    } else {
+                        await new Promise(r => setTimeout(r, 100));
+                    }
 
                     const container = document.getElementById('pdf-content-wrapper');
-                    const pdfData = await html2pdf().set(opt).from(container).toPdf().get('pdf').then(pdf => {
-                        const total = pdf.internal.getNumberOfPages();
-                        const last = pdf.internal.pages?.[total];
-                        if (last && last.length <= 1) pdf.deletePage(total);
-                        return pdf.output('arraybuffer');
-                    });
+                    if (pageNum === 5) {
+                        try {
+                            const dataUrl = await buildRoofSnapshotForPdf();
+                            const bytes = dataUrlToBytes(dataUrl);
+                            if (bytes) {
+                                const img = await mergedDoc.embedPng(bytes);
+                                const dims = img.scale(1);
+                                const A4 = [595.28, 841.89];
+                                const page = mergedDoc.addPage(A4);
+                                const pw = page.getWidth();
+                                const ph = page.getHeight();
+                                if (!pdfHeaderFont && StandardFonts?.Helvetica) {
+                                    try { pdfHeaderFont = await mergedDoc.embedFont(StandardFonts.Helvetica); } catch (e) {}
+                                }
+                                if (!pdfHeaderFontBold && StandardFonts?.HelveticaBold) {
+                                    try { pdfHeaderFontBold = await mergedDoc.embedFont(StandardFonts.HelveticaBold); } catch (e) {}
+                                }
+                                if (!pdfHeaderLogoImg && !pdfHeaderLogoTried) {
+                                    pdfHeaderLogoTried = true;
+                                    try {
+                                        let res = await fetch('./logo-horizontal.png', { cache: 'no-store' });
+                                        if (!res.ok) res = await fetch('./logo.png', { cache: 'no-store' });
+                                        if (res.ok) {
+                                            const logoBytes = await res.arrayBuffer();
+                                            const u8 = new Uint8Array(logoBytes);
+                                            pdfHeaderLogoImg = await mergedDoc.embedPng(u8);
+                                            pdfHeaderLogoDims = pdfHeaderLogoImg.scale(1);
+                                        }
+                                    } catch (e) {}
+                                }
+
+                                const padX = 48;
+                                const padTop = 56;
+                                const padBottom = 24;
+                                const headerH = 120;
+                                const topY = ph - padTop;
+                                const titleText = String(document.getElementById('lbl-page5-title')?.textContent || 'SITE OVERVIEW').trim() || 'SITE OVERVIEW';
+                                const tagline = 'Solar System Solution | Storage Battery';
+
+                                if (pdfHeaderLogoImg && pdfHeaderLogoDims) {
+                                    const logoH = 36;
+                                    const s = logoH / Math.max(1e-9, pdfHeaderLogoDims.height);
+                                    const logoW = pdfHeaderLogoDims.width * s;
+                                    page.drawImage(pdfHeaderLogoImg, { x: padX, y: topY - logoH, width: logoW, height: logoH });
+                                }
+                                if (pdfHeaderFontBold && rgb) {
+                                    page.drawText(tagline, { x: padX, y: topY - 58, size: 10, font: pdfHeaderFontBold, color: rgb(0.651, 0.478, 0.796) });
+                                }
+                                if (pdfHeaderFont && rgb) {
+                                    const titleSize = 36;
+                                    const tw = pdfHeaderFont.widthOfTextAtSize(titleText, titleSize);
+                                    page.drawText(titleText, { x: Math.max(padX, pw - padX - tw), y: topY - 34, size: titleSize, font: pdfHeaderFont, color: rgb(0.796, 0.835, 0.882) });
+                                }
+
+                                const availH = Math.max(1, ph - headerH - padBottom);
+                                if (rotateSiteOverview && degrees) {
+                                    const ratio = Math.min(pw / dims.height, availH / dims.width);
+                                    const w = dims.width * ratio;
+                                    const h = dims.height * ratio;
+                                    const x = (pw - h) / 2;
+                                    const y = padBottom + (availH + w) / 2;
+                                    page.drawImage(img, { x, y, width: w, height: h, rotate: degrees(-90) });
+                                } else {
+                                    const ratio = Math.min(pw / dims.width, availH / dims.height);
+                                    const w = dims.width * ratio;
+                                    const h = dims.height * ratio;
+                                    const x = (pw - w) / 2;
+                                    const y = padBottom + (availH - h) / 2;
+                                    page.drawImage(img, { x, y, width: w, height: h });
+                                }
+                                continue;
+                            }
+                        } catch (e) {}
+                    }
+
+                    let pdfData;
+                    try {
+                        pdfData = await html2pdf().set(opt).from(container).toPdf().get('pdf').then(pdf => {
+                            const isNearBlankPdfPage = (pageNo) => {
+                                const page = pdf.internal.pages?.[pageNo];
+                                if (!page) return true;
+                                const raw = Array.isArray(page) ? page.join('\n') : String(page || '');
+                                const compact = raw.replace(/\s+/g, '');
+                                if (!compact) return true;
+                                const hasText = /\b(?:BT|Tj|TJ)\b/.test(raw);
+                                const hasImage = /\/I\d+\s+Do\b|\bDo\b/.test(raw);
+                                if (hasText || hasImage) return false;
+                                return page.length <= 2 || compact.length < 180;
+                            };
+                            let total = pdf.internal.getNumberOfPages();
+                            for (let p = total; p >= 1; p--) {
+                                if (total <= 1) break;
+                                if (isNearBlankPdfPage(p)) {
+                                    pdf.deletePage(p);
+                                    total -= 1;
+                                }
+                            }
+                            return pdf.output('arraybuffer');
+                        });
+                    } finally {
+                        if (pageNum === 5) {
+                            try { renderRoof(); } catch (e) {}
+                        }
+                    }
 
                     const tempDoc = await PDFDocument.load(pdfData);
                     const copiedPages = await mergedDoc.copyPages(tempDoc, tempDoc.getPageIndices());
@@ -5900,7 +10074,7 @@
                 for (let i = 0; i < selectedFiles.length; i++) {
                     const f = selectedFiles[i];
                     if (titleEl) titleEl.textContent = `正在合并附件... (${i + 1}/${selectedFiles.length})`;
-                    
+
                     const name = String(f?.name || '');
                     const path = String(f?.path || '');
                     const ext = name.toLowerCase().split('.').pop() || '';
@@ -5955,4 +10129,3 @@
             modal.classList.add('hidden');
             modal.classList.remove('flex');
         };
-    

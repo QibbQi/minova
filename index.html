@@ -641,7 +641,7 @@
                 <button onclick="switchTab('pvcalc')" id="tab-pvcalc" class="px-6 py-2 hover:text-purple-700 transition-all text-sm leading-tight text-center text-slate-500 hover:text-blue-600"><span class="block">光储</span><span class="block">计算</span></button>
                 <button onclick="switchTab('costcalc')" id="tab-costcalc" class="px-6 py-2 hover:text-purple-700 transition-all text-sm leading-tight text-center text-slate-500 hover:text-blue-600"><span class="block">报价</span><span class="block">设置</span></button>
                 <button onclick="switchTab('database')" id="tab-database" class="px-6 py-2 hover:text-purple-700 transition-all text-sm leading-tight text-center tab-active"><span class="block">产品</span><span class="block">清单</span></button>
-                <button onclick="switchTab('pricelist')" id="tab-pricelist" class="px-6 py-2 hover:text-purple-700 transition-all text-sm leading-tight text-center text-slate-500 hover:text-blue-600"><span class="block">Price</span><span class="block">List</span></button>
+                <button onclick="switchTab('pricelist')" id="tab-pricelist" style="display: none;" class="px-6 py-2 hover:text-purple-700 transition-all text-sm leading-tight text-center text-slate-500 hover:text-blue-600"><span class="block">Price</span><span class="block">List</span></button>
                 <button onclick="switchTab('inventory')" id="tab-inventory" class="px-6 py-2 hover:text-purple-700 transition-all text-sm leading-tight text-center text-slate-500 hover:text-blue-600"><span class="block">库存</span><span class="block">管理</span></button>
                 <button onclick="switchTab('transport')" id="tab-transport" class="px-6 py-2 hover:text-purple-700 transition-all text-sm leading-tight text-center text-slate-500 hover:text-blue-600"><span class="block">运输</span><span class="block">管理</span></button>
             </nav>
@@ -4566,7 +4566,7 @@ I / We, the undersigned, hereby accept the Solar PV with Battery + Inverter Syst
                         ? `GH 已连(${s.queueSize})`
                         : 'GH 未连';
                     btn.className = `${btnBaseClass} ${s.connected ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700' : 'bg-red-600 hover:bg-red-700 text-white border-red-700'}`;
-                    const restrictedTabs = ['quotation', 'costcalc', 'database', 'inventory', 'transport'];
+                    const restrictedTabs = ['quotation', 'costcalc', 'database', 'pricelist', 'inventory', 'transport'];
                     for (const t of restrictedTabs) {
                         const tabBtn = document.getElementById(`tab-${t}`);
                         if (tabBtn) tabBtn.style.display = (s.connected || localFileMode) ? '' : 'none';
@@ -6304,6 +6304,12 @@ I / We, the undersigned, hereby accept the Solar PV with Battery + Inverter Syst
 
         // --- Core UI Logic ---
         window.switchTab = (tab) => {
+            const localFileMode = window.location.protocol === 'file:';
+            const connected = !!window.__minovaSync?.getStatus?.()?.connected;
+            const restrictedTabs = ['quotation', 'costcalc', 'database', 'pricelist', 'inventory', 'transport'];
+            if (restrictedTabs.includes(tab) && !connected && !localFileMode) {
+                tab = 'pvcalc';
+            }
             const tabs = TOP_LEVEL_TABS;
             tabs.forEach(t => {
                 const el = document.getElementById(`view-${t}`);

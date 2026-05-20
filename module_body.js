@@ -998,6 +998,7 @@
             const raw = String(unit || '').trim();
             if (!raw || raw === '个') return 'pcs';
             if (raw.toLowerCase() === 'pc' || raw.toLowerCase() === 'piece' || raw.toLowerCase() === 'pieces') return 'pcs';
+            if (raw === '套' || raw.toLowerCase() === 'set') return 'set';
             return raw;
         }
         function normalizeMarketUnit(unit) {
@@ -1079,7 +1080,7 @@
                 return String(product?.category || '').trim() === cat;
             });
             const sample = [...categoryInventory.map(i => String(i.spec || '')), ...categoryProducts.map(p => String(p.spec || ''))].join(' ').toLowerCase();
-            if (cat.includes('一体机')) return '套';
+            if (cat.includes('一体机')) return 'set';
             if (cat.includes('配件')) return 'pcs';
             if (cat.includes('工商储') || cat.includes('储能')) return /\bkwh\b/i.test(sample) ? 'kWh' : 'kW';
             if (cat.includes('光伏组件') || /\b\d{3,4}\s*w\b/i.test(sample)) return 'W';
@@ -6037,7 +6038,7 @@
         function getProductSpecMultiplierForUnit(product, fallbackSpec, unit) {
             const p = product || {};
             const u = normalizeUnitLabel(unit || '');
-            if (u === 'pcs' || u === '套') return 1;
+            if (u === 'pcs' || u === 'set') return 1;
             const text = `${p.spec || ''} ${p.name || ''}`;
             const escaped = u.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const re = new RegExp(`(\\d+(?:\\.\\d+)?)\\s*${escaped}\\b`, 'i');
@@ -6388,7 +6389,7 @@
                 </td>
                 <td class="py-3 px-4 text-right">
                     <select id="market-edit-unit-${htmlSafe(recordId)}" class="border border-slate-200 rounded-lg px-2 py-1 text-xs">
-                        ${['W', 'kW', 'kWh', 'pcs', '套', '件'].map(u => `<option value="${u}" ${normalizeUnitLabel(r.unit) === u ? 'selected' : ''}>/${u}</option>`).join('')}
+                        ${['W', 'kW', 'kWh', 'pcs', 'set', '件'].map(u => `<option value="${u}" ${normalizeUnitLabel(r.unit) === u ? 'selected' : ''}>/${u}</option>`).join('')}
                     </select>
                 </td>
                 <td class="py-3 px-4"><input id="market-edit-note-${htmlSafe(recordId)}" type="text" value="${htmlSafe(r.note || '')}" class="w-full border border-slate-200 rounded-lg px-2 py-1 text-xs"></td>
@@ -7420,6 +7421,59 @@
         function getPickerCurrency() {
             return window.pickerDisplayCurrency || currentCurrency || 'MYR';
         }
+        function getPickerCostMode() {
+            return window.pickerCostMode === 'gray' ? 'gray' : 'clearance';
+        }
+        function getPickerCustomerMode() {
+            return window.pickerCustomerMode === 'biz' ? 'biz' : 'home';
+        }
+        function getPickerSelectedPriceType() {
+            return `${getPickerCostMode()}_${getPickerCustomerMode()}`;
+        }
+        function getPickerSelectedPriceLabel() {
+            const type = getPickerSelectedPriceType();
+            if (type === 'clearance_biz') return 'Clearance C&I';
+            if (type === 'gray_home') return 'Grey Home';
+            if (type === 'gray_biz') return 'Grey C&I';
+            return 'Clearance Home';
+        }
+        function getPickerSelectedPriceValue(pricing, type) {
+            const r = pricing || {};
+            if (type === 'clearance_biz') return r.clearanceBizPrice || 0;
+            if (type === 'gray_home') return r.grayHomePrice || 0;
+            if (type === 'gray_biz') return r.grayBizPrice || 0;
+            return r.clearanceHomePrice || 0;
+        }
+        function getPickerSelectedButtonClass(type) {
+            const base = 'px-3 py-1 text-white text-[10px] font-bold rounded-lg transition-all shadow-sm';
+            if (type === 'clearance_biz') return `${base} bg-sky-700 hover:bg-sky-800`;
+            if (type === 'gray_home') return `${base} bg-indigo-700 hover:bg-indigo-800`;
+            if (type === 'gray_biz') return `${base} bg-violet-700 hover:bg-violet-800`;
+            return `${base} bg-blue-700 hover:bg-blue-800`;
+        }
+        function updatePickerModeButtons() {
+            const modeClass = 'px-2 py-1 rounded-md text-[10px] font-black transition-all';
+            const activeClass = `${modeClass} bg-purple-700 text-white shadow-sm`;
+            const idleClass = `${modeClass} text-slate-500 hover:text-slate-800 hover:bg-slate-100`;
+            const costMode = getPickerCostMode();
+            const customerMode = getPickerCustomerMode();
+            const setClass = (id, active) => {
+                const el = document.getElementById(id);
+                if (el) el.className = active ? activeClass : idleClass;
+            };
+            setClass('picker-cost-clearance', costMode === 'clearance');
+            setClass('picker-cost-gray', costMode === 'gray');
+            setClass('picker-customer-home', customerMode === 'home');
+            setClass('picker-customer-biz', customerMode === 'biz');
+        }
+        window.setPickerCostMode = (mode) => {
+            window.pickerCostMode = mode === 'gray' ? 'gray' : 'clearance';
+            renderPicker();
+        };
+        window.setPickerCustomerMode = (mode) => {
+            window.pickerCustomerMode = mode === 'biz' ? 'biz' : 'home';
+            renderPicker();
+        };
         function formatPickerPrice(valueCny) {
             const v = Number.isFinite(parseFloat(valueCny)) ? parseFloat(valueCny) : 0;
             if (getPickerCurrency() === 'MYR') {
@@ -7434,8 +7488,13 @@
         };
         window.renderPicker = () => {
             if (!window.pickerDisplayCurrency) window.pickerDisplayCurrency = currentCurrency || 'MYR';
+            if (!window.pickerCostMode) window.pickerCostMode = 'clearance';
+            if (!window.pickerCustomerMode) window.pickerCustomerMode = 'home';
             const currencyBtn = document.getElementById('picker-currency-toggle');
             if (currencyBtn) currencyBtn.textContent = getPickerCurrency() === 'MYR' ? 'RM / ¥' : '¥ / RM';
+            updatePickerModeButtons();
+            const selectedPriceType = getPickerSelectedPriceType();
+            const selectedPriceLabel = getPickerSelectedPriceLabel();
             const query = (document.getElementById('picker-search')?.value || '').toLowerCase();
             const vendor = document.getElementById('picker-vendor')?.value || '';
             const category = document.getElementById('picker-category')?.value || '';
@@ -7464,6 +7523,12 @@
                 const cb = (item.clearanceBizPrice ?? r.clearanceBizPrice) || 0;
                 const gh = (item.grayHomePrice ?? r.grayHomePrice) || 0;
                 const gb = (item.grayBizPrice ?? r.grayBizPrice) || 0;
+                const selectedPrice = getPickerSelectedPriceValue({
+                    clearanceHomePrice: ch,
+                    clearanceBizPrice: cb,
+                    grayHomePrice: gh,
+                    grayBizPrice: gb
+                }, selectedPriceType);
                 return `
                 <div class="p-3 hover:bg-purple-50 transition-colors group border-b border-slate-50" onmousemove="showMarketPriceTooltip(event, '${htmlSafe(item.productId || '')}')" onmouseleave="hidePriceListTooltip()">
                     <div class="flex justify-between items-start">
@@ -7482,10 +7547,7 @@
                             <span class="text-[9px] uppercase px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded">${getProductSupplierDisplay(p)}</span>
                         </div>
                         <div class="flex flex-wrap gap-2 justify-end">
-                            <button onclick="pickProduct('${item.id}', 'clearance_home')" class="px-3 py-1 bg-blue-700 text-white text-[10px] font-bold rounded-lg hover:bg-blue-800 transition-all shadow-sm">Clearance Home ${formatPickerPrice(ch)}</button>
-                            <button onclick="pickProduct('${item.id}', 'clearance_biz')" class="px-3 py-1 bg-sky-700 text-white text-[10px] font-bold rounded-lg hover:bg-sky-800 transition-all shadow-sm">Clearance C&I ${formatPickerPrice(cb)}</button>
-                            <button onclick="pickProduct('${item.id}', 'gray_home')" class="px-3 py-1 bg-indigo-700 text-white text-[10px] font-bold rounded-lg hover:bg-indigo-800 transition-all shadow-sm">Grey Home ${formatPickerPrice(gh)}</button>
-                            <button onclick="pickProduct('${item.id}', 'gray_biz')" class="px-3 py-1 bg-violet-700 text-white text-[10px] font-bold rounded-lg hover:bg-violet-800 transition-all shadow-sm">Grey C&I ${formatPickerPrice(gb)}</button>
+                            <button onclick="pickProduct('${item.id}', '${selectedPriceType}')" class="${getPickerSelectedButtonClass(selectedPriceType)}">${selectedPriceLabel} ${formatPickerPrice(selectedPrice)}</button>
                         </div>
                     </div>
                 </div>`}).join('');

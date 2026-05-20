@@ -648,7 +648,7 @@
             <div class="flex gap-3">
                 <div id="github-sync-root" class="flex items-center"><div class="flex items-center"><button title="GitHub 数据同步" class="whitespace-nowrap text-[11px] px-2 py-1.5 rounded-lg font-bold border transition-colors bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700">GH 已连(0)</button></div></div>
                 <button onclick="toggleLanguage()" id="btn-lang" class="text-sm bg-slate-100 text-slate-700 px-4 py-2 rounded-xl hover:bg-slate-200 transition-colors font-bold border border-slate-200">EN / 中</button>
-                <button onclick="toggleCurrency()" id="btn-currency" class="text-sm bg-slate-100 text-slate-700 px-4 py-2 rounded-xl hover:bg-slate-200 transition-colors font-bold border border-slate-200">RM / ¥</button>
+                <button onclick="toggleCurrency()" id="btn-currency" class="text-sm bg-slate-100 text-slate-700 px-4 py-2 rounded-xl hover:bg-slate-200 transition-colors font-bold border border-slate-200">RM/¥</button>
                 <button onclick="generateQuotationPDF()" id="btn-generate-pdf" class="text-sm bg-slate-900 text-white px-5 py-2 rounded-xl hover:bg-black transition-all shadow-lg shadow-slate-200 leading-tight text-center" style="">
                     <span class="block">生成报价</span>
                     <span class="block">（PDF）</span>
@@ -900,7 +900,7 @@
                             <div class="p-3 border-b bg-slate-50 rounded-t-xl flex flex-col gap-2">
                                 <div class="flex items-center justify-between gap-2">
                                     <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Product Filters</span>
-                                    <button id="picker-currency-toggle" type="button" onclick="togglePickerCurrency()" class="px-2 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-black hover:bg-black border border-slate-900">RM / ¥</button>
+                                    <button id="picker-currency-toggle" type="button" onclick="togglePickerCurrency()" class="px-2 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-black hover:bg-black border border-slate-900">RM/¥</button>
                                 </div>
                                 <div class="flex gap-2">
                                     <select id="picker-vendor" onchange="renderPicker()" class="text-xs p-1.5 border border-slate-200 rounded outline-none focus:border-blue-400 flex-1 bg-white cursor-pointer"><option value="">All Suppliers</option><option value="联塑 LESSO">联塑 LESSO</option><option value="汉伏">汉伏</option><option value="明匠">明匠</option><option value="埃克森">埃克森</option></select>
@@ -926,10 +926,10 @@
                             <span class="text-[9px] uppercase px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded">联塑 LESSO</span>
                         </div>
                         <div class="flex flex-wrap gap-2 justify-end">
-                            <button onclick="pickProduct('inv_1775819903003', 'clearance_home')" class="px-3 py-1 bg-blue-700 text-white text-[10px] font-bold rounded-lg hover:bg-blue-800 transition-all shadow-sm">Clearance Home RM 0.7293</button>
-                            <button onclick="pickProduct('inv_1775819903003', 'clearance_biz')" class="px-3 py-1 bg-sky-700 text-white text-[10px] font-bold rounded-lg hover:bg-sky-800 transition-all shadow-sm">Clearance C&amp;I RM 0.679</button>
-                            <button onclick="pickProduct('inv_1775819903003', 'gray_home')" class="px-3 py-1 bg-indigo-700 text-white text-[10px] font-bold rounded-lg hover:bg-indigo-800 transition-all shadow-sm">Grey Home RM 0.6962</button>
-                            <button onclick="pickProduct('inv_1775819903003', 'gray_biz')" class="px-3 py-1 bg-violet-700 text-white text-[10px] font-bold rounded-lg hover:bg-violet-800 transition-all shadow-sm">Grey C&amp;I RM 0.6482</button>
+                            <button onclick="pickProduct('inv_1775819903003', 'clearance_home')" class="px-3 py-1 bg-blue-700 text-white text-[10px] font-bold rounded-lg hover:bg-blue-800 transition-all shadow-sm">Clearance RESI RM 0.7293</button>
+                            <button onclick="pickProduct('inv_1775819903003', 'clearance_biz')" class="px-3 py-1 bg-sky-700 text-white text-[10px] font-bold rounded-lg hover:bg-sky-800 transition-all shadow-sm">Clearance C&amp;S RM 0.679</button>
+                            <button onclick="pickProduct('inv_1775819903003', 'gray_home')" class="px-3 py-1 bg-indigo-700 text-white text-[10px] font-bold rounded-lg hover:bg-indigo-800 transition-all shadow-sm">Grey RESI RM 0.6962</button>
+                            <button onclick="pickProduct('inv_1775819903003', 'gray_biz')" class="px-3 py-1 bg-violet-700 text-white text-[10px] font-bold rounded-lg hover:bg-violet-800 transition-all shadow-sm">Grey C&amp;S RM 0.6482</button>
                         </div>
                     </div>
                 </div>
@@ -950,10 +950,10 @@
                             <span class="text-[9px] uppercase px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded">明匠</span>
                         </div>
                         <div class="flex flex-wrap gap-2 justify-end">
-                            <button onclick="pickProduct('inv_1775820030632', 'clearance_home')" class="px-3 py-1 bg-blue-700 text-white text-[10px] font-bold rounded-lg hover:bg-blue-800 transition-all shadow-sm">Clearance Home RM 1137.3488</button>
-                            <button onclick="pickProduct('inv_1775820030632', 'clearance_biz')" class="px-3 py-1 bg-sky-700 text-white text-[10px] font-bold rounded-lg hover:bg-sky-800 transition-all shadow-sm">Clearance C&amp;I RM 966.7465</button>
-                            <button onclick="pickProduct('inv_1775820030632', 'gray_home')" class="px-3 py-1 bg-indigo-700 text-white text-[10px] font-bold rounded-lg hover:bg-indigo-800 transition-all shadow-sm">Grey Home RM 918.6279</button>
-                            <button onclick="pickProduct('inv_1775820030632', 'gray_biz')" class="px-3 py-1 bg-violet-700 text-white text-[10px] font-bold rounded-lg hover:bg-violet-800 transition-all shadow-sm">Grey C&amp;I RM 780.8337</button>
+                            <button onclick="pickProduct('inv_1775820030632', 'clearance_home')" class="px-3 py-1 bg-blue-700 text-white text-[10px] font-bold rounded-lg hover:bg-blue-800 transition-all shadow-sm">Clearance RESI RM 1137.3488</button>
+                            <button onclick="pickProduct('inv_1775820030632', 'clearance_biz')" class="px-3 py-1 bg-sky-700 text-white text-[10px] font-bold rounded-lg hover:bg-sky-800 transition-all shadow-sm">Clearance C&amp;S RM 966.7465</button>
+                            <button onclick="pickProduct('inv_1775820030632', 'gray_home')" class="px-3 py-1 bg-indigo-700 text-white text-[10px] font-bold rounded-lg hover:bg-indigo-800 transition-all shadow-sm">Grey RESI RM 918.6279</button>
+                            <button onclick="pickProduct('inv_1775820030632', 'gray_biz')" class="px-3 py-1 bg-violet-700 text-white text-[10px] font-bold rounded-lg hover:bg-violet-800 transition-all shadow-sm">Grey C&amp;S RM 780.8337</button>
                         </div>
                     </div>
                 </div>
@@ -974,10 +974,10 @@
                             <span class="text-[9px] uppercase px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded">明匠</span>
                         </div>
                         <div class="flex flex-wrap gap-2 justify-end">
-                            <button onclick="pickProduct('inv_1775820265501', 'clearance_home')" class="px-3 py-1 bg-blue-700 text-white text-[10px] font-bold rounded-lg hover:bg-blue-800 transition-all shadow-sm">Clearance Home RM 437.3261</button>
-                            <button onclick="pickProduct('inv_1775820265501', 'clearance_biz')" class="px-3 py-1 bg-sky-700 text-white text-[10px] font-bold rounded-lg hover:bg-sky-800 transition-all shadow-sm">Clearance C&amp;I RM 437.3261</button>
-                            <button onclick="pickProduct('inv_1775820265501', 'gray_home')" class="px-3 py-1 bg-indigo-700 text-white text-[10px] font-bold rounded-lg hover:bg-indigo-800 transition-all shadow-sm">Grey Home RM 353.225</button>
-                            <button onclick="pickProduct('inv_1775820265501', 'gray_biz')" class="px-3 py-1 bg-violet-700 text-white text-[10px] font-bold rounded-lg hover:bg-violet-800 transition-all shadow-sm">Grey C&amp;I RM 353.225</button>
+                            <button onclick="pickProduct('inv_1775820265501', 'clearance_home')" class="px-3 py-1 bg-blue-700 text-white text-[10px] font-bold rounded-lg hover:bg-blue-800 transition-all shadow-sm">Clearance RESI RM 437.3261</button>
+                            <button onclick="pickProduct('inv_1775820265501', 'clearance_biz')" class="px-3 py-1 bg-sky-700 text-white text-[10px] font-bold rounded-lg hover:bg-sky-800 transition-all shadow-sm">Clearance C&amp;S RM 437.3261</button>
+                            <button onclick="pickProduct('inv_1775820265501', 'gray_home')" class="px-3 py-1 bg-indigo-700 text-white text-[10px] font-bold rounded-lg hover:bg-indigo-800 transition-all shadow-sm">Grey RESI RM 353.225</button>
+                            <button onclick="pickProduct('inv_1775820265501', 'gray_biz')" class="px-3 py-1 bg-violet-700 text-white text-[10px] font-bold rounded-lg hover:bg-violet-800 transition-all shadow-sm">Grey C&amp;S RM 353.225</button>
                         </div>
                     </div>
                 </div>
@@ -998,10 +998,10 @@
                             <span class="text-[9px] uppercase px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded">明匠</span>
                         </div>
                         <div class="flex flex-wrap gap-2 justify-end">
-                            <button onclick="pickProduct('inv_1775820358973', 'clearance_home')" class="px-3 py-1 bg-blue-700 text-white text-[10px] font-bold rounded-lg hover:bg-blue-800 transition-all shadow-sm">Clearance Home RM 341.2047</button>
-                            <button onclick="pickProduct('inv_1775820358973', 'clearance_biz')" class="px-3 py-1 bg-sky-700 text-white text-[10px] font-bold rounded-lg hover:bg-sky-800 transition-all shadow-sm">Clearance C&amp;I RM 328.0814</button>
-                            <button onclick="pickProduct('inv_1775820358973', 'gray_home')" class="px-3 py-1 bg-indigo-700 text-white text-[10px] font-bold rounded-lg hover:bg-indigo-800 transition-all shadow-sm">Grey Home RM 325.6953</button>
-                            <button onclick="pickProduct('inv_1775820358973', 'gray_biz')" class="px-3 py-1 bg-violet-700 text-white text-[10px] font-bold rounded-lg hover:bg-violet-800 transition-all shadow-sm">Grey C&amp;I RM 313.1686</button>
+                            <button onclick="pickProduct('inv_1775820358973', 'clearance_home')" class="px-3 py-1 bg-blue-700 text-white text-[10px] font-bold rounded-lg hover:bg-blue-800 transition-all shadow-sm">Clearance RESI RM 341.2047</button>
+                            <button onclick="pickProduct('inv_1775820358973', 'clearance_biz')" class="px-3 py-1 bg-sky-700 text-white text-[10px] font-bold rounded-lg hover:bg-sky-800 transition-all shadow-sm">Clearance C&amp;S RM 328.0814</button>
+                            <button onclick="pickProduct('inv_1775820358973', 'gray_home')" class="px-3 py-1 bg-indigo-700 text-white text-[10px] font-bold rounded-lg hover:bg-indigo-800 transition-all shadow-sm">Grey RESI RM 325.6953</button>
+                            <button onclick="pickProduct('inv_1775820358973', 'gray_biz')" class="px-3 py-1 bg-violet-700 text-white text-[10px] font-bold rounded-lg hover:bg-violet-800 transition-all shadow-sm">Grey C&amp;S RM 313.1686</button>
                         </div>
                     </div>
                 </div>
@@ -1022,10 +1022,10 @@
                             <span class="text-[9px] uppercase px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded">明匠</span>
                         </div>
                         <div class="flex flex-wrap gap-2 justify-end">
-                            <button onclick="pickProduct('inv_1775820443415', 'clearance_home')" class="px-3 py-1 bg-blue-700 text-white text-[10px] font-bold rounded-lg hover:bg-blue-800 transition-all shadow-sm">Clearance Home RM 8176.9971</button>
-                            <button onclick="pickProduct('inv_1775820443415', 'clearance_biz')" class="px-3 py-1 bg-sky-700 text-white text-[10px] font-bold rounded-lg hover:bg-sky-800 transition-all shadow-sm">Clearance C&amp;I RM 7185.8459</button>
-                            <button onclick="pickProduct('inv_1775820443415', 'gray_home')" class="px-3 py-1 bg-indigo-700 text-white text-[10px] font-bold rounded-lg hover:bg-indigo-800 transition-all shadow-sm">Grey Home RM 7805.3154</button>
-                            <button onclick="pickProduct('inv_1775820443415', 'gray_biz')" class="px-3 py-1 bg-violet-700 text-white text-[10px] font-bold rounded-lg hover:bg-violet-800 transition-all shadow-sm">Grey C&amp;I RM 6859.2166</button>
+                            <button onclick="pickProduct('inv_1775820443415', 'clearance_home')" class="px-3 py-1 bg-blue-700 text-white text-[10px] font-bold rounded-lg hover:bg-blue-800 transition-all shadow-sm">Clearance RESI RM 8176.9971</button>
+                            <button onclick="pickProduct('inv_1775820443415', 'clearance_biz')" class="px-3 py-1 bg-sky-700 text-white text-[10px] font-bold rounded-lg hover:bg-sky-800 transition-all shadow-sm">Clearance C&amp;S RM 7185.8459</button>
+                            <button onclick="pickProduct('inv_1775820443415', 'gray_home')" class="px-3 py-1 bg-indigo-700 text-white text-[10px] font-bold rounded-lg hover:bg-indigo-800 transition-all shadow-sm">Grey RESI RM 7805.3154</button>
+                            <button onclick="pickProduct('inv_1775820443415', 'gray_biz')" class="px-3 py-1 bg-violet-700 text-white text-[10px] font-bold rounded-lg hover:bg-violet-800 transition-all shadow-sm">Grey C&amp;S RM 6859.2166</button>
                         </div>
                     </div>
                 </div></div>
@@ -1704,10 +1704,10 @@ I / We, the undersigned, hereby accept the Solar PV with Battery + Inverter Syst
                         <option value="gray">Grey</option>
                     </select>
                     <select id="price-list-price-target" onchange="renderPriceList()" class="px-3 py-2 rounded-xl bg-white text-slate-700 text-xs font-black border border-slate-200 outline-none focus:border-purple-500">
-                        <option value="home" selected="">Home</option>
-                        <option value="biz">C&amp;I</option>
+                        <option value="home" selected="">RESI</option>
+                        <option value="biz">C&amp;S</option>
                     </select>
-                    <button id="price-list-currency-toggle" onclick="togglePriceListCurrency()" class="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-black hover:bg-black border border-slate-900">RM / ¥</button>
+                    <button id="price-list-currency-toggle" onclick="togglePriceListCurrency()" class="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-black hover:bg-black border border-slate-900">RM/¥</button>
                     <span id="price-list-selected-count" class="text-xs font-black text-slate-400 uppercase tracking-widest">0 selected</span>
                     <button onclick="exportSelectedPriceListExcel()" class="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-black shadow-lg shadow-slate-100 hover:bg-black">Export Selected Excel</button>
                 </div>
@@ -1759,10 +1759,10 @@ I / We, the undersigned, hereby accept the Solar PV with Battery + Inverter Syst
                         <button onclick="saveMarketPriceFromPriceList()" class="w-full bg-purple-700 text-white px-4 py-2 rounded-xl text-sm font-black shadow-sm hover:bg-purple-800">Save</button>
                     </div>
                 </div>
-                <div id="market-price-form-hint" class="mt-2 text-[11px] font-bold text-slate-400">电池 unit: /kWh (auto from inventory/spec). 暂无30天市场价.</div>
+                <div id="market-price-form-hint" class="mt-2 text-[11px] font-bold text-slate-400">电池 unit: /kWh (auto from inventory/spec). No 30D market price.</div>
             </div>
             <div class="px-6 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
-                <div id="price-list-summary" class="text-xs font-bold text-slate-500">10 of 10 products | PCS Price: Clearance Home | Display MYR first | Rate: 1 MYR = 1.7200 CNY</div>
+                <div id="price-list-summary" class="text-xs font-bold text-slate-500">10 of 10 products | PCS Price: Clearance RESI | Display MYR first | Rate: 1 MYR = 1.7200 CNY</div>
                 <button onclick="clearPriceListFilters()" class="text-xs font-black text-purple-700 hover:underline">Clear Filters</button>
             </div>
             <div class="overflow-x-auto">
@@ -1777,12 +1777,12 @@ I / We, the undersigned, hereby accept the Solar PV with Battery + Inverter Syst
                             <th class="py-4 px-4 text-right">PCS Cost</th>
                             <th class="py-4 px-4 text-right">Avg Cost</th>
                             <th class="py-4 px-4 text-right">30D Market</th>
-                            <th class="py-4 px-4 text-right">Home Profit</th>
-                            <th class="py-4 px-4 text-right">C&amp;I Profit</th>
-                            <th class="py-4 px-4 text-right">Clearance Home</th>
-                            <th class="py-4 px-4 text-right">Clearance C&amp;I</th>
-                            <th class="py-4 px-4 text-right">Grey Home</th>
-                            <th class="py-4 px-4 text-right">Grey C&amp;I</th>
+                            <th class="py-4 px-4 text-right">RESI Profit</th>
+                            <th class="py-4 px-4 text-right">C&amp;S Profit</th>
+                            <th class="py-4 px-4 text-right">Clearance RESI</th>
+                            <th class="py-4 px-4 text-right">Clearance C&amp;S</th>
+                            <th class="py-4 px-4 text-right">Grey RESI</th>
+                            <th class="py-4 px-4 text-right">Grey C&amp;S</th>
                             <th class="py-4 px-4">Certification</th>
                         </tr>
                     </thead>
@@ -1798,7 +1798,7 @@ I / We, the undersigned, hereby accept the Solar PV with Battery + Inverter Syst
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 5686.74/pcs</div>
                 <div class="text-[10px] text-slate-400">¥9781.20/pcs</div>
-            <div class="text-[10px] text-slate-400">Clearance Home × 5 kWh/pcs</div></td>
+            <div class="text-[10px] text-slate-400">Clearance RESI × 5 kWh/pcs</div></td>
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 2187.2093/pcs</div>
                 <div class="text-[10px] text-slate-400">¥3762.0000/pcs</div>
@@ -1809,7 +1809,7 @@ I / We, the undersigned, hereby accept the Solar PV with Battery + Inverter Syst
             <div class="text-[10px] text-slate-400">Inventory avg</div></td>
                         <td class="py-4 px-4 text-right">
                     <button type="button" onclick="openMarketTrendModal('电池')" class="text-right hover:underline">
-                        <div class="font-black text-slate-400">暂无30天市场价</div>
+                        <div class="font-black text-slate-400">No 30D market price</div>
                         <div class="text-[10px] text-slate-400">Unit /kWh</div>
                     </button>
                 </td>
@@ -1869,7 +1869,7 @@ CEC Approved Batteries list">IEC 62619, UN 38.3, MSDS<div class="text-[10px] tex
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 184.45/pcs</div>
                 <div class="text-[10px] text-slate-400">¥317.25/pcs</div>
-            <div class="text-[10px] text-slate-400">Clearance Home × 261 kWh/pcs</div></td>
+            <div class="text-[10px] text-slate-400">Clearance RESI × 261 kWh/pcs</div></td>
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 98.6337/pcs</div>
                 <div class="text-[10px] text-slate-400">¥169.6500/pcs</div>
@@ -1880,7 +1880,7 @@ CEC Approved Batteries list">IEC 62619, UN 38.3, MSDS<div class="text-[10px] tex
             <div class="text-[10px] text-slate-400">Base cost fallback</div></td>
                         <td class="py-4 px-4 text-right">
                     <button type="button" onclick="openMarketTrendModal('工商储')" class="text-right hover:underline">
-                        <div class="font-black text-slate-400">暂无30天市场价</div>
+                        <div class="font-black text-slate-400">No 30D market price</div>
                         <div class="text-[10px] text-slate-400">Unit /kWh</div>
                     </button>
                 </td>
@@ -1940,7 +1940,7 @@ CEC Approved Batteries list">IEC 62619, UN 38.3, MSDS<div class="text-[10px] tex
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 444.90/pcs</div>
                 <div class="text-[10px] text-slate-400">¥765.23/pcs</div>
-            <div class="text-[10px] text-slate-400">Clearance Home × 610 W/pcs</div></td>
+            <div class="text-[10px] text-slate-400">Clearance RESI × 610 W/pcs</div></td>
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 278.9331/pcs</div>
                 <div class="text-[10px] text-slate-400">¥479.7650/pcs</div>
@@ -1951,7 +1951,7 @@ CEC Approved Batteries list">IEC 62619, UN 38.3, MSDS<div class="text-[10px] tex
             <div class="text-[10px] text-slate-400">Inventory avg</div></td>
                         <td class="py-4 px-4 text-right">
                     <button type="button" onclick="openMarketTrendModal('光伏组件')" class="text-right hover:underline">
-                        <div class="font-black text-slate-400">暂无30天市场价</div>
+                        <div class="font-black text-slate-400">No 30D market price</div>
                         <div class="text-[10px] text-slate-400">Unit /W</div>
                     </button>
                 </td>
@@ -2015,7 +2015,7 @@ CEC Approved PV Modules list">IEC 61215, IEC 61730, SIRIM / MS IEC 61215<div cla
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 488.70/pcs</div>
                 <div class="text-[10px] text-slate-400">¥840.57/pcs</div>
-            <div class="text-[10px] text-slate-400">Clearance Home × 620 W/pcs</div></td>
+            <div class="text-[10px] text-slate-400">Clearance RESI × 620 W/pcs</div></td>
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 306.3953/pcs</div>
                 <div class="text-[10px] text-slate-400">¥527.0000/pcs</div>
@@ -2026,7 +2026,7 @@ CEC Approved PV Modules list">IEC 61215, IEC 61730, SIRIM / MS IEC 61215<div cla
             <div class="text-[10px] text-slate-400">Base cost fallback</div></td>
                         <td class="py-4 px-4 text-right">
                     <button type="button" onclick="openMarketTrendModal('光伏组件')" class="text-right hover:underline">
-                        <div class="font-black text-slate-400">暂无30天市场价</div>
+                        <div class="font-black text-slate-400">No 30D market price</div>
                         <div class="text-[10px] text-slate-400">Unit /W</div>
                     </button>
                 </td>
@@ -2090,7 +2090,7 @@ CEC Approved PV Modules list">IEC 61215, IEC 61730, SIRIM / MS IEC 61215<div cla
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 16.59/pcs</div>
                 <div class="text-[10px] text-slate-400">¥28.54/pcs</div>
-            <div class="text-[10px] text-slate-400">Clearance Home × 25 kW/pcs</div></td>
+            <div class="text-[10px] text-slate-400">Clearance RESI × 25 kW/pcs</div></td>
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 8.8023/pcs</div>
                 <div class="text-[10px] text-slate-400">¥15.1400/pcs</div>
@@ -2101,7 +2101,7 @@ CEC Approved PV Modules list">IEC 61215, IEC 61730, SIRIM / MS IEC 61215<div cla
             <div class="text-[10px] text-slate-400">Base cost fallback</div></td>
                         <td class="py-4 px-4 text-right">
                     <button type="button" onclick="openMarketTrendModal('逆变器')" class="text-right hover:underline">
-                        <div class="font-black text-slate-400">暂无30天市场价</div>
+                        <div class="font-black text-slate-400">No 30D market price</div>
                         <div class="text-[10px] text-slate-400">Unit /kW</div>
                     </button>
                 </td>
@@ -2167,7 +2167,7 @@ AS/NZS 4777.2">IEC 62109-1, IEC 62109-2, IEC 62477 (when applicable)<div class="
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 2405.29/pcs</div>
                 <div class="text-[10px] text-slate-400">¥4137.11/pcs</div>
-            <div class="text-[10px] text-slate-400">Clearance Home × 5.5 kW/pcs</div></td>
+            <div class="text-[10px] text-slate-400">Clearance RESI × 5.5 kW/pcs</div></td>
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 1276.0179/pcs</div>
                 <div class="text-[10px] text-slate-400">¥2194.7508/pcs</div>
@@ -2178,7 +2178,7 @@ AS/NZS 4777.2">IEC 62109-1, IEC 62109-2, IEC 62477 (when applicable)<div class="
             <div class="text-[10px] text-slate-400">Inventory avg</div></td>
                         <td class="py-4 px-4 text-right">
                     <button type="button" onclick="openMarketTrendModal('逆变器')" class="text-right hover:underline">
-                        <div class="font-black text-slate-400">暂无30天市场价</div>
+                        <div class="font-black text-slate-400">No 30D market price</div>
                         <div class="text-[10px] text-slate-400">Unit /kW</div>
                     </button>
                 </td>
@@ -2244,7 +2244,7 @@ AS/NZS 4777.2">IEC 62109-1, IEC 62109-2, IEC 62477 (when applicable)<div class="
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 341.20/pcs</div>
                 <div class="text-[10px] text-slate-400">¥586.87/pcs</div>
-            <div class="text-[10px] text-slate-400">Clearance Home × 1 pcs/pcs</div></td>
+            <div class="text-[10px] text-slate-400">Clearance RESI × 1 pcs/pcs</div></td>
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 238.6047/pcs</div>
                 <div class="text-[10px] text-slate-400">¥410.4000/pcs</div>
@@ -2255,7 +2255,7 @@ AS/NZS 4777.2">IEC 62109-1, IEC 62109-2, IEC 62477 (when applicable)<div class="
             <div class="text-[10px] text-slate-400">Inventory avg</div></td>
                         <td class="py-4 px-4 text-right">
                     <button type="button" onclick="openMarketTrendModal('配件')" class="text-right hover:underline">
-                        <div class="font-black text-slate-400">暂无30天市场价</div>
+                        <div class="font-black text-slate-400">No 30D market price</div>
                         <div class="text-[10px] text-slate-400">Unit /pcs</div>
                     </button>
                 </td>
@@ -2309,7 +2309,7 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 10341.28/pcs</div>
                 <div class="text-[10px] text-slate-400">¥17787.00/pcs</div>
-            <div class="text-[10px] text-slate-400">Clearance Home × 1 套/pcs</div></td>
+            <div class="text-[10px] text-slate-400">Clearance RESI × 1 套/pcs</div></td>
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 5697.6744/pcs</div>
                 <div class="text-[10px] text-slate-400">¥9800.0000/pcs</div>
@@ -2320,7 +2320,7 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
             <div class="text-[10px] text-slate-400">Base cost fallback</div></td>
                         <td class="py-4 px-4 text-right">
                     <button type="button" onclick="openMarketTrendModal('一体机')" class="text-right hover:underline">
-                        <div class="font-black text-slate-400">暂无30天市场价</div>
+                        <div class="font-black text-slate-400">No 30D market price</div>
                         <div class="text-[10px] text-slate-400">Unit /套</div>
                     </button>
                 </td>
@@ -2374,7 +2374,7 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 8177.00/pcs</div>
                 <div class="text-[10px] text-slate-400">¥14064.44/pcs</div>
-            <div class="text-[10px] text-slate-400">Clearance Home × 1 套/pcs</div></td>
+            <div class="text-[10px] text-slate-400">Clearance RESI × 1 套/pcs</div></td>
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 4505.2326/pcs</div>
                 <div class="text-[10px] text-slate-400">¥7749.0000/pcs</div>
@@ -2385,7 +2385,7 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
             <div class="text-[10px] text-slate-400">Inventory avg</div></td>
                         <td class="py-4 px-4 text-right">
                     <button type="button" onclick="openMarketTrendModal('一体机')" class="text-right hover:underline">
-                        <div class="font-black text-slate-400">暂无30天市场价</div>
+                        <div class="font-black text-slate-400">No 30D market price</div>
                         <div class="text-[10px] text-slate-400">Unit /套</div>
                     </button>
                 </td>
@@ -2439,7 +2439,7 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 5170.64/pcs</div>
                 <div class="text-[10px] text-slate-400">¥8893.50/pcs</div>
-            <div class="text-[10px] text-slate-400">Clearance Home × 1 套/pcs</div></td>
+            <div class="text-[10px] text-slate-400">Clearance RESI × 1 套/pcs</div></td>
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 2848.8372/pcs</div>
                 <div class="text-[10px] text-slate-400">¥4900.0000/pcs</div>
@@ -2450,7 +2450,7 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
             <div class="text-[10px] text-slate-400">Base cost fallback</div></td>
                         <td class="py-4 px-4 text-right">
                     <button type="button" onclick="openMarketTrendModal('一体机')" class="text-right hover:underline">
-                        <div class="font-black text-slate-400">暂无30天市场价</div>
+                        <div class="font-black text-slate-400">No 30D market price</div>
                         <div class="text-[10px] text-slate-400">Unit /套</div>
                     </button>
                 </td>
@@ -2577,7 +2577,7 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
                         <td class="py-4 px-4 text-xs text-slate-600">马来西亚仓库</td>
                         <td class="py-4 px-4 text-center">
                             <div class="flex items-center justify-center gap-2">
-                                <button onclick="openInventoryEditModal('inv_1775819903003')" class="text-purple-700 hover:bg-purple-50 p-1 rounded text-xs">定价</button>
+                                <button onclick="openInventoryEditModal('inv_1775819903003')" class="text-purple-700 hover:bg-purple-50 p-1 rounded text-xs">Pricing</button>
                                 <button onclick="openInventoryModal('edit', 'inv_1775819903003')" class="text-blue-600 hover:bg-blue-50 p-1 rounded text-xs">修改</button>
                                 <button onclick="openInventoryModal('out', 'inv_1775819903003')" class="text-orange-500 hover:bg-orange-50 p-1 rounded text-xs">出库</button>
                                 <button onclick="deleteInventoryItem('inv_1775819903003')" class="text-red-300 hover:text-red-500 p-1 rounded">🗑</button>
@@ -2611,7 +2611,7 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
                         <td class="py-4 px-4 text-xs text-slate-600">马来西亚仓库</td>
                         <td class="py-4 px-4 text-center">
                             <div class="flex items-center justify-center gap-2">
-                                <button onclick="openInventoryEditModal('inv_1775820030632')" class="text-purple-700 hover:bg-purple-50 p-1 rounded text-xs">定价</button>
+                                <button onclick="openInventoryEditModal('inv_1775820030632')" class="text-purple-700 hover:bg-purple-50 p-1 rounded text-xs">Pricing</button>
                                 <button onclick="openInventoryModal('edit', 'inv_1775820030632')" class="text-blue-600 hover:bg-blue-50 p-1 rounded text-xs">修改</button>
                                 <button onclick="openInventoryModal('out', 'inv_1775820030632')" class="text-orange-500 hover:bg-orange-50 p-1 rounded text-xs">出库</button>
                                 <button onclick="deleteInventoryItem('inv_1775820030632')" class="text-red-300 hover:text-red-500 p-1 rounded">🗑</button>
@@ -2645,7 +2645,7 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
                         <td class="py-4 px-4 text-xs text-slate-600">马来西亚仓库</td>
                         <td class="py-4 px-4 text-center">
                             <div class="flex items-center justify-center gap-2">
-                                <button onclick="openInventoryEditModal('inv_1775820265501')" class="text-purple-700 hover:bg-purple-50 p-1 rounded text-xs">定价</button>
+                                <button onclick="openInventoryEditModal('inv_1775820265501')" class="text-purple-700 hover:bg-purple-50 p-1 rounded text-xs">Pricing</button>
                                 <button onclick="openInventoryModal('edit', 'inv_1775820265501')" class="text-blue-600 hover:bg-blue-50 p-1 rounded text-xs">修改</button>
                                 <button onclick="openInventoryModal('out', 'inv_1775820265501')" class="text-orange-500 hover:bg-orange-50 p-1 rounded text-xs">出库</button>
                                 <button onclick="deleteInventoryItem('inv_1775820265501')" class="text-red-300 hover:text-red-500 p-1 rounded">🗑</button>
@@ -2679,7 +2679,7 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
                         <td class="py-4 px-4 text-xs text-slate-600">马来西亚仓库</td>
                         <td class="py-4 px-4 text-center">
                             <div class="flex items-center justify-center gap-2">
-                                <button onclick="openInventoryEditModal('inv_1775820358973')" class="text-purple-700 hover:bg-purple-50 p-1 rounded text-xs">定价</button>
+                                <button onclick="openInventoryEditModal('inv_1775820358973')" class="text-purple-700 hover:bg-purple-50 p-1 rounded text-xs">Pricing</button>
                                 <button onclick="openInventoryModal('edit', 'inv_1775820358973')" class="text-blue-600 hover:bg-blue-50 p-1 rounded text-xs">修改</button>
                                 <button onclick="openInventoryModal('out', 'inv_1775820358973')" class="text-orange-500 hover:bg-orange-50 p-1 rounded text-xs">出库</button>
                                 <button onclick="deleteInventoryItem('inv_1775820358973')" class="text-red-300 hover:text-red-500 p-1 rounded">🗑</button>
@@ -2713,7 +2713,7 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
                         <td class="py-4 px-4 text-xs text-slate-600">马来西亚仓库</td>
                         <td class="py-4 px-4 text-center">
                             <div class="flex items-center justify-center gap-2">
-                                <button onclick="openInventoryEditModal('inv_1775820443415')" class="text-purple-700 hover:bg-purple-50 p-1 rounded text-xs">定价</button>
+                                <button onclick="openInventoryEditModal('inv_1775820443415')" class="text-purple-700 hover:bg-purple-50 p-1 rounded text-xs">Pricing</button>
                                 <button onclick="openInventoryModal('edit', 'inv_1775820443415')" class="text-blue-600 hover:bg-blue-50 p-1 rounded text-xs">修改</button>
                                 <button onclick="openInventoryModal('out', 'inv_1775820443415')" class="text-orange-500 hover:bg-orange-50 p-1 rounded text-xs">出库</button>
                                 <button onclick="deleteInventoryItem('inv_1775820443415')" class="text-red-300 hover:text-red-500 p-1 rounded">🗑</button>
@@ -5049,27 +5049,27 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
                     <div class="md:col-span-2">
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">家用利润合计%（CN+MY）</label>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">RESI Profit Total % (CN+MY)</label>
                         <input type="text" id="sales-out-profit-home" readonly="" class="w-full border border-slate-200 rounded-xl p-2 text-xs outline-none bg-slate-50 text-slate-700 font-bold text-right">
                     </div>
                     <div class="md:col-span-2">
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">工商业利润合计%（CN+MY）</label>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">C&amp;S Profit Total % (CN+MY)</label>
                         <input type="text" id="sales-out-profit-biz" readonly="" class="w-full border border-slate-200 rounded-xl p-2 text-xs outline-none bg-slate-50 text-slate-700 font-bold text-right">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">清关家用(¥)</label>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Clearance RESI (¥)</label>
                         <input type="text" id="sales-out-q-ch" readonly="" class="w-full border border-slate-200 rounded-xl p-2 text-xs outline-none bg-blue-50 text-blue-700 font-black text-right">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">清关工商业(¥)</label>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Clearance C&amp;S (¥)</label>
                         <input type="text" id="sales-out-q-cb" readonly="" class="w-full border border-slate-200 rounded-xl p-2 text-xs outline-none bg-blue-50 text-blue-700 font-black text-right">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">灰清家用(¥)</label>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Grey RESI (¥)</label>
                         <input type="text" id="sales-out-q-gh" readonly="" class="w-full border border-slate-200 rounded-xl p-2 text-xs outline-none bg-indigo-50 text-indigo-700 font-black text-right">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">灰清工商业(¥)</label>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Grey C&amp;S (¥)</label>
                         <input type="text" id="sales-out-q-gb" readonly="" class="w-full border border-slate-200 rounded-xl p-2 text-xs outline-none bg-indigo-50 text-indigo-700 font-black text-right">
                     </div>
                 </div>
@@ -5077,15 +5077,15 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
                 <div class="space-y-4">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                         <div class="flex items-end">
-                            <button id="sales-out-currency-toggle" onclick="toggleSalesOutCurrency()" class="w-full px-4 py-3 rounded-xl bg-slate-900 text-white text-xs font-black hover:bg-black border border-slate-900">RM / ¥</button>
+                            <button id="sales-out-currency-toggle" onclick="toggleSalesOutCurrency()" class="w-full px-4 py-3 rounded-xl bg-slate-900 text-white text-xs font-black hover:bg-black border border-slate-900">RM/¥</button>
                         </div>
                         <div>
-                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">销售价格类型</label>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Sales Price Type</label>
                             <select id="sales-out-price-type" onchange="onSalesOutPriceTypeChange()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500 bg-white font-bold">
-                                <option value="clearance_home">清关家用</option>
-                                <option value="clearance_biz">清关工商业</option>
-                                <option value="gray_home">灰清家用</option>
-                                <option value="gray_biz">灰清工商业</option>
+                                <option value="clearance_home">Clearance RESI</option>
+                                <option value="clearance_biz">Clearance C&amp;S</option>
+                                <option value="gray_home">Grey RESI</option>
+                                <option value="gray_biz">Grey C&amp;S</option>
                             </select>
                         </div>
                         <div>
@@ -5169,15 +5169,15 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
     <div id="global-tooltip" class="fixed p-3 bg-slate-800 text-white text-xs rounded-lg shadow-xl z-[9999] pointer-events-none w-64 whitespace-normal hidden" style="left: 872px; top: 455px;">
                 <p class="font-black text-sm mb-2 border-b border-slate-600 pb-1">25kW 三相逆变器</p>
                 <div class="space-y-1">
-                    <p>PCS Price (Clearance Home): <span class="font-black text-white">RM 16.59/pcs</span> (¥28.54/pcs)</p>
-                    <p class="text-slate-300">Formula: Clearance Home per kW × 25 kW/pcs</p>
+                    <p>PCS Price (Clearance RESI): <span class="font-black text-white">RM 16.59/pcs</span> (¥28.54/pcs)</p>
+                    <p class="text-slate-300">Formula: Clearance RESI per kW × 25 kW/pcs</p>
                     <p>PCS Cost: <span class="font-black text-white">RM 8.8023/pcs</span> (¥15.1400/pcs)</p>
                     <p>Avg Cost: <span class="font-black text-white">RM 0.3521/kW</span> (¥0.6056/kW; base cost)</p>
                     <p>Clearance Cost: ¥0.6056 × (1 + 20% duty + 10% SST) = <span class="font-black text-blue-200">¥0.7873</span></p>
                     <p>Grey Cost: ¥0.6056 × (1 + 5% grey tax) = <span class="font-black text-indigo-200">¥0.6359</span></p>
-                    <p>Home Price: cost × (1 + 30% CN + 15% MY) = +45.00%</p>
-                    <p>C&amp;I Price: cost × (1 + 30% CN + 15% MY) = +45.00%</p>
-                    <p>Market 30D: <span class="font-black text-amber-200">暂无30天市场价</span></p>
+                    <p>RESI Price: cost × (1 + 30% CN + 15% MY) = +45.00%</p>
+                    <p>C&amp;S Price: cost × (1 + 30% CN + 15% MY) = +45.00%</p>
+                    <p>Market 30D: <span class="font-black text-amber-200">No 30D market price</span></p>
                     <p>FX: 1 MYR = 1.7200 CNY</p>
                     <p class="pt-1 text-slate-300">Certifications: IEC 62109-1, IEC 62109-2, IEC 62477 (when applicable), IEC 62109-1/2, SIRIM / local utility requirements where applicable</p>
                 </div>
@@ -5186,16 +5186,19 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
     <!-- 库存价格编辑弹窗 -->
     <div id="inventory-edit-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center z-[200] p-4">
         <div class="bg-white rounded-3xl p-8 w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
-            <h3 class="text-xl font-bold text-slate-800 mb-6">定价</h3>
+            <div class="flex items-center justify-between gap-4 mb-6">
+                <h3 class="text-xl font-bold text-slate-800">Pricing</h3>
+                <button id="inventory-pricing-currency-toggle" onclick="toggleInventoryPricingCurrency()" class="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-black hover:bg-black border border-slate-900">RM/¥</button>
+            </div>
             <div class="space-y-6">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">总库存平均成本 (¥)</label>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Total Avg Cost (<span class="inventory-pricing-currency-symbol">¥</span>)</label>
                         <input type="number" id="edit-inv-avg-cost" readonly="" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-slate-50 text-slate-700 font-bold text-right">
                     </div>
                     <div></div>
                     <div>
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">进口关税 (%)</label>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Import Duty (%)</label>
                         <input type="number" id="edit-inv-import-duty" step="0.01" oninput="recalcInventoryPricingModal()" onchange="recalcInventoryPricingModal()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500 text-right">
                     </div>
                     <div>
@@ -5203,16 +5206,16 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
                         <input type="number" id="edit-inv-sst" step="0.01" oninput="recalcInventoryPricingModal()" onchange="recalcInventoryPricingModal()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500 text-right">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">灰清税 (%)</label>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Grey Tax (%)</label>
                         <input type="number" id="edit-inv-gray-tax" step="0.01" oninput="recalcInventoryPricingModal()" onchange="recalcInventoryPricingModal()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500 text-right">
                     </div>
                     <div></div>
                     <div>
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">清关报价成本 (¥)</label>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Clearance Quote Cost (<span class="inventory-pricing-currency-symbol">¥</span>)</label>
                         <input type="number" id="edit-inv-clearance-cost" readonly="" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-slate-50 text-slate-700 font-bold text-right">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">灰清报价成本 (¥)</label>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Grey Quote Cost (<span class="inventory-pricing-currency-symbol">¥</span>)</label>
                         <input type="number" id="edit-inv-gray-cost" readonly="" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-slate-50 text-slate-700 font-bold text-right">
                     </div>
                 </div>
@@ -5220,19 +5223,19 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
                 <div class="border-t border-slate-100 pt-6">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">中国母公司子类目利润（家用）%</label>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">China Parent Profit (RESI) %</label>
                             <input type="number" id="edit-profit-cn-home" readonly="" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-slate-50 text-slate-600 text-right">
                         </div>
                         <div>
-                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">马来西亚子公司子类目利润（家用）%</label>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Malaysia Subsidiary Profit (RESI) %</label>
                             <input type="number" id="edit-profit-my-home" readonly="" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-slate-50 text-slate-600 text-right">
                         </div>
                         <div>
-                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">中国母公司子类目利润（工商业）%</label>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">China Parent Profit (C&amp;S) %</label>
                             <input type="number" id="edit-profit-cn-biz" readonly="" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-slate-50 text-slate-600 text-right">
                         </div>
                         <div>
-                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">马来西亚子公司子类目利润（工商业）%</label>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Malaysia Subsidiary Profit (C&amp;S) %</label>
                             <input type="number" id="edit-profit-my-biz" readonly="" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-slate-50 text-slate-600 text-right">
                         </div>
                     </div>
@@ -5241,27 +5244,27 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
                 <div class="border-t border-slate-100 pt-6">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">清关家用报价 (¥)</label>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Clearance RESI Quote (<span class="inventory-pricing-currency-symbol">¥</span>)</label>
                             <input type="number" id="edit-price-clearance-home" readonly="" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-blue-50 text-blue-700 font-black text-right">
                         </div>
                         <div>
-                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">清关工商业报价 (¥)</label>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Clearance C&amp;S Quote (<span class="inventory-pricing-currency-symbol">¥</span>)</label>
                             <input type="number" id="edit-price-clearance-biz" readonly="" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-blue-50 text-blue-700 font-black text-right">
                         </div>
                         <div>
-                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">灰清家用报价 (¥)</label>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Grey RESI Quote (<span class="inventory-pricing-currency-symbol">¥</span>)</label>
                             <input type="number" id="edit-price-gray-home" readonly="" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-indigo-50 text-indigo-700 font-black text-right">
                         </div>
                         <div>
-                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">灰清工商业报价 (¥)</label>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Grey C&amp;S Quote (<span class="inventory-pricing-currency-symbol">¥</span>)</label>
                             <input type="number" id="edit-price-gray-biz" readonly="" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-indigo-50 text-indigo-700 font-black text-right">
                         </div>
                     </div>
                 </div>
             </div>
             <div class="mt-8 flex gap-3">
-                <button onclick="closeInventoryEditModal()" class="flex-1 py-3 text-slate-400 font-bold hover:bg-slate-50 rounded-2xl transition-colors border border-slate-200">取消</button>
-                <button onclick="updateInventoryPrices()" class="flex-1 py-3 bg-blue-600 text-white rounded-2xl font-bold shadow-lg hover:bg-blue-700 transition-all">保存修改</button>
+                <button onclick="closeInventoryEditModal()" class="flex-1 py-3 text-slate-400 font-bold hover:bg-slate-50 rounded-2xl transition-colors border border-slate-200">Cancel</button>
+                <button onclick="updateInventoryPrices()" class="flex-1 py-3 bg-blue-600 text-white rounded-2xl font-bold shadow-lg hover:bg-blue-700 transition-all">Save Changes</button>
             </div>
         </div>
     </div>
@@ -7910,7 +7913,7 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
         window.renderCurrencyButton = () => {
             const btn = document.getElementById('btn-currency');
             if (!btn) return;
-            btn.textContent = currentCurrency === 'CNY' ? '¥ / RM' : 'RM / ¥';
+            btn.textContent = currentCurrency === 'CNY' ? '¥/RM' : 'RM/¥';
         };
 
         window.toggleCurrency = () => {
@@ -9547,7 +9550,7 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
                         <td class="py-4 px-4 text-xs text-slate-600">${item.location || '-'}</td>
                         <td class="py-4 px-4 text-center">
                             <div class="flex items-center justify-center gap-2">
-                                <button onclick="openInventoryEditModal('${item.id}')" class="text-purple-700 hover:bg-purple-50 p-1 rounded text-xs">定价</button>
+                                <button onclick="openInventoryEditModal('${item.id}')" class="text-purple-700 hover:bg-purple-50 p-1 rounded text-xs">Pricing</button>
                                 <button onclick="openInventoryModal('edit', '${item.id}')" class="text-blue-600 hover:bg-blue-50 p-1 rounded text-xs">修改</button>
                                 <button onclick="openInventoryModal('out', '${item.id}')" class="text-orange-500 hover:bg-orange-50 p-1 rounded text-xs">出库</button>
                                 <button onclick="deleteInventoryItem('${item.id}')" class="text-red-300 hover:text-red-500 p-1 rounded">🗑</button>
@@ -10214,26 +10217,29 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
             const grayPct = Number.isFinite(parseFloat(grayEl?.value)) ? parseFloat(grayEl.value) : getDefaultGrayTaxPercent();
             const tempItem = { ...item, importDutyPct: dutyPct, sstPct: sstPct, grayTaxPct: grayPct };
             const r = computeInventoryPricing({ item: tempItem, product });
-            const set = (id, v, digits = 2) => {
+            updateInventoryPricingCurrencyUi();
+            const set = (id, v, digits = 2, isCurrency = false) => {
                 const el = document.getElementById(id);
                 if (!el) return;
-                el.value = Number.isFinite(parseFloat(v)) ? parseFloat(v).toFixed(digits) : '0.00';
+                const n = Number.isFinite(parseFloat(v)) ? parseFloat(v) : 0;
+                const display = isCurrency ? inventoryPricingDisplayFromCny(n) : n;
+                el.value = Number.isFinite(parseFloat(display)) ? parseFloat(display).toFixed(digits) : '0.00';
             };
 
-            set('edit-inv-avg-cost', r.avgCost, 4);
+            set('edit-inv-avg-cost', r.avgCost, 4, true);
             if (dutyEl && String(dutyEl.value ?? '').trim() === '') dutyEl.value = String(r.dutyPct);
             if (sstEl && String(sstEl.value ?? '').trim() === '') sstEl.value = String(r.sstPct);
             if (grayEl && String(grayEl.value ?? '').trim() === '') grayEl.value = String(r.grayPct);
-            set('edit-inv-clearance-cost', r.clearanceCost, 4);
-            set('edit-inv-gray-cost', r.grayCost, 4);
+            set('edit-inv-clearance-cost', r.clearanceCost, 4, true);
+            set('edit-inv-gray-cost', r.grayCost, 4, true);
             set('edit-profit-cn-home', r.cnHomePct);
             set('edit-profit-my-home', r.myHomePct);
             set('edit-profit-cn-biz', r.cnBizPct);
             set('edit-profit-my-biz', r.myBizPct);
-            set('edit-price-clearance-home', r.clearanceHomePrice, 4);
-            set('edit-price-clearance-biz', r.clearanceBizPrice, 4);
-            set('edit-price-gray-home', r.grayHomePrice, 4);
-            set('edit-price-gray-biz', r.grayBizPrice, 4);
+            set('edit-price-clearance-home', r.clearanceHomePrice, 4, true);
+            set('edit-price-clearance-biz', r.clearanceBizPrice, 4, true);
+            set('edit-price-gray-home', r.grayHomePrice, 4, true);
+            set('edit-price-gray-biz', r.grayBizPrice, 4, true);
         };
         window.openInventoryEditModal = (id) => {
             const item = inventory.find(i => i.id === id);
@@ -10246,6 +10252,7 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
             if (dutyEl) dutyEl.value = Number.isFinite(parseFloat(item.importDutyPct)) ? String(parseFloat(item.importDutyPct)) : String(getDefaultImportDutyPercent(product.category));
             if (sstEl) sstEl.value = Number.isFinite(parseFloat(item.sstPct)) ? String(parseFloat(item.sstPct)) : String(getDefaultSstPercent());
             if (grayEl) grayEl.value = Number.isFinite(parseFloat(item.grayTaxPct)) ? String(parseFloat(item.grayTaxPct)) : String(getDefaultGrayTaxPercent());
+            updateInventoryPricingCurrencyUi();
             recalcInventoryPricingModal();
             document.getElementById('inventory-edit-modal').classList.remove('hidden');
         };
@@ -10289,7 +10296,7 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
                 productName: product.name || '未知产品',
                 quantity: item.quantity,
                 batchNo: item.batchNo,
-                note: `定价 税率 关税:${oldDuty.toFixed(2)}→${dutyPct.toFixed(2)} SST:${oldSst.toFixed(2)}→${sstPct.toFixed(2)} 灰清:${oldGray.toFixed(2)}→${grayPct.toFixed(2)} | 清关家用:${oldCh.toFixed(2)}→${r.clearanceHomePrice.toFixed(2)} 清关工商:${oldCb.toFixed(2)}→${r.clearanceBizPrice.toFixed(2)} 灰清家用:${oldGh.toFixed(2)}→${r.grayHomePrice.toFixed(2)} 灰清工商:${oldGb.toFixed(2)}→${r.grayBizPrice.toFixed(2)}`
+                note: `定价 税率 关税:${oldDuty.toFixed(2)}→${dutyPct.toFixed(2)} SST:${oldSst.toFixed(2)}→${sstPct.toFixed(2)} 灰清:${oldGray.toFixed(2)}→${grayPct.toFixed(2)} | Clearance RESI:${oldCh.toFixed(2)}→${r.clearanceHomePrice.toFixed(2)} Clearance C&S:${oldCb.toFixed(2)}→${r.clearanceBizPrice.toFixed(2)} Grey RESI:${oldGh.toFixed(2)}→${r.grayHomePrice.toFixed(2)} Grey C&S:${oldGb.toFixed(2)}→${r.grayBizPrice.toFixed(2)}`
             });
 
             saveToLocal();
@@ -11304,10 +11311,10 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
         let selectedPriceListProductIds = new Set();
         let currentPriceListVisibleIds = [];
         const PRICE_LIST_TYPES = [
-            { key: 'clearanceHomePrice', label: 'Clearance Home', costKey: 'clearanceCost', profitTarget: 'home' },
-            { key: 'clearanceBizPrice', label: 'Clearance C&I', costKey: 'clearanceCost', profitTarget: 'biz' },
-            { key: 'grayHomePrice', label: 'Grey Home', costKey: 'grayCost', profitTarget: 'home' },
-            { key: 'grayBizPrice', label: 'Grey C&I', costKey: 'grayCost', profitTarget: 'biz' }
+            { key: 'clearanceHomePrice', label: 'Clearance RESI', costKey: 'clearanceCost', profitTarget: 'home' },
+            { key: 'clearanceBizPrice', label: 'Clearance C&S', costKey: 'clearanceCost', profitTarget: 'biz' },
+            { key: 'grayHomePrice', label: 'Grey RESI', costKey: 'grayCost', profitTarget: 'home' },
+            { key: 'grayBizPrice', label: 'Grey C&S', costKey: 'grayCost', profitTarget: 'biz' }
         ];
         function getPriceListSelectedPriceType() {
             const basis = String(document.getElementById('price-list-price-basis')?.value || 'clearance') === 'gray' ? 'gray' : 'clearance';
@@ -11316,10 +11323,10 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
         }
         function getPriceListSelectedPriceLabel() {
             const type = getPriceListSelectedPriceType();
-            if (type === 'clearance_biz') return 'Clearance C&I';
-            if (type === 'gray_home') return 'Grey Home';
-            if (type === 'gray_biz') return 'Grey C&I';
-            return 'Clearance Home';
+            if (type === 'clearance_biz') return 'Clearance C&S';
+            if (type === 'gray_home') return 'Grey RESI';
+            if (type === 'gray_biz') return 'Grey C&S';
+            return 'Clearance RESI';
         }
         function getPriceListSelectedPcsPrice(pricing = {}) {
             const type = getPriceListSelectedPriceType();
@@ -11385,6 +11392,25 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
             if (String(currency || '').toUpperCase() === 'MYR') return `RM ${(n / getSalesOutRateCnyPerMyr()).toFixed(digits)}`;
             return `¥${n.toFixed(digits)}`;
         }
+        function getInventoryPricingCurrency() {
+            return window.inventoryPricingDisplayCurrency === 'MYR' ? 'MYR' : 'CNY';
+        }
+        function inventoryPricingDisplayFromCny(valueCny) {
+            const n = Number.isFinite(parseFloat(valueCny)) ? parseFloat(valueCny) : 0;
+            return getInventoryPricingCurrency() === 'MYR' ? n / getSalesOutRateCnyPerMyr() : n;
+        }
+        function updateInventoryPricingCurrencyUi() {
+            const currency = getInventoryPricingCurrency();
+            const symbol = currency === 'MYR' ? 'RM' : '¥';
+            const btn = document.getElementById('inventory-pricing-currency-toggle');
+            if (btn) btn.textContent = 'RM/¥';
+            document.querySelectorAll('.inventory-pricing-currency-symbol').forEach(el => { el.textContent = symbol; });
+        }
+        window.toggleInventoryPricingCurrency = () => {
+            window.inventoryPricingDisplayCurrency = getInventoryPricingCurrency() === 'MYR' ? 'CNY' : 'MYR';
+            updateInventoryPricingCurrencyUi();
+            recalcInventoryPricingModal();
+        };
         function renderDualCurrencyAmount(valueCny, digits = 2, unit = '') {
             const primary = getPriceListCurrencyPriority();
             const secondary = primary === 'MYR' ? 'CNY' : 'MYR';
@@ -11396,6 +11422,21 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
         }
         function priceListCountryLabel(code) {
             return CERTIFICATION_COUNTRIES.find(c => c.code === code)?.label || code;
+        }
+        function priceListCategoryDisplayLabel(category) {
+            const raw = String(category || '').trim();
+            const map = {
+                '电池': 'Battery',
+                '工商储': 'C&S Storage',
+                '光伏组件': 'PV Module',
+                '逆变器': 'Inverter',
+                '配件': 'Accessories',
+                '一体机': 'All-in-one'
+            };
+            return map[raw] || raw.replaceAll('家用', 'RESI').replaceAll('工商业', 'C&S');
+        }
+        function priceListSubcategoryDisplayLabel(value) {
+            return String(value || '').trim().replaceAll('家用', 'RESI').replaceAll('工商业', 'C&S');
         }
         function renderPriceListFilters() {
             const catSel = document.getElementById('price-list-category-filter');
@@ -11420,7 +11461,7 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
                 (req.standards || []).forEach(s => certSet.add(s));
             });
             const certs = [...certSet].sort((a, b) => a.localeCompare(b));
-            catSel.innerHTML = `<option value="">All Categories</option>` + cats.map(v => `<option value="${htmlSafe(v)}">${htmlSafe(v)}</option>`).join('');
+            catSel.innerHTML = `<option value="">All Categories</option>` + cats.map(v => `<option value="${htmlSafe(v)}">${htmlSafe(priceListCategoryDisplayLabel(v))}</option>`).join('');
             brandSel.innerHTML = `<option value="">All Brands</option>` + brands.map(v => `<option value="${htmlSafe(v)}">${htmlSafe(v)}</option>`).join('');
             countrySel.innerHTML = `<option value="">All Countries</option>` + countryOptions.map(c => `<option value="${c.value}">${c.label}</option>`).join('');
             certSel.innerHTML = `<option value="">All Certifications</option>` + certs.map(v => `<option value="${htmlSafe(v)}">${htmlSafe(v)}</option>`).join('');
@@ -11465,7 +11506,7 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
             marketPrices = normalizeMarketPrices(marketPrices);
             const keep = catSel.value;
             const cats = [...new Set(products.map(p => String(p.category || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-            catSel.innerHTML = cats.map(cat => `<option value="${htmlSafe(cat)}">${htmlSafe(cat)}</option>`).join('');
+            catSel.innerHTML = cats.map(cat => `<option value="${htmlSafe(cat)}">${htmlSafe(priceListCategoryDisplayLabel(cat))}</option>`).join('');
             const nextCat = keep && cats.includes(keep) ? keep : cats[0];
             if (nextCat) catSel.value = nextCat;
             const unit = getMarketCategoryUnitMeta(nextCat).unit;
@@ -11482,8 +11523,8 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
             const source = meta.source === 'manual' ? 'manual override' : 'auto from inventory/spec';
             const recent = summary.records.length
                 ? `30D avg ${formatMarketPrice(summary.avgCny, summary.unit, 'CNY')} / ${formatMarketPrice(summary.avgCny, summary.unit, 'MYR')}`
-                : '暂无30天市场价';
-            hint.textContent = `${cat} unit: /${summary.unit} (${source}). ${recent}.`;
+                : 'No 30D market price';
+            hint.textContent = `${priceListCategoryDisplayLabel(cat)} unit: /${summary.unit} (${source}). ${recent}.`;
         }
         window.onMarketPriceCategoryChange = () => {
             const cat = String(document.getElementById('market-price-category')?.value || '').trim();
@@ -11530,7 +11571,7 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
                 const latest = summary.latest;
                 return `
                     <button type="button" onclick="openMarketTrendModal('${htmlSafe(category)}')" class="text-right hover:underline">
-                        <div class="font-black text-slate-400">暂无30天市场价</div>
+                        <div class="font-black text-slate-400">No 30D market price</div>
                         <div class="text-[10px] text-slate-400">${latest ? `Latest ${formatMarketPrice(latest.priceCny, latest.unit || summary.unit, 'CNY')}` : `Unit /${summary.unit}`}</div>
                     </button>
                 `;
@@ -11548,9 +11589,9 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
             const trendSign = summary.trendCny > 0 ? '+' : '';
             const recentLine = summary.records.length
                 ? `<p>30D Avg: <span class="font-black text-white">${formatMarketPrice(summary.avgCny, summary.unit, 'CNY')}</span> (${formatMarketPrice(summary.avgCny, summary.unit, 'MYR')})</p>`
-                : '<p class="text-amber-200">暂无30天市场价</p>';
+                : '<p class="text-amber-200">No 30D market price</p>';
             return `
-                <p class="font-black text-sm mb-2 border-b border-slate-600 pb-1">${htmlSafe(category || '-')} Market</p>
+                <p class="font-black text-sm mb-2 border-b border-slate-600 pb-1">${htmlSafe(priceListCategoryDisplayLabel(category) || '-')} Market</p>
                 <div class="space-y-1">
                     ${recentLine}
                     <p>Unit: /${htmlSafe(summary.unit)}</p>
@@ -11770,7 +11811,7 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
             renderPriceListFilters();
             renderMarketPriceForm();
             const currencyBtn = document.getElementById('price-list-currency-toggle');
-            if (currencyBtn) currencyBtn.textContent = getPriceListCurrencyPriority() === 'MYR' ? 'RM / ¥' : '¥ / RM';
+            if (currencyBtn) currencyBtn.textContent = 'RM/¥';
             const body = document.getElementById('price-list-body');
             const summary = document.getElementById('price-list-summary');
             if (!body) return;
@@ -11800,7 +11841,7 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
                             <div class="font-black text-slate-800 text-sm">${htmlSafe(p.name || '-')}</div>
                             <div class="text-[10px] font-mono text-slate-400">${htmlSafe(p.id || '-')} | ${htmlSafe(p.spec || '-')} | Stock ${formatNumberAuto(pricing.stockQty, 4)}</div>
                         </td>
-                        <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(p.category || '-')}<div class="text-[10px] text-slate-400">${htmlSafe(p.scenario || '-')}</div></td>
+                        <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(priceListCategoryDisplayLabel(p.category || '-'))}<div class="text-[10px] text-slate-400">${htmlSafe(priceListSubcategoryDisplayLabel(p.scenario || '-'))}</div></td>
                         <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(getProductSupplierDisplay(p))}</td>
                         <td class="py-4 px-4 text-right">${renderDualCurrencyAmount(selectedPcsPrice, 2, 'pcs')}<div class="text-[10px] text-slate-400">${htmlSafe(selectedPriceLabel)} × ${formatNumberAuto(pricing.pcsMultiplier, 4)} ${htmlSafe(pricing.costUnit)}/pcs</div></td>
                         <td class="py-4 px-4 text-right">${renderDualCurrencyAmount(pricing.pcsCost, 4, 'pcs')}<div class="text-[10px] text-slate-400">${formatNumberAuto(pricing.pcsMultiplier, 4)} ${htmlSafe(pricing.costUnit)}/pcs</div></td>
@@ -11871,9 +11912,9 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
                     <p>Avg Cost: <span class="font-black text-white">${formatCurrencyFromCny(r.avgCost, getPriceListCurrencyPriority(), 4)}/${r.costUnit}</span> (${formatCurrencyFromCny(r.avgCost, getPriceListCurrencyPriority() === 'MYR' ? 'CNY' : 'MYR', 4)}/${r.costUnit}; ${r.usedInventoryCost ? 'inventory average' : 'base cost'})</p>
                     <p>Clearance Cost: ${formatCny(r.avgCost, 4)} × (1 + ${r.dutyPct}% duty + ${r.sstPct}% SST) = <span class="font-black text-blue-200">${formatCny(r.clearanceCost, 4)}</span></p>
                     <p>Grey Cost: ${formatCny(r.avgCost, 4)} × (1 + ${r.grayPct}% grey tax) = <span class="font-black text-indigo-200">${formatCny(r.grayCost, 4)}</span></p>
-                    <p>Home Price: cost × (1 + ${r.cnHomePct}% CN + ${r.myHomePct}% MY) = +${homeProfit.toFixed(2)}%</p>
-                    <p>C&I Price: cost × (1 + ${r.cnBizPct}% CN + ${r.myBizPct}% MY) = +${bizProfit.toFixed(2)}%</p>
-                    <p>Market 30D: <span class="font-black text-amber-200">${market.records.length ? formatMarketPrice(market.avgCny, market.unit, 'CNY') : '暂无30天市场价'}</span></p>
+                    <p>RESI Price: cost × (1 + ${r.cnHomePct}% CN + ${r.myHomePct}% MY) = +${homeProfit.toFixed(2)}%</p>
+                    <p>C&S Price: cost × (1 + ${r.cnBizPct}% CN + ${r.myBizPct}% MY) = +${bizProfit.toFixed(2)}%</p>
+                    <p>Market 30D: <span class="font-black text-amber-200">${market.records.length ? formatMarketPrice(market.avgCny, market.unit, 'CNY') : 'No 30D market price'}</span></p>
                     <p>FX: 1 MYR = ${getSalesOutRateCnyPerMyr().toFixed(4)} CNY</p>
                     <p class="pt-1 text-slate-300">Certifications: ${(req.standards || []).slice(0, 5).map(htmlSafe).join(', ') || '-'}</p>
                 </div>
@@ -11901,8 +11942,8 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
                 const out = {
                     'Product ID': p.id || '',
                     'Product Name': p.name || '',
-                    'Category': p.category || '',
-                    'Subcategory': p.scenario || '',
+                    'Category': priceListCategoryDisplayLabel(p.category || ''),
+                    'Subcategory': priceListSubcategoryDisplayLabel(p.scenario || ''),
                     'Brand': getProductSupplierDisplay(p),
                     'Spec': p.spec || '',
                     'Stock Qty': r.stockQty || 0,
@@ -11919,17 +11960,17 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
                     '30D Market Avg CNY': market.records.length ? market.avgCny : '',
                     '30D Market Avg MYR': market.records.length ? market.avgCny / getSalesOutRateCnyPerMyr() : '',
                     'Latest Market CNY': market.latest ? market.latest.priceCny : '',
-                    'Home Profit %': homeProfit,
-                    'C&I Profit %': bizProfit,
-                    'Clearance Home CNY': r.clearanceHomePrice || 0,
-                    'Clearance Home MYR': (r.clearanceHomePrice || 0) / getSalesOutRateCnyPerMyr(),
-                    'Clearance C&I CNY': r.clearanceBizPrice || 0,
-                    'Clearance C&I MYR': (r.clearanceBizPrice || 0) / getSalesOutRateCnyPerMyr(),
-                    'Grey Home CNY': r.grayHomePrice || 0,
-                    'Grey Home MYR': (r.grayHomePrice || 0) / getSalesOutRateCnyPerMyr(),
-                    'Grey C&I CNY': r.grayBizPrice || 0,
-                    'Grey C&I MYR': (r.grayBizPrice || 0) / getSalesOutRateCnyPerMyr(),
-                    'Formula Note': `Clearance cost = Avg Cost * (1 + duty ${r.dutyPct}% + SST ${r.sstPct}%); Grey cost = Avg Cost * (1 + grey tax ${r.grayPct}%); Home profit = CN ${r.cnHomePct}% + MY ${r.myHomePct}%; C&I profit = CN ${r.cnBizPct}% + MY ${r.myBizPct}%; FX 1 MYR = ${getSalesOutRateCnyPerMyr().toFixed(4)} CNY`,
+                    'RESI Profit %': homeProfit,
+                    'C&S Profit %': bizProfit,
+                    'Clearance RESI CNY': r.clearanceHomePrice || 0,
+                    'Clearance RESI MYR': (r.clearanceHomePrice || 0) / getSalesOutRateCnyPerMyr(),
+                    'Clearance C&S CNY': r.clearanceBizPrice || 0,
+                    'Clearance C&S MYR': (r.clearanceBizPrice || 0) / getSalesOutRateCnyPerMyr(),
+                    'Grey RESI CNY': r.grayHomePrice || 0,
+                    'Grey RESI MYR': (r.grayHomePrice || 0) / getSalesOutRateCnyPerMyr(),
+                    'Grey C&S CNY': r.grayBizPrice || 0,
+                    'Grey C&S MYR': (r.grayBizPrice || 0) / getSalesOutRateCnyPerMyr(),
+                    'Formula Note': `Clearance cost = Avg Cost * (1 + duty ${r.dutyPct}% + SST ${r.sstPct}%); Grey cost = Avg Cost * (1 + grey tax ${r.grayPct}%); RESI profit = CN ${r.cnHomePct}% + MY ${r.myHomePct}%; C&S profit = CN ${r.cnBizPct}% + MY ${r.myBizPct}%; FX 1 MYR = ${getSalesOutRateCnyPerMyr().toFixed(4)} CNY`,
                     'Certification Countries': (req.countries || []).map(priceListCountryLabel).join(', '),
                     'Certification Standards': (req.standards || []).join('; ')
                 };
@@ -11945,7 +11986,7 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
             const sym = document.getElementById('sales-out-currency-symbol');
             const symFinal = document.getElementById('sales-out-currency-symbol-final');
             const c = getSalesOutCurrency();
-            if (toggle) toggle.textContent = c === 'MYR' ? '¥ / RM' : 'RM / ¥';
+            if (toggle) toggle.textContent = c === 'MYR' ? '¥/RM' : 'RM/¥';
             if (sym) sym.textContent = c === 'MYR' ? 'RM' : '¥';
             if (symFinal) symFinal.textContent = c === 'MYR' ? 'RM' : '¥';
         }
@@ -12765,7 +12806,7 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
         window.renderPicker = () => {
             if (!window.pickerDisplayCurrency) window.pickerDisplayCurrency = currentCurrency || 'MYR';
             const currencyBtn = document.getElementById('picker-currency-toggle');
-            if (currencyBtn) currencyBtn.textContent = getPickerCurrency() === 'MYR' ? 'RM / ¥' : '¥ / RM';
+            if (currencyBtn) currencyBtn.textContent = getPickerCurrency() === 'MYR' ? 'RM/¥' : '¥/RM';
             const query = (document.getElementById('picker-search')?.value || '').toLowerCase();
             const vendor = document.getElementById('picker-vendor')?.value || '';
             const category = document.getElementById('picker-category')?.value || '';
@@ -12812,10 +12853,10 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
                             <span class="text-[9px] uppercase px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded">${getProductSupplierDisplay(p)}</span>
                         </div>
                         <div class="flex flex-wrap gap-2 justify-end">
-                            <button onclick="pickProduct('${item.id}', 'clearance_home')" class="px-3 py-1 bg-blue-700 text-white text-[10px] font-bold rounded-lg hover:bg-blue-800 transition-all shadow-sm">Clearance Home ${formatPickerPrice(ch)}</button>
-                            <button onclick="pickProduct('${item.id}', 'clearance_biz')" class="px-3 py-1 bg-sky-700 text-white text-[10px] font-bold rounded-lg hover:bg-sky-800 transition-all shadow-sm">Clearance C&I ${formatPickerPrice(cb)}</button>
-                            <button onclick="pickProduct('${item.id}', 'gray_home')" class="px-3 py-1 bg-indigo-700 text-white text-[10px] font-bold rounded-lg hover:bg-indigo-800 transition-all shadow-sm">Grey Home ${formatPickerPrice(gh)}</button>
-                            <button onclick="pickProduct('${item.id}', 'gray_biz')" class="px-3 py-1 bg-violet-700 text-white text-[10px] font-bold rounded-lg hover:bg-violet-800 transition-all shadow-sm">Grey C&I ${formatPickerPrice(gb)}</button>
+                            <button onclick="pickProduct('${item.id}', 'clearance_home')" class="px-3 py-1 bg-blue-700 text-white text-[10px] font-bold rounded-lg hover:bg-blue-800 transition-all shadow-sm">Clearance RESI ${formatPickerPrice(ch)}</button>
+                            <button onclick="pickProduct('${item.id}', 'clearance_biz')" class="px-3 py-1 bg-sky-700 text-white text-[10px] font-bold rounded-lg hover:bg-sky-800 transition-all shadow-sm">Clearance C&S ${formatPickerPrice(cb)}</button>
+                            <button onclick="pickProduct('${item.id}', 'gray_home')" class="px-3 py-1 bg-indigo-700 text-white text-[10px] font-bold rounded-lg hover:bg-indigo-800 transition-all shadow-sm">Grey RESI ${formatPickerPrice(gh)}</button>
+                            <button onclick="pickProduct('${item.id}', 'gray_biz')" class="px-3 py-1 bg-violet-700 text-white text-[10px] font-bold rounded-lg hover:bg-violet-800 transition-all shadow-sm">Grey C&S ${formatPickerPrice(gb)}</button>
                         </div>
                     </div>
                 </div>`}).join('');

@@ -2580,7 +2580,7 @@
         window.renderCurrencyButton = () => {
             const btn = document.getElementById('btn-currency');
             if (!btn) return;
-            btn.textContent = currentCurrency === 'CNY' ? '¥ / RM' : 'RM / ¥';
+            btn.textContent = currentCurrency === 'CNY' ? '¥/RM' : 'RM/¥';
         };
 
         window.toggleCurrency = () => {
@@ -4884,26 +4884,29 @@
             const grayPct = Number.isFinite(parseFloat(grayEl?.value)) ? parseFloat(grayEl.value) : getDefaultGrayTaxPercent();
             const tempItem = { ...item, importDutyPct: dutyPct, sstPct: sstPct, grayTaxPct: grayPct };
             const r = computeInventoryPricing({ item: tempItem, product });
-            const set = (id, v, digits = 2) => {
+            updateInventoryPricingCurrencyUi();
+            const set = (id, v, digits = 2, isCurrency = false) => {
                 const el = document.getElementById(id);
                 if (!el) return;
-                el.value = Number.isFinite(parseFloat(v)) ? parseFloat(v).toFixed(digits) : '0.00';
+                const n = Number.isFinite(parseFloat(v)) ? parseFloat(v) : 0;
+                const display = isCurrency ? inventoryPricingDisplayFromCny(n) : n;
+                el.value = Number.isFinite(parseFloat(display)) ? parseFloat(display).toFixed(digits) : '0.00';
             };
 
-            set('edit-inv-avg-cost', r.avgCost, 4);
+            set('edit-inv-avg-cost', r.avgCost, 4, true);
             if (dutyEl && String(dutyEl.value ?? '').trim() === '') dutyEl.value = String(r.dutyPct);
             if (sstEl && String(sstEl.value ?? '').trim() === '') sstEl.value = String(r.sstPct);
             if (grayEl && String(grayEl.value ?? '').trim() === '') grayEl.value = String(r.grayPct);
-            set('edit-inv-clearance-cost', r.clearanceCost, 4);
-            set('edit-inv-gray-cost', r.grayCost, 4);
+            set('edit-inv-clearance-cost', r.clearanceCost, 4, true);
+            set('edit-inv-gray-cost', r.grayCost, 4, true);
             set('edit-profit-cn-home', r.cnHomePct);
             set('edit-profit-my-home', r.myHomePct);
             set('edit-profit-cn-biz', r.cnBizPct);
             set('edit-profit-my-biz', r.myBizPct);
-            set('edit-price-clearance-home', r.clearanceHomePrice, 4);
-            set('edit-price-clearance-biz', r.clearanceBizPrice, 4);
-            set('edit-price-gray-home', r.grayHomePrice, 4);
-            set('edit-price-gray-biz', r.grayBizPrice, 4);
+            set('edit-price-clearance-home', r.clearanceHomePrice, 4, true);
+            set('edit-price-clearance-biz', r.clearanceBizPrice, 4, true);
+            set('edit-price-gray-home', r.grayHomePrice, 4, true);
+            set('edit-price-gray-biz', r.grayBizPrice, 4, true);
         };
         window.openInventoryEditModal = (id) => {
             const item = inventory.find(i => i.id === id);
@@ -4916,6 +4919,7 @@
             if (dutyEl) dutyEl.value = Number.isFinite(parseFloat(item.importDutyPct)) ? String(parseFloat(item.importDutyPct)) : String(getDefaultImportDutyPercent(product.category));
             if (sstEl) sstEl.value = Number.isFinite(parseFloat(item.sstPct)) ? String(parseFloat(item.sstPct)) : String(getDefaultSstPercent());
             if (grayEl) grayEl.value = Number.isFinite(parseFloat(item.grayTaxPct)) ? String(parseFloat(item.grayTaxPct)) : String(getDefaultGrayTaxPercent());
+            updateInventoryPricingCurrencyUi();
             recalcInventoryPricingModal();
             document.getElementById('inventory-edit-modal').classList.remove('hidden');
         };
@@ -4959,7 +4963,7 @@
                 productName: product.name || '未知产品',
                 quantity: item.quantity,
                 batchNo: item.batchNo,
-                note: `定价 税率 关税:${oldDuty.toFixed(2)}→${dutyPct.toFixed(2)} SST:${oldSst.toFixed(2)}→${sstPct.toFixed(2)} 灰清:${oldGray.toFixed(2)}→${grayPct.toFixed(2)} | 清关家用:${oldCh.toFixed(2)}→${r.clearanceHomePrice.toFixed(2)} 清关工商:${oldCb.toFixed(2)}→${r.clearanceBizPrice.toFixed(2)} 灰清家用:${oldGh.toFixed(2)}→${r.grayHomePrice.toFixed(2)} 灰清工商:${oldGb.toFixed(2)}→${r.grayBizPrice.toFixed(2)}`
+                note: `定价 税率 关税:${oldDuty.toFixed(2)}→${dutyPct.toFixed(2)} SST:${oldSst.toFixed(2)}→${sstPct.toFixed(2)} 灰清:${oldGray.toFixed(2)}→${grayPct.toFixed(2)} | Clearance RESI:${oldCh.toFixed(2)}→${r.clearanceHomePrice.toFixed(2)} Clearance C&S:${oldCb.toFixed(2)}→${r.clearanceBizPrice.toFixed(2)} Grey RESI:${oldGh.toFixed(2)}→${r.grayHomePrice.toFixed(2)} Grey C&S:${oldGb.toFixed(2)}→${r.grayBizPrice.toFixed(2)}`
             });
 
             saveToLocal();
@@ -5974,10 +5978,10 @@
         let selectedPriceListProductIds = new Set();
         let currentPriceListVisibleIds = [];
         const PRICE_LIST_TYPES = [
-            { key: 'clearanceHomePrice', label: 'Clearance Home', costKey: 'clearanceCost', profitTarget: 'home' },
-            { key: 'clearanceBizPrice', label: 'Clearance C&I', costKey: 'clearanceCost', profitTarget: 'biz' },
-            { key: 'grayHomePrice', label: 'Grey Home', costKey: 'grayCost', profitTarget: 'home' },
-            { key: 'grayBizPrice', label: 'Grey C&I', costKey: 'grayCost', profitTarget: 'biz' }
+            { key: 'clearanceHomePrice', label: 'Clearance RESI', costKey: 'clearanceCost', profitTarget: 'home' },
+            { key: 'clearanceBizPrice', label: 'Clearance C&S', costKey: 'clearanceCost', profitTarget: 'biz' },
+            { key: 'grayHomePrice', label: 'Grey RESI', costKey: 'grayCost', profitTarget: 'home' },
+            { key: 'grayBizPrice', label: 'Grey C&S', costKey: 'grayCost', profitTarget: 'biz' }
         ];
         function getPriceListSelectedPriceType() {
             const basis = String(document.getElementById('price-list-price-basis')?.value || 'clearance') === 'gray' ? 'gray' : 'clearance';
@@ -5986,10 +5990,10 @@
         }
         function getPriceListSelectedPriceLabel() {
             const type = getPriceListSelectedPriceType();
-            if (type === 'clearance_biz') return 'Clearance C&I';
-            if (type === 'gray_home') return 'Grey Home';
-            if (type === 'gray_biz') return 'Grey C&I';
-            return 'Clearance Home';
+            if (type === 'clearance_biz') return 'Clearance C&S';
+            if (type === 'gray_home') return 'Grey RESI';
+            if (type === 'gray_biz') return 'Grey C&S';
+            return 'Clearance RESI';
         }
         function getPriceListSelectedPcsPrice(pricing = {}) {
             const type = getPriceListSelectedPriceType();
@@ -6055,6 +6059,25 @@
             if (String(currency || '').toUpperCase() === 'MYR') return `RM ${(n / getSalesOutRateCnyPerMyr()).toFixed(digits)}`;
             return `¥${n.toFixed(digits)}`;
         }
+        function getInventoryPricingCurrency() {
+            return window.inventoryPricingDisplayCurrency === 'MYR' ? 'MYR' : 'CNY';
+        }
+        function inventoryPricingDisplayFromCny(valueCny) {
+            const n = Number.isFinite(parseFloat(valueCny)) ? parseFloat(valueCny) : 0;
+            return getInventoryPricingCurrency() === 'MYR' ? n / getSalesOutRateCnyPerMyr() : n;
+        }
+        function updateInventoryPricingCurrencyUi() {
+            const currency = getInventoryPricingCurrency();
+            const symbol = currency === 'MYR' ? 'RM' : '¥';
+            const btn = document.getElementById('inventory-pricing-currency-toggle');
+            if (btn) btn.textContent = 'RM/¥';
+            document.querySelectorAll('.inventory-pricing-currency-symbol').forEach(el => { el.textContent = symbol; });
+        }
+        window.toggleInventoryPricingCurrency = () => {
+            window.inventoryPricingDisplayCurrency = getInventoryPricingCurrency() === 'MYR' ? 'CNY' : 'MYR';
+            updateInventoryPricingCurrencyUi();
+            recalcInventoryPricingModal();
+        };
         function renderDualCurrencyAmount(valueCny, digits = 2, unit = '') {
             const primary = getPriceListCurrencyPriority();
             const secondary = primary === 'MYR' ? 'CNY' : 'MYR';
@@ -6066,6 +6089,21 @@
         }
         function priceListCountryLabel(code) {
             return CERTIFICATION_COUNTRIES.find(c => c.code === code)?.label || code;
+        }
+        function priceListCategoryDisplayLabel(category) {
+            const raw = String(category || '').trim();
+            const map = {
+                '电池': 'Battery',
+                '工商储': 'C&S Storage',
+                '光伏组件': 'PV Module',
+                '逆变器': 'Inverter',
+                '配件': 'Accessories',
+                '一体机': 'All-in-one'
+            };
+            return map[raw] || raw.replaceAll('家用', 'RESI').replaceAll('工商业', 'C&S');
+        }
+        function priceListSubcategoryDisplayLabel(value) {
+            return String(value || '').trim().replaceAll('家用', 'RESI').replaceAll('工商业', 'C&S');
         }
         function renderPriceListFilters() {
             const catSel = document.getElementById('price-list-category-filter');
@@ -6090,7 +6128,7 @@
                 (req.standards || []).forEach(s => certSet.add(s));
             });
             const certs = [...certSet].sort((a, b) => a.localeCompare(b));
-            catSel.innerHTML = `<option value="">All Categories</option>` + cats.map(v => `<option value="${htmlSafe(v)}">${htmlSafe(v)}</option>`).join('');
+            catSel.innerHTML = `<option value="">All Categories</option>` + cats.map(v => `<option value="${htmlSafe(v)}">${htmlSafe(priceListCategoryDisplayLabel(v))}</option>`).join('');
             brandSel.innerHTML = `<option value="">All Brands</option>` + brands.map(v => `<option value="${htmlSafe(v)}">${htmlSafe(v)}</option>`).join('');
             countrySel.innerHTML = `<option value="">All Countries</option>` + countryOptions.map(c => `<option value="${c.value}">${c.label}</option>`).join('');
             certSel.innerHTML = `<option value="">All Certifications</option>` + certs.map(v => `<option value="${htmlSafe(v)}">${htmlSafe(v)}</option>`).join('');
@@ -6135,7 +6173,7 @@
             marketPrices = normalizeMarketPrices(marketPrices);
             const keep = catSel.value;
             const cats = [...new Set(products.map(p => String(p.category || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-            catSel.innerHTML = cats.map(cat => `<option value="${htmlSafe(cat)}">${htmlSafe(cat)}</option>`).join('');
+            catSel.innerHTML = cats.map(cat => `<option value="${htmlSafe(cat)}">${htmlSafe(priceListCategoryDisplayLabel(cat))}</option>`).join('');
             const nextCat = keep && cats.includes(keep) ? keep : cats[0];
             if (nextCat) catSel.value = nextCat;
             const unit = getMarketCategoryUnitMeta(nextCat).unit;
@@ -6152,8 +6190,8 @@
             const source = meta.source === 'manual' ? 'manual override' : 'auto from inventory/spec';
             const recent = summary.records.length
                 ? `30D avg ${formatMarketPrice(summary.avgCny, summary.unit, 'CNY')} / ${formatMarketPrice(summary.avgCny, summary.unit, 'MYR')}`
-                : '暂无30天市场价';
-            hint.textContent = `${cat} unit: /${summary.unit} (${source}). ${recent}.`;
+                : 'No 30D market price';
+            hint.textContent = `${priceListCategoryDisplayLabel(cat)} unit: /${summary.unit} (${source}). ${recent}.`;
         }
         window.onMarketPriceCategoryChange = () => {
             const cat = String(document.getElementById('market-price-category')?.value || '').trim();
@@ -6200,7 +6238,7 @@
                 const latest = summary.latest;
                 return `
                     <button type="button" onclick="openMarketTrendModal('${htmlSafe(category)}')" class="text-right hover:underline">
-                        <div class="font-black text-slate-400">暂无30天市场价</div>
+                        <div class="font-black text-slate-400">No 30D market price</div>
                         <div class="text-[10px] text-slate-400">${latest ? `Latest ${formatMarketPrice(latest.priceCny, latest.unit || summary.unit, 'CNY')}` : `Unit /${summary.unit}`}</div>
                     </button>
                 `;
@@ -6218,9 +6256,9 @@
             const trendSign = summary.trendCny > 0 ? '+' : '';
             const recentLine = summary.records.length
                 ? `<p>30D Avg: <span class="font-black text-white">${formatMarketPrice(summary.avgCny, summary.unit, 'CNY')}</span> (${formatMarketPrice(summary.avgCny, summary.unit, 'MYR')})</p>`
-                : '<p class="text-amber-200">暂无30天市场价</p>';
+                : '<p class="text-amber-200">No 30D market price</p>';
             return `
-                <p class="font-black text-sm mb-2 border-b border-slate-600 pb-1">${htmlSafe(category || '-')} Market</p>
+                <p class="font-black text-sm mb-2 border-b border-slate-600 pb-1">${htmlSafe(priceListCategoryDisplayLabel(category) || '-')} Market</p>
                 <div class="space-y-1">
                     ${recentLine}
                     <p>Unit: /${htmlSafe(summary.unit)}</p>
@@ -6440,7 +6478,7 @@
             renderPriceListFilters();
             renderMarketPriceForm();
             const currencyBtn = document.getElementById('price-list-currency-toggle');
-            if (currencyBtn) currencyBtn.textContent = getPriceListCurrencyPriority() === 'MYR' ? 'RM / ¥' : '¥ / RM';
+            if (currencyBtn) currencyBtn.textContent = 'RM/¥';
             const body = document.getElementById('price-list-body');
             const summary = document.getElementById('price-list-summary');
             if (!body) return;
@@ -6470,7 +6508,7 @@
                             <div class="font-black text-slate-800 text-sm">${htmlSafe(p.name || '-')}</div>
                             <div class="text-[10px] font-mono text-slate-400">${htmlSafe(p.id || '-')} | ${htmlSafe(p.spec || '-')} | Stock ${formatNumberAuto(pricing.stockQty, 4)}</div>
                         </td>
-                        <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(p.category || '-')}<div class="text-[10px] text-slate-400">${htmlSafe(p.scenario || '-')}</div></td>
+                        <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(priceListCategoryDisplayLabel(p.category || '-'))}<div class="text-[10px] text-slate-400">${htmlSafe(priceListSubcategoryDisplayLabel(p.scenario || '-'))}</div></td>
                         <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(getProductSupplierDisplay(p))}</td>
                         <td class="py-4 px-4 text-right">${renderDualCurrencyAmount(selectedPcsPrice, 2, 'pcs')}<div class="text-[10px] text-slate-400">${htmlSafe(selectedPriceLabel)} × ${formatNumberAuto(pricing.pcsMultiplier, 4)} ${htmlSafe(pricing.costUnit)}/pcs</div></td>
                         <td class="py-4 px-4 text-right">${renderDualCurrencyAmount(pricing.pcsCost, 4, 'pcs')}<div class="text-[10px] text-slate-400">${formatNumberAuto(pricing.pcsMultiplier, 4)} ${htmlSafe(pricing.costUnit)}/pcs</div></td>
@@ -6541,9 +6579,9 @@
                     <p>Avg Cost: <span class="font-black text-white">${formatCurrencyFromCny(r.avgCost, getPriceListCurrencyPriority(), 4)}/${r.costUnit}</span> (${formatCurrencyFromCny(r.avgCost, getPriceListCurrencyPriority() === 'MYR' ? 'CNY' : 'MYR', 4)}/${r.costUnit}; ${r.usedInventoryCost ? 'inventory average' : 'base cost'})</p>
                     <p>Clearance Cost: ${formatCny(r.avgCost, 4)} × (1 + ${r.dutyPct}% duty + ${r.sstPct}% SST) = <span class="font-black text-blue-200">${formatCny(r.clearanceCost, 4)}</span></p>
                     <p>Grey Cost: ${formatCny(r.avgCost, 4)} × (1 + ${r.grayPct}% grey tax) = <span class="font-black text-indigo-200">${formatCny(r.grayCost, 4)}</span></p>
-                    <p>Home Price: cost × (1 + ${r.cnHomePct}% CN + ${r.myHomePct}% MY) = +${homeProfit.toFixed(2)}%</p>
-                    <p>C&I Price: cost × (1 + ${r.cnBizPct}% CN + ${r.myBizPct}% MY) = +${bizProfit.toFixed(2)}%</p>
-                    <p>Market 30D: <span class="font-black text-amber-200">${market.records.length ? formatMarketPrice(market.avgCny, market.unit, 'CNY') : '暂无30天市场价'}</span></p>
+                    <p>RESI Price: cost × (1 + ${r.cnHomePct}% CN + ${r.myHomePct}% MY) = +${homeProfit.toFixed(2)}%</p>
+                    <p>C&S Price: cost × (1 + ${r.cnBizPct}% CN + ${r.myBizPct}% MY) = +${bizProfit.toFixed(2)}%</p>
+                    <p>Market 30D: <span class="font-black text-amber-200">${market.records.length ? formatMarketPrice(market.avgCny, market.unit, 'CNY') : 'No 30D market price'}</span></p>
                     <p>FX: 1 MYR = ${getSalesOutRateCnyPerMyr().toFixed(4)} CNY</p>
                     <p class="pt-1 text-slate-300">Certifications: ${(req.standards || []).slice(0, 5).map(htmlSafe).join(', ') || '-'}</p>
                 </div>
@@ -6571,8 +6609,8 @@
                 const out = {
                     'Product ID': p.id || '',
                     'Product Name': p.name || '',
-                    'Category': p.category || '',
-                    'Subcategory': p.scenario || '',
+                    'Category': priceListCategoryDisplayLabel(p.category || ''),
+                    'Subcategory': priceListSubcategoryDisplayLabel(p.scenario || ''),
                     'Brand': getProductSupplierDisplay(p),
                     'Spec': p.spec || '',
                     'Stock Qty': r.stockQty || 0,
@@ -6589,17 +6627,17 @@
                     '30D Market Avg CNY': market.records.length ? market.avgCny : '',
                     '30D Market Avg MYR': market.records.length ? market.avgCny / getSalesOutRateCnyPerMyr() : '',
                     'Latest Market CNY': market.latest ? market.latest.priceCny : '',
-                    'Home Profit %': homeProfit,
-                    'C&I Profit %': bizProfit,
-                    'Clearance Home CNY': r.clearanceHomePrice || 0,
-                    'Clearance Home MYR': (r.clearanceHomePrice || 0) / getSalesOutRateCnyPerMyr(),
-                    'Clearance C&I CNY': r.clearanceBizPrice || 0,
-                    'Clearance C&I MYR': (r.clearanceBizPrice || 0) / getSalesOutRateCnyPerMyr(),
-                    'Grey Home CNY': r.grayHomePrice || 0,
-                    'Grey Home MYR': (r.grayHomePrice || 0) / getSalesOutRateCnyPerMyr(),
-                    'Grey C&I CNY': r.grayBizPrice || 0,
-                    'Grey C&I MYR': (r.grayBizPrice || 0) / getSalesOutRateCnyPerMyr(),
-                    'Formula Note': `Clearance cost = Avg Cost * (1 + duty ${r.dutyPct}% + SST ${r.sstPct}%); Grey cost = Avg Cost * (1 + grey tax ${r.grayPct}%); Home profit = CN ${r.cnHomePct}% + MY ${r.myHomePct}%; C&I profit = CN ${r.cnBizPct}% + MY ${r.myBizPct}%; FX 1 MYR = ${getSalesOutRateCnyPerMyr().toFixed(4)} CNY`,
+                    'RESI Profit %': homeProfit,
+                    'C&S Profit %': bizProfit,
+                    'Clearance RESI CNY': r.clearanceHomePrice || 0,
+                    'Clearance RESI MYR': (r.clearanceHomePrice || 0) / getSalesOutRateCnyPerMyr(),
+                    'Clearance C&S CNY': r.clearanceBizPrice || 0,
+                    'Clearance C&S MYR': (r.clearanceBizPrice || 0) / getSalesOutRateCnyPerMyr(),
+                    'Grey RESI CNY': r.grayHomePrice || 0,
+                    'Grey RESI MYR': (r.grayHomePrice || 0) / getSalesOutRateCnyPerMyr(),
+                    'Grey C&S CNY': r.grayBizPrice || 0,
+                    'Grey C&S MYR': (r.grayBizPrice || 0) / getSalesOutRateCnyPerMyr(),
+                    'Formula Note': `Clearance cost = Avg Cost * (1 + duty ${r.dutyPct}% + SST ${r.sstPct}%); Grey cost = Avg Cost * (1 + grey tax ${r.grayPct}%); RESI profit = CN ${r.cnHomePct}% + MY ${r.myHomePct}%; C&S profit = CN ${r.cnBizPct}% + MY ${r.myBizPct}%; FX 1 MYR = ${getSalesOutRateCnyPerMyr().toFixed(4)} CNY`,
                     'Certification Countries': (req.countries || []).map(priceListCountryLabel).join(', '),
                     'Certification Standards': (req.standards || []).join('; ')
                 };
@@ -6615,7 +6653,7 @@
             const sym = document.getElementById('sales-out-currency-symbol');
             const symFinal = document.getElementById('sales-out-currency-symbol-final');
             const c = getSalesOutCurrency();
-            if (toggle) toggle.textContent = c === 'MYR' ? '¥ / RM' : 'RM / ¥';
+            if (toggle) toggle.textContent = c === 'MYR' ? '¥/RM' : 'RM/¥';
             if (sym) sym.textContent = c === 'MYR' ? 'RM' : '¥';
             if (symFinal) symFinal.textContent = c === 'MYR' ? 'RM' : '¥';
         }
@@ -7435,7 +7473,7 @@
         window.renderPicker = () => {
             if (!window.pickerDisplayCurrency) window.pickerDisplayCurrency = currentCurrency || 'MYR';
             const currencyBtn = document.getElementById('picker-currency-toggle');
-            if (currencyBtn) currencyBtn.textContent = getPickerCurrency() === 'MYR' ? 'RM / ¥' : '¥ / RM';
+            if (currencyBtn) currencyBtn.textContent = getPickerCurrency() === 'MYR' ? 'RM/¥' : '¥/RM';
             const query = (document.getElementById('picker-search')?.value || '').toLowerCase();
             const vendor = document.getElementById('picker-vendor')?.value || '';
             const category = document.getElementById('picker-category')?.value || '';
@@ -7482,10 +7520,10 @@
                             <span class="text-[9px] uppercase px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded">${getProductSupplierDisplay(p)}</span>
                         </div>
                         <div class="flex flex-wrap gap-2 justify-end">
-                            <button onclick="pickProduct('${item.id}', 'clearance_home')" class="px-3 py-1 bg-blue-700 text-white text-[10px] font-bold rounded-lg hover:bg-blue-800 transition-all shadow-sm">Clearance Home ${formatPickerPrice(ch)}</button>
-                            <button onclick="pickProduct('${item.id}', 'clearance_biz')" class="px-3 py-1 bg-sky-700 text-white text-[10px] font-bold rounded-lg hover:bg-sky-800 transition-all shadow-sm">Clearance C&I ${formatPickerPrice(cb)}</button>
-                            <button onclick="pickProduct('${item.id}', 'gray_home')" class="px-3 py-1 bg-indigo-700 text-white text-[10px] font-bold rounded-lg hover:bg-indigo-800 transition-all shadow-sm">Grey Home ${formatPickerPrice(gh)}</button>
-                            <button onclick="pickProduct('${item.id}', 'gray_biz')" class="px-3 py-1 bg-violet-700 text-white text-[10px] font-bold rounded-lg hover:bg-violet-800 transition-all shadow-sm">Grey C&I ${formatPickerPrice(gb)}</button>
+                            <button onclick="pickProduct('${item.id}', 'clearance_home')" class="px-3 py-1 bg-blue-700 text-white text-[10px] font-bold rounded-lg hover:bg-blue-800 transition-all shadow-sm">Clearance RESI ${formatPickerPrice(ch)}</button>
+                            <button onclick="pickProduct('${item.id}', 'clearance_biz')" class="px-3 py-1 bg-sky-700 text-white text-[10px] font-bold rounded-lg hover:bg-sky-800 transition-all shadow-sm">Clearance C&S ${formatPickerPrice(cb)}</button>
+                            <button onclick="pickProduct('${item.id}', 'gray_home')" class="px-3 py-1 bg-indigo-700 text-white text-[10px] font-bold rounded-lg hover:bg-indigo-800 transition-all shadow-sm">Grey RESI ${formatPickerPrice(gh)}</button>
+                            <button onclick="pickProduct('${item.id}', 'gray_biz')" class="px-3 py-1 bg-violet-700 text-white text-[10px] font-bold rounded-lg hover:bg-violet-800 transition-all shadow-sm">Grey C&S ${formatPickerPrice(gb)}</button>
                         </div>
                     </div>
                 </div>`}).join('');

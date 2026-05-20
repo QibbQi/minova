@@ -100,8 +100,8 @@
         "id": "J001",
         "name": "堆叠式配件",
         "category": "配件",
-        "vendor": "明匠",
-        "spec": "个",
+        "vendor": "明匠 / SunC",
+        "spec": "pcs",
         "scenario": "堆叠式产品配件",
         "warrantyYears": "",
         "warrantyCycles": "",
@@ -362,20 +362,7 @@
       }
     ],
     "marketPrices": {
-      "records": [
-        {
-          "id": "mp_1779197795470_int7ka",
-          "category": "电池",
-          "unit": "kWh",
-          "price": 500,
-          "currency": "CNY",
-          "rateCnyPerMyr": 1.53,
-          "priceCny": 500,
-          "quotedAt": "2026-05-19",
-          "ts": 1779148800000,
-          "note": "one"
-        }
-      ],
+      "records": [],
       "categoryUnits": {
         "光伏组件": {
           "unit": "W",
@@ -384,8 +371,8 @@
         },
         "电池": {
           "unit": "kWh",
-          "source": "manual",
-          "updatedAt": 1779197795470
+          "source": "auto",
+          "updatedAt": 1778842747606
         },
         "逆变器": {
           "unit": "kW",
@@ -393,7 +380,7 @@
           "updatedAt": 1778842747606
         },
         "配件": {
-          "unit": "个",
+          "unit": "pcs",
           "source": "auto",
           "updatedAt": 1778842747606
         },
@@ -407,7 +394,8 @@
           "source": "auto",
           "updatedAt": 1778842747606
         }
-      }
+      },
+      "deletedRecordIds": []
     },
     "salesRecords": [],
     "historicalInventory": [],

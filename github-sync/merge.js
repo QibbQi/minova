@@ -40,6 +40,44 @@ function mergeByKey(remoteArr, localArr, keyFn) {
   return merged
 }
 
+function marketPriceRecordKey(record, index) {
+  const id = String(record?.id || '').trim()
+  if (id) return `id:${id}`
+  const category = String(record?.category || '').trim()
+  const quotedAt = String(record?.quotedAt || '').trim()
+  const ts = record?.ts ?? ''
+  return `idx:${category}:${quotedAt}:${ts}:${index}`
+}
+
+function stableRecordKey(record, index) {
+  const id = String(record?.id || '').trim()
+  if (id) return `id:${id}`
+  const ts = record?.ts ?? record?.createdAt ?? record?.updatedAt ?? ''
+  const productId = String(record?.productId || '').trim()
+  const batchNo = String(record?.batchNo || '').trim()
+  if (ts || productId || batchNo) return `record:${productId}:${batchNo}:${ts}`
+  return `idx:${index}`
+}
+
+function mergeMarketPrices(remotePrices, localPrices) {
+  const r = remotePrices && typeof remotePrices === 'object' ? remotePrices : {}
+  const l = localPrices && typeof localPrices === 'object' ? localPrices : {}
+  const deletedRecordIds = Array.from(new Set([
+    ...(Array.isArray(r.deletedRecordIds) ? r.deletedRecordIds : []),
+    ...(Array.isArray(l.deletedRecordIds) ? l.deletedRecordIds : [])
+  ].map((id) => String(id || '').trim()).filter(Boolean)))
+  const deleted = new Set(deletedRecordIds.map((id) => `id:${id}`))
+  const records = mergeByKey(r.records, l.records, marketPriceRecordKey)
+    .filter((record, index) => !deleted.has(marketPriceRecordKey(record, index)))
+  return {
+    ...r,
+    ...l,
+    records,
+    deletedRecordIds,
+    categoryUnits: { ...(r.categoryUnits || {}), ...(l.categoryUnits || {}) }
+  }
+}
+
 export function mergeState(remote, local) {
   const r = remote || {}
   const l = local || {}
@@ -49,10 +87,15 @@ export function mergeState(remote, local) {
   const data = {
     ...rData,
     ...lData,
-    products: lData.products ?? rData.products ?? [],
-    inventory: lData.inventory ?? rData.inventory ?? [],
+    products: mergeByKey(rData.products, lData.products, stableRecordKey),
+    inventory: mergeByKey(rData.inventory, lData.inventory, stableRecordKey),
     inventoryHistory: [],
     suppliers: mergeByKey(rData.suppliers, lData.suppliers, supplierMergeKey),
+    marketPrices: mergeMarketPrices(rData.marketPrices, lData.marketPrices),
+    salesRecords: mergeByKey(rData.salesRecords, lData.salesRecords, stableRecordKey),
+    historicalInventory: mergeByKey(rData.historicalInventory, lData.historicalInventory, stableRecordKey),
+    transportRecords: mergeByKey(rData.transportRecords, lData.transportRecords, stableRecordKey),
+    fileDeleteLogs: mergeByKey(rData.fileDeleteLogs, lData.fileDeleteLogs, stableRecordKey),
     subcategoriesByCategory: { ...(rData.subcategoriesByCategory || {}), ...(lData.subcategoriesByCategory || {}) },
     settings: { ...(rData.settings || {}), ...(lData.settings || {}) }
   }

@@ -51,3 +51,148 @@ test('mergeState keeps newer state fields when adding supplier merge support', (
   assert.deepEqual(merged.data.salesRecords, [{ id: 'sale1' }])
   assert.deepEqual(merged.data.profitSettings, { v: 1 })
 })
+
+test('mergeState merges category market price records and keeps local conflicts', () => {
+  const remote = {
+    data: {
+      products: [],
+      inventory: [],
+      marketPrices: {
+        records: [
+          { id: 'remote-1', category: '光伏组件', priceCny: 0.82, ts: 10 },
+          { id: 'both-1', category: '电池', priceCny: 620, ts: 20, note: 'remote' }
+        ],
+        categoryUnits: {
+          光伏组件: { unit: 'W', source: 'auto', updatedAt: 10 },
+          电池: { unit: 'kWh', source: 'auto', updatedAt: 10 }
+        }
+      }
+    }
+  }
+  const local = {
+    data: {
+      products: [],
+      inventory: [],
+      marketPrices: {
+        records: [
+          { id: 'local-1', category: '逆变器', priceCny: 350, ts: 30 },
+          { id: 'both-1', category: '电池', priceCny: 660, ts: 40, note: 'local' }
+        ],
+        categoryUnits: {
+          电池: { unit: 'kWh', source: 'manual', updatedAt: 40 },
+          逆变器: { unit: 'kW', source: 'auto', updatedAt: 30 }
+        }
+      }
+    }
+  }
+  const merged = mergeState(remote, local)
+  assert.deepEqual(
+    merged.data.marketPrices.records.map((r) => r.id),
+    ['remote-1', 'both-1', 'local-1']
+  )
+  assert.equal(merged.data.marketPrices.records.find((r) => r.id === 'both-1').note, 'local')
+  assert.deepEqual(merged.data.marketPrices.categoryUnits, {
+    光伏组件: { unit: 'W', source: 'auto', updatedAt: 10 },
+    电池: { unit: 'kWh', source: 'manual', updatedAt: 40 },
+    逆变器: { unit: 'kW', source: 'auto', updatedAt: 30 }
+  })
+})
+
+test('mergeState preserves unique products inventory and transport records from both sides', () => {
+  const remote = {
+    data: {
+      products: [
+        { id: 'remote-product', name: 'Remote Product' },
+        { id: 'shared-product', name: 'Remote Version' }
+      ],
+      inventory: [
+        { id: 'remote-inv', productId: 'remote-product', quantity: 2 },
+        { id: 'shared-inv', productId: 'shared-product', quantity: 3 }
+      ],
+      transportRecords: [
+        { id: 'remote-transport', vehicle: 'Remote Truck' },
+        { id: 'shared-transport', vehicle: 'Remote Van' }
+      ]
+    }
+  }
+  const local = {
+    data: {
+      products: [
+        { id: 'local-product', name: 'Local Product' },
+        { id: 'shared-product', name: 'Local Version' }
+      ],
+      inventory: [
+        { id: 'local-inv', productId: 'local-product', quantity: 4 },
+        { id: 'shared-inv', productId: 'shared-product', quantity: 5 }
+      ],
+      transportRecords: [
+        { id: 'local-transport', vehicle: 'Local Truck' },
+        { id: 'shared-transport', vehicle: 'Local Van' }
+      ]
+    }
+  }
+
+  const merged = mergeState(remote, local)
+
+  assert.deepEqual(merged.data.products.map((p) => p.id), ['remote-product', 'shared-product', 'local-product'])
+  assert.equal(merged.data.products.find((p) => p.id === 'shared-product').name, 'Local Version')
+  assert.deepEqual(merged.data.inventory.map((i) => i.id), ['remote-inv', 'shared-inv', 'local-inv'])
+  assert.equal(merged.data.inventory.find((i) => i.id === 'shared-inv').quantity, 5)
+  assert.deepEqual(merged.data.transportRecords.map((r) => r.id), ['remote-transport', 'shared-transport', 'local-transport'])
+  assert.equal(merged.data.transportRecords.find((r) => r.id === 'shared-transport').vehicle, 'Local Van')
+})
+
+test('mergeState keeps market price deletions from resurrecting remote records', () => {
+  const remote = {
+    data: {
+      products: [],
+      inventory: [],
+      marketPrices: {
+        records: [
+          { id: 'keep-remote', category: '光伏组件', priceCny: 0.8, ts: 1 },
+          { id: 'delete-me', category: '配件', priceCny: 12, ts: 2 }
+        ],
+        deletedRecordIds: []
+      }
+    }
+  }
+  const local = {
+    data: {
+      products: [],
+      inventory: [],
+      marketPrices: {
+        records: [{ id: 'keep-local', category: '电池', priceCny: 650, ts: 3 }],
+        deletedRecordIds: ['delete-me']
+      }
+    }
+  }
+
+  const merged = mergeState(remote, local)
+
+  assert.deepEqual(merged.data.marketPrices.records.map((r) => r.id), ['keep-remote', 'keep-local'])
+  assert.deepEqual(merged.data.marketPrices.deletedRecordIds, ['delete-me'])
+})
+
+test('mergeState preserves quote pricing settings in sync payload merge', () => {
+  const remote = {
+    data: {
+      products: [],
+      inventory: [],
+      profitSettings: { v: 1, remoteOnly: true },
+      installerProfitSettings: { cnPct: 5, myPct: 10 }
+    }
+  }
+  const local = {
+    data: {
+      products: [],
+      inventory: [],
+      profitSettings: { v: 1, localOnly: true },
+      installerProfitSettings: { cnPct: 6, myPct: 15 }
+    }
+  }
+
+  const merged = mergeState(remote, local)
+
+  assert.deepEqual(merged.data.profitSettings, { v: 1, localOnly: true })
+  assert.deepEqual(merged.data.installerProfitSettings, { cnPct: 6, myPct: 15 })
+})

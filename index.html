@@ -260,8 +260,8 @@
         #company-address {
             white-space: pre-line !important;
             line-height: 1.2 !important;
-            padding-left: 2.35em !important;
-            text-indent: -2.35em !important;
+            padding-left: 0 !important;
+            text-indent: 0 !important;
         }
 
         #quote-customer-block .quote-site-address-row {
@@ -906,8 +906,8 @@
                                             <button id="picker-cost-gray" type="button" onclick="setPickerCostMode('gray')" class="px-2 py-1 rounded-md text-[10px] font-black">Grey</button>
                                         </div>
                                         <div class="inline-flex rounded-lg border border-slate-200 bg-white p-0.5">
-                                            <button id="picker-customer-home" type="button" onclick="setPickerCustomerMode('home')" class="px-2 py-1 rounded-md text-[10px] font-black">Home</button>
-                                            <button id="picker-customer-biz" type="button" onclick="setPickerCustomerMode('biz')" class="px-2 py-1 rounded-md text-[10px] font-black">C&I</button>
+                                            <button id="picker-customer-home" type="button" onclick="setPickerCustomerMode('home')" class="px-2 py-1 rounded-md text-[10px] font-black">RESI</button>
+                                            <button id="picker-customer-biz" type="button" onclick="setPickerCustomerMode('biz')" class="px-2 py-1 rounded-md text-[10px] font-black">C&amp;S</button>
                                         </div>
                                         <button id="picker-currency-toggle" type="button" onclick="togglePickerCurrency()" class="px-2 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-black hover:bg-black border border-slate-900">RM / ¥</button>
                                     </div>
@@ -1596,8 +1596,8 @@ I / We, the undersigned, hereby accept the Solar PV with Battery + Inverter Syst
                         <option value="gray">Grey</option>
                     </select>
                     <select id="price-list-price-target" onchange="renderPriceList()" class="px-3 py-2 rounded-xl bg-white text-slate-700 text-xs font-black border border-slate-200 outline-none focus:border-purple-500">
-                        <option value="home" selected="">Home</option>
-                        <option value="biz">C&amp;I</option>
+                        <option value="home" selected="">RESI</option>
+                        <option value="biz">C&amp;S</option>
                     </select>
                     <button id="price-list-currency-toggle" onclick="togglePriceListCurrency()" class="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-black hover:bg-black border border-slate-900">RM / ¥</button>
                     <span id="price-list-selected-count" class="text-xs font-black text-slate-400 uppercase tracking-widest">0 selected</span>
@@ -1654,7 +1654,7 @@ I / We, the undersigned, hereby accept the Solar PV with Battery + Inverter Syst
                 <div id="market-price-form-hint" class="mt-2 text-[11px] font-bold text-slate-400">电池 unit: /kWh (auto from inventory/spec). 暂无30天市场价.</div>
             </div>
             <div class="px-6 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
-                <div id="price-list-summary" class="text-xs font-bold text-slate-500">10 of 10 products | PCS Price: Clearance Home | Display MYR first | Rate: 1 MYR = 1.7200 CNY</div>
+                <div id="price-list-summary" class="text-xs font-bold text-slate-500">10 of 10 products | PCS Price: Clearance RESI | Display MYR first | Rate: 1 MYR = 1.7200 CNY</div>
                 <button onclick="clearPriceListFilters()" class="text-xs font-black text-purple-700 hover:underline">Clear Filters</button>
             </div>
             <div class="overflow-x-auto">
@@ -1669,12 +1669,12 @@ I / We, the undersigned, hereby accept the Solar PV with Battery + Inverter Syst
                             <th class="py-4 px-4 text-right">PCS Cost</th>
                             <th class="py-4 px-4 text-right">Avg Cost</th>
                             <th class="py-4 px-4 text-right">30D Market</th>
-                            <th class="py-4 px-4 text-right">Home Profit</th>
-                            <th class="py-4 px-4 text-right">C&amp;I Profit</th>
-                            <th class="py-4 px-4 text-right">Clearance Home</th>
-                            <th class="py-4 px-4 text-right">Clearance C&amp;I</th>
-                            <th class="py-4 px-4 text-right">Grey Home</th>
-                            <th class="py-4 px-4 text-right">Grey C&amp;I</th>
+                            <th class="py-4 px-4 text-right">RESI Profit</th>
+                            <th class="py-4 px-4 text-right">C&amp;S Profit</th>
+                            <th class="py-4 px-4 text-right">Clearance RESI</th>
+                            <th class="py-4 px-4 text-right">Clearance C&amp;S</th>
+                            <th class="py-4 px-4 text-right">Grey RESI</th>
+                            <th class="py-4 px-4 text-right">Grey C&amp;S</th>
                             <th class="py-4 px-4">Certification</th>
                         </tr>
                     </thead>
@@ -1690,7 +1690,7 @@ I / We, the undersigned, hereby accept the Solar PV with Battery + Inverter Syst
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 5686.74/pcs</div>
                 <div class="text-[10px] text-slate-400">¥9781.20/pcs</div>
-            <div class="text-[10px] text-slate-400">Clearance Home × 5 kWh/pcs</div></td>
+            <div class="text-[10px] text-slate-400">Clearance RESI × 5 kWh/pcs</div></td>
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 2187.2093/pcs</div>
                 <div class="text-[10px] text-slate-400">¥3762.0000/pcs</div>
@@ -1761,7 +1761,7 @@ CEC Approved Batteries list">IEC 62619, UN 38.3, MSDS<div class="text-[10px] tex
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 184.45/pcs</div>
                 <div class="text-[10px] text-slate-400">¥317.25/pcs</div>
-            <div class="text-[10px] text-slate-400">Clearance Home × 261 kWh/pcs</div></td>
+            <div class="text-[10px] text-slate-400">Clearance RESI × 261 kWh/pcs</div></td>
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 98.6337/pcs</div>
                 <div class="text-[10px] text-slate-400">¥169.6500/pcs</div>
@@ -1832,7 +1832,7 @@ CEC Approved Batteries list">IEC 62619, UN 38.3, MSDS<div class="text-[10px] tex
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 444.90/pcs</div>
                 <div class="text-[10px] text-slate-400">¥765.23/pcs</div>
-            <div class="text-[10px] text-slate-400">Clearance Home × 610 W/pcs</div></td>
+            <div class="text-[10px] text-slate-400">Clearance RESI × 610 W/pcs</div></td>
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 278.9331/pcs</div>
                 <div class="text-[10px] text-slate-400">¥479.7650/pcs</div>
@@ -1907,7 +1907,7 @@ CEC Approved PV Modules list">IEC 61215, IEC 61730, SIRIM / MS IEC 61215<div cla
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 488.70/pcs</div>
                 <div class="text-[10px] text-slate-400">¥840.57/pcs</div>
-            <div class="text-[10px] text-slate-400">Clearance Home × 620 W/pcs</div></td>
+            <div class="text-[10px] text-slate-400">Clearance RESI × 620 W/pcs</div></td>
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 306.3953/pcs</div>
                 <div class="text-[10px] text-slate-400">¥527.0000/pcs</div>
@@ -1982,7 +1982,7 @@ CEC Approved PV Modules list">IEC 61215, IEC 61730, SIRIM / MS IEC 61215<div cla
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 16.59/pcs</div>
                 <div class="text-[10px] text-slate-400">¥28.54/pcs</div>
-            <div class="text-[10px] text-slate-400">Clearance Home × 25 kW/pcs</div></td>
+            <div class="text-[10px] text-slate-400">Clearance RESI × 25 kW/pcs</div></td>
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 8.8023/pcs</div>
                 <div class="text-[10px] text-slate-400">¥15.1400/pcs</div>
@@ -2059,7 +2059,7 @@ AS/NZS 4777.2">IEC 62109-1, IEC 62109-2, IEC 62477 (when applicable)<div class="
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 2405.29/pcs</div>
                 <div class="text-[10px] text-slate-400">¥4137.11/pcs</div>
-            <div class="text-[10px] text-slate-400">Clearance Home × 5.5 kW/pcs</div></td>
+            <div class="text-[10px] text-slate-400">Clearance RESI × 5.5 kW/pcs</div></td>
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 1276.0179/pcs</div>
                 <div class="text-[10px] text-slate-400">¥2194.7508/pcs</div>
@@ -2136,7 +2136,7 @@ AS/NZS 4777.2">IEC 62109-1, IEC 62109-2, IEC 62477 (when applicable)<div class="
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 341.20/pcs</div>
                 <div class="text-[10px] text-slate-400">¥586.87/pcs</div>
-            <div class="text-[10px] text-slate-400">Clearance Home × 1 pcs/pcs</div></td>
+            <div class="text-[10px] text-slate-400">Clearance RESI × 1 pcs/pcs</div></td>
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 238.6047/pcs</div>
                 <div class="text-[10px] text-slate-400">¥410.4000/pcs</div>
@@ -2201,50 +2201,50 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 10341.28/pcs</div>
                 <div class="text-[10px] text-slate-400">¥17787.00/pcs</div>
-            <div class="text-[10px] text-slate-400">Clearance Home × 1 套/pcs</div></td>
+            <div class="text-[10px] text-slate-400">Clearance RESI × 1 set/pcs</div></td>
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 5697.6744/pcs</div>
                 <div class="text-[10px] text-slate-400">¥9800.0000/pcs</div>
-            <div class="text-[10px] text-slate-400">1 套/pcs</div></td>
+            <div class="text-[10px] text-slate-400">1 set/pcs</div></td>
                         <td class="py-4 px-4 text-right">
-                <div class="font-black text-slate-800">RM 5697.6744/套</div>
-                <div class="text-[10px] text-slate-400">¥9800.0000/套</div>
+                <div class="font-black text-slate-800">RM 5697.6744/set</div>
+                <div class="text-[10px] text-slate-400">¥9800.0000/set</div>
             <div class="text-[10px] text-slate-400">Base cost fallback</div></td>
                         <td class="py-4 px-4 text-right">
                     <button type="button" onclick="openMarketTrendModal('一体机')" class="text-right hover:underline">
                         <div class="font-black text-slate-400">暂无30天市场价</div>
-                        <div class="text-[10px] text-slate-400">Unit /套</div>
+                        <div class="text-[10px] text-slate-400">Unit /set</div>
                     </button>
                 </td>
                         <td class="py-4 px-4 text-right font-black text-green-700">65.00%</td>
                         <td class="py-4 px-4 text-right font-black text-blue-700">45.00%</td>
                         <td class="py-4 px-4 text-right">
                 
-                <div class="font-black text-slate-800">RM 10341.28/套</div>
-                <div class="text-[10px] text-slate-400">¥17787.00/套</div>
+                <div class="font-black text-slate-800">RM 10341.28/set</div>
+                <div class="text-[10px] text-slate-400">¥17787.00/set</div>
             
-                <div class="text-[10px] text-green-600">Profit RM 4073.84/套 / 39.4%</div>
+                <div class="text-[10px] text-green-600">Profit RM 4073.84/set / 39.4%</div>
             </td>
                         <td class="py-4 px-4 text-right">
                 
-                <div class="font-black text-slate-800">RM 9087.79/套</div>
-                <div class="text-[10px] text-slate-400">¥15631.00/套</div>
+                <div class="font-black text-slate-800">RM 9087.79/set</div>
+                <div class="text-[10px] text-slate-400">¥15631.00/set</div>
             
-                <div class="text-[10px] text-green-600">Profit RM 2820.35/套 / 31.0%</div>
+                <div class="text-[10px] text-green-600">Profit RM 2820.35/set / 31.0%</div>
             </td>
                         <td class="py-4 px-4 text-right">
                 
-                <div class="font-black text-slate-800">RM 9871.22/套</div>
-                <div class="text-[10px] text-slate-400">¥16978.50/套</div>
+                <div class="font-black text-slate-800">RM 9871.22/set</div>
+                <div class="text-[10px] text-slate-400">¥16978.50/set</div>
             
-                <div class="text-[10px] text-green-600">Profit RM 3888.66/套 / 39.4%</div>
+                <div class="text-[10px] text-green-600">Profit RM 3888.66/set / 39.4%</div>
             </td>
                         <td class="py-4 px-4 text-right">
                 
-                <div class="font-black text-slate-800">RM 8674.71/套</div>
-                <div class="text-[10px] text-slate-400">¥14920.50/套</div>
+                <div class="font-black text-slate-800">RM 8674.71/set</div>
+                <div class="text-[10px] text-slate-400">¥14920.50/set</div>
             
-                <div class="text-[10px] text-green-600">Profit RM 2692.15/套 / 31.0%</div>
+                <div class="text-[10px] text-green-600">Profit RM 2692.15/set / 31.0%</div>
             </td>
                         <td class="py-4 px-4 text-xs text-slate-500 max-w-[220px] truncate" title="Malaysia, United States, European Union, United Kingdom, Australia
 Project-specific electrical/import compliance review
@@ -2266,50 +2266,50 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 8177.00/pcs</div>
                 <div class="text-[10px] text-slate-400">¥14064.44/pcs</div>
-            <div class="text-[10px] text-slate-400">Clearance Home × 1 套/pcs</div></td>
+            <div class="text-[10px] text-slate-400">Clearance RESI × 1 set/pcs</div></td>
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 4505.2326/pcs</div>
                 <div class="text-[10px] text-slate-400">¥7749.0000/pcs</div>
-            <div class="text-[10px] text-slate-400">1 套/pcs</div></td>
+            <div class="text-[10px] text-slate-400">1 set/pcs</div></td>
                         <td class="py-4 px-4 text-right">
-                <div class="font-black text-slate-800">RM 4505.2326/套</div>
-                <div class="text-[10px] text-slate-400">¥7749.0000/套</div>
+                <div class="font-black text-slate-800">RM 4505.2326/set</div>
+                <div class="text-[10px] text-slate-400">¥7749.0000/set</div>
             <div class="text-[10px] text-slate-400">Inventory avg</div></td>
                         <td class="py-4 px-4 text-right">
                     <button type="button" onclick="openMarketTrendModal('一体机')" class="text-right hover:underline">
                         <div class="font-black text-slate-400">暂无30天市场价</div>
-                        <div class="text-[10px] text-slate-400">Unit /套</div>
+                        <div class="text-[10px] text-slate-400">Unit /set</div>
                     </button>
                 </td>
                         <td class="py-4 px-4 text-right font-black text-green-700">65.00%</td>
                         <td class="py-4 px-4 text-right font-black text-blue-700">45.00%</td>
                         <td class="py-4 px-4 text-right">
                 
-                <div class="font-black text-slate-800">RM 8177.00/套</div>
-                <div class="text-[10px] text-slate-400">¥14064.44/套</div>
+                <div class="font-black text-slate-800">RM 8177.00/set</div>
+                <div class="text-[10px] text-slate-400">¥14064.44/set</div>
             
-                <div class="text-[10px] text-green-600">Profit RM 3221.24/套 / 39.4%</div>
+                <div class="text-[10px] text-green-600">Profit RM 3221.24/set / 39.4%</div>
             </td>
                         <td class="py-4 px-4 text-right">
                 
-                <div class="font-black text-slate-800">RM 7185.85/套</div>
-                <div class="text-[10px] text-slate-400">¥12359.66/套</div>
+                <div class="font-black text-slate-800">RM 7185.85/set</div>
+                <div class="text-[10px] text-slate-400">¥12359.66/set</div>
             
-                <div class="text-[10px] text-green-600">Profit RM 2230.09/套 / 31.0%</div>
+                <div class="text-[10px] text-green-600">Profit RM 2230.09/set / 31.0%</div>
             </td>
                         <td class="py-4 px-4 text-right">
                 
-                <div class="font-black text-slate-800">RM 7805.32/套</div>
-                <div class="text-[10px] text-slate-400">¥13425.14/套</div>
+                <div class="font-black text-slate-800">RM 7805.32/set</div>
+                <div class="text-[10px] text-slate-400">¥13425.14/set</div>
             
-                <div class="text-[10px] text-green-600">Profit RM 3074.82/套 / 39.4%</div>
+                <div class="text-[10px] text-green-600">Profit RM 3074.82/set / 39.4%</div>
             </td>
                         <td class="py-4 px-4 text-right">
                 
-                <div class="font-black text-slate-800">RM 6859.22/套</div>
-                <div class="text-[10px] text-slate-400">¥11797.85/套</div>
+                <div class="font-black text-slate-800">RM 6859.22/set</div>
+                <div class="text-[10px] text-slate-400">¥11797.85/set</div>
             
-                <div class="text-[10px] text-green-600">Profit RM 2128.72/套 / 31.0%</div>
+                <div class="text-[10px] text-green-600">Profit RM 2128.72/set / 31.0%</div>
             </td>
                         <td class="py-4 px-4 text-xs text-slate-500 max-w-[220px] truncate" title="Malaysia, United States, European Union, United Kingdom, Australia
 Project-specific electrical/import compliance review
@@ -2331,50 +2331,50 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 5170.64/pcs</div>
                 <div class="text-[10px] text-slate-400">¥8893.50/pcs</div>
-            <div class="text-[10px] text-slate-400">Clearance Home × 1 套/pcs</div></td>
+            <div class="text-[10px] text-slate-400">Clearance RESI × 1 set/pcs</div></td>
                         <td class="py-4 px-4 text-right">
                 <div class="font-black text-slate-800">RM 2848.8372/pcs</div>
                 <div class="text-[10px] text-slate-400">¥4900.0000/pcs</div>
-            <div class="text-[10px] text-slate-400">1 套/pcs</div></td>
+            <div class="text-[10px] text-slate-400">1 set/pcs</div></td>
                         <td class="py-4 px-4 text-right">
-                <div class="font-black text-slate-800">RM 2848.8372/套</div>
-                <div class="text-[10px] text-slate-400">¥4900.0000/套</div>
+                <div class="font-black text-slate-800">RM 2848.8372/set</div>
+                <div class="text-[10px] text-slate-400">¥4900.0000/set</div>
             <div class="text-[10px] text-slate-400">Base cost fallback</div></td>
                         <td class="py-4 px-4 text-right">
                     <button type="button" onclick="openMarketTrendModal('一体机')" class="text-right hover:underline">
                         <div class="font-black text-slate-400">暂无30天市场价</div>
-                        <div class="text-[10px] text-slate-400">Unit /套</div>
+                        <div class="text-[10px] text-slate-400">Unit /set</div>
                     </button>
                 </td>
                         <td class="py-4 px-4 text-right font-black text-green-700">65.00%</td>
                         <td class="py-4 px-4 text-right font-black text-blue-700">45.00%</td>
                         <td class="py-4 px-4 text-right">
                 
-                <div class="font-black text-slate-800">RM 5170.64/套</div>
-                <div class="text-[10px] text-slate-400">¥8893.50/套</div>
+                <div class="font-black text-slate-800">RM 5170.64/set</div>
+                <div class="text-[10px] text-slate-400">¥8893.50/set</div>
             
-                <div class="text-[10px] text-green-600">Profit RM 2036.92/套 / 39.4%</div>
+                <div class="text-[10px] text-green-600">Profit RM 2036.92/set / 39.4%</div>
             </td>
                         <td class="py-4 px-4 text-right">
                 
-                <div class="font-black text-slate-800">RM 4543.90/套</div>
-                <div class="text-[10px] text-slate-400">¥7815.50/套</div>
+                <div class="font-black text-slate-800">RM 4543.90/set</div>
+                <div class="text-[10px] text-slate-400">¥7815.50/set</div>
             
-                <div class="text-[10px] text-green-600">Profit RM 1410.17/套 / 31.0%</div>
+                <div class="text-[10px] text-green-600">Profit RM 1410.17/set / 31.0%</div>
             </td>
                         <td class="py-4 px-4 text-right">
                 
-                <div class="font-black text-slate-800">RM 4935.61/套</div>
-                <div class="text-[10px] text-slate-400">¥8489.25/套</div>
+                <div class="font-black text-slate-800">RM 4935.61/set</div>
+                <div class="text-[10px] text-slate-400">¥8489.25/set</div>
             
-                <div class="text-[10px] text-green-600">Profit RM 1944.33/套 / 39.4%</div>
+                <div class="text-[10px] text-green-600">Profit RM 1944.33/set / 39.4%</div>
             </td>
                         <td class="py-4 px-4 text-right">
                 
-                <div class="font-black text-slate-800">RM 4337.35/套</div>
-                <div class="text-[10px] text-slate-400">¥7460.25/套</div>
+                <div class="font-black text-slate-800">RM 4337.35/set</div>
+                <div class="text-[10px] text-slate-400">¥7460.25/set</div>
             
-                <div class="text-[10px] text-green-600">Profit RM 1346.08/套 / 31.0%</div>
+                <div class="text-[10px] text-green-600">Profit RM 1346.08/set / 31.0%</div>
             </td>
                         <td class="py-4 px-4 text-xs text-slate-500 max-w-[220px] truncate" title="Malaysia, United States, European Union, United Kingdom, Australia
 Project-specific electrical/import compliance review
@@ -5061,14 +5061,14 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
     <div id="global-tooltip" class="fixed p-3 bg-slate-800 text-white text-xs rounded-lg shadow-xl z-[9999] pointer-events-none w-64 whitespace-normal hidden" style="left: 872px; top: 455px;">
                 <p class="font-black text-sm mb-2 border-b border-slate-600 pb-1">25kW 三相逆变器</p>
                 <div class="space-y-1">
-                    <p>PCS Price (Clearance Home): <span class="font-black text-white">RM 16.59/pcs</span> (¥28.54/pcs)</p>
-                    <p class="text-slate-300">Formula: Clearance Home per kW × 25 kW/pcs</p>
+                    <p>PCS Price (Clearance RESI): <span class="font-black text-white">RM 16.59/pcs</span> (¥28.54/pcs)</p>
+                    <p class="text-slate-300">Formula: Clearance RESI per kW × 25 kW/pcs</p>
                     <p>PCS Cost: <span class="font-black text-white">RM 8.8023/pcs</span> (¥15.1400/pcs)</p>
                     <p>Avg Cost: <span class="font-black text-white">RM 0.3521/kW</span> (¥0.6056/kW; base cost)</p>
                     <p>Clearance Cost: ¥0.6056 × (1 + 20% duty + 10% SST) = <span class="font-black text-blue-200">¥0.7873</span></p>
                     <p>Grey Cost: ¥0.6056 × (1 + 5% grey tax) = <span class="font-black text-indigo-200">¥0.6359</span></p>
-                    <p>Home Price: cost × (1 + 30% CN + 15% MY) = +45.00%</p>
-                    <p>C&amp;I Price: cost × (1 + 30% CN + 15% MY) = +45.00%</p>
+                    <p>RESI Price: cost × (1 + 30% CN + 15% MY) = +45.00%</p>
+                    <p>C&amp;S Price: cost × (1 + 30% CN + 15% MY) = +45.00%</p>
                     <p>Market 30D: <span class="font-black text-amber-200">暂无30天市场价</span></p>
                     <p>FX: 1 MYR = 1.7200 CNY</p>
                     <p class="pt-1 text-slate-300">Certifications: IEC 62109-1, IEC 62109-2, IEC 62477 (when applicable), IEC 62109-1/2, SIRIM / local utility requirements where applicable</p>
@@ -11197,10 +11197,10 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
         let selectedPriceListProductIds = new Set();
         let currentPriceListVisibleIds = [];
         const PRICE_LIST_TYPES = [
-            { key: 'clearanceHomePrice', label: 'Clearance Home', costKey: 'clearanceCost', profitTarget: 'home' },
-            { key: 'clearanceBizPrice', label: 'Clearance C&I', costKey: 'clearanceCost', profitTarget: 'biz' },
-            { key: 'grayHomePrice', label: 'Grey Home', costKey: 'grayCost', profitTarget: 'home' },
-            { key: 'grayBizPrice', label: 'Grey C&I', costKey: 'grayCost', profitTarget: 'biz' }
+            { key: 'clearanceHomePrice', label: 'Clearance RESI', costKey: 'clearanceCost', profitTarget: 'home' },
+            { key: 'clearanceBizPrice', label: 'Clearance C&S', costKey: 'clearanceCost', profitTarget: 'biz' },
+            { key: 'grayHomePrice', label: 'Grey RESI', costKey: 'grayCost', profitTarget: 'home' },
+            { key: 'grayBizPrice', label: 'Grey C&S', costKey: 'grayCost', profitTarget: 'biz' }
         ];
         function getPriceListSelectedPriceType() {
             const basis = String(document.getElementById('price-list-price-basis')?.value || 'clearance') === 'gray' ? 'gray' : 'clearance';
@@ -11209,10 +11209,10 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
         }
         function getPriceListSelectedPriceLabel() {
             const type = getPriceListSelectedPriceType();
-            if (type === 'clearance_biz') return 'Clearance C&I';
-            if (type === 'gray_home') return 'Grey Home';
-            if (type === 'gray_biz') return 'Grey C&I';
-            return 'Clearance Home';
+            if (type === 'clearance_biz') return 'Clearance C&S';
+            if (type === 'gray_home') return 'Grey RESI';
+            if (type === 'gray_biz') return 'Grey C&S';
+            return 'Clearance RESI';
         }
         function getPriceListSelectedPcsPrice(pricing = {}) {
             const type = getPriceListSelectedPriceType();
@@ -11764,8 +11764,8 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
                     <p>Avg Cost: <span class="font-black text-white">${formatCurrencyFromCny(r.avgCost, getPriceListCurrencyPriority(), 4)}/${r.costUnit}</span> (${formatCurrencyFromCny(r.avgCost, getPriceListCurrencyPriority() === 'MYR' ? 'CNY' : 'MYR', 4)}/${r.costUnit}; ${r.usedInventoryCost ? 'inventory average' : 'base cost'})</p>
                     <p>Clearance Cost: ${formatCny(r.avgCost, 4)} × (1 + ${r.dutyPct}% duty + ${r.sstPct}% SST) = <span class="font-black text-blue-200">${formatCny(r.clearanceCost, 4)}</span></p>
                     <p>Grey Cost: ${formatCny(r.avgCost, 4)} × (1 + ${r.grayPct}% grey tax) = <span class="font-black text-indigo-200">${formatCny(r.grayCost, 4)}</span></p>
-                    <p>Home Price: cost × (1 + ${r.cnHomePct}% CN + ${r.myHomePct}% MY) = +${homeProfit.toFixed(2)}%</p>
-                    <p>C&I Price: cost × (1 + ${r.cnBizPct}% CN + ${r.myBizPct}% MY) = +${bizProfit.toFixed(2)}%</p>
+                    <p>RESI Price: cost × (1 + ${r.cnHomePct}% CN + ${r.myHomePct}% MY) = +${homeProfit.toFixed(2)}%</p>
+                    <p>C&S Price: cost × (1 + ${r.cnBizPct}% CN + ${r.myBizPct}% MY) = +${bizProfit.toFixed(2)}%</p>
                     <p>Market 30D: <span class="font-black text-amber-200">${market.records.length ? formatMarketPrice(market.avgCny, market.unit, 'CNY') : '暂无30天市场价'}</span></p>
                     <p>FX: 1 MYR = ${getSalesOutRateCnyPerMyr().toFixed(4)} CNY</p>
                     <p class="pt-1 text-slate-300">Certifications: ${(req.standards || []).slice(0, 5).map(htmlSafe).join(', ') || '-'}</p>
@@ -11812,17 +11812,17 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
                     '30D Market Avg CNY': market.records.length ? market.avgCny : '',
                     '30D Market Avg MYR': market.records.length ? market.avgCny / getSalesOutRateCnyPerMyr() : '',
                     'Latest Market CNY': market.latest ? market.latest.priceCny : '',
-                    'Home Profit %': homeProfit,
-                    'C&I Profit %': bizProfit,
-                    'Clearance Home CNY': r.clearanceHomePrice || 0,
-                    'Clearance Home MYR': (r.clearanceHomePrice || 0) / getSalesOutRateCnyPerMyr(),
-                    'Clearance C&I CNY': r.clearanceBizPrice || 0,
-                    'Clearance C&I MYR': (r.clearanceBizPrice || 0) / getSalesOutRateCnyPerMyr(),
-                    'Grey Home CNY': r.grayHomePrice || 0,
-                    'Grey Home MYR': (r.grayHomePrice || 0) / getSalesOutRateCnyPerMyr(),
-                    'Grey C&I CNY': r.grayBizPrice || 0,
-                    'Grey C&I MYR': (r.grayBizPrice || 0) / getSalesOutRateCnyPerMyr(),
-                    'Formula Note': `Clearance cost = Avg Cost * (1 + duty ${r.dutyPct}% + SST ${r.sstPct}%); Grey cost = Avg Cost * (1 + grey tax ${r.grayPct}%); Home profit = CN ${r.cnHomePct}% + MY ${r.myHomePct}%; C&I profit = CN ${r.cnBizPct}% + MY ${r.myBizPct}%; FX 1 MYR = ${getSalesOutRateCnyPerMyr().toFixed(4)} CNY`,
+                    'RESI Profit %': homeProfit,
+                    'C&S Profit %': bizProfit,
+                    'Clearance RESI CNY': r.clearanceHomePrice || 0,
+                    'Clearance RESI MYR': (r.clearanceHomePrice || 0) / getSalesOutRateCnyPerMyr(),
+                    'Clearance C&S CNY': r.clearanceBizPrice || 0,
+                    'Clearance C&S MYR': (r.clearanceBizPrice || 0) / getSalesOutRateCnyPerMyr(),
+                    'Grey RESI CNY': r.grayHomePrice || 0,
+                    'Grey RESI MYR': (r.grayHomePrice || 0) / getSalesOutRateCnyPerMyr(),
+                    'Grey C&S CNY': r.grayBizPrice || 0,
+                    'Grey C&S MYR': (r.grayBizPrice || 0) / getSalesOutRateCnyPerMyr(),
+                    'Formula Note': `Clearance cost = Avg Cost * (1 + duty ${r.dutyPct}% + SST ${r.sstPct}%); Grey cost = Avg Cost * (1 + grey tax ${r.grayPct}%); RESI profit = CN ${r.cnHomePct}% + MY ${r.myHomePct}%; C&S profit = CN ${r.cnBizPct}% + MY ${r.myBizPct}%; FX 1 MYR = ${getSalesOutRateCnyPerMyr().toFixed(4)} CNY`,
                     'Certification Countries': (req.countries || []).map(priceListCountryLabel).join(', '),
                     'Certification Standards': (req.standards || []).join('; ')
                 };
@@ -12654,10 +12654,10 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
         }
         function getPickerSelectedPriceLabel() {
             const type = getPickerSelectedPriceType();
-            if (type === 'clearance_biz') return 'Clearance C&I';
-            if (type === 'gray_home') return 'Grey Home';
-            if (type === 'gray_biz') return 'Grey C&I';
-            return 'Clearance Home';
+            if (type === 'clearance_biz') return 'Clearance C&S';
+            if (type === 'gray_home') return 'Grey RESI';
+            if (type === 'gray_biz') return 'Grey C&S';
+            return 'Clearance RESI';
         }
         function getPickerSelectedPriceValue(pricing, type) {
             const r = pricing || {};

@@ -988,6 +988,7 @@
         let profitSettings = null;
         let profitTarget = 'home';
         let installerProfitSettings = { cnPct: 0, myPct: 0 };
+        let installerQuoteSettings = null;
         function safeJsonParseLoose(raw, fallback) {
             try { return raw ? JSON.parse(raw) : fallback; } catch { return fallback; }
         }
@@ -1712,6 +1713,133 @@
             const myPct = Number.isFinite(parseFloat(base.myPct)) ? parseFloat(base.myPct) : 0;
             return { cnPct, myPct };
         }
+        // INSTALLER_QUOTE_MODEL_START
+        const DEFAULT_INSTALLER_QUOTE_SETTINGS = {
+            v: 1,
+            installationRmPerKwp: 250,
+            frameMountingRmPerKwp: 240,
+            cableRmPerKwp: 60,
+            home: {
+                peEndorsement: 1200,
+                powerStudyThresholdKwp: 15,
+                powerStudyFee: 1000,
+                designApplications: 2500,
+                db: 2500,
+                wireman: 500,
+                chargeman: 500
+            },
+            biz: {
+                peEndorsement: 1200,
+                powerStudyMinKwp: 72,
+                powerStudyMaxKwp: 425,
+                powerStudyFee: 5000,
+                designBaseThresholdKwp: 50,
+                designBaseFee: 3000,
+                designAdditionalPerKwp: 12,
+                dbPer100Kwp: 10500,
+                wireman: 800,
+                chargeman: 0
+            }
+        };
+        function installerNum(value, fallback = 0) {
+            const n = parseFloat(value);
+            return Number.isFinite(n) ? n : fallback;
+        }
+        function migrateInstallerRate(value, fallback) {
+            const n = installerNum(value, fallback);
+            return n > 0 && n < 10 ? n * 1000 : n;
+        }
+        function normalizeInstallerQuoteSettings(next) {
+            const base = next && typeof next === 'object' ? next : {};
+            const oldLabor = base.labor ?? base.installationRmPerKwp;
+            const oldBracket = base.bracket ?? base.frameMountingRmPerKwp;
+            const oldCable = base.cable ?? base.cableRmPerKwp;
+            const d = DEFAULT_INSTALLER_QUOTE_SETTINGS;
+            const home = base.home && typeof base.home === 'object' ? base.home : {};
+            const biz = base.biz && typeof base.biz === 'object' ? base.biz : {};
+            return {
+                v: 1,
+                installationRmPerKwp: migrateInstallerRate(oldLabor, d.installationRmPerKwp),
+                frameMountingRmPerKwp: migrateInstallerRate(oldBracket, d.frameMountingRmPerKwp),
+                cableRmPerKwp: migrateInstallerRate(oldCable, d.cableRmPerKwp),
+                home: {
+                    peEndorsement: installerNum(home.peEndorsement, d.home.peEndorsement),
+                    powerStudyThresholdKwp: installerNum(home.powerStudyThresholdKwp, d.home.powerStudyThresholdKwp),
+                    powerStudyFee: installerNum(home.powerStudyFee, d.home.powerStudyFee),
+                    designApplications: installerNum(home.designApplications, d.home.designApplications),
+                    db: installerNum(home.db, d.home.db),
+                    wireman: installerNum(home.wireman, d.home.wireman),
+                    chargeman: installerNum(home.chargeman, d.home.chargeman)
+                },
+                biz: {
+                    peEndorsement: installerNum(biz.peEndorsement, d.biz.peEndorsement),
+                    powerStudyMinKwp: installerNum(biz.powerStudyMinKwp, d.biz.powerStudyMinKwp),
+                    powerStudyMaxKwp: installerNum(biz.powerStudyMaxKwp, d.biz.powerStudyMaxKwp),
+                    powerStudyFee: installerNum(biz.powerStudyFee, d.biz.powerStudyFee),
+                    designBaseThresholdKwp: installerNum(biz.designBaseThresholdKwp, d.biz.designBaseThresholdKwp),
+                    designBaseFee: installerNum(biz.designBaseFee, d.biz.designBaseFee),
+                    designAdditionalPerKwp: installerNum(biz.designAdditionalPerKwp, d.biz.designAdditionalPerKwp),
+                    dbPer100Kwp: installerNum(biz.dbPer100Kwp, d.biz.dbPer100Kwp),
+                    wireman: installerNum(biz.wireman, d.biz.wireman),
+                    chargeman: installerNum(biz.chargeman, d.biz.chargeman)
+                }
+            };
+        }
+        function computeInstallerCost(sizeKwp, scenario, settings, profit = {}, rateMyrCny = 1.53) {
+            const s = normalizeInstallerQuoteSettings(settings);
+            const target = scenario === 'biz' ? 'biz' : 'home';
+            const size = Math.max(0, installerNum(sizeKwp, 0));
+            const rate = Math.max(0.0001, installerNum(rateMyrCny, 1.53));
+            const detail = [
+                { key: 'installation', label: 'Installation', amount: s.installationRmPerKwp * size, formula: `${s.installationRmPerKwp}/kWp × ${size.toFixed(2)}` },
+                { key: 'frameMounting', label: 'Frame/Mounting', amount: s.frameMountingRmPerKwp * size, formula: `${s.frameMountingRmPerKwp}/kWp × ${size.toFixed(2)}` },
+                { key: 'cable', label: 'DC and AC Cable', amount: s.cableRmPerKwp * size, formula: `${s.cableRmPerKwp}/kWp × ${size.toFixed(2)}` }
+            ];
+            if (target === 'biz') {
+                const b = s.biz;
+                const powerStudy = size > b.powerStudyMinKwp && size < b.powerStudyMaxKwp ? b.powerStudyFee : 0;
+                const design = size <= b.designBaseThresholdKwp ? b.designBaseFee : b.designBaseFee + ((size - b.designBaseThresholdKwp) * b.designAdditionalPerKwp);
+                const db = (b.dbPer100Kwp / 100) * size;
+                detail.push(
+                    { key: 'peEndorsement', label: 'PE Endorsement', amount: b.peEndorsement, formula: 'per case' },
+                    { key: 'powerStudy', label: 'Power Study', amount: powerStudy, formula: `${b.powerStudyMinKwp}<kWp<${b.powerStudyMaxKwp}` },
+                    { key: 'design', label: 'Design and Applications', amount: design, formula: `<=${b.designBaseThresholdKwp}kWp ${b.designBaseFee}; +${b.designAdditionalPerKwp}/kWp above` },
+                    { key: 'db', label: 'DB c/w Breakers & SPD', amount: db, formula: `${b.dbPer100Kwp}/100kWp` },
+                    { key: 'wireman', label: 'Wireman', amount: b.wireman, formula: 'per case' },
+                    { key: 'chargeman', label: 'Chargeman', amount: b.chargeman, formula: 'appointed by owner' }
+                );
+            } else {
+                const h = s.home;
+                const powerStudy = size > h.powerStudyThresholdKwp ? h.powerStudyFee : 0;
+                detail.push(
+                    { key: 'peEndorsement', label: 'PE Endorsement', amount: h.peEndorsement, formula: 'per case' },
+                    { key: 'powerStudy', label: 'Power Study', amount: powerStudy, formula: `above ${h.powerStudyThresholdKwp} kWp` },
+                    { key: 'design', label: 'Design and Applications', amount: h.designApplications, formula: 'per case' },
+                    { key: 'db', label: 'DB c/w Breakers & SPD', amount: h.db, formula: 'below 20kWp' },
+                    { key: 'wireman', label: 'Wireman', amount: h.wireman, formula: 'per case' },
+                    { key: 'chargeman', label: 'Chargeman', amount: h.chargeman, formula: 'per case' }
+                );
+            }
+            detail.forEach(item => { item.amount = Math.round((installerNum(item.amount, 0) + Number.EPSILON) * 10000) / 10000; });
+            const baseMyr = Math.round((detail.reduce((sum, item) => sum + item.amount, 0) + Number.EPSILON) * 10000) / 10000;
+            const cnPct = installerNum(profit.cnPct, 0);
+            const myPct = installerNum(profit.myPct, 0);
+            const finalMyr = Math.round((baseMyr * (1 + (cnPct + myPct) / 100) + Number.EPSILON) * 10000) / 10000;
+            return {
+                scenario: target,
+                sizeKwp: size,
+                baseMyr,
+                baseCny: Math.round((baseMyr * rate + Number.EPSILON) * 10000) / 10000,
+                finalMyr,
+                finalCny: Math.round((finalMyr * rate + Number.EPSILON) * 10000) / 10000,
+                unitFinalMyrPerKwp: size > 0 ? Math.round(((finalMyr / size) + Number.EPSILON) * 10000) / 10000 : 0,
+                unitFinalCnyPerKwp: size > 0 ? Math.round(((finalMyr * rate / size) + Number.EPSILON) * 10000) / 10000 : 0,
+                cnPct,
+                myPct,
+                detail
+            };
+        }
+        // INSTALLER_QUOTE_MODEL_END
         function normalizeProfitSettings(next) {
             const base = next && typeof next === 'object' ? next : {};
             const companies = Array.isArray(base.companies) ? base.companies.filter(c => c && c.id && c.name) : [];
@@ -1967,6 +2095,7 @@
                     subcategoriesByCategory = embedded.data.subcategoriesByCategory && typeof embedded.data.subcategoriesByCategory === 'object' ? embedded.data.subcategoriesByCategory : {};
                     profitSettings = normalizeProfitSettings(embedded.data.profitSettings || null);
                     installerProfitSettings = normalizeInstallerProfitSettings(embedded.data.installerProfitSettings || installerProfitSettings || null);
+                    installerQuoteSettings = normalizeInstallerQuoteSettings(embedded.data.installerQuoteSettings || installerQuoteSettings || null);
                     try {
                         if (embeddedAt) localStorage.setItem('minova_embedded_updatedAt', String(embeddedAt));
                         localStorage.setItem('minova_products', JSON.stringify(products));
@@ -1979,6 +2108,7 @@
                         localStorage.setItem('minova_subcategories_v1', JSON.stringify(subcategoriesByCategory));
                         localStorage.setItem('minova_profit_settings_v1', JSON.stringify(profitSettings));
                         localStorage.setItem('minova_installer_profit_v1', JSON.stringify(installerProfitSettings));
+                        localStorage.setItem('minova_installer_quote_settings_v1', JSON.stringify(installerQuoteSettings));
                     } catch (e) {}
                     companyCerts = embedded.data.companyCerts && typeof embedded.data.companyCerts === 'object' ? embedded.data.companyCerts : companyCerts;
                     transportRecords = Array.isArray(embedded.data.transportRecords) ? embedded.data.transportRecords : [];
@@ -2144,6 +2274,7 @@
             subcategoriesByCategory = data?.subcategoriesByCategory && typeof data.subcategoriesByCategory === 'object' ? data.subcategoriesByCategory : {};
             profitSettings = normalizeProfitSettings(data?.profitSettings || profitSettings || null);
             installerProfitSettings = normalizeInstallerProfitSettings(data?.installerProfitSettings || installerProfitSettings || null);
+            installerQuoteSettings = normalizeInstallerQuoteSettings(data?.installerQuoteSettings || installerQuoteSettings || null);
             try {
                 if (stampMs) localStorage.setItem('minova_embedded_updatedAt', String(stampMs));
                 localStorage.setItem('minova_products', JSON.stringify(products));
@@ -2156,6 +2287,7 @@
                 localStorage.setItem('minova_subcategories_v1', JSON.stringify(subcategoriesByCategory));
                 localStorage.setItem('minova_profit_settings_v1', JSON.stringify(profitSettings));
                 localStorage.setItem('minova_installer_profit_v1', JSON.stringify(installerProfitSettings));
+                localStorage.setItem('minova_installer_quote_settings_v1', JSON.stringify(installerQuoteSettings));
             } catch (e) {}
             // companyCerts 也从 applyStateFromData 恢复（保持同步）
             if (data.companyCerts && typeof data.companyCerts === 'object') {
@@ -2171,6 +2303,8 @@
                 try { localStorage.setItem('minova_file_delete_logs_v1', JSON.stringify(fileDeleteLogs)); } catch (e) {}
             }
             applyInstallerProfitSettingsToUi();
+            applyInstallerQuoteSettingsToUi();
+            try { recalcInstallerQuote(); } catch (e) {}
             suppressGitHubSync = false;
             refreshAfterDataChange();
         }
@@ -2233,6 +2367,8 @@
             saveSubcategoryIndex();
             ensureProfitSettingsCoverage();
             try { localStorage.setItem('minova_profit_settings_v1', JSON.stringify(profitSettings)); } catch (e) {}
+            try { localStorage.setItem('minova_installer_quote_settings_v1', JSON.stringify(normalizeInstallerQuoteSettings(installerQuoteSettings))); } catch (e) {}
+            try { localStorage.setItem('minova_installer_profit_v1', JSON.stringify(normalizeInstallerProfitSettings(installerProfitSettings))); } catch (e) {}
             refreshAfterDataChange();
             try { if (!suppressGitHubSync) window.__minovaSync?.enqueueSnapshot('state update'); } catch (e) {}
         }
@@ -5084,34 +5220,76 @@
             return (totalCost / totalQty) / s;
         }
 
+        function getInstallerScenario() {
+            try {
+                if (typeof getPickerCustomerMode === 'function') return getPickerCustomerMode() === 'biz' ? 'biz' : 'home';
+            } catch (e) {}
+            return window.pickerCustomerMode === 'biz' ? 'biz' : 'home';
+        }
+        function getProposedSystemSizeKwp() {
+            const direct = parseFloat(String(document.getElementById('input-proposed-size')?.value || '').replace(/,/g, ''));
+            if (Number.isFinite(direct) && direct > 0) return direct;
+            try {
+                const ctx = typeof getQuoteSolarContext === 'function' ? getQuoteSolarContext() : null;
+                const auto = parseFloat(ctx?.sizing?.pvSizeKwp);
+                if (Number.isFinite(auto) && auto > 0) return auto;
+            } catch (e) {}
+            return 0;
+        }
+        function applyInstallerQuoteSettingsToUi() {
+            installerQuoteSettings = normalizeInstallerQuoteSettings(installerQuoteSettings);
+            const set = (id, value) => {
+                const el = document.getElementById(id);
+                if (el) el.value = String(value);
+            };
+            set('installer-labor', installerQuoteSettings.installationRmPerKwp);
+            set('installer-bracket', installerQuoteSettings.frameMountingRmPerKwp);
+            set('installer-cable', installerQuoteSettings.cableRmPerKwp);
+        }
+        function renderInstallerCostDetail(result) {
+            const scenarioEl = document.getElementById('installer-scenario-label');
+            const sizeEl = document.getElementById('installer-size-label');
+            const detailEl = document.getElementById('installer-cost-detail');
+            if (scenarioEl) scenarioEl.textContent = result.scenario === 'biz' ? 'C&S' : 'RESI';
+            if (sizeEl) sizeEl.textContent = `${result.sizeKwp.toFixed(2)} kWp`;
+            if (!detailEl) return;
+            detailEl.innerHTML = result.detail.map(item => `
+                <div class="rounded-xl bg-white border border-slate-100 px-3 py-2 flex items-center justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="font-black text-slate-700 truncate">${htmlSafe(item.label)}</div>
+                        <div class="text-[10px] text-slate-400 truncate">${htmlSafe(item.formula || '')}</div>
+                    </div>
+                    <div class="font-mono font-black text-slate-700 text-right whitespace-nowrap">RM ${formatNumberAuto(item.amount, 2)}</div>
+                </div>
+            `).join('');
+        }
         window.recalcInstallerQuote = () => {
             const labor = parseFloat(document.getElementById('installer-labor')?.value) || 0;
             const bracket = parseFloat(document.getElementById('installer-bracket')?.value) || 0;
             const cable = parseFloat(document.getElementById('installer-cable')?.value) || 0;
-            const totalMyr = labor + bracket + cable;
+            installerQuoteSettings = normalizeInstallerQuoteSettings({
+                ...(installerQuoteSettings || {}),
+                installationRmPerKwp: labor,
+                frameMountingRmPerKwp: bracket,
+                cableRmPerKwp: cable
+            });
             const rate = parseFloat(document.getElementById('rate-myr-cny')?.value) || 1.53;
-            const totalCny = totalMyr * rate;
+            const cnPct = parseFloat(document.getElementById('installer-profit-cn')?.value) || 0;
+            const myPct = parseFloat(document.getElementById('installer-profit-my')?.value) || 0;
+            installerProfitSettings = normalizeInstallerProfitSettings({ cnPct, myPct });
+            const result = computeInstallerCost(getProposedSystemSizeKwp(), getInstallerScenario(), installerQuoteSettings, installerProfitSettings, rate);
 
             const myrEl = document.getElementById('installer-total-myr');
             const cnyEl = document.getElementById('installer-total-cny');
-            if (myrEl) myrEl.value = totalMyr.toFixed(4);
-            if (cnyEl) cnyEl.value = totalCny.toFixed(4);
-            const cnProfitEl = document.getElementById('installer-profit-cn');
-            const myProfitEl = document.getElementById('installer-profit-my');
             const feeEl = document.getElementById('installer-install-fee-cny');
             const feeMyrEl = document.getElementById('installer-install-fee-myr');
-            if (cnProfitEl && myProfitEl && feeEl) {
-                const cnPct = parseFloat(cnProfitEl.value) || 0;
-                const myPct = parseFloat(myProfitEl.value) || 0;
-                const fee = totalCny * (1 + (cnPct + myPct) / 100);
-                feeEl.value = fee.toFixed(4);
-                if (feeMyrEl) feeMyrEl.value = (fee / rate).toFixed(4);
-                installerProfitSettings = normalizeInstallerProfitSettings({ cnPct, myPct });
-                try { localStorage.setItem('minova_installer_profit_v1', JSON.stringify(installerProfitSettings)); } catch (e) {}
-            }
-            try {
-                localStorage.setItem('minova_installer_quote_v1', JSON.stringify({ labor, bracket, cable }));
-            } catch (e) {}
+            if (myrEl) myrEl.value = result.baseMyr.toFixed(4);
+            if (cnyEl) cnyEl.value = result.baseCny.toFixed(4);
+            if (feeEl) feeEl.value = result.finalCny.toFixed(4);
+            if (feeMyrEl) feeMyrEl.value = result.finalMyr.toFixed(4);
+            renderInstallerCostDetail(result);
+            try { localStorage.setItem('minova_installer_profit_v1', JSON.stringify(installerProfitSettings)); } catch (e) {}
+            try { localStorage.setItem('minova_installer_quote_settings_v1', JSON.stringify(installerQuoteSettings)); } catch (e) {}
         };
 
         function getDefaultPvModuleQuantity() {
@@ -5192,21 +5370,31 @@
             const descEl = document.getElementById('install-desc');
             const unitEl = document.getElementById('install-unit-price');
             const qtyEl = document.getElementById('install-qty');
+            const qtyUnitEl = document.getElementById('install-qty-unit');
             const itemsEl = document.getElementById('install-overseas-items');
 
             const isDomestic = window.installMode === 'domestic';
             if (titleEl) titleEl.textContent = isDomestic ? '施工安装 · 国内施工费' : '施工安装 · 海外施工费';
             if (descEl) descEl.value = isDomestic ? '国内施工费' : '海外施工费';
+            if (qtyUnitEl) qtyUnitEl.textContent = isDomestic ? '项' : 'kWp';
             if (itemsEl) itemsEl.classList.toggle('hidden', isDomestic);
             if (!isDomestic) resetInstallOptionItems();
 
-            const overseasUnit = parseFloat(document.getElementById('installer-install-fee-cny')?.value) || 0;
+            let overseasUnit = parseFloat(document.getElementById('installer-install-fee-cny')?.value) || 0;
+            let overseasQty = getProposedSystemSizeKwp();
+            if (!isDomestic) {
+                installerQuoteSettings = normalizeInstallerQuoteSettings(installerQuoteSettings);
+                const rate = parseFloat(document.getElementById('rate-myr-cny')?.value) || 1.53;
+                const result = computeInstallerCost(overseasQty, getInstallerScenario(), installerQuoteSettings, installerProfitSettings, rate);
+                overseasUnit = result.unitFinalCnyPerKwp;
+                overseasQty = result.sizeKwp;
+            }
             if (unitEl) {
                 unitEl.value = isDomestic ? '0' : String(overseasUnit.toFixed(4));
                 unitEl.readOnly = !isDomestic;
                 unitEl.classList.toggle('bg-slate-50', !isDomestic);
             }
-            if (qtyEl) qtyEl.value = String(isDomestic ? 1 : getDefaultPvModuleQuantity());
+            if (qtyEl) qtyEl.value = String(isDomestic ? 1 : (overseasQty > 0 ? overseasQty.toFixed(2) : 0));
             recalcInstallModal();
         };
         window.closeInstallModal = () => {
@@ -5217,7 +5405,13 @@
             const unit = parseFloat(document.getElementById('install-unit-price')?.value) || 0;
             const qty = parseFloat(document.getElementById('install-qty')?.value) || 0;
             const sub = unit * qty;
+            const rate = parseFloat(document.getElementById('rate-myr-cny')?.value) || 1.53;
+            const safeRate = rate > 0 ? rate : 1.53;
+            const unitMyrEl = document.getElementById('install-unit-price-myr');
+            const subMyrEl = document.getElementById('install-subtotal-myr');
             const el = document.getElementById('install-subtotal');
+            if (unitMyrEl) unitMyrEl.value = (unit / safeRate).toFixed(4);
+            if (subMyrEl) subMyrEl.value = (sub / safeRate).toFixed(4);
             if (el) el.value = sub.toFixed(4);
         };
         window.applyInstallToQuote = () => {
@@ -8480,16 +8674,10 @@
             });
         }
         try {
-            const raw = localStorage.getItem('minova_installer_quote_v1');
-            if (raw) {
-                const d = JSON.parse(raw);
-                const laborEl = document.getElementById('installer-labor');
-                const bracketEl = document.getElementById('installer-bracket');
-                const cableEl = document.getElementById('installer-cable');
-                if (laborEl && Number.isFinite(parseFloat(d?.labor))) laborEl.value = String(d.labor);
-                if (bracketEl && Number.isFinite(parseFloat(d?.bracket))) bracketEl.value = String(d.bracket);
-                if (cableEl && Number.isFinite(parseFloat(d?.cable))) cableEl.value = String(d.cable);
-            }
+            const raw = localStorage.getItem('minova_installer_quote_settings_v1') || localStorage.getItem('minova_installer_quote_v1');
+            installerQuoteSettings = normalizeInstallerQuoteSettings(raw ? JSON.parse(raw) : installerQuoteSettings);
+            applyInstallerQuoteSettingsToUi();
+            localStorage.setItem('minova_installer_quote_settings_v1', JSON.stringify(installerQuoteSettings));
         } catch (e) {}
         try {
             const raw = localStorage.getItem('minova_installer_profit_v1');
@@ -8506,6 +8694,7 @@
                 if (myEl && String(myEl.value ?? '').trim() === '') myEl.value = String(installerProfitSettings.myPct);
             }
         } catch (e) {}
+        try { recalcInstallerQuote(); } catch (e) {}
 
         window.__minovaSync = initGitHubSync({
             getLocalState: () => ({
@@ -8521,7 +8710,8 @@
                 fileDeleteLogs,
                 subcategoriesByCategory,
                 profitSettings,
-                installerProfitSettings
+                installerProfitSettings,
+                installerQuoteSettings
             }),
             applyRemoteState: (data) => {
                 applyStateFromData(data, Date.now());
@@ -8545,7 +8735,8 @@
                     fileDeleteLogs,
                     subcategoriesByCategory,
                     profitSettings,
-                    installerProfitSettings
+                    installerProfitSettings,
+                    installerQuoteSettings
                 }
             };
             const json = JSON.stringify(snapshot).replaceAll('<', '\\u003c');

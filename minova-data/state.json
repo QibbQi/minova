@@ -678,6 +678,33 @@
     "installerProfitSettings": {
       "cnPct": 5,
       "myPct": 15
+    },
+    "installerQuoteSettings": {
+      "v": 1,
+      "installationRmPerKwp": 250,
+      "frameMountingRmPerKwp": 240,
+      "cableRmPerKwp": 60,
+      "home": {
+        "peEndorsement": 1200,
+        "powerStudyThresholdKwp": 15,
+        "powerStudyFee": 1000,
+        "designApplications": 2500,
+        "db": 2500,
+        "wireman": 500,
+        "chargeman": 500
+      },
+      "biz": {
+        "peEndorsement": 1200,
+        "powerStudyMinKwp": 72,
+        "powerStudyMaxKwp": 425,
+        "powerStudyFee": 5000,
+        "designBaseThresholdKwp": 50,
+        "designBaseFee": 3000,
+        "designAdditionalPerKwp": 12,
+        "dbPer100Kwp": 10500,
+        "wireman": 800,
+        "chargeman": 0
+      }
     }
   }
 }

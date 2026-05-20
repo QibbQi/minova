@@ -2437,7 +2437,7 @@
                 sst: "销售服务税 (SST 6%)",
                 paymentWarning: "⚠️ 支付比例总和必须等于 100%（当前：{total}%）",
                 shippingHandling: "运输与装卸",
-                included: "已包含",
+                included: "INCLUDED",
                 customerNamePlaceholder: "输入客户公司",
                 customerContactPlaceholder: "联系人/职位",
                 siteAddressLabel: "Site Address：",
@@ -2558,7 +2558,7 @@
                 sst: "SST (6%)",
                 paymentWarning: "⚠️ Total payment percentage must equal 100% (Current: {total}%)",
                 shippingHandling: "Shipping & Handling",
-                included: "Included",
+                included: "INCLUDED",
                 customerNamePlaceholder: "Customer Company / Name",
                 customerContactPlaceholder: "Contact Person / Title",
                 siteAddressLabel: "Site Address:",
@@ -2977,6 +2977,13 @@
             return current;
         }
 
+        function normalizeQuoteShippingIncludedText(value) {
+            const raw = String(value ?? '').trim();
+            if (!raw || ['已包含', '以包含', 'included'].includes(raw.toLowerCase())) return 'INCLUDED';
+            return raw;
+        }
+        window.normalizeQuoteShippingIncludedText = normalizeQuoteShippingIncludedText;
+
         const updateLanguageLabels = () => {
             const t = i18n[currentLang];
             document.getElementById('lbl-title').textContent = t.title;
@@ -3065,8 +3072,11 @@
             if (shipEl) {
                 try {
                     const prevLang = shipEl.dataset.lang || currentLang;
-                    localStorage.setItem(`minova_shipping_${prevLang}`, shipEl.value);
-                    shipEl.value = localStorage.getItem(`minova_shipping_${currentLang}`) ?? t.included;
+                    localStorage.setItem(`minova_shipping_${prevLang}`, normalizeQuoteShippingIncludedText(shipEl.value));
+                    const storedShipping = localStorage.getItem(`minova_shipping_${currentLang}`);
+                    const nextShipping = normalizeQuoteShippingIncludedText(storedShipping ?? t.included);
+                    localStorage.setItem(`minova_shipping_${currentLang}`, nextShipping);
+                    shipEl.value = nextShipping;
                 } catch (e) {
                     shipEl.value = t.included;
                 }
@@ -3276,10 +3286,6 @@
             return hay.includes('逆变器') || hay.includes('inverter');
         }
 
-        function quoteRowHasProtectedQty(row) {
-            return quoteRowIsPvModule(row) || quoteRowIsInverter(row);
-        }
-
         function quoteHasBatteryRows() {
             return quoteRows.some(r => r && !r.isBlank && quoteRowHasBattery(r));
         }
@@ -3336,55 +3342,6 @@
             renderQuote();
         };
 
-        window.openQuoteQtyEditModal = (id) => {
-            const row = quoteRows.find(r => r.id === id);
-            if (!row) return;
-            window.__quoteQtyEditRowId = id;
-            const modal = document.getElementById('quote-qty-edit-modal');
-            const title = document.getElementById('quote-qty-edit-title');
-            const desc = document.getElementById('quote-qty-edit-desc');
-            const input = document.getElementById('quote-qty-edit-value');
-            if (title) title.textContent = quoteRowIsPvModule(row) ? '确认修改光伏组件 QTY' : '确认修改逆变器 QTY';
-            if (desc) desc.textContent = `${row.description || '当前产品'} 的数量由公式自动计算。确认后将改为手动值，直到恢复自动。`;
-            if (input) input.value = formatNumberAuto(row.quantity, 4);
-            if (modal) {
-                modal.classList.remove('hidden');
-                modal.classList.add('flex');
-                setTimeout(() => { try { input?.focus(); input?.select(); } catch (e) {} }, 30);
-            }
-        };
-
-        window.closeQuoteQtyEditModal = () => {
-            const modal = document.getElementById('quote-qty-edit-modal');
-            if (modal) {
-                modal.classList.add('hidden');
-                modal.classList.remove('flex');
-            }
-            window.__quoteQtyEditRowId = null;
-        };
-
-        window.confirmQuoteQtyEdit = () => {
-            const row = quoteRows.find(r => r.id === window.__quoteQtyEditRowId);
-            const input = document.getElementById('quote-qty-edit-value');
-            const raw = String(input?.value || '').replace(/[^0-9.]/g, '');
-            const qty = parseFloat(raw);
-            if (!row || !(qty > 0)) return alert('请输入有效数量');
-            row.quantity = qty;
-            row.qtyManualOverride = true;
-            window.setQuoteDirty?.(true);
-            window.closeQuoteQtyEditModal();
-            renderQuote();
-        };
-
-        window.restoreQuoteQtyAuto = () => {
-            const row = quoteRows.find(r => r.id === window.__quoteQtyEditRowId);
-            if (!row) return;
-            row.qtyManualOverride = false;
-            window.setQuoteDirty?.(true);
-            window.closeQuoteQtyEditModal();
-            try { window.calculateROI?.(); } catch (e) {}
-            renderQuote();
-        };
         let translateCache = {};
         let translatePending = new Set();
         try { translateCache = safeJsonParseLoose(localStorage.getItem('minova_translate_cache_v1'), {}) || {}; } catch (e) { translateCache = {}; }
@@ -3425,6 +3382,11 @@
                 row.vendorManualOverride = true;
             } else if (field === 'spec' || field === 'batchNo') {
                 row[field] = val;
+            } else if (field === 'quantity') {
+                row.quantity = parseFloat(val) || 0;
+                if (quoteRowIsPvModule(row) || quoteRowIsInverter(row)) {
+                    row.qtyManualOverride = true;
+                }
             } else {
                 row[field] = parseFloat(val) || 0;
             }
@@ -3436,23 +3398,6 @@
             if (!Number.isFinite(n)) return '0';
             const s = n.toFixed(maxDecimals);
             return s.replace(/\.?0+$/, '');
-        }
-
-        function quoteQtyFontSize(value) {
-            const len = String(value ?? '').replace(/\s+/g, '').length;
-            if (len >= 7) return '10px';
-            if (len >= 6) return '11px';
-            if (len >= 5) return '12px';
-            return '13px';
-        }
-
-        function quoteProtectedQtyHtml(row) {
-            const qtyText = formatNumberAuto(row?.quantity, 4);
-            const fontSize = quoteQtyFontSize(qtyText);
-            const manualBadge = row?.qtyManualOverride
-                ? `<span class="absolute -top-1 -right-1 text-[8px] font-black text-purple-700 bg-white border border-purple-100 px-1 rounded-full shadow-sm">M</span>`
-                : '';
-            return `<button id="quote-qty-${row.id}" type="button" onclick="openQuoteQtyEditModal(${row.id})" class="quote-qty-protected relative w-full rounded-lg border border-purple-100 bg-purple-50/70 px-1 py-1 text-center font-black text-purple-700 hover:bg-purple-100 transition-colors" style="font-size:${fontSize};" title="点击确认后手动修改数量"><span class="quote-qty-number">${htmlSafe(qtyText)}</span>${manualBadge}</button>`;
         }
 
         function fitGrandTotalAmount() {
@@ -3714,10 +3659,7 @@
                     });
                 }
                 const displayNo = isCountedRow(r) ? (++displayIndex) : '';
-                const protectedQty = !r.isBlank && quoteRowHasProtectedQty(r);
-                const qtyHtml = protectedQty
-                    ? quoteProtectedQtyHtml(r)
-                    : `<input id="quote-qty-${r.id}" type="number" value="${r.quantity}" oninput="updateRow(${r.id}, 'quantity', this.value)" class="w-full bg-transparent outline-none text-center text-sm">`;
+                const qtyHtml = `<input id="quote-qty-${r.id}" type="number" value="${r.quantity}" oninput="updateRow(${r.id}, 'quantity', this.value)" class="w-full bg-transparent outline-none text-center text-sm">`;
                 const priceHtml = r.included
                     ? `<span class="block text-right text-[10px] font-black text-slate-400 uppercase">Included</span>`
                     : `<input type="number" step="0.01" value="${formatNumberAuto(priceInCurrentCurrency, 4)}" oninput="updateRow(${r.id}, 'price', this.value)" class="w-full bg-transparent outline-none text-right text-sm font-bold">`;
@@ -7676,6 +7618,35 @@
             }
             return `¥${formatNumberAuto(v, 4)}`;
         }
+        function getPickerInventoryPcsPricing(item, product, priceType = getPickerSelectedPriceType()) {
+            const p = product || {};
+            const r = computeInventoryPricing({ item, product: p });
+            const unit = getMarketCategoryUnitMeta(p.category || '').unit || 'pcs';
+            const multiplierRaw = getProductSpecMultiplierForUnit(p, item?.spec, unit);
+            const pcsMultiplier = multiplierRaw > 0 ? multiplierRaw : 1;
+            const selectedUnitPrice = getPickerSelectedPriceValue({
+                clearanceHomePrice: (item?.clearanceHomePrice ?? r.clearanceHomePrice) || 0,
+                clearanceBizPrice: (item?.clearanceBizPrice ?? r.clearanceBizPrice) || 0,
+                grayHomePrice: (item?.grayHomePrice ?? r.grayHomePrice) || 0,
+                grayBizPrice: (item?.grayBizPrice ?? r.grayBizPrice) || 0
+            }, priceType);
+            const avgCost = Number.isFinite(parseFloat(r.avgCost)) ? parseFloat(r.avgCost) : 0;
+            const fallbackCost = Number.isFinite(parseFloat(item?.purchasePrice)) ? parseFloat(item.purchasePrice) : 0;
+            return {
+                ...r,
+                costUnit: normalizeUnitLabel(unit),
+                pcsMultiplier,
+                pcsPrice: selectedUnitPrice * pcsMultiplier,
+                pcsCost: (avgCost > 0 ? avgCost : fallbackCost) * pcsMultiplier
+            };
+        }
+        function formatPickerInventorySpec(item, product) {
+            const unit = normalizeUnitLabel(getMarketCategoryUnitMeta(product?.category || '').unit || 'pcs');
+            const spec = Number.isFinite(parseFloat(item?.spec)) ? parseFloat(item.spec) : 0;
+            if (spec > 0) return `${formatNumberAuto(spec, 4)} ${unit}`;
+            const fallback = String(product?.spec || '').trim();
+            return fallback || `1 ${unit}`;
+        }
         window.togglePickerCurrency = () => {
             window.pickerDisplayCurrency = getPickerCurrency() === 'MYR' ? 'CNY' : 'MYR';
             renderPicker();
@@ -7712,17 +7683,9 @@
 
             list.innerHTML = filtered.map(item => {
                 const p = products.find(prod => prod.id === item.productId);
-                const r = computeInventoryPricing({ item, product: p || {} });
-                const ch = (item.clearanceHomePrice ?? r.clearanceHomePrice) || 0;
-                const cb = (item.clearanceBizPrice ?? r.clearanceBizPrice) || 0;
-                const gh = (item.grayHomePrice ?? r.grayHomePrice) || 0;
-                const gb = (item.grayBizPrice ?? r.grayBizPrice) || 0;
-                const selectedPrice = getPickerSelectedPriceValue({
-                    clearanceHomePrice: ch,
-                    clearanceBizPrice: cb,
-                    grayHomePrice: gh,
-                    grayBizPrice: gb
-                }, selectedPriceType);
+                const pickerPricing = getPickerInventoryPcsPricing(item, p || {}, selectedPriceType);
+                const selectedPrice = pickerPricing.pcsPrice || 0;
+                const specLabel = formatPickerInventorySpec(item, p || {});
                 return `
                 <div class="p-3 hover:bg-purple-50 transition-colors group border-b border-slate-50" onmousemove="showMarketPriceTooltip(event, '${htmlSafe(item.productId || '')}')" onmouseleave="hidePriceListTooltip()">
                     <div class="flex justify-between items-start">
@@ -7732,6 +7695,7 @@
                         </div>
                         <div class="text-right">
                             <span class="text-[10px] text-slate-400 block">Warehouse: ${item.location || '-'} | Batch: ${item.batchNo}</span>
+                            <span class="text-[10px] text-slate-400 block">Spec: <span class="font-black text-slate-600">${htmlSafe(specLabel)}</span></span>
                             <span class="text-[10px] text-slate-400 block">Stock: <span class="text-green-700 font-black">${formatNumberAuto(item.quantity, 4)}</span></span>
                         </div>
                     </div>
@@ -7741,7 +7705,7 @@
                             <span class="text-[9px] uppercase px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded">${getProductSupplierDisplay(p)}</span>
                         </div>
                         <div class="flex flex-wrap gap-2 justify-end">
-                            <button onclick="pickProduct('${item.id}', '${selectedPriceType}')" class="${getPickerSelectedButtonClass(selectedPriceType)}">${selectedPriceLabel} ${formatPickerPrice(selectedPrice)}</button>
+                            <button onclick="pickProduct('${item.id}', '${selectedPriceType}')" class="${getPickerSelectedButtonClass(selectedPriceType)}">${selectedPriceLabel} ${formatPickerPrice(selectedPrice)}/pcs</button>
                         </div>
                     </div>
                 </div>`}).join('');
@@ -7750,14 +7714,9 @@
             const item = inventory.find(i => i.id === inventoryId); if(!item) return;
             const p = products.find(prod => prod.id === item.productId); if(!p) return;
 
-            const cost = item.purchasePrice || 0;
-            const r = computeInventoryPricing({ item, product: p });
-            let price = 0;
-            if (priceType === 'clearance_home') price = (item.clearanceHomePrice ?? r.clearanceHomePrice) || 0;
-            else if (priceType === 'clearance_biz') price = (item.clearanceBizPrice ?? r.clearanceBizPrice) || 0;
-            else if (priceType === 'gray_home') price = (item.grayHomePrice ?? r.grayHomePrice) || 0;
-            else if (priceType === 'gray_biz') price = (item.grayBizPrice ?? r.grayBizPrice) || 0;
-            else price = (item.clearanceHomePrice ?? r.clearanceHomePrice) || 0;
+            const pickerPricing = getPickerInventoryPcsPricing(item, p, priceType);
+            const price = pickerPricing.pcsPrice || 0;
+            const cost = pickerPricing.pcsCost || 0;
 
             const firstBlankIdx = quoteRows.findIndex(r => r.isBlank);
             const insertIdx = firstBlankIdx === -1 ? quoteRows.length : firstBlankIdx;
@@ -8669,8 +8628,9 @@
         }
         const shipEl = document.getElementById('val-shipping-handling');
         if (shipEl) {
+            shipEl.value = normalizeQuoteShippingIncludedText(shipEl.value);
             shipEl.addEventListener('input', () => {
-                try { localStorage.setItem(`minova_shipping_${currentLang}`, shipEl.value); } catch (e) {}
+                try { localStorage.setItem(`minova_shipping_${currentLang}`, normalizeQuoteShippingIncludedText(shipEl.value)); } catch (e) {}
             });
         }
         try {

@@ -988,6 +988,7 @@
         let profitSettings = null;
         let profitTarget = 'home';
         let installerProfitSettings = { cnPct: 0, myPct: 0 };
+        let installerQuoteSettings = null;
         function safeJsonParseLoose(raw, fallback) {
             try { return raw ? JSON.parse(raw) : fallback; } catch { return fallback; }
         }
@@ -998,6 +999,7 @@
             const raw = String(unit || '').trim();
             if (!raw || raw === '个') return 'pcs';
             if (raw.toLowerCase() === 'pc' || raw.toLowerCase() === 'piece' || raw.toLowerCase() === 'pieces') return 'pcs';
+            if (raw === '套' || raw.toLowerCase() === 'set') return 'set';
             return raw;
         }
         function normalizeMarketUnit(unit) {
@@ -1079,7 +1081,7 @@
                 return String(product?.category || '').trim() === cat;
             });
             const sample = [...categoryInventory.map(i => String(i.spec || '')), ...categoryProducts.map(p => String(p.spec || ''))].join(' ').toLowerCase();
-            if (cat.includes('一体机')) return '套';
+            if (cat.includes('一体机')) return 'set';
             if (cat.includes('配件')) return 'pcs';
             if (cat.includes('工商储') || cat.includes('储能')) return /\bkwh\b/i.test(sample) ? 'kWh' : 'kW';
             if (cat.includes('光伏组件') || /\b\d{3,4}\s*w\b/i.test(sample)) return 'W';
@@ -1711,6 +1713,133 @@
             const myPct = Number.isFinite(parseFloat(base.myPct)) ? parseFloat(base.myPct) : 0;
             return { cnPct, myPct };
         }
+        // INSTALLER_QUOTE_MODEL_START
+        const DEFAULT_INSTALLER_QUOTE_SETTINGS = {
+            v: 1,
+            installationRmPerKwp: 250,
+            frameMountingRmPerKwp: 240,
+            cableRmPerKwp: 60,
+            home: {
+                peEndorsement: 1200,
+                powerStudyThresholdKwp: 15,
+                powerStudyFee: 1000,
+                designApplications: 2500,
+                db: 2500,
+                wireman: 500,
+                chargeman: 500
+            },
+            biz: {
+                peEndorsement: 1200,
+                powerStudyMinKwp: 72,
+                powerStudyMaxKwp: 425,
+                powerStudyFee: 5000,
+                designBaseThresholdKwp: 50,
+                designBaseFee: 3000,
+                designAdditionalPerKwp: 12,
+                dbPer100Kwp: 10500,
+                wireman: 800,
+                chargeman: 0
+            }
+        };
+        function installerNum(value, fallback = 0) {
+            const n = parseFloat(value);
+            return Number.isFinite(n) ? n : fallback;
+        }
+        function migrateInstallerRate(value, fallback) {
+            const n = installerNum(value, fallback);
+            return n > 0 && n < 10 ? n * 1000 : n;
+        }
+        function normalizeInstallerQuoteSettings(next) {
+            const base = next && typeof next === 'object' ? next : {};
+            const oldLabor = base.labor ?? base.installationRmPerKwp;
+            const oldBracket = base.bracket ?? base.frameMountingRmPerKwp;
+            const oldCable = base.cable ?? base.cableRmPerKwp;
+            const d = DEFAULT_INSTALLER_QUOTE_SETTINGS;
+            const home = base.home && typeof base.home === 'object' ? base.home : {};
+            const biz = base.biz && typeof base.biz === 'object' ? base.biz : {};
+            return {
+                v: 1,
+                installationRmPerKwp: migrateInstallerRate(oldLabor, d.installationRmPerKwp),
+                frameMountingRmPerKwp: migrateInstallerRate(oldBracket, d.frameMountingRmPerKwp),
+                cableRmPerKwp: migrateInstallerRate(oldCable, d.cableRmPerKwp),
+                home: {
+                    peEndorsement: installerNum(home.peEndorsement, d.home.peEndorsement),
+                    powerStudyThresholdKwp: installerNum(home.powerStudyThresholdKwp, d.home.powerStudyThresholdKwp),
+                    powerStudyFee: installerNum(home.powerStudyFee, d.home.powerStudyFee),
+                    designApplications: installerNum(home.designApplications, d.home.designApplications),
+                    db: installerNum(home.db, d.home.db),
+                    wireman: installerNum(home.wireman, d.home.wireman),
+                    chargeman: installerNum(home.chargeman, d.home.chargeman)
+                },
+                biz: {
+                    peEndorsement: installerNum(biz.peEndorsement, d.biz.peEndorsement),
+                    powerStudyMinKwp: installerNum(biz.powerStudyMinKwp, d.biz.powerStudyMinKwp),
+                    powerStudyMaxKwp: installerNum(biz.powerStudyMaxKwp, d.biz.powerStudyMaxKwp),
+                    powerStudyFee: installerNum(biz.powerStudyFee, d.biz.powerStudyFee),
+                    designBaseThresholdKwp: installerNum(biz.designBaseThresholdKwp, d.biz.designBaseThresholdKwp),
+                    designBaseFee: installerNum(biz.designBaseFee, d.biz.designBaseFee),
+                    designAdditionalPerKwp: installerNum(biz.designAdditionalPerKwp, d.biz.designAdditionalPerKwp),
+                    dbPer100Kwp: installerNum(biz.dbPer100Kwp, d.biz.dbPer100Kwp),
+                    wireman: installerNum(biz.wireman, d.biz.wireman),
+                    chargeman: installerNum(biz.chargeman, d.biz.chargeman)
+                }
+            };
+        }
+        function computeInstallerCost(sizeKwp, scenario, settings, profit = {}, rateMyrCny = 1.53) {
+            const s = normalizeInstallerQuoteSettings(settings);
+            const target = scenario === 'biz' ? 'biz' : 'home';
+            const size = Math.max(0, installerNum(sizeKwp, 0));
+            const rate = Math.max(0.0001, installerNum(rateMyrCny, 1.53));
+            const detail = [
+                { key: 'installation', label: 'Installation', amount: s.installationRmPerKwp * size, formula: `${s.installationRmPerKwp}/kWp × ${size.toFixed(2)}` },
+                { key: 'frameMounting', label: 'Frame/Mounting', amount: s.frameMountingRmPerKwp * size, formula: `${s.frameMountingRmPerKwp}/kWp × ${size.toFixed(2)}` },
+                { key: 'cable', label: 'DC and AC Cable', amount: s.cableRmPerKwp * size, formula: `${s.cableRmPerKwp}/kWp × ${size.toFixed(2)}` }
+            ];
+            if (target === 'biz') {
+                const b = s.biz;
+                const powerStudy = size > b.powerStudyMinKwp && size < b.powerStudyMaxKwp ? b.powerStudyFee : 0;
+                const design = size <= b.designBaseThresholdKwp ? b.designBaseFee : b.designBaseFee + ((size - b.designBaseThresholdKwp) * b.designAdditionalPerKwp);
+                const db = (b.dbPer100Kwp / 100) * size;
+                detail.push(
+                    { key: 'peEndorsement', label: 'PE Endorsement', amount: b.peEndorsement, formula: 'per case' },
+                    { key: 'powerStudy', label: 'Power Study', amount: powerStudy, formula: `${b.powerStudyMinKwp}<kWp<${b.powerStudyMaxKwp}` },
+                    { key: 'design', label: 'Design and Applications', amount: design, formula: `<=${b.designBaseThresholdKwp}kWp ${b.designBaseFee}; +${b.designAdditionalPerKwp}/kWp above` },
+                    { key: 'db', label: 'DB c/w Breakers & SPD', amount: db, formula: `${b.dbPer100Kwp}/100kWp` },
+                    { key: 'wireman', label: 'Wireman', amount: b.wireman, formula: 'per case' },
+                    { key: 'chargeman', label: 'Chargeman', amount: b.chargeman, formula: 'appointed by owner' }
+                );
+            } else {
+                const h = s.home;
+                const powerStudy = size > h.powerStudyThresholdKwp ? h.powerStudyFee : 0;
+                detail.push(
+                    { key: 'peEndorsement', label: 'PE Endorsement', amount: h.peEndorsement, formula: 'per case' },
+                    { key: 'powerStudy', label: 'Power Study', amount: powerStudy, formula: `above ${h.powerStudyThresholdKwp} kWp` },
+                    { key: 'design', label: 'Design and Applications', amount: h.designApplications, formula: 'per case' },
+                    { key: 'db', label: 'DB c/w Breakers & SPD', amount: h.db, formula: 'below 20kWp' },
+                    { key: 'wireman', label: 'Wireman', amount: h.wireman, formula: 'per case' },
+                    { key: 'chargeman', label: 'Chargeman', amount: h.chargeman, formula: 'per case' }
+                );
+            }
+            detail.forEach(item => { item.amount = Math.round((installerNum(item.amount, 0) + Number.EPSILON) * 10000) / 10000; });
+            const baseMyr = Math.round((detail.reduce((sum, item) => sum + item.amount, 0) + Number.EPSILON) * 10000) / 10000;
+            const cnPct = installerNum(profit.cnPct, 0);
+            const myPct = installerNum(profit.myPct, 0);
+            const finalMyr = Math.round((baseMyr * (1 + (cnPct + myPct) / 100) + Number.EPSILON) * 10000) / 10000;
+            return {
+                scenario: target,
+                sizeKwp: size,
+                baseMyr,
+                baseCny: Math.round((baseMyr * rate + Number.EPSILON) * 10000) / 10000,
+                finalMyr,
+                finalCny: Math.round((finalMyr * rate + Number.EPSILON) * 10000) / 10000,
+                unitFinalMyrPerKwp: size > 0 ? Math.round(((finalMyr / size) + Number.EPSILON) * 10000) / 10000 : 0,
+                unitFinalCnyPerKwp: size > 0 ? Math.round(((finalMyr * rate / size) + Number.EPSILON) * 10000) / 10000 : 0,
+                cnPct,
+                myPct,
+                detail
+            };
+        }
+        // INSTALLER_QUOTE_MODEL_END
         function normalizeProfitSettings(next) {
             const base = next && typeof next === 'object' ? next : {};
             const companies = Array.isArray(base.companies) ? base.companies.filter(c => c && c.id && c.name) : [];
@@ -1966,6 +2095,7 @@
                     subcategoriesByCategory = embedded.data.subcategoriesByCategory && typeof embedded.data.subcategoriesByCategory === 'object' ? embedded.data.subcategoriesByCategory : {};
                     profitSettings = normalizeProfitSettings(embedded.data.profitSettings || null);
                     installerProfitSettings = normalizeInstallerProfitSettings(embedded.data.installerProfitSettings || installerProfitSettings || null);
+                    installerQuoteSettings = normalizeInstallerQuoteSettings(embedded.data.installerQuoteSettings || installerQuoteSettings || null);
                     try {
                         if (embeddedAt) localStorage.setItem('minova_embedded_updatedAt', String(embeddedAt));
                         localStorage.setItem('minova_products', JSON.stringify(products));
@@ -1978,6 +2108,7 @@
                         localStorage.setItem('minova_subcategories_v1', JSON.stringify(subcategoriesByCategory));
                         localStorage.setItem('minova_profit_settings_v1', JSON.stringify(profitSettings));
                         localStorage.setItem('minova_installer_profit_v1', JSON.stringify(installerProfitSettings));
+                        localStorage.setItem('minova_installer_quote_settings_v1', JSON.stringify(installerQuoteSettings));
                     } catch (e) {}
                     companyCerts = embedded.data.companyCerts && typeof embedded.data.companyCerts === 'object' ? embedded.data.companyCerts : companyCerts;
                     transportRecords = Array.isArray(embedded.data.transportRecords) ? embedded.data.transportRecords : [];
@@ -2143,6 +2274,7 @@
             subcategoriesByCategory = data?.subcategoriesByCategory && typeof data.subcategoriesByCategory === 'object' ? data.subcategoriesByCategory : {};
             profitSettings = normalizeProfitSettings(data?.profitSettings || profitSettings || null);
             installerProfitSettings = normalizeInstallerProfitSettings(data?.installerProfitSettings || installerProfitSettings || null);
+            installerQuoteSettings = normalizeInstallerQuoteSettings(data?.installerQuoteSettings || installerQuoteSettings || null);
             try {
                 if (stampMs) localStorage.setItem('minova_embedded_updatedAt', String(stampMs));
                 localStorage.setItem('minova_products', JSON.stringify(products));
@@ -2155,6 +2287,7 @@
                 localStorage.setItem('minova_subcategories_v1', JSON.stringify(subcategoriesByCategory));
                 localStorage.setItem('minova_profit_settings_v1', JSON.stringify(profitSettings));
                 localStorage.setItem('minova_installer_profit_v1', JSON.stringify(installerProfitSettings));
+                localStorage.setItem('minova_installer_quote_settings_v1', JSON.stringify(installerQuoteSettings));
             } catch (e) {}
             // companyCerts 也从 applyStateFromData 恢复（保持同步）
             if (data.companyCerts && typeof data.companyCerts === 'object') {
@@ -2170,6 +2303,8 @@
                 try { localStorage.setItem('minova_file_delete_logs_v1', JSON.stringify(fileDeleteLogs)); } catch (e) {}
             }
             applyInstallerProfitSettingsToUi();
+            applyInstallerQuoteSettingsToUi();
+            try { recalcInstallerQuote(); } catch (e) {}
             suppressGitHubSync = false;
             refreshAfterDataChange();
         }
@@ -2232,6 +2367,8 @@
             saveSubcategoryIndex();
             ensureProfitSettingsCoverage();
             try { localStorage.setItem('minova_profit_settings_v1', JSON.stringify(profitSettings)); } catch (e) {}
+            try { localStorage.setItem('minova_installer_quote_settings_v1', JSON.stringify(normalizeInstallerQuoteSettings(installerQuoteSettings))); } catch (e) {}
+            try { localStorage.setItem('minova_installer_profit_v1', JSON.stringify(normalizeInstallerProfitSettings(installerProfitSettings))); } catch (e) {}
             refreshAfterDataChange();
             try { if (!suppressGitHubSync) window.__minovaSync?.enqueueSnapshot('state update'); } catch (e) {}
         }
@@ -2580,7 +2717,7 @@
         window.renderCurrencyButton = () => {
             const btn = document.getElementById('btn-currency');
             if (!btn) return;
-            btn.textContent = currentCurrency === 'CNY' ? '¥/RM' : 'RM/¥';
+            btn.textContent = currentCurrency === 'CNY' ? '¥ / RM' : 'RM / ¥';
         };
 
         window.toggleCurrency = () => {
@@ -4884,29 +5021,26 @@
             const grayPct = Number.isFinite(parseFloat(grayEl?.value)) ? parseFloat(grayEl.value) : getDefaultGrayTaxPercent();
             const tempItem = { ...item, importDutyPct: dutyPct, sstPct: sstPct, grayTaxPct: grayPct };
             const r = computeInventoryPricing({ item: tempItem, product });
-            updateInventoryPricingCurrencyUi();
-            const set = (id, v, digits = 2, isCurrency = false) => {
+            const set = (id, v, digits = 2) => {
                 const el = document.getElementById(id);
                 if (!el) return;
-                const n = Number.isFinite(parseFloat(v)) ? parseFloat(v) : 0;
-                const display = isCurrency ? inventoryPricingDisplayFromCny(n) : n;
-                el.value = Number.isFinite(parseFloat(display)) ? parseFloat(display).toFixed(digits) : '0.00';
+                el.value = Number.isFinite(parseFloat(v)) ? parseFloat(v).toFixed(digits) : '0.00';
             };
 
-            set('edit-inv-avg-cost', r.avgCost, 4, true);
+            set('edit-inv-avg-cost', r.avgCost, 4);
             if (dutyEl && String(dutyEl.value ?? '').trim() === '') dutyEl.value = String(r.dutyPct);
             if (sstEl && String(sstEl.value ?? '').trim() === '') sstEl.value = String(r.sstPct);
             if (grayEl && String(grayEl.value ?? '').trim() === '') grayEl.value = String(r.grayPct);
-            set('edit-inv-clearance-cost', r.clearanceCost, 4, true);
-            set('edit-inv-gray-cost', r.grayCost, 4, true);
+            set('edit-inv-clearance-cost', r.clearanceCost, 4);
+            set('edit-inv-gray-cost', r.grayCost, 4);
             set('edit-profit-cn-home', r.cnHomePct);
             set('edit-profit-my-home', r.myHomePct);
             set('edit-profit-cn-biz', r.cnBizPct);
             set('edit-profit-my-biz', r.myBizPct);
-            set('edit-price-clearance-home', r.clearanceHomePrice, 4, true);
-            set('edit-price-clearance-biz', r.clearanceBizPrice, 4, true);
-            set('edit-price-gray-home', r.grayHomePrice, 4, true);
-            set('edit-price-gray-biz', r.grayBizPrice, 4, true);
+            set('edit-price-clearance-home', r.clearanceHomePrice, 4);
+            set('edit-price-clearance-biz', r.clearanceBizPrice, 4);
+            set('edit-price-gray-home', r.grayHomePrice, 4);
+            set('edit-price-gray-biz', r.grayBizPrice, 4);
         };
         window.openInventoryEditModal = (id) => {
             const item = inventory.find(i => i.id === id);
@@ -4919,7 +5053,6 @@
             if (dutyEl) dutyEl.value = Number.isFinite(parseFloat(item.importDutyPct)) ? String(parseFloat(item.importDutyPct)) : String(getDefaultImportDutyPercent(product.category));
             if (sstEl) sstEl.value = Number.isFinite(parseFloat(item.sstPct)) ? String(parseFloat(item.sstPct)) : String(getDefaultSstPercent());
             if (grayEl) grayEl.value = Number.isFinite(parseFloat(item.grayTaxPct)) ? String(parseFloat(item.grayTaxPct)) : String(getDefaultGrayTaxPercent());
-            updateInventoryPricingCurrencyUi();
             recalcInventoryPricingModal();
             document.getElementById('inventory-edit-modal').classList.remove('hidden');
         };
@@ -4963,7 +5096,7 @@
                 productName: product.name || '未知产品',
                 quantity: item.quantity,
                 batchNo: item.batchNo,
-                note: `定价 税率 关税:${oldDuty.toFixed(2)}→${dutyPct.toFixed(2)} SST:${oldSst.toFixed(2)}→${sstPct.toFixed(2)} 灰清:${oldGray.toFixed(2)}→${grayPct.toFixed(2)} | Clearance RESI:${oldCh.toFixed(2)}→${r.clearanceHomePrice.toFixed(2)} Clearance C&S:${oldCb.toFixed(2)}→${r.clearanceBizPrice.toFixed(2)} Grey RESI:${oldGh.toFixed(2)}→${r.grayHomePrice.toFixed(2)} Grey C&S:${oldGb.toFixed(2)}→${r.grayBizPrice.toFixed(2)}`
+                note: `定价 税率 关税:${oldDuty.toFixed(2)}→${dutyPct.toFixed(2)} SST:${oldSst.toFixed(2)}→${sstPct.toFixed(2)} 灰清:${oldGray.toFixed(2)}→${grayPct.toFixed(2)} | 清关家用:${oldCh.toFixed(2)}→${r.clearanceHomePrice.toFixed(2)} 清关工商:${oldCb.toFixed(2)}→${r.clearanceBizPrice.toFixed(2)} 灰清家用:${oldGh.toFixed(2)}→${r.grayHomePrice.toFixed(2)} 灰清工商:${oldGb.toFixed(2)}→${r.grayBizPrice.toFixed(2)}`
             });
 
             saveToLocal();
@@ -5087,34 +5220,76 @@
             return (totalCost / totalQty) / s;
         }
 
+        function getInstallerScenario() {
+            try {
+                if (typeof getPickerCustomerMode === 'function') return getPickerCustomerMode() === 'biz' ? 'biz' : 'home';
+            } catch (e) {}
+            return window.pickerCustomerMode === 'biz' ? 'biz' : 'home';
+        }
+        function getProposedSystemSizeKwp() {
+            const direct = parseFloat(String(document.getElementById('input-proposed-size')?.value || '').replace(/,/g, ''));
+            if (Number.isFinite(direct) && direct > 0) return direct;
+            try {
+                const ctx = typeof getQuoteSolarContext === 'function' ? getQuoteSolarContext() : null;
+                const auto = parseFloat(ctx?.sizing?.pvSizeKwp);
+                if (Number.isFinite(auto) && auto > 0) return auto;
+            } catch (e) {}
+            return 0;
+        }
+        function applyInstallerQuoteSettingsToUi() {
+            installerQuoteSettings = normalizeInstallerQuoteSettings(installerQuoteSettings);
+            const set = (id, value) => {
+                const el = document.getElementById(id);
+                if (el) el.value = String(value);
+            };
+            set('installer-labor', installerQuoteSettings.installationRmPerKwp);
+            set('installer-bracket', installerQuoteSettings.frameMountingRmPerKwp);
+            set('installer-cable', installerQuoteSettings.cableRmPerKwp);
+        }
+        function renderInstallerCostDetail(result) {
+            const scenarioEl = document.getElementById('installer-scenario-label');
+            const sizeEl = document.getElementById('installer-size-label');
+            const detailEl = document.getElementById('installer-cost-detail');
+            if (scenarioEl) scenarioEl.textContent = result.scenario === 'biz' ? 'C&S' : 'RESI';
+            if (sizeEl) sizeEl.textContent = `${result.sizeKwp.toFixed(2)} kWp`;
+            if (!detailEl) return;
+            detailEl.innerHTML = result.detail.map(item => `
+                <div class="rounded-xl bg-white border border-slate-100 px-3 py-2 flex items-center justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="font-black text-slate-700 truncate">${htmlSafe(item.label)}</div>
+                        <div class="text-[10px] text-slate-400 truncate">${htmlSafe(item.formula || '')}</div>
+                    </div>
+                    <div class="font-mono font-black text-slate-700 text-right whitespace-nowrap">RM ${formatNumberAuto(item.amount, 2)}</div>
+                </div>
+            `).join('');
+        }
         window.recalcInstallerQuote = () => {
             const labor = parseFloat(document.getElementById('installer-labor')?.value) || 0;
             const bracket = parseFloat(document.getElementById('installer-bracket')?.value) || 0;
             const cable = parseFloat(document.getElementById('installer-cable')?.value) || 0;
-            const totalMyr = labor + bracket + cable;
+            installerQuoteSettings = normalizeInstallerQuoteSettings({
+                ...(installerQuoteSettings || {}),
+                installationRmPerKwp: labor,
+                frameMountingRmPerKwp: bracket,
+                cableRmPerKwp: cable
+            });
             const rate = parseFloat(document.getElementById('rate-myr-cny')?.value) || 1.53;
-            const totalCny = totalMyr * rate;
+            const cnPct = parseFloat(document.getElementById('installer-profit-cn')?.value) || 0;
+            const myPct = parseFloat(document.getElementById('installer-profit-my')?.value) || 0;
+            installerProfitSettings = normalizeInstallerProfitSettings({ cnPct, myPct });
+            const result = computeInstallerCost(getProposedSystemSizeKwp(), getInstallerScenario(), installerQuoteSettings, installerProfitSettings, rate);
 
             const myrEl = document.getElementById('installer-total-myr');
             const cnyEl = document.getElementById('installer-total-cny');
-            if (myrEl) myrEl.value = totalMyr.toFixed(4);
-            if (cnyEl) cnyEl.value = totalCny.toFixed(4);
-            const cnProfitEl = document.getElementById('installer-profit-cn');
-            const myProfitEl = document.getElementById('installer-profit-my');
             const feeEl = document.getElementById('installer-install-fee-cny');
             const feeMyrEl = document.getElementById('installer-install-fee-myr');
-            if (cnProfitEl && myProfitEl && feeEl) {
-                const cnPct = parseFloat(cnProfitEl.value) || 0;
-                const myPct = parseFloat(myProfitEl.value) || 0;
-                const fee = totalCny * (1 + (cnPct + myPct) / 100);
-                feeEl.value = fee.toFixed(4);
-                if (feeMyrEl) feeMyrEl.value = (fee / rate).toFixed(4);
-                installerProfitSettings = normalizeInstallerProfitSettings({ cnPct, myPct });
-                try { localStorage.setItem('minova_installer_profit_v1', JSON.stringify(installerProfitSettings)); } catch (e) {}
-            }
-            try {
-                localStorage.setItem('minova_installer_quote_v1', JSON.stringify({ labor, bracket, cable }));
-            } catch (e) {}
+            if (myrEl) myrEl.value = result.baseMyr.toFixed(4);
+            if (cnyEl) cnyEl.value = result.baseCny.toFixed(4);
+            if (feeEl) feeEl.value = result.finalCny.toFixed(4);
+            if (feeMyrEl) feeMyrEl.value = result.finalMyr.toFixed(4);
+            renderInstallerCostDetail(result);
+            try { localStorage.setItem('minova_installer_profit_v1', JSON.stringify(installerProfitSettings)); } catch (e) {}
+            try { localStorage.setItem('minova_installer_quote_settings_v1', JSON.stringify(installerQuoteSettings)); } catch (e) {}
         };
 
         function getDefaultPvModuleQuantity() {
@@ -5195,21 +5370,31 @@
             const descEl = document.getElementById('install-desc');
             const unitEl = document.getElementById('install-unit-price');
             const qtyEl = document.getElementById('install-qty');
+            const qtyUnitEl = document.getElementById('install-qty-unit');
             const itemsEl = document.getElementById('install-overseas-items');
 
             const isDomestic = window.installMode === 'domestic';
             if (titleEl) titleEl.textContent = isDomestic ? '施工安装 · 国内施工费' : '施工安装 · 海外施工费';
             if (descEl) descEl.value = isDomestic ? '国内施工费' : '海外施工费';
+            if (qtyUnitEl) qtyUnitEl.textContent = isDomestic ? '项' : 'kWp';
             if (itemsEl) itemsEl.classList.toggle('hidden', isDomestic);
             if (!isDomestic) resetInstallOptionItems();
 
-            const overseasUnit = parseFloat(document.getElementById('installer-install-fee-cny')?.value) || 0;
+            let overseasUnit = parseFloat(document.getElementById('installer-install-fee-cny')?.value) || 0;
+            let overseasQty = getProposedSystemSizeKwp();
+            if (!isDomestic) {
+                installerQuoteSettings = normalizeInstallerQuoteSettings(installerQuoteSettings);
+                const rate = parseFloat(document.getElementById('rate-myr-cny')?.value) || 1.53;
+                const result = computeInstallerCost(overseasQty, getInstallerScenario(), installerQuoteSettings, installerProfitSettings, rate);
+                overseasUnit = result.unitFinalCnyPerKwp;
+                overseasQty = result.sizeKwp;
+            }
             if (unitEl) {
                 unitEl.value = isDomestic ? '0' : String(overseasUnit.toFixed(4));
                 unitEl.readOnly = !isDomestic;
                 unitEl.classList.toggle('bg-slate-50', !isDomestic);
             }
-            if (qtyEl) qtyEl.value = String(isDomestic ? 1 : getDefaultPvModuleQuantity());
+            if (qtyEl) qtyEl.value = String(isDomestic ? 1 : (overseasQty > 0 ? overseasQty.toFixed(2) : 0));
             recalcInstallModal();
         };
         window.closeInstallModal = () => {
@@ -5220,7 +5405,13 @@
             const unit = parseFloat(document.getElementById('install-unit-price')?.value) || 0;
             const qty = parseFloat(document.getElementById('install-qty')?.value) || 0;
             const sub = unit * qty;
+            const rate = parseFloat(document.getElementById('rate-myr-cny')?.value) || 1.53;
+            const safeRate = rate > 0 ? rate : 1.53;
+            const unitMyrEl = document.getElementById('install-unit-price-myr');
+            const subMyrEl = document.getElementById('install-subtotal-myr');
             const el = document.getElementById('install-subtotal');
+            if (unitMyrEl) unitMyrEl.value = (unit / safeRate).toFixed(4);
+            if (subMyrEl) subMyrEl.value = (sub / safeRate).toFixed(4);
             if (el) el.value = sub.toFixed(4);
         };
         window.applyInstallToQuote = () => {
@@ -6041,7 +6232,7 @@
         function getProductSpecMultiplierForUnit(product, fallbackSpec, unit) {
             const p = product || {};
             const u = normalizeUnitLabel(unit || '');
-            if (u === 'pcs' || u === '套') return 1;
+            if (u === 'pcs' || u === 'set') return 1;
             const text = `${p.spec || ''} ${p.name || ''}`;
             const escaped = u.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const re = new RegExp(`(\\d+(?:\\.\\d+)?)\\s*${escaped}\\b`, 'i');
@@ -6059,25 +6250,6 @@
             if (String(currency || '').toUpperCase() === 'MYR') return `RM ${(n / getSalesOutRateCnyPerMyr()).toFixed(digits)}`;
             return `¥${n.toFixed(digits)}`;
         }
-        function getInventoryPricingCurrency() {
-            return window.inventoryPricingDisplayCurrency === 'MYR' ? 'MYR' : 'CNY';
-        }
-        function inventoryPricingDisplayFromCny(valueCny) {
-            const n = Number.isFinite(parseFloat(valueCny)) ? parseFloat(valueCny) : 0;
-            return getInventoryPricingCurrency() === 'MYR' ? n / getSalesOutRateCnyPerMyr() : n;
-        }
-        function updateInventoryPricingCurrencyUi() {
-            const currency = getInventoryPricingCurrency();
-            const symbol = currency === 'MYR' ? 'RM' : '¥';
-            const btn = document.getElementById('inventory-pricing-currency-toggle');
-            if (btn) btn.textContent = 'RM/¥';
-            document.querySelectorAll('.inventory-pricing-currency-symbol').forEach(el => { el.textContent = symbol; });
-        }
-        window.toggleInventoryPricingCurrency = () => {
-            window.inventoryPricingDisplayCurrency = getInventoryPricingCurrency() === 'MYR' ? 'CNY' : 'MYR';
-            updateInventoryPricingCurrencyUi();
-            recalcInventoryPricingModal();
-        };
         function renderDualCurrencyAmount(valueCny, digits = 2, unit = '') {
             const primary = getPriceListCurrencyPriority();
             const secondary = primary === 'MYR' ? 'CNY' : 'MYR';
@@ -6089,21 +6261,6 @@
         }
         function priceListCountryLabel(code) {
             return CERTIFICATION_COUNTRIES.find(c => c.code === code)?.label || code;
-        }
-        function priceListCategoryDisplayLabel(category) {
-            const raw = String(category || '').trim();
-            const map = {
-                '电池': 'Battery',
-                '工商储': 'C&S Storage',
-                '光伏组件': 'PV Module',
-                '逆变器': 'Inverter',
-                '配件': 'Accessories',
-                '一体机': 'All-in-one'
-            };
-            return map[raw] || raw.replaceAll('家用', 'RESI').replaceAll('工商业', 'C&S');
-        }
-        function priceListSubcategoryDisplayLabel(value) {
-            return String(value || '').trim().replaceAll('家用', 'RESI').replaceAll('工商业', 'C&S');
         }
         function renderPriceListFilters() {
             const catSel = document.getElementById('price-list-category-filter');
@@ -6128,7 +6285,7 @@
                 (req.standards || []).forEach(s => certSet.add(s));
             });
             const certs = [...certSet].sort((a, b) => a.localeCompare(b));
-            catSel.innerHTML = `<option value="">All Categories</option>` + cats.map(v => `<option value="${htmlSafe(v)}">${htmlSafe(priceListCategoryDisplayLabel(v))}</option>`).join('');
+            catSel.innerHTML = `<option value="">All Categories</option>` + cats.map(v => `<option value="${htmlSafe(v)}">${htmlSafe(v)}</option>`).join('');
             brandSel.innerHTML = `<option value="">All Brands</option>` + brands.map(v => `<option value="${htmlSafe(v)}">${htmlSafe(v)}</option>`).join('');
             countrySel.innerHTML = `<option value="">All Countries</option>` + countryOptions.map(c => `<option value="${c.value}">${c.label}</option>`).join('');
             certSel.innerHTML = `<option value="">All Certifications</option>` + certs.map(v => `<option value="${htmlSafe(v)}">${htmlSafe(v)}</option>`).join('');
@@ -6173,7 +6330,7 @@
             marketPrices = normalizeMarketPrices(marketPrices);
             const keep = catSel.value;
             const cats = [...new Set(products.map(p => String(p.category || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-            catSel.innerHTML = cats.map(cat => `<option value="${htmlSafe(cat)}">${htmlSafe(priceListCategoryDisplayLabel(cat))}</option>`).join('');
+            catSel.innerHTML = cats.map(cat => `<option value="${htmlSafe(cat)}">${htmlSafe(cat)}</option>`).join('');
             const nextCat = keep && cats.includes(keep) ? keep : cats[0];
             if (nextCat) catSel.value = nextCat;
             const unit = getMarketCategoryUnitMeta(nextCat).unit;
@@ -6190,8 +6347,8 @@
             const source = meta.source === 'manual' ? 'manual override' : 'auto from inventory/spec';
             const recent = summary.records.length
                 ? `30D avg ${formatMarketPrice(summary.avgCny, summary.unit, 'CNY')} / ${formatMarketPrice(summary.avgCny, summary.unit, 'MYR')}`
-                : 'No 30D market price';
-            hint.textContent = `${priceListCategoryDisplayLabel(cat)} unit: /${summary.unit} (${source}). ${recent}.`;
+                : '暂无30天市场价';
+            hint.textContent = `${cat} unit: /${summary.unit} (${source}). ${recent}.`;
         }
         window.onMarketPriceCategoryChange = () => {
             const cat = String(document.getElementById('market-price-category')?.value || '').trim();
@@ -6238,7 +6395,7 @@
                 const latest = summary.latest;
                 return `
                     <button type="button" onclick="openMarketTrendModal('${htmlSafe(category)}')" class="text-right hover:underline">
-                        <div class="font-black text-slate-400">No 30D market price</div>
+                        <div class="font-black text-slate-400">暂无30天市场价</div>
                         <div class="text-[10px] text-slate-400">${latest ? `Latest ${formatMarketPrice(latest.priceCny, latest.unit || summary.unit, 'CNY')}` : `Unit /${summary.unit}`}</div>
                     </button>
                 `;
@@ -6256,9 +6413,9 @@
             const trendSign = summary.trendCny > 0 ? '+' : '';
             const recentLine = summary.records.length
                 ? `<p>30D Avg: <span class="font-black text-white">${formatMarketPrice(summary.avgCny, summary.unit, 'CNY')}</span> (${formatMarketPrice(summary.avgCny, summary.unit, 'MYR')})</p>`
-                : '<p class="text-amber-200">No 30D market price</p>';
+                : '<p class="text-amber-200">暂无30天市场价</p>';
             return `
-                <p class="font-black text-sm mb-2 border-b border-slate-600 pb-1">${htmlSafe(priceListCategoryDisplayLabel(category) || '-')} Market</p>
+                <p class="font-black text-sm mb-2 border-b border-slate-600 pb-1">${htmlSafe(category || '-')} Market</p>
                 <div class="space-y-1">
                     ${recentLine}
                     <p>Unit: /${htmlSafe(summary.unit)}</p>
@@ -6426,7 +6583,7 @@
                 </td>
                 <td class="py-3 px-4 text-right">
                     <select id="market-edit-unit-${htmlSafe(recordId)}" class="border border-slate-200 rounded-lg px-2 py-1 text-xs">
-                        ${['W', 'kW', 'kWh', 'pcs', '套', '件'].map(u => `<option value="${u}" ${normalizeUnitLabel(r.unit) === u ? 'selected' : ''}>/${u}</option>`).join('')}
+                        ${['W', 'kW', 'kWh', 'pcs', 'set', '件'].map(u => `<option value="${u}" ${normalizeUnitLabel(r.unit) === u ? 'selected' : ''}>/${u}</option>`).join('')}
                     </select>
                 </td>
                 <td class="py-3 px-4"><input id="market-edit-note-${htmlSafe(recordId)}" type="text" value="${htmlSafe(r.note || '')}" class="w-full border border-slate-200 rounded-lg px-2 py-1 text-xs"></td>
@@ -6478,7 +6635,7 @@
             renderPriceListFilters();
             renderMarketPriceForm();
             const currencyBtn = document.getElementById('price-list-currency-toggle');
-            if (currencyBtn) currencyBtn.textContent = 'RM/¥';
+            if (currencyBtn) currencyBtn.textContent = getPriceListCurrencyPriority() === 'MYR' ? 'RM / ¥' : '¥ / RM';
             const body = document.getElementById('price-list-body');
             const summary = document.getElementById('price-list-summary');
             if (!body) return;
@@ -6508,7 +6665,7 @@
                             <div class="font-black text-slate-800 text-sm">${htmlSafe(p.name || '-')}</div>
                             <div class="text-[10px] font-mono text-slate-400">${htmlSafe(p.id || '-')} | ${htmlSafe(p.spec || '-')} | Stock ${formatNumberAuto(pricing.stockQty, 4)}</div>
                         </td>
-                        <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(priceListCategoryDisplayLabel(p.category || '-'))}<div class="text-[10px] text-slate-400">${htmlSafe(priceListSubcategoryDisplayLabel(p.scenario || '-'))}</div></td>
+                        <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(p.category || '-')}<div class="text-[10px] text-slate-400">${htmlSafe(p.scenario || '-')}</div></td>
                         <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(getProductSupplierDisplay(p))}</td>
                         <td class="py-4 px-4 text-right">${renderDualCurrencyAmount(selectedPcsPrice, 2, 'pcs')}<div class="text-[10px] text-slate-400">${htmlSafe(selectedPriceLabel)} × ${formatNumberAuto(pricing.pcsMultiplier, 4)} ${htmlSafe(pricing.costUnit)}/pcs</div></td>
                         <td class="py-4 px-4 text-right">${renderDualCurrencyAmount(pricing.pcsCost, 4, 'pcs')}<div class="text-[10px] text-slate-400">${formatNumberAuto(pricing.pcsMultiplier, 4)} ${htmlSafe(pricing.costUnit)}/pcs</div></td>
@@ -6581,7 +6738,7 @@
                     <p>Grey Cost: ${formatCny(r.avgCost, 4)} × (1 + ${r.grayPct}% grey tax) = <span class="font-black text-indigo-200">${formatCny(r.grayCost, 4)}</span></p>
                     <p>RESI Price: cost × (1 + ${r.cnHomePct}% CN + ${r.myHomePct}% MY) = +${homeProfit.toFixed(2)}%</p>
                     <p>C&S Price: cost × (1 + ${r.cnBizPct}% CN + ${r.myBizPct}% MY) = +${bizProfit.toFixed(2)}%</p>
-                    <p>Market 30D: <span class="font-black text-amber-200">${market.records.length ? formatMarketPrice(market.avgCny, market.unit, 'CNY') : 'No 30D market price'}</span></p>
+                    <p>Market 30D: <span class="font-black text-amber-200">${market.records.length ? formatMarketPrice(market.avgCny, market.unit, 'CNY') : '暂无30天市场价'}</span></p>
                     <p>FX: 1 MYR = ${getSalesOutRateCnyPerMyr().toFixed(4)} CNY</p>
                     <p class="pt-1 text-slate-300">Certifications: ${(req.standards || []).slice(0, 5).map(htmlSafe).join(', ') || '-'}</p>
                 </div>
@@ -6609,8 +6766,8 @@
                 const out = {
                     'Product ID': p.id || '',
                     'Product Name': p.name || '',
-                    'Category': priceListCategoryDisplayLabel(p.category || ''),
-                    'Subcategory': priceListSubcategoryDisplayLabel(p.scenario || ''),
+                    'Category': p.category || '',
+                    'Subcategory': p.scenario || '',
                     'Brand': getProductSupplierDisplay(p),
                     'Spec': p.spec || '',
                     'Stock Qty': r.stockQty || 0,
@@ -6653,7 +6810,7 @@
             const sym = document.getElementById('sales-out-currency-symbol');
             const symFinal = document.getElementById('sales-out-currency-symbol-final');
             const c = getSalesOutCurrency();
-            if (toggle) toggle.textContent = c === 'MYR' ? '¥/RM' : 'RM/¥';
+            if (toggle) toggle.textContent = c === 'MYR' ? '¥ / RM' : 'RM / ¥';
             if (sym) sym.textContent = c === 'MYR' ? 'RM' : '¥';
             if (symFinal) symFinal.textContent = c === 'MYR' ? 'RM' : '¥';
         }
@@ -7458,6 +7615,59 @@
         function getPickerCurrency() {
             return window.pickerDisplayCurrency || currentCurrency || 'MYR';
         }
+        function getPickerCostMode() {
+            return window.pickerCostMode === 'gray' ? 'gray' : 'clearance';
+        }
+        function getPickerCustomerMode() {
+            return window.pickerCustomerMode === 'biz' ? 'biz' : 'home';
+        }
+        function getPickerSelectedPriceType() {
+            return `${getPickerCostMode()}_${getPickerCustomerMode()}`;
+        }
+        function getPickerSelectedPriceLabel() {
+            const type = getPickerSelectedPriceType();
+            if (type === 'clearance_biz') return 'Clearance C&S';
+            if (type === 'gray_home') return 'Grey RESI';
+            if (type === 'gray_biz') return 'Grey C&S';
+            return 'Clearance RESI';
+        }
+        function getPickerSelectedPriceValue(pricing, type) {
+            const r = pricing || {};
+            if (type === 'clearance_biz') return r.clearanceBizPrice || 0;
+            if (type === 'gray_home') return r.grayHomePrice || 0;
+            if (type === 'gray_biz') return r.grayBizPrice || 0;
+            return r.clearanceHomePrice || 0;
+        }
+        function getPickerSelectedButtonClass(type) {
+            const base = 'px-3 py-1 text-white text-[10px] font-bold rounded-lg transition-all shadow-sm';
+            if (type === 'clearance_biz') return `${base} bg-sky-700 hover:bg-sky-800`;
+            if (type === 'gray_home') return `${base} bg-indigo-700 hover:bg-indigo-800`;
+            if (type === 'gray_biz') return `${base} bg-violet-700 hover:bg-violet-800`;
+            return `${base} bg-blue-700 hover:bg-blue-800`;
+        }
+        function updatePickerModeButtons() {
+            const modeClass = 'px-2 py-1 rounded-md text-[10px] font-black transition-all';
+            const activeClass = `${modeClass} bg-purple-700 text-white shadow-sm`;
+            const idleClass = `${modeClass} text-slate-500 hover:text-slate-800 hover:bg-slate-100`;
+            const costMode = getPickerCostMode();
+            const customerMode = getPickerCustomerMode();
+            const setClass = (id, active) => {
+                const el = document.getElementById(id);
+                if (el) el.className = active ? activeClass : idleClass;
+            };
+            setClass('picker-cost-clearance', costMode === 'clearance');
+            setClass('picker-cost-gray', costMode === 'gray');
+            setClass('picker-customer-home', customerMode === 'home');
+            setClass('picker-customer-biz', customerMode === 'biz');
+        }
+        window.setPickerCostMode = (mode) => {
+            window.pickerCostMode = mode === 'gray' ? 'gray' : 'clearance';
+            renderPicker();
+        };
+        window.setPickerCustomerMode = (mode) => {
+            window.pickerCustomerMode = mode === 'biz' ? 'biz' : 'home';
+            renderPicker();
+        };
         function formatPickerPrice(valueCny) {
             const v = Number.isFinite(parseFloat(valueCny)) ? parseFloat(valueCny) : 0;
             if (getPickerCurrency() === 'MYR') {
@@ -7472,8 +7682,13 @@
         };
         window.renderPicker = () => {
             if (!window.pickerDisplayCurrency) window.pickerDisplayCurrency = currentCurrency || 'MYR';
+            if (!window.pickerCostMode) window.pickerCostMode = 'clearance';
+            if (!window.pickerCustomerMode) window.pickerCustomerMode = 'home';
             const currencyBtn = document.getElementById('picker-currency-toggle');
-            if (currencyBtn) currencyBtn.textContent = getPickerCurrency() === 'MYR' ? 'RM/¥' : '¥/RM';
+            if (currencyBtn) currencyBtn.textContent = getPickerCurrency() === 'MYR' ? 'RM / ¥' : '¥ / RM';
+            updatePickerModeButtons();
+            const selectedPriceType = getPickerSelectedPriceType();
+            const selectedPriceLabel = getPickerSelectedPriceLabel();
             const query = (document.getElementById('picker-search')?.value || '').toLowerCase();
             const vendor = document.getElementById('picker-vendor')?.value || '';
             const category = document.getElementById('picker-category')?.value || '';
@@ -7502,6 +7717,12 @@
                 const cb = (item.clearanceBizPrice ?? r.clearanceBizPrice) || 0;
                 const gh = (item.grayHomePrice ?? r.grayHomePrice) || 0;
                 const gb = (item.grayBizPrice ?? r.grayBizPrice) || 0;
+                const selectedPrice = getPickerSelectedPriceValue({
+                    clearanceHomePrice: ch,
+                    clearanceBizPrice: cb,
+                    grayHomePrice: gh,
+                    grayBizPrice: gb
+                }, selectedPriceType);
                 return `
                 <div class="p-3 hover:bg-purple-50 transition-colors group border-b border-slate-50" onmousemove="showMarketPriceTooltip(event, '${htmlSafe(item.productId || '')}')" onmouseleave="hidePriceListTooltip()">
                     <div class="flex justify-between items-start">
@@ -7520,10 +7741,7 @@
                             <span class="text-[9px] uppercase px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded">${getProductSupplierDisplay(p)}</span>
                         </div>
                         <div class="flex flex-wrap gap-2 justify-end">
-                            <button onclick="pickProduct('${item.id}', 'clearance_home')" class="px-3 py-1 bg-blue-700 text-white text-[10px] font-bold rounded-lg hover:bg-blue-800 transition-all shadow-sm">Clearance RESI ${formatPickerPrice(ch)}</button>
-                            <button onclick="pickProduct('${item.id}', 'clearance_biz')" class="px-3 py-1 bg-sky-700 text-white text-[10px] font-bold rounded-lg hover:bg-sky-800 transition-all shadow-sm">Clearance C&S ${formatPickerPrice(cb)}</button>
-                            <button onclick="pickProduct('${item.id}', 'gray_home')" class="px-3 py-1 bg-indigo-700 text-white text-[10px] font-bold rounded-lg hover:bg-indigo-800 transition-all shadow-sm">Grey RESI ${formatPickerPrice(gh)}</button>
-                            <button onclick="pickProduct('${item.id}', 'gray_biz')" class="px-3 py-1 bg-violet-700 text-white text-[10px] font-bold rounded-lg hover:bg-violet-800 transition-all shadow-sm">Grey C&S ${formatPickerPrice(gb)}</button>
+                            <button onclick="pickProduct('${item.id}', '${selectedPriceType}')" class="${getPickerSelectedButtonClass(selectedPriceType)}">${selectedPriceLabel} ${formatPickerPrice(selectedPrice)}</button>
                         </div>
                     </div>
                 </div>`}).join('');
@@ -8456,16 +8674,10 @@
             });
         }
         try {
-            const raw = localStorage.getItem('minova_installer_quote_v1');
-            if (raw) {
-                const d = JSON.parse(raw);
-                const laborEl = document.getElementById('installer-labor');
-                const bracketEl = document.getElementById('installer-bracket');
-                const cableEl = document.getElementById('installer-cable');
-                if (laborEl && Number.isFinite(parseFloat(d?.labor))) laborEl.value = String(d.labor);
-                if (bracketEl && Number.isFinite(parseFloat(d?.bracket))) bracketEl.value = String(d.bracket);
-                if (cableEl && Number.isFinite(parseFloat(d?.cable))) cableEl.value = String(d.cable);
-            }
+            const raw = localStorage.getItem('minova_installer_quote_settings_v1') || localStorage.getItem('minova_installer_quote_v1');
+            installerQuoteSettings = normalizeInstallerQuoteSettings(raw ? JSON.parse(raw) : installerQuoteSettings);
+            applyInstallerQuoteSettingsToUi();
+            localStorage.setItem('minova_installer_quote_settings_v1', JSON.stringify(installerQuoteSettings));
         } catch (e) {}
         try {
             const raw = localStorage.getItem('minova_installer_profit_v1');
@@ -8482,6 +8694,7 @@
                 if (myEl && String(myEl.value ?? '').trim() === '') myEl.value = String(installerProfitSettings.myPct);
             }
         } catch (e) {}
+        try { recalcInstallerQuote(); } catch (e) {}
 
         window.__minovaSync = initGitHubSync({
             getLocalState: () => ({
@@ -8497,7 +8710,8 @@
                 fileDeleteLogs,
                 subcategoriesByCategory,
                 profitSettings,
-                installerProfitSettings
+                installerProfitSettings,
+                installerQuoteSettings
             }),
             applyRemoteState: (data) => {
                 applyStateFromData(data, Date.now());
@@ -8521,7 +8735,8 @@
                     fileDeleteLogs,
                     subcategoriesByCategory,
                     profitSettings,
-                    installerProfitSettings
+                    installerProfitSettings,
+                    installerQuoteSettings
                 }
             };
             const json = JSON.stringify(snapshot).replaceAll('<', '\\u003c');

@@ -10050,10 +10050,12 @@ I / We, the undersigned, hereby accept the Solar PV with Battery + Inverter Syst
         }
         function getPriceListSelectedPcsPrice(pricing = {}) {
             const type = getPriceListSelectedPriceType();
-            if (type === 'clearance_biz') return pricing.clearanceBizPrice || 0;
-            if (type === 'gray_home') return pricing.grayHomePrice || 0;
-            if (type === 'gray_biz') return pricing.grayBizPrice || 0;
-            return pricing.clearanceHomePrice || 0;
+            let unitPrice = pricing.clearanceHomePrice || 0;
+            if (type === 'clearance_biz') unitPrice = pricing.clearanceBizPrice || 0;
+            else if (type === 'gray_home') unitPrice = pricing.grayHomePrice || 0;
+            else if (type === 'gray_biz') unitPrice = pricing.grayBizPrice || 0;
+            const multiplier = Number.isFinite(parseFloat(pricing.pcsMultiplier)) ? parseFloat(pricing.pcsMultiplier) : 1;
+            return unitPrice * (multiplier > 0 ? multiplier : 1);
         }
         function formatCny(v, digits = 2) {
             const n = Number.isFinite(parseFloat(v)) ? parseFloat(v) : 0;
@@ -10171,14 +10173,15 @@ I / We, the undersigned, hereby accept the Solar PV with Battery + Inverter Syst
                 return true;
             }).sort((a, b) => String(a.category || '').localeCompare(String(b.category || '')) || String(a.name || '').localeCompare(String(b.name || '')));
         }
-        function renderPriceCell(value, baseCost) {
+        function renderPriceCell(value, baseCost, unit = '') {
             const v = Number.isFinite(parseFloat(value)) ? parseFloat(value) : 0;
             const base = Number.isFinite(parseFloat(baseCost)) ? parseFloat(baseCost) : 0;
             const profit = v - base;
             const pct = v > 0 ? (profit / v) * 100 : 0;
+            const suffix = unit ? `/${normalizeUnitLabel(unit)}` : '';
             return `
-                ${renderDualCurrencyAmount(v, 2)}
-                <div class="text-[10px] ${profit >= 0 ? 'text-green-600' : 'text-red-500'}">Profit ${formatCurrencyFromCny(profit, getPriceListCurrencyPriority(), 2)} / ${pct.toFixed(1)}%</div>
+                ${renderDualCurrencyAmount(v, 2, unit)}
+                <div class="text-[10px] ${profit >= 0 ? 'text-green-600' : 'text-red-500'}">Profit ${formatCurrencyFromCny(profit, getPriceListCurrencyPriority(), 2)}${suffix} / ${pct.toFixed(1)}%</div>
             `;
         }
         function renderMarketPriceForm() {
@@ -10526,16 +10529,16 @@ I / We, the undersigned, hereby accept the Solar PV with Battery + Inverter Syst
                         </td>
                         <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(p.category || '-')}<div class="text-[10px] text-slate-400">${htmlSafe(p.scenario || '-')}</div></td>
                         <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(getProductSupplierDisplay(p))}</td>
-                        <td class="py-4 px-4 text-right">${renderDualCurrencyAmount(selectedPcsPrice, 2, 'pcs')}<div class="text-[10px] text-slate-400">${htmlSafe(selectedPriceLabel)}</div></td>
+                        <td class="py-4 px-4 text-right">${renderDualCurrencyAmount(selectedPcsPrice, 2, 'pcs')}<div class="text-[10px] text-slate-400">${htmlSafe(selectedPriceLabel)} × ${formatNumberAuto(pricing.pcsMultiplier, 4)} ${htmlSafe(pricing.costUnit)}/pcs</div></td>
                         <td class="py-4 px-4 text-right">${renderDualCurrencyAmount(pricing.pcsCost, 4, 'pcs')}<div class="text-[10px] text-slate-400">${formatNumberAuto(pricing.pcsMultiplier, 4)} ${htmlSafe(pricing.costUnit)}/pcs</div></td>
                         <td class="py-4 px-4 text-right">${renderDualCurrencyAmount(pricing.avgCost, 4, pricing.costUnit)}<div class="text-[10px] text-slate-400">${pricing.usedInventoryCost ? 'Inventory avg' : 'Base cost fallback'}</div></td>
                         <td class="py-4 px-4 text-right">${renderMarketSummaryCell(p.category || '')}</td>
                         <td class="py-4 px-4 text-right font-black text-green-700">${homeProfit.toFixed(2)}%</td>
                         <td class="py-4 px-4 text-right font-black text-blue-700">${bizProfit.toFixed(2)}%</td>
-                        <td class="py-4 px-4 text-right">${renderPriceCell(pricing.clearanceHomePrice, pricing.clearanceCost)}</td>
-                        <td class="py-4 px-4 text-right">${renderPriceCell(pricing.clearanceBizPrice, pricing.clearanceCost)}</td>
-                        <td class="py-4 px-4 text-right">${renderPriceCell(pricing.grayHomePrice, pricing.grayCost)}</td>
-                        <td class="py-4 px-4 text-right">${renderPriceCell(pricing.grayBizPrice, pricing.grayCost)}</td>
+                        <td class="py-4 px-4 text-right">${renderPriceCell(pricing.clearanceHomePrice, pricing.clearanceCost, pricing.costUnit)}</td>
+                        <td class="py-4 px-4 text-right">${renderPriceCell(pricing.clearanceBizPrice, pricing.clearanceCost, pricing.costUnit)}</td>
+                        <td class="py-4 px-4 text-right">${renderPriceCell(pricing.grayHomePrice, pricing.grayCost, pricing.costUnit)}</td>
+                        <td class="py-4 px-4 text-right">${renderPriceCell(pricing.grayBizPrice, pricing.grayCost, pricing.costUnit)}</td>
                         <td class="py-4 px-4 text-xs text-slate-500 max-w-[220px] truncate" title="${htmlSafe(certTitle)}">${htmlSafe(certBrief || '-')}<div class="text-[10px] text-slate-400">${htmlSafe(countries || '-')}</div></td>
                     </tr>
                 `;
@@ -10590,6 +10593,7 @@ I / We, the undersigned, hereby accept the Solar PV with Battery + Inverter Syst
                 <p class="font-black text-sm mb-2 border-b border-slate-600 pb-1">${htmlSafe(p.name || '-')}</p>
                 <div class="space-y-1">
                     <p>PCS Price (${htmlSafe(selectedPriceLabel)}): <span class="font-black text-white">${formatCurrencyFromCny(selectedPcsPrice, getPriceListCurrencyPriority(), 2)}/pcs</span> (${formatCurrencyFromCny(selectedPcsPrice, getPriceListCurrencyPriority() === 'MYR' ? 'CNY' : 'MYR', 2)}/pcs)</p>
+                    <p class="text-slate-300">Formula: ${htmlSafe(selectedPriceLabel)} per ${htmlSafe(r.costUnit)} × ${formatNumberAuto(r.pcsMultiplier, 4)} ${htmlSafe(r.costUnit)}/pcs</p>
                     <p>PCS Cost: <span class="font-black text-white">${formatCurrencyFromCny(r.pcsCost, getPriceListCurrencyPriority(), 4)}/pcs</span> (${formatCurrencyFromCny(r.pcsCost, getPriceListCurrencyPriority() === 'MYR' ? 'CNY' : 'MYR', 4)}/pcs)</p>
                     <p>Avg Cost: <span class="font-black text-white">${formatCurrencyFromCny(r.avgCost, getPriceListCurrencyPriority(), 4)}/${r.costUnit}</span> (${formatCurrencyFromCny(r.avgCost, getPriceListCurrencyPriority() === 'MYR' ? 'CNY' : 'MYR', 4)}/${r.costUnit}; ${r.usedInventoryCost ? 'inventory average' : 'base cost'})</p>
                     <p>Clearance Cost: ${formatCny(r.avgCost, 4)} × (1 + ${r.dutyPct}% duty + ${r.sstPct}% SST) = <span class="font-black text-blue-200">${formatCny(r.clearanceCost, 4)}</span></p>

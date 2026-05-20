@@ -1,4 +1,4 @@
-const localStorage = (() => {
+        const localStorage = (() => {
             const memory = new Map();
             let native = null;
             try {
@@ -2557,6 +2557,14 @@ const localStorage = (() => {
             if(tab === 'costcalc') {
                 const rateBtn = document.getElementById('btn-fetch-rate');
                 if(rateBtn) fetchLiveRate(rateBtn);
+            }
+            if(tab === 'pricelist') {
+                const rateBtn = document.getElementById('btn-fetch-rate');
+                if(rateBtn) {
+                    fetchLiveRate(rateBtn).finally(() => {
+                        if (getActiveTopLevelTab() === 'pricelist') renderPriceList();
+                    });
+                }
             }
             if (tab === 'quotation') {
                 const page = document.getElementById('quote-page-select')?.value || '1';
@@ -5971,6 +5979,25 @@ const localStorage = (() => {
             { key: 'grayHomePrice', label: 'Grey Home', costKey: 'grayCost', profitTarget: 'home' },
             { key: 'grayBizPrice', label: 'Grey C&I', costKey: 'grayCost', profitTarget: 'biz' }
         ];
+        function getPriceListSelectedPriceType() {
+            const basis = String(document.getElementById('price-list-price-basis')?.value || 'clearance') === 'gray' ? 'gray' : 'clearance';
+            const target = String(document.getElementById('price-list-price-target')?.value || 'home') === 'biz' ? 'biz' : 'home';
+            return `${basis}_${target}`;
+        }
+        function getPriceListSelectedPriceLabel() {
+            const type = getPriceListSelectedPriceType();
+            if (type === 'clearance_biz') return 'Clearance C&I';
+            if (type === 'gray_home') return 'Grey Home';
+            if (type === 'gray_biz') return 'Grey C&I';
+            return 'Clearance Home';
+        }
+        function getPriceListSelectedPcsPrice(pricing = {}) {
+            const type = getPriceListSelectedPriceType();
+            if (type === 'clearance_biz') return pricing.clearanceBizPrice || 0;
+            if (type === 'gray_home') return pricing.grayHomePrice || 0;
+            if (type === 'gray_biz') return pricing.grayBizPrice || 0;
+            return pricing.clearanceHomePrice || 0;
+        }
         function formatCny(v, digits = 2) {
             const n = Number.isFinite(parseFloat(v)) ? parseFloat(v) : 0;
             return `¥${n.toFixed(digits)}`;
@@ -6416,9 +6443,10 @@ const localStorage = (() => {
             if (!body) return;
             const rows = getFilteredPriceListProducts();
             currentPriceListVisibleIds = rows.map(p => p.id).filter(Boolean);
-            if (summary) summary.textContent = `${rows.length} of ${products.length} products | Display ${getPriceListCurrencyPriority()} first | Rate: 1 MYR = ${getSalesOutRateCnyPerMyr().toFixed(4)} CNY`;
+            const selectedPriceLabel = getPriceListSelectedPriceLabel();
+            if (summary) summary.textContent = `${rows.length} of ${products.length} products | PCS Price: ${selectedPriceLabel} | Display ${getPriceListCurrencyPriority()} first | Rate: 1 MYR = ${getSalesOutRateCnyPerMyr().toFixed(4)} CNY`;
             if (!rows.length) {
-                body.innerHTML = `<tr><td colspan="14" class="py-12 text-center text-slate-400 text-sm">No products match the current filters.</td></tr>`;
+                body.innerHTML = `<tr><td colspan="15" class="py-12 text-center text-slate-400 text-sm">No products match the current filters.</td></tr>`;
                 updatePriceListSelectionUi();
                 return;
             }
@@ -6431,6 +6459,7 @@ const localStorage = (() => {
                 const certBrief = (req.standards || []).slice(0, 3).join(', ');
                 const certTitle = `${countries}\n${(req.standards || []).join('\n')}`;
                 const checked = selectedPriceListProductIds.has(p.id) ? 'checked' : '';
+                const selectedPcsPrice = getPriceListSelectedPcsPrice(pricing);
                 return `
                     <tr class="hover:bg-purple-50/40 transition-colors" onmousemove="showPriceListTooltip(event, '${htmlSafe(p.id)}')" onmouseleave="hidePriceListTooltip()">
                         <td class="py-4 px-4 text-center"><input type="checkbox" class="price-list-row-check h-4 w-4 accent-purple-700" value="${htmlSafe(p.id)}" ${checked} onchange="togglePriceListProduct('${htmlSafe(p.id)}', this.checked)"></td>
@@ -6440,7 +6469,7 @@ const localStorage = (() => {
                         </td>
                         <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(p.category || '-')}<div class="text-[10px] text-slate-400">${htmlSafe(p.scenario || '-')}</div></td>
                         <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(getProductSupplierDisplay(p))}</td>
-                        <td class="py-4 px-4 text-xs text-slate-500 max-w-[220px] truncate" title="${htmlSafe(certTitle)}">${htmlSafe(certBrief || '-')}<div class="text-[10px] text-slate-400">${htmlSafe(countries || '-')}</div></td>
+                        <td class="py-4 px-4 text-right">${renderDualCurrencyAmount(selectedPcsPrice, 2, 'pcs')}<div class="text-[10px] text-slate-400">${htmlSafe(selectedPriceLabel)}</div></td>
                         <td class="py-4 px-4 text-right">${renderDualCurrencyAmount(pricing.pcsCost, 4, 'pcs')}<div class="text-[10px] text-slate-400">${formatNumberAuto(pricing.pcsMultiplier, 4)} ${htmlSafe(pricing.costUnit)}/pcs</div></td>
                         <td class="py-4 px-4 text-right">${renderDualCurrencyAmount(pricing.avgCost, 4, pricing.costUnit)}<div class="text-[10px] text-slate-400">${pricing.usedInventoryCost ? 'Inventory avg' : 'Base cost fallback'}</div></td>
                         <td class="py-4 px-4 text-right">${renderMarketSummaryCell(p.category || '')}</td>
@@ -6450,6 +6479,7 @@ const localStorage = (() => {
                         <td class="py-4 px-4 text-right">${renderPriceCell(pricing.clearanceBizPrice, pricing.clearanceCost)}</td>
                         <td class="py-4 px-4 text-right">${renderPriceCell(pricing.grayHomePrice, pricing.grayCost)}</td>
                         <td class="py-4 px-4 text-right">${renderPriceCell(pricing.grayBizPrice, pricing.grayCost)}</td>
+                        <td class="py-4 px-4 text-xs text-slate-500 max-w-[220px] truncate" title="${htmlSafe(certTitle)}">${htmlSafe(certBrief || '-')}<div class="text-[10px] text-slate-400">${htmlSafe(countries || '-')}</div></td>
                     </tr>
                 `;
             }).join('');
@@ -6497,10 +6527,13 @@ const localStorage = (() => {
             const market = getMarketPriceSummary(p.category || '', { days: 30 });
             const homeProfit = (r.cnHomePct || 0) + (r.myHomePct || 0);
             const bizProfit = (r.cnBizPct || 0) + (r.myBizPct || 0);
+            const selectedPriceLabel = getPriceListSelectedPriceLabel();
+            const selectedPcsPrice = getPriceListSelectedPcsPrice(r);
             tooltip.innerHTML = `
                 <p class="font-black text-sm mb-2 border-b border-slate-600 pb-1">${htmlSafe(p.name || '-')}</p>
                 <div class="space-y-1">
-                    <p>PCS Price: <span class="font-black text-white">${formatCurrencyFromCny(r.pcsCost, getPriceListCurrencyPriority(), 4)}/pcs</span> (${formatCurrencyFromCny(r.pcsCost, getPriceListCurrencyPriority() === 'MYR' ? 'CNY' : 'MYR', 4)}/pcs)</p>
+                    <p>PCS Price (${htmlSafe(selectedPriceLabel)}): <span class="font-black text-white">${formatCurrencyFromCny(selectedPcsPrice, getPriceListCurrencyPriority(), 2)}/pcs</span> (${formatCurrencyFromCny(selectedPcsPrice, getPriceListCurrencyPriority() === 'MYR' ? 'CNY' : 'MYR', 2)}/pcs)</p>
+                    <p>PCS Cost: <span class="font-black text-white">${formatCurrencyFromCny(r.pcsCost, getPriceListCurrencyPriority(), 4)}/pcs</span> (${formatCurrencyFromCny(r.pcsCost, getPriceListCurrencyPriority() === 'MYR' ? 'CNY' : 'MYR', 4)}/pcs)</p>
                     <p>Avg Cost: <span class="font-black text-white">${formatCurrencyFromCny(r.avgCost, getPriceListCurrencyPriority(), 4)}/${r.costUnit}</span> (${formatCurrencyFromCny(r.avgCost, getPriceListCurrencyPriority() === 'MYR' ? 'CNY' : 'MYR', 4)}/${r.costUnit}; ${r.usedInventoryCost ? 'inventory average' : 'base cost'})</p>
                     <p>Clearance Cost: ${formatCny(r.avgCost, 4)} × (1 + ${r.dutyPct}% duty + ${r.sstPct}% SST) = <span class="font-black text-blue-200">${formatCny(r.clearanceCost, 4)}</span></p>
                     <p>Grey Cost: ${formatCny(r.avgCost, 4)} × (1 + ${r.grayPct}% grey tax) = <span class="font-black text-indigo-200">${formatCny(r.grayCost, 4)}</span></p>
@@ -6529,6 +6562,8 @@ const localStorage = (() => {
                 const market = getMarketPriceSummary(p.category || '', { days: 30 });
                 const homeProfit = (r.cnHomePct || 0) + (r.myHomePct || 0);
                 const bizProfit = (r.cnBizPct || 0) + (r.myBizPct || 0);
+                const selectedPriceLabel = getPriceListSelectedPriceLabel();
+                const selectedPcsPrice = getPriceListSelectedPcsPrice(r);
                 const out = {
                     'Product ID': p.id || '',
                     'Product Name': p.name || '',
@@ -6537,13 +6572,14 @@ const localStorage = (() => {
                     'Brand': getProductSupplierDisplay(p),
                     'Spec': p.spec || '',
                     'Stock Qty': r.stockQty || 0,
-                    'Certification Countries': (req.countries || []).map(priceListCountryLabel).join(', '),
-                    'Certification Standards': (req.standards || []).join('; '),
+                    'Selected PCS Price Type': selectedPriceLabel,
+                    'PCS Price CNY': selectedPcsPrice || 0,
+                    'PCS Price MYR': (selectedPcsPrice || 0) / getSalesOutRateCnyPerMyr(),
                     'Avg Cost Unit': r.costUnit,
                     'Avg Cost CNY': r.avgCost || 0,
                     'Avg Cost MYR': (r.avgCost || 0) / getSalesOutRateCnyPerMyr(),
-                    'PCS Price CNY': r.pcsCost || 0,
-                    'PCS Price MYR': (r.pcsCost || 0) / getSalesOutRateCnyPerMyr(),
+                    'PCS Cost CNY': r.pcsCost || 0,
+                    'PCS Cost MYR': (r.pcsCost || 0) / getSalesOutRateCnyPerMyr(),
                     'PCS Multiplier': r.pcsMultiplier || 1,
                     'Market Unit': market.unit,
                     '30D Market Avg CNY': market.records.length ? market.avgCny : '',
@@ -6559,7 +6595,9 @@ const localStorage = (() => {
                     'Grey Home MYR': (r.grayHomePrice || 0) / getSalesOutRateCnyPerMyr(),
                     'Grey C&I CNY': r.grayBizPrice || 0,
                     'Grey C&I MYR': (r.grayBizPrice || 0) / getSalesOutRateCnyPerMyr(),
-                    'Formula Note': `Clearance cost = Avg Cost * (1 + duty ${r.dutyPct}% + SST ${r.sstPct}%); Grey cost = Avg Cost * (1 + grey tax ${r.grayPct}%); Home profit = CN ${r.cnHomePct}% + MY ${r.myHomePct}%; C&I profit = CN ${r.cnBizPct}% + MY ${r.myBizPct}%; FX 1 MYR = ${getSalesOutRateCnyPerMyr().toFixed(4)} CNY`
+                    'Formula Note': `Clearance cost = Avg Cost * (1 + duty ${r.dutyPct}% + SST ${r.sstPct}%); Grey cost = Avg Cost * (1 + grey tax ${r.grayPct}%); Home profit = CN ${r.cnHomePct}% + MY ${r.myHomePct}%; C&I profit = CN ${r.cnBizPct}% + MY ${r.myBizPct}%; FX 1 MYR = ${getSalesOutRateCnyPerMyr().toFixed(4)} CNY`,
+                    'Certification Countries': (req.countries || []).map(priceListCountryLabel).join(', '),
+                    'Certification Standards': (req.standards || []).join('; ')
                 };
                 return out;
             });

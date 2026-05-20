@@ -997,7 +997,9 @@
         function normalizeUnitLabel(unit) {
             const raw = String(unit || '').trim();
             if (!raw || raw === '个') return 'pcs';
+            if (raw === '套') return 'set';
             if (raw.toLowerCase() === 'pc' || raw.toLowerCase() === 'piece' || raw.toLowerCase() === 'pieces') return 'pcs';
+            if (raw.toLowerCase() === 'sets') return 'set';
             return raw;
         }
         function normalizeMarketUnit(unit) {
@@ -1060,6 +1062,9 @@
             if (marketPrices?.categoryUnits?.配件?.unit === '个') {
                 marketPrices.categoryUnits.配件 = { ...marketPrices.categoryUnits.配件, unit: 'pcs' };
             }
+            if (marketPrices?.categoryUnits?.一体机?.unit === '套') {
+                marketPrices.categoryUnits.一体机 = { ...marketPrices.categoryUnits.一体机, unit: 'set' };
+            }
         }
         function getMarketCategoryUnitMeta(category) {
             const cat = String(category || '').trim();
@@ -1079,7 +1084,7 @@
                 return String(product?.category || '').trim() === cat;
             });
             const sample = [...categoryInventory.map(i => String(i.spec || '')), ...categoryProducts.map(p => String(p.spec || ''))].join(' ').toLowerCase();
-            if (cat.includes('一体机')) return '套';
+            if (cat.includes('一体机')) return 'set';
             if (cat.includes('配件')) return 'pcs';
             if (cat.includes('工商储') || cat.includes('储能')) return /\bkwh\b/i.test(sample) ? 'kWh' : 'kW';
             if (cat.includes('光伏组件') || /\b\d{3,4}\s*w\b/i.test(sample)) return 'W';
@@ -6037,7 +6042,7 @@
         function getProductSpecMultiplierForUnit(product, fallbackSpec, unit) {
             const p = product || {};
             const u = normalizeUnitLabel(unit || '');
-            if (u === 'pcs' || u === '套') return 1;
+            if (u === 'pcs' || u === 'set') return 1;
             const text = `${p.spec || ''} ${p.name || ''}`;
             const escaped = u.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const re = new RegExp(`(\\d+(?:\\.\\d+)?)\\s*${escaped}\\b`, 'i');
@@ -6388,7 +6393,7 @@
                 </td>
                 <td class="py-3 px-4 text-right">
                     <select id="market-edit-unit-${htmlSafe(recordId)}" class="border border-slate-200 rounded-lg px-2 py-1 text-xs">
-                        ${['W', 'kW', 'kWh', 'pcs', '套', '件'].map(u => `<option value="${u}" ${normalizeUnitLabel(r.unit) === u ? 'selected' : ''}>/${u}</option>`).join('')}
+                        ${['W', 'kW', 'kWh', 'pcs', 'set', '件'].map(u => `<option value="${u}" ${normalizeUnitLabel(r.unit) === u ? 'selected' : ''}>/${u}</option>`).join('')}
                     </select>
                 </td>
                 <td class="py-3 px-4"><input id="market-edit-note-${htmlSafe(recordId)}" type="text" value="${htmlSafe(r.note || '')}" class="w-full border border-slate-200 rounded-lg px-2 py-1 text-xs"></td>
@@ -7420,13 +7425,33 @@
         function getPickerCurrency() {
             return window.pickerDisplayCurrency || currentCurrency || 'MYR';
         }
-        function formatPickerPrice(valueCny) {
+        function getPickerSelectedPriceType() {
+            const basis = String(document.getElementById('picker-price-basis')?.value || 'clearance') === 'gray' ? 'gray' : 'clearance';
+            const target = String(document.getElementById('picker-price-target')?.value || 'home') === 'biz' ? 'biz' : 'home';
+            return `${basis}_${target}`;
+        }
+        function getPickerSelectedPriceLabel() {
+            const type = getPickerSelectedPriceType();
+            if (type === 'clearance_biz') return 'Clearance C&I';
+            if (type === 'gray_home') return 'Grey Home';
+            if (type === 'gray_biz') return 'Grey C&I';
+            return 'Clearance Home';
+        }
+        function getPickerPriceByType(item, pricing, priceType) {
+            const r = pricing || {};
+            if (priceType === 'clearance_biz') return (item?.clearanceBizPrice ?? r.clearanceBizPrice) || 0;
+            if (priceType === 'gray_home') return (item?.grayHomePrice ?? r.grayHomePrice) || 0;
+            if (priceType === 'gray_biz') return (item?.grayBizPrice ?? r.grayBizPrice) || 0;
+            return (item?.clearanceHomePrice ?? r.clearanceHomePrice) || 0;
+        }
+        function formatPickerPrice(valueCny, unit = '') {
             const v = Number.isFinite(parseFloat(valueCny)) ? parseFloat(valueCny) : 0;
+            const suffix = unit ? `/${normalizeUnitLabel(unit)}` : '';
             if (getPickerCurrency() === 'MYR') {
                 const rate = parseFloat(document.getElementById('rate-myr-cny')?.value) || 1.53;
-                return `RM ${formatNumberAuto(v / (rate > 0 ? rate : 1.53), 4)}`;
+                return `RM ${formatNumberAuto(v / (rate > 0 ? rate : 1.53), 4)}${suffix}`;
             }
-            return `¥${formatNumberAuto(v, 4)}`;
+            return `¥${formatNumberAuto(v, 4)}${suffix}`;
         }
         window.togglePickerCurrency = () => {
             window.pickerDisplayCurrency = getPickerCurrency() === 'MYR' ? 'CNY' : 'MYR';
@@ -7460,10 +7485,10 @@
             list.innerHTML = filtered.map(item => {
                 const p = products.find(prod => prod.id === item.productId);
                 const r = computeInventoryPricing({ item, product: p || {} });
-                const ch = (item.clearanceHomePrice ?? r.clearanceHomePrice) || 0;
-                const cb = (item.clearanceBizPrice ?? r.clearanceBizPrice) || 0;
-                const gh = (item.grayHomePrice ?? r.grayHomePrice) || 0;
-                const gb = (item.grayBizPrice ?? r.grayBizPrice) || 0;
+                const selectedPriceType = getPickerSelectedPriceType();
+                const selectedPriceLabel = getPickerSelectedPriceLabel();
+                const unit = getMarketCategoryUnitMeta(p?.category || '').unit;
+                const selectedPrice = getPickerPriceByType(item, r, selectedPriceType);
                 return `
                 <div class="p-3 hover:bg-purple-50 transition-colors group border-b border-slate-50" onmousemove="showMarketPriceTooltip(event, '${htmlSafe(item.productId || '')}')" onmouseleave="hidePriceListTooltip()">
                     <div class="flex justify-between items-start">
@@ -7480,12 +7505,10 @@
                         <div class="flex gap-2">
                             <span class="text-[9px] uppercase px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded">${p.category}</span>
                             <span class="text-[9px] uppercase px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded">${getProductSupplierDisplay(p)}</span>
+                            <span class="text-[9px] uppercase px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded">/${htmlSafe(unit)}</span>
                         </div>
                         <div class="flex flex-wrap gap-2 justify-end">
-                            <button onclick="pickProduct('${item.id}', 'clearance_home')" class="px-3 py-1 bg-blue-700 text-white text-[10px] font-bold rounded-lg hover:bg-blue-800 transition-all shadow-sm">Clearance Home ${formatPickerPrice(ch)}</button>
-                            <button onclick="pickProduct('${item.id}', 'clearance_biz')" class="px-3 py-1 bg-sky-700 text-white text-[10px] font-bold rounded-lg hover:bg-sky-800 transition-all shadow-sm">Clearance C&I ${formatPickerPrice(cb)}</button>
-                            <button onclick="pickProduct('${item.id}', 'gray_home')" class="px-3 py-1 bg-indigo-700 text-white text-[10px] font-bold rounded-lg hover:bg-indigo-800 transition-all shadow-sm">Grey Home ${formatPickerPrice(gh)}</button>
-                            <button onclick="pickProduct('${item.id}', 'gray_biz')" class="px-3 py-1 bg-violet-700 text-white text-[10px] font-bold rounded-lg hover:bg-violet-800 transition-all shadow-sm">Grey C&I ${formatPickerPrice(gb)}</button>
+                            <button onclick="pickProduct('${item.id}', '${selectedPriceType}')" class="px-3 py-1 bg-blue-700 text-white text-[10px] font-bold rounded-lg hover:bg-blue-800 transition-all shadow-sm">${htmlSafe(selectedPriceLabel)} ${formatPickerPrice(selectedPrice, unit)}</button>
                         </div>
                     </div>
                 </div>`}).join('');

@@ -470,7 +470,11 @@ function loadSavedQuote(id) {
     
     quoteRows = quote.quoteRows || [];
     
-    document.getElementById('val-shipping-handling').value = quote.shippingHandling || '已包含';
+    const normalizeShipping = window.normalizeQuoteShippingIncludedText || ((value) => {
+        const raw = String(value ?? '').trim();
+        return (!raw || ['已包含', '以包含', 'included'].includes(raw.toLowerCase())) ? 'INCLUDED' : raw;
+    });
+    document.getElementById('val-shipping-handling').value = normalizeShipping(quote.shippingHandling);
     document.getElementById('input-proposed-size').value = quote.proposedSize || '';
     document.getElementById('select-solar-program').value = quote.solarProgram || 'gridtied';
     if(window.updateSolarProgramIcon) updateSolarProgramIcon();

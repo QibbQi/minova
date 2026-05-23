@@ -389,8 +389,22 @@
             height: 100%;
         }
 
+        #quote-solar-input-panel[data-solar-customer="home"] {
+            background-image: linear-gradient(to bottom right, #faf5ff, #fffbeb) !important;
+            border-color: rgba(168, 85, 247, 0.2) !important;
+        }
+
+        #quote-solar-input-panel[data-solar-customer="biz"] {
+            background-image: linear-gradient(to bottom right, #f5f3ff, #ede9fe 58%, #faf5ff) !important;
+            border-color: rgba(88, 44, 131, 0.28) !important;
+        }
+
         #quote-solar-input-panel .quote-solar-panel-header {
             margin-bottom: 0.65rem !important;
+        }
+
+        #quote-solar-customer-toggle {
+            flex-shrink: 0;
         }
 
         .grand-total-container .grand-total-card {
@@ -944,11 +958,16 @@
             </div>
 
             <div class="quote-solar-shell grid grid-cols-1 md:grid-cols-[1.2fr_1fr] gap-6 items-start w-full">
-                <div id="quote-solar-input-panel" class="p-5 rounded-xl bg-gradient-to-br from-purple-50 to-yellow-50 border border-purple-100" style="--quote-solar-title-size:10px; --quote-solar-content-size:14px;">
+                <div id="quote-solar-input-panel" data-solar-customer="home" class="p-5 rounded-xl bg-gradient-to-br from-purple-50 to-yellow-50 border border-purple-100" style="--quote-solar-title-size:10px; --quote-solar-content-size:14px;">
+                    <input id="quote-solar-customer-mode" type="hidden" value="home">
                     <div class="quote-solar-panel-header flex items-start justify-between gap-4 mb-4">
                         <div>
                             <p id="quote-solar-input-heading" class="font-black text-purple-900/70 uppercase tracking-widest" style="font-size:var(--quote-solar-title-size); line-height:1.1;">Solar Calculation Inputs</p>
                             <p id="quote-formula-plan-label" class="text-xs font-bold text-slate-500 mt-1">Solar Only formula</p>
+                        </div>
+                        <div id="quote-solar-customer-toggle" class="no-print inline-flex rounded-lg border border-purple-100 bg-white/80 p-0.5 shadow-sm">
+                            <button id="quote-solar-customer-home" type="button" onclick="setQuoteSolarCustomerMode('home')" class="px-2 py-1 rounded-md text-[10px] font-black transition-all">RESI</button>
+                            <button id="quote-solar-customer-biz" type="button" onclick="setQuoteSolarCustomerMode('biz')" class="px-2 py-1 rounded-md text-[10px] font-black transition-all">C&amp;S</button>
                         </div>
                     </div>
                     <div class="quote-solar-grid">
@@ -7416,6 +7435,7 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
                 } else if (key === 'quotation') {
                     updatePickerFilters();
                     updateDatalists();
+                    try { renderQuoteSolarCustomerMode(); } catch (e) {}
                     renderPicker();
                     try { renderPartBreakdown(); } catch (e) {}
                     try { calculateROI(); } catch (e) {}
@@ -10367,10 +10387,7 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
         }
 
         function getInstallerScenario() {
-            try {
-                if (typeof getPickerCustomerMode === 'function') return getPickerCustomerMode() === 'biz' ? 'biz' : 'home';
-            } catch (e) {}
-            return window.pickerCustomerMode === 'biz' ? 'biz' : 'home';
+            return 'home';
         }
         function getProposedSystemSizeKwp() {
             const direct = parseFloat(String(document.getElementById('input-proposed-size')?.value || '').replace(/,/g, ''));
@@ -12810,8 +12827,19 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
             window.pickerCostMode = mode === 'gray' ? 'gray' : 'clearance';
             renderPicker();
         };
-        window.setPickerCustomerMode = (mode) => {
-            window.pickerCustomerMode = mode === 'biz' ? 'biz' : 'home';
+        window.setPickerCustomerMode = (mode, opts = {}) => {
+            const next = mode === 'biz' ? 'biz' : 'home';
+            const solarMode = (typeof getQuoteSolarCustomerMode === 'function') ? getQuoteSolarCustomerMode() : 'home';
+            if (!opts.force && next !== solarMode) {
+                const solarLabel = solarMode === 'biz' ? 'C&S' : 'RESI';
+                const nextLabel = next === 'biz' ? 'C&S' : 'RESI';
+                const ok = confirm(`当前 Solar Calculation Inputs 选择的是 ${solarLabel}，From Inventory 将切换为 ${nextLabel} 报价，可能与当前 Solar 状态不一致。是否继续？`);
+                if (!ok) {
+                    updatePickerModeButtons();
+                    return;
+                }
+            }
+            window.pickerCustomerMode = next;
             renderPicker();
         };
         function formatPickerPrice(valueCny) {
@@ -15933,6 +15961,12 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
             const fields = snap.fields && typeof snap.fields === 'object' ? snap.fields : {};
             Object.keys(fields).forEach((id) => applyField(id, fields[id]));
             try {
+                const savedSolarCustomer = Object.prototype.hasOwnProperty.call(fields, 'quote-solar-customer-mode')
+                    ? fields['quote-solar-customer-mode']?.v
+                    : 'home';
+                window.setQuoteSolarCustomerMode?.(savedSolarCustomer === 'biz' ? 'biz' : 'home', { markDirty: false });
+            } catch (e) {}
+            try {
                 const savedExportFactor = Object.prototype.hasOwnProperty.call(fields, 'input-quote-export-factor-roi')
                     ? fields['input-quote-export-factor-roi']
                     : fields['input-quote-export-factor-main'];
@@ -16187,6 +16221,50 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
             const value = String(quoteDefaultExportFactor(opts.planKey || quoteSolarPlanKey()));
             quoteSetExportFactorInputs(value);
             if (opts.recalc !== false) calculateROI();
+        };
+
+        function getQuoteSolarCustomerMode() {
+            const el = document.getElementById('quote-solar-customer-mode');
+            const raw = String(el?.value || window.__quoteSolarCustomerMode || 'home').trim().toLowerCase();
+            return raw === 'biz' ? 'biz' : 'home';
+        }
+
+        function renderQuoteSolarCustomerMode() {
+            const mode = getQuoteSolarCustomerMode();
+            const panel = document.getElementById('quote-solar-input-panel');
+            if (panel) panel.dataset.solarCustomer = mode;
+            const hidden = document.getElementById('quote-solar-customer-mode');
+            if (hidden) hidden.value = mode;
+            const baseClass = 'px-2 py-1 rounded-md text-[10px] font-black transition-all';
+            const activeClass = `${baseClass} bg-[#582C83] text-white shadow-sm`;
+            const idleClass = `${baseClass} text-slate-500 hover:text-purple-800 hover:bg-purple-50`;
+            const homeBtn = document.getElementById('quote-solar-customer-home');
+            const bizBtn = document.getElementById('quote-solar-customer-biz');
+            if (homeBtn) homeBtn.className = mode === 'home' ? activeClass : idleClass;
+            if (bizBtn) bizBtn.className = mode === 'biz' ? activeClass : idleClass;
+        }
+
+        function syncPickerCustomerModeToQuoteSolar(opts = {}) {
+            const next = getQuoteSolarCustomerMode();
+            window.pickerCustomerMode = next;
+            if (opts.render !== false && typeof window.renderPicker === 'function') window.renderPicker();
+            else if (typeof updatePickerModeButtons === 'function') updatePickerModeButtons();
+        }
+
+        window.getQuoteSolarCustomerMode = getQuoteSolarCustomerMode;
+        window.renderQuoteSolarCustomerMode = renderQuoteSolarCustomerMode;
+        window.syncPickerCustomerModeToQuoteSolar = syncPickerCustomerModeToQuoteSolar;
+
+        window.setQuoteSolarCustomerMode = (mode, opts = {}) => {
+            const next = mode === 'biz' ? 'biz' : 'home';
+            window.__quoteSolarCustomerMode = next;
+            const hidden = document.getElementById('quote-solar-customer-mode');
+            if (hidden) hidden.value = next;
+            renderQuoteSolarCustomerMode();
+            if (opts.syncPicker !== false) syncPickerCustomerModeToQuoteSolar({ render: opts.renderPicker !== false });
+            if (opts.markDirty !== false && !window.__suspendDirty) {
+                try { window.setQuoteDirty?.(true); } catch (e) {}
+            }
         };
 
         function applyQuoteSolarFont() {
@@ -20919,6 +20997,7 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
                 setVal('input-target-generation', '');
                 setVal('input-monthly-usage', '');
                 setVal('input-proposed-size', '');
+                try { window.setQuoteSolarCustomerMode?.('home', { markDirty: false }); } catch (e) {}
                 try { window.resetQuoteExportFactorForProgram?.({ recalc: false }); } catch (e) {}
                 window.__quoteMonthlyUsageManual = false;
                 window.__quotePvSizeManual = false;

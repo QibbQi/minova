@@ -1,15 +1,15 @@
 {
   "v": 1,
-  "updatedAt": "2026-05-24T09:22:32.424Z",
+  "updatedAt": "2026-05-31T05:30:59.870Z",
   "data": {
     "products": [
       {
         "id": "GFZJ001",
         "name": "210R N-type组件",
-        "category": "光伏组件",
+        "category": "PV Module",
         "vendor": "联塑 / LESSO",
         "spec": "610W",
-        "scenario": "双面",
+        "scenario": "Bifacial",
         "warrantyYears": "",
         "warrantyCycles": "",
         "leadTime": "30 天",
@@ -27,10 +27,10 @@
       {
         "id": "GFZJ002",
         "name": "211R N-type 组件",
-        "category": "光伏组件",
+        "category": "PV Module",
         "vendor": "汉伏",
         "spec": "620W",
-        "scenario": "双面",
+        "scenario": "Bifacial",
         "warrantyYears": "",
         "warrantyCycles": "",
         "leadTime": "30 天",
@@ -44,10 +44,10 @@
       {
         "id": "NBQ001",
         "name": "25kW 三相逆变器",
-        "category": "逆变器",
+        "category": "Inverter",
         "vendor": "明匠 / SunC",
         "spec": "25kW",
-        "scenario": "三相",
+        "scenario": "Three-Phase",
         "warrantyYears": "",
         "warrantyCycles": "",
         "leadTime": "30 天",
@@ -61,10 +61,10 @@
       {
         "id": "DC001",
         "name": "5kW 电池",
-        "category": "电池",
+        "category": "Battery",
         "vendor": "明匠 / SunC",
         "spec": "5kWh",
-        "scenario": "堆叠式家储",
+        "scenario": "Stackable Home Storage",
         "warrantyYears": "",
         "warrantyCycles": "",
         "leadTime": "30 天",
@@ -82,10 +82,10 @@
       {
         "id": "NBQ002",
         "name": "5.5kW 逆变器",
-        "category": "逆变器",
+        "category": "Inverter",
         "vendor": "明匠 / SunC",
         "spec": "5.5kW",
-        "scenario": "堆叠式单相逆变器",
+        "scenario": "Stackable Single-Phase Inverter",
         "warrantyYears": "",
         "warrantyCycles": "",
         "leadTime": "30 天",
@@ -99,10 +99,10 @@
       {
         "id": "J001",
         "name": "堆叠式配件",
-        "category": "配件",
+        "category": "Accessory",
         "vendor": "明匠 / SunC",
         "spec": "pcs",
-        "scenario": "堆叠式产品配件",
+        "scenario": "Stackable Product Accessory",
         "warrantyYears": "",
         "warrantyCycles": "",
         "leadTime": "30 天",
@@ -116,10 +116,10 @@
       {
         "id": "PROD001",
         "name": "5.5kW-5kWh 一体机",
-        "category": "一体机",
+        "category": "All-in-One System",
         "vendor": "明匠 / SunC",
         "spec": "5.5kW-5kWh",
-        "scenario": "单相一体机",
+        "scenario": "Single-Phase All-in-One",
         "warrantyYears": "",
         "warrantyCycles": "",
         "leadTime": "30 天",
@@ -133,10 +133,10 @@
       {
         "id": "PROD002",
         "name": "5.5kW-10kWh 一体机",
-        "category": "一体机",
+        "category": "All-in-One System",
         "vendor": "明匠 / SunC",
         "spec": "5.5kW-10kWh",
-        "scenario": "单相一体机",
+        "scenario": "Single-Phase All-in-One",
         "warrantyYears": "",
         "warrantyCycles": "",
         "leadTime": "30 天",
@@ -150,10 +150,10 @@
       {
         "id": "PROD003",
         "name": "11kW-15kWh 一体机",
-        "category": "一体机",
+        "category": "All-in-One System",
         "vendor": "明匠 / SunC",
         "spec": "11kW-15kWh",
-        "scenario": "单相一体机",
+        "scenario": "Single-Phase All-in-One",
         "warrantyYears": "",
         "warrantyCycles": "",
         "leadTime": "30 天",
@@ -167,10 +167,10 @@
       {
         "id": "C001",
         "name": "125kW-261kWh 户外柜",
-        "category": "工商储",
+        "category": "C&I Storage",
         "vendor": "埃克森",
         "spec": "125kW-261kWh",
-        "scenario": "储能柜",
+        "scenario": "Energy Storage Cabinet",
         "warrantyYears": "",
         "warrantyCycles": "",
         "leadTime": "30",
@@ -364,32 +364,32 @@
     "marketPrices": {
       "records": [],
       "categoryUnits": {
-        "光伏组件": {
+        "PV Module": {
           "unit": "W",
           "source": "auto",
           "updatedAt": 1778842747606
         },
-        "电池": {
+        "Battery": {
           "unit": "kWh",
           "source": "auto",
           "updatedAt": 1778842747606
         },
-        "逆变器": {
+        "Inverter": {
           "unit": "kW",
           "source": "auto",
           "updatedAt": 1778842747606
         },
-        "配件": {
+        "Accessory": {
           "unit": "pcs",
           "source": "auto",
           "updatedAt": 1778842747606
         },
-        "一体机": {
+        "All-in-One System": {
           "unit": "set",
           "source": "auto",
           "updatedAt": 1778842747606
         },
-        "工商储": {
+        "C&I Storage": {
           "unit": "kWh",
           "source": "auto",
           "updatedAt": 1778842747606
@@ -568,24 +568,24 @@
     "transportRecords": [],
     "fileDeleteLogs": [],
     "subcategoriesByCategory": {
-      "光伏组件": [
-        "双面"
+      "PV Module": [
+        "Bifacial"
       ],
-      "逆变器": [
-        "三相",
-        "堆叠式单相逆变器"
+      "Inverter": [
+        "Three-Phase",
+        "Stackable Single-Phase Inverter"
       ],
-      "电池": [
-        "堆叠式家储"
+      "Battery": [
+        "Stackable Home Storage"
       ],
-      "配件": [
-        "堆叠式产品配件"
+      "Accessory": [
+        "Stackable Product Accessory"
       ],
-      "一体机": [
-        "单相一体机"
+      "All-in-One System": [
+        "Single-Phase All-in-One"
       ],
-      "工商储": [
-        "储能柜"
+      "C&I Storage": [
+        "Energy Storage Cabinet"
       ]
     },
     "profitSettings": {
@@ -603,70 +603,67 @@
         }
       ],
       "enabled": {
-        "电池": {
-          "123": true,
-          "堆叠式家储": true
+        "Battery": {
+          "Stackable Home Storage": true
         },
-        "工商储": {
-          "储能柜": true
+        "C&I Storage": {
+          "Energy Storage Cabinet": true
         },
-        "光伏组件": {
-          "双面": true
+        "PV Module": {
+          "Bifacial": true
         },
-        "逆变器": {
-          "三相": true,
-          "堆叠式单相逆变器": true
+        "Inverter": {
+          "Three-Phase": true,
+          "Stackable Single-Phase Inverter": true
         },
-        "配件": {
-          "堆叠式产品配件": true
+        "Accessory": {
+          "Stackable Product Accessory": true
         },
-        "一体机": {
-          "单相一体机": true
+        "All-in-One System": {
+          "Single-Phase All-in-One": true
         }
       },
       "categoryProfitPct": {
         "cn_parent": {
           "home": {
-            "电池": 80,
-            "工商储": 50,
-            "光伏组件": 30,
-            "逆变器": 30,
-            "配件": 20,
-            "一体机": 50
+            "Battery": 80,
+            "C&I Storage": 50,
+            "PV Module": 30,
+            "Inverter": 30,
+            "Accessory": 20,
+            "All-in-One System": 50
           },
           "biz": {
-            "电池": 50,
-            "工商储": 50,
-            "光伏组件": 25,
-            "逆变器": 30,
-            "配件": 15,
-            "一体机": 30
+            "Battery": 50,
+            "C&I Storage": 50,
+            "PV Module": 25,
+            "Inverter": 30,
+            "Accessory": 15,
+            "All-in-One System": 30
           }
         },
         "my_sub": {
           "home": {
-            "电池": 20,
-            "工商储": 20,
-            "光伏组件": 15,
-            "逆变器": 15,
-            "配件": 10,
-            "一体机": 15
+            "Battery": 20,
+            "C&I Storage": 20,
+            "PV Module": 15,
+            "Inverter": 15,
+            "Accessory": 10,
+            "All-in-One System": 15
           },
           "biz": {
-            "电池": 20,
-            "工商储": 20,
-            "光伏组件": 10,
-            "逆变器": 15,
-            "配件": 10,
-            "一体机": 15
+            "Battery": 20,
+            "C&I Storage": 20,
+            "PV Module": 10,
+            "Inverter": 15,
+            "Accessory": 10,
+            "All-in-One System": 15
           }
         }
       },
       "subcatProfitPct": {
         "cn_parent": {
-          "home": {
-            "电池": {}
-          },
+          "home": {},
           "biz": {}
         },
         "my_sub": {

@@ -82,7 +82,7 @@ test('product list tab labels and related modal UI are English', () => {
   });
 });
 
-test('hidden-bypass check exposes English product list UI without mutating source data', () => {
+test('hidden-bypass check exposes English product list UI with migrated category data', () => {
   const databaseTab = mainSnippet('<main id="view-database"');
   const supplierModal = snippetBetween('<div id="supplier-modal"', '<div id="modal"');
   const productModal = snippetBetween('<div id="modal"', '<!-- 库存管理弹窗 -->');
@@ -115,11 +115,11 @@ test('hidden-bypass check exposes English product list UI without mutating sourc
 
   const state = embeddedState();
   assert.equal(
-    state.data.products.some((product) => product.category === '光伏组件'),
+    state.data.products.some((product) => product.category === 'PV Module'),
     true,
-    'Embedded product data should keep legacy Chinese category keys'
+    'Embedded product data should use English category keys'
   );
-  assert.equal(html.includes("['光伏组件', 'PV Module']"), true, 'Missing display-only category mapping');
+  assert.equal(html.includes("['光伏组件', 'PV Module']"), true, 'Missing legacy category alias');
   assert.equal(html.includes("['明匠', 'Mingjiang']"), true, 'Missing display-only supplier mapping');
 });
 

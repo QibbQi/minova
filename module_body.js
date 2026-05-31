@@ -1,3 +1,4 @@
+
         const localStorage = (() => {
             const memory = new Map();
             let native = null;
@@ -995,6 +996,92 @@
         function htmlSafe(v) {
             return String(v ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
         }
+        const PRODUCT_CATEGORY_ALIASES = [
+            ['光伏组件', 'PV Module'],
+            ['光伏板', 'PV Module'],
+            ['PV Modules', 'PV Module'],
+            ['Pv Module', 'PV Module'],
+            ['逆变器', 'Inverter'],
+            ['电池', 'Battery'],
+            ['储能电池', 'Battery'],
+            ['配件', 'Accessory'],
+            ['一体机', 'All-in-One System'],
+            ['工商储', 'C&I Storage'],
+            ['工商业储能', 'C&I Storage'],
+            ['未分类', 'Uncategorized']
+        ];
+        const PRODUCT_SUBCATEGORY_ALIASES = [
+            ['双面', 'Bifacial'],
+            ['三相', 'Three-Phase'],
+            ['堆叠式单相逆变器', 'Stackable Single-Phase Inverter'],
+            ['堆叠式家储', 'Stackable Home Storage'],
+            ['堆叠式产品配件', 'Stackable Product Accessory'],
+            ['堆叠式配件', 'Stackable Product Accessory'],
+            ['单相一体机', 'Single-Phase All-in-One'],
+            ['储能柜', 'Energy Storage Cabinet'],
+            ['户外柜', 'Energy Storage Cabinet']
+        ];
+        function normalizeAliasValue(value, aliases, fallback = '') {
+            const raw = String(value ?? '').trim();
+            if (!raw) return fallback;
+            const found = aliases.find(([from, to]) => raw === from || raw.toLowerCase() === String(to).toLowerCase());
+            return found ? found[1] : raw;
+        }
+        function normalizeProductCategory(value, fallback = '') {
+            return normalizeAliasValue(value, PRODUCT_CATEGORY_ALIASES, fallback);
+        }
+        function normalizeProductSubcategory(value) {
+            return normalizeAliasValue(value, PRODUCT_SUBCATEGORY_ALIASES, '');
+        }
+        function normalizeSubcategoryMap(map) {
+            const out = {};
+            Object.entries(map && typeof map === 'object' ? map : {}).forEach(([category, values]) => {
+                const cat = normalizeProductCategory(category, 'Uncategorized');
+                if (!cat) return;
+                if (!out[cat]) out[cat] = [];
+                (Array.isArray(values) ? values : [values]).forEach((value) => {
+                    const sub = normalizeProductSubcategory(value);
+                    if (sub && !out[cat].includes(sub)) out[cat].push(sub);
+                });
+            });
+            return out;
+        }
+        function mergeNormalizedValue(out, key, value) {
+            if (value && typeof value === 'object' && !Array.isArray(value) && out[key] && typeof out[key] === 'object' && !Array.isArray(out[key])) {
+                out[key] = { ...out[key], ...value };
+            } else {
+                out[key] = value;
+            }
+        }
+        function normalizeCategoryValueMap(map) {
+            const out = {};
+            Object.entries(map && typeof map === 'object' ? map : {}).forEach(([category, value]) => {
+                mergeNormalizedValue(out, normalizeProductCategory(category, 'Uncategorized'), value);
+            });
+            return out;
+        }
+        function normalizeEnabledCategoryMap(map) {
+            const out = {};
+            Object.entries(map && typeof map === 'object' ? map : {}).forEach(([category, subs]) => {
+                const cat = normalizeProductCategory(category, 'Uncategorized');
+                if (!out[cat]) out[cat] = {};
+                Object.entries(subs && typeof subs === 'object' ? subs : {}).forEach(([subcategory, enabled]) => {
+                    out[cat][normalizeProductSubcategory(subcategory)] = enabled;
+                });
+            });
+            return out;
+        }
+        function normalizeSubcatProfitMap(map) {
+            const out = {};
+            Object.entries(map && typeof map === 'object' ? map : {}).forEach(([category, subMap]) => {
+                const cat = normalizeProductCategory(category, 'Uncategorized');
+                if (!out[cat]) out[cat] = {};
+                Object.entries(subMap && typeof subMap === 'object' ? subMap : {}).forEach(([subcategory, value]) => {
+                    out[cat][normalizeProductSubcategory(subcategory)] = value;
+                });
+            });
+            return out;
+        }
         function normalizeUnitLabel(unit) {
             const raw = String(unit || '').trim();
             if (!raw || raw === '个') return 'pcs';
@@ -1014,7 +1101,7 @@
                 .filter(Boolean)));
             const deleted = new Set(deletedRecordIds);
             Object.entries(unitSource).forEach(([category, meta]) => {
-                const cat = String(category || '').trim();
+                const cat = normalizeProductCategory(category);
                 if (!cat) return;
                 const m = meta && typeof meta === 'object' ? meta : {};
                 const unit = normalizeMarketUnit(m.unit || '');
@@ -1027,7 +1114,7 @@
             });
             const records = (Array.isArray(raw.records) ? raw.records : []).map((record, index) => {
                 const r = record && typeof record === 'object' ? record : {};
-                const category = String(r.category || '').trim();
+                const category = normalizeProductCategory(r.category);
                 const id = String(r.id || `mp_${r.ts || Date.now()}_${index}`).trim();
                 const unit = normalizeMarketUnit(r.unit || categoryUnits[category]?.unit || '');
                 const currency = String(r.currency || 'CNY').toUpperCase() === 'MYR' ? 'MYR' : 'CNY';
@@ -1056,15 +1143,21 @@
             if (Array.isArray(products)) {
                 products = products.map(p => {
                     if (!p || typeof p !== 'object') return p;
-                    return String(p.spec || '').trim() === '个' ? { ...p, spec: 'pcs' } : p;
+                    const next = {
+                        ...p,
+                        category: normalizeProductCategory(p.category, 'Uncategorized'),
+                        scenario: normalizeProductSubcategory(p.scenario)
+                    };
+                    if (String(next.spec || '').trim() === '个') next.spec = 'pcs';
+                    return next;
                 });
             }
-            if (marketPrices?.categoryUnits?.配件?.unit === '个') {
-                marketPrices.categoryUnits.配件 = { ...marketPrices.categoryUnits.配件, unit: 'pcs' };
+            if (marketPrices?.categoryUnits?.Accessory?.unit === '个') {
+                marketPrices.categoryUnits.Accessory = { ...marketPrices.categoryUnits.Accessory, unit: 'pcs' };
             }
         }
         function getMarketCategoryUnitMeta(category) {
-            const cat = String(category || '').trim();
+            const cat = normalizeProductCategory(category);
             marketPrices = normalizeMarketPrices(marketPrices);
             if (!cat) return { unit: 'pcs', source: 'auto', updatedAt: Date.now() };
             const existing = marketPrices.categoryUnits?.[cat];
@@ -1074,25 +1167,25 @@
             return marketPrices.categoryUnits[cat];
         }
         function inferMarketUnitForCategory(category) {
-            const cat = String(category || '').trim();
-            const categoryProducts = products.filter(p => String(p.category || '').trim() === cat);
+            const cat = normalizeProductCategory(category);
+            const categoryProducts = products.filter(p => normalizeProductCategory(p.category) === cat);
             const categoryInventory = inventory.filter(item => {
                 const product = products.find(p => p.id === item.productId);
-                return String(product?.category || '').trim() === cat;
+                return normalizeProductCategory(product?.category) === cat;
             });
             const sample = [...categoryInventory.map(i => String(i.spec || '')), ...categoryProducts.map(p => String(p.spec || ''))].join(' ').toLowerCase();
-            if (cat.includes('一体机')) return 'set';
-            if (cat.includes('配件')) return 'pcs';
-            if (cat.includes('工商储') || cat.includes('储能')) return /\bkwh\b/i.test(sample) ? 'kWh' : 'kW';
-            if (cat.includes('光伏组件') || /\b\d{3,4}\s*w\b/i.test(sample)) return 'W';
-            if (cat.includes('逆变器') || /\bkw\b/i.test(sample)) {
+            if (cat === 'All-in-One System') return 'set';
+            if (cat === 'Accessory') return 'pcs';
+            if (cat === 'C&I Storage') return /\bkwh\b/i.test(sample) ? 'kWh' : 'kW';
+            if (cat === 'PV Module' || /\b\d{3,4}\s*w\b/i.test(sample)) return 'W';
+            if (cat === 'Inverter' || /\bkw\b/i.test(sample)) {
                 return 'kW';
             }
-            if (cat.includes('电池') || cat.includes('储') || /\bkwh\b/i.test(sample)) return 'kWh';
+            if (cat === 'Battery' || /\bkwh\b/i.test(sample)) return 'kWh';
             return 'pcs';
         }
         function upsertMarketCategoryUnit(category, unit) {
-            const cat = String(category || '').trim();
+            const cat = normalizeProductCategory(category);
             const u = normalizeMarketUnit(unit || '');
             if (!cat || !u) return;
             marketPrices = normalizeMarketPrices(marketPrices);
@@ -1100,16 +1193,16 @@
         }
         function addMarketPriceRecord(input) {
             const raw = input && typeof input === 'object' ? input : {};
-            const category = String(raw.category || '').trim();
+            const category = normalizeProductCategory(raw.category);
             const unit = normalizeMarketUnit(raw.unit || getMarketCategoryUnitMeta(category).unit || '');
             const currency = String(raw.currency || 'CNY').toUpperCase() === 'MYR' ? 'MYR' : 'CNY';
             const price = Number.isFinite(parseFloat(raw.price)) ? parseFloat(raw.price) : 0;
             const rate = Number.isFinite(parseFloat(raw.rateCnyPerMyr)) ? parseFloat(raw.rateCnyPerMyr) : 1.53;
             const quotedAt = String(raw.quotedAt || '').trim() || new Date().toISOString().slice(0, 10);
             const ts = Date.parse(quotedAt) || Date.now();
-            if (!category) throw new Error('请选择类目');
-            if (!unit) throw new Error('请选择单位');
-            if (price <= 0) throw new Error('请输入有效市场价');
+            if (!category) throw new Error('Please select a category');
+            if (!unit) throw new Error('Please select a unit');
+            if (price <= 0) throw new Error('Please enter a valid market price');
             marketPrices = normalizeMarketPrices(marketPrices);
             upsertMarketCategoryUnit(category, unit);
             marketPrices.records.push({
@@ -1233,21 +1326,21 @@
             return String(s.logoDataUrl || s.brandLogo || s.logo || '').trim();
         }
         const SUPPLIER_STAGES = [
-            { key: 'info', label: '资料储备级', shortLabel: '资料', desc: '资料 / 简单报价' },
-            { key: 'research', label: '实地调研级', shortLabel: '调研', desc: '到访 / 准确报价' },
-            { key: 'trial', label: '试单合作级', shortLabel: '试单', desc: '至少 1 次下单' },
-            { key: 'core', label: '战略核心级', shortLabel: '核心', desc: '长期合作 / 账期' }
+            { key: 'info', label: 'Info Pool', shortLabel: 'Info', desc: 'Info / Basic Quote' },
+            { key: 'research', label: 'Field Review', shortLabel: 'Review', desc: 'Visit / Accurate Quote' },
+            { key: 'trial', label: 'Trial Partner', shortLabel: 'Trial', desc: 'At least 1 order' },
+            { key: 'core', label: 'Strategic Core', shortLabel: 'Core', desc: 'Long-term / Credit Term' }
         ];
         const SUPPLIER_SCORE_FIELDS = [
-            { key: 'quality', label: '产品质量', weight: 18 },
-            { key: 'price', label: '价格优势', weight: 14 },
-            { key: 'technical', label: '技术研发', weight: 12 },
-            { key: 'willingness', label: '合作意愿', weight: 12 },
-            { key: 'capacity', label: '生产产能', weight: 10 },
-            { key: 'afterSales', label: '售后支持', weight: 10 },
-            { key: 'coverage', label: '类型覆盖', weight: 9 },
-            { key: 'export', label: '出口经验', weight: 8 },
-            { key: 'scale', label: '公司规模', weight: 7 }
+            { key: 'quality', label: 'Product Quality', weight: 18 },
+            { key: 'price', label: 'Price Advantage', weight: 14 },
+            { key: 'technical', label: 'Technical R&D', weight: 12 },
+            { key: 'willingness', label: 'Cooperation Willingness', weight: 12 },
+            { key: 'capacity', label: 'Production Capacity', weight: 10 },
+            { key: 'afterSales', label: 'After-Sales Support', weight: 10 },
+            { key: 'coverage', label: 'Type Coverage', weight: 9 },
+            { key: 'export', label: 'Export Experience', weight: 8 },
+            { key: 'scale', label: 'Company Scale', weight: 7 }
         ];
         const SUPPLIER_STAGE_CLASS = {
             info: 'bg-slate-100 text-slate-600 border-slate-200',
@@ -1358,14 +1451,14 @@
             const e = normalizeSupplierEvidence(evidence);
             const missing = [];
             if (target >= supplierStageIndex('research')) {
-                if (!e.factoryVisited) missing.push('完成工厂到访');
-                if (!e.accurateQuote) missing.push('获取准确报价');
+                if (!e.factoryVisited) missing.push('Factory visit');
+                if (!e.accurateQuote) missing.push('Accurate quote');
             }
-            if (target >= supplierStageIndex('trial') && !(e.firstOrderDone || e.orderCount > 0)) missing.push('完成至少 1 次下单');
+            if (target >= supplierStageIndex('trial') && !(e.firstOrderDone || e.orderCount > 0)) missing.push('At least 1 order');
             if (target >= supplierStageIndex('core')) {
-                if (!e.longTermCooperation) missing.push('确认长期合作关系');
-                if (!e.preferredPrice) missing.push('获得优惠价格');
-                if (!(e.creditTermDays > 0)) missing.push('记录长期账期天数');
+                if (!e.longTermCooperation) missing.push('Long-term cooperation');
+                if (!e.preferredPrice) missing.push('Preferred pricing');
+                if (!(e.creditTermDays > 0)) missing.push('Credit term days');
             }
             return missing;
         }
@@ -1861,8 +1954,19 @@
                 if (!settings.subcatProfitPct[c.id]) settings.subcatProfitPct[c.id] = { home: {}, biz: {} };
                 if (!settings.subcatProfitPct[c.id].home) settings.subcatProfitPct[c.id].home = {};
                 if (!settings.subcatProfitPct[c.id].biz) settings.subcatProfitPct[c.id].biz = {};
+                settings.categoryProfitPct[c.id].home = normalizeCategoryValueMap(settings.categoryProfitPct[c.id].home);
+                settings.categoryProfitPct[c.id].biz = normalizeCategoryValueMap(settings.categoryProfitPct[c.id].biz);
+                settings.subcatProfitPct[c.id].home = normalizeSubcatProfitMap(settings.subcatProfitPct[c.id].home);
+                settings.subcatProfitPct[c.id].biz = normalizeSubcatProfitMap(settings.subcatProfitPct[c.id].biz);
             }
+            settings.enabled = normalizeEnabledCategoryMap(settings.enabled);
             return settings;
+        }
+        function normalizeProductClassificationData() {
+            normalizeProductUnitFields();
+            marketPrices = normalizeMarketPrices(marketPrices);
+            subcategoriesByCategory = normalizeSubcategoryMap(subcategoriesByCategory);
+            profitSettings = normalizeProfitSettings(profitSettings || null);
         }
         function ensureProfitSettingsCoverage() {
             if (!profitSettings) profitSettings = normalizeProfitSettings(null);
@@ -2096,6 +2200,7 @@
                     profitSettings = normalizeProfitSettings(embedded.data.profitSettings || null);
                     installerProfitSettings = normalizeInstallerProfitSettings(embedded.data.installerProfitSettings || installerProfitSettings || null);
                     installerQuoteSettings = normalizeInstallerQuoteSettings(embedded.data.installerQuoteSettings || installerQuoteSettings || null);
+                    normalizeProductClassificationData();
                     try {
                         if (embeddedAt) localStorage.setItem('minova_embedded_updatedAt', String(embeddedAt));
                         localStorage.setItem('minova_products', JSON.stringify(products));
@@ -2144,8 +2249,8 @@
         function rebuildSubcategoryIndexFromProducts() {
             const map = {};
             products.forEach(p => {
-                const cat = (p.category || '').trim() || '未分类';
-                const sub = (p.scenario || '').trim();
+                const cat = normalizeProductCategory(p.category, 'Uncategorized');
+                const sub = normalizeProductSubcategory(p.scenario);
                 if (!map[cat]) map[cat] = [];
                 if (sub && !map[cat].includes(sub)) map[cat].push(sub);
             });
@@ -2158,7 +2263,7 @@
             try {
                 const raw = localStorage.getItem('minova_subcategories_v1');
                 if (raw) {
-                    subcategoriesByCategory = JSON.parse(raw) || {};
+                    subcategoriesByCategory = normalizeSubcategoryMap(JSON.parse(raw) || {});
                     return;
                 }
             } catch (e) {}
@@ -2169,7 +2274,7 @@
             const list = document.getElementById('subcat-suggestions');
             const catEl = document.getElementById('m-category');
             if (!list) return;
-            const cat = (catEl?.value || '').trim();
+            const cat = normalizeProductCategory(catEl?.value || '');
             const subs = cat
                 ? (subcategoriesByCategory[cat] || [])
                 : Array.from(new Set(Object.values(subcategoriesByCategory).flat()));
@@ -2177,6 +2282,8 @@
         };
 
         loadSubcategoryIndex();
+        normalizeProductClassificationData();
+        saveSubcategoryIndex();
 
         const TOP_LEVEL_TABS = ['quotation', 'database', 'pricelist', 'pvcalc', 'costcalc', 'inventory', 'transport'];
 
@@ -2212,6 +2319,7 @@
                 } else if (key === 'quotation') {
                     updatePickerFilters();
                     updateDatalists();
+                    try { renderQuoteSolarCustomerMode(); } catch (e) {}
                     renderPicker();
                     try { renderPartBreakdown(); } catch (e) {}
                     try { calculateROI(); } catch (e) {}
@@ -2275,6 +2383,7 @@
             profitSettings = normalizeProfitSettings(data?.profitSettings || profitSettings || null);
             installerProfitSettings = normalizeInstallerProfitSettings(data?.installerProfitSettings || installerProfitSettings || null);
             installerQuoteSettings = normalizeInstallerQuoteSettings(data?.installerQuoteSettings || installerQuoteSettings || null);
+            normalizeProductClassificationData();
             try {
                 if (stampMs) localStorage.setItem('minova_embedded_updatedAt', String(stampMs));
                 localStorage.setItem('minova_products', JSON.stringify(products));
@@ -2351,7 +2460,7 @@
 
         function saveToLocal() {
             ensureSupplierData();
-            normalizeProductUnitFields();
+            normalizeProductClassificationData();
             localStorage.setItem('minova_products', JSON.stringify(products));
             localStorage.setItem('minova_inventory', JSON.stringify(inventory));
             localStorage.setItem('minova_inventory_history', JSON.stringify(inventoryHistory));
@@ -2396,14 +2505,15 @@
             renderValidityBadge();
         };
         const apiKey = "";
-        const QUOTE_TERMS_DEFAULT_EN = "Terms:\nThis quotation is subject to a thorough site assessment. Costs may vary if non-standard installation is required, including but not limited to additional hacking, cabling, trunking, customization, or any work outside the standard installation scope.\n\nConfirmation:\nI / We, the undersigned, hereby accept the Solar PV with Battery + Inverter System and the aforementioned price, specifications, terms and conditions, and agree for Minova Holdings Sdn. Bhd. to commence the system design, procurement and installation.";
+        const QUOTE_TERMS_DEFAULT_EN = "I.   Price                   : Price quoted as above are strictly for the above project with the models & quantity stated only.\nII.  Payment                 : Strictly base on Payment Terms above\nIII. Validity                : 30 days\nIV.  Delivery & Installation : As above unless stated otherwise, upon confirmation of date and time.\nV.   Order Ammendments       : No cancellation or variation of an accepted customer's order shall be valid unless agreed upon in writing.\n\nVI.  Warranty Period         : Inverter - 60 months (5 years) upon installation date.\n                               Battery (if applicable) - 60 months (5 years) upon installation date.\nVII. Warranty Conditions     : The item against any defects in from faulty design or manufacturing defects, for a period to be expressly\n                               stated in the Terms and Conditions in writing, except that no warranty is offered by SELLER in the case of:\n                               a. Replacement or repairs necessitated by the normal wear and tear of Goods or by damage caused by lack of care,\n                                  insufficient inspection or maintenance or the improper storage of use of Goods (including failure to follow any instructions\n                                  on use, inspection, storage, or maintained);\n                               b. Goods that have been repaired or modified by buyer or by third parties\n                               c. This warranty is limited to the repair, modification or replacement subject to assessment.";
+        const QUOTE_TERMS_LEGACY_DEFAULT_EN = "Terms:\nThis quotation is subject to a thorough site assessment. Costs may vary if non-standard installation is required, including but not limited to additional hacking, cabling, trunking, customization, or any work outside the standard installation scope.\n\nConfirmation:\nI / We, the undersigned, hereby accept the Solar PV with Battery + Inverter System and the aforementioned price, specifications, terms and conditions, and agree for Minova Holdings Sdn. Bhd. to commence the system design, procurement and installation.";
         const QUOTE_TERMS_OLD_DEFAULT_ZH = "条款：\n本报价以现场全面勘察为准。如需采用非标准安装方式（包括但不限于额外开槽/破拆、布线、线槽/桥架、定制加工或任何超出标准安装范围的工作），费用可能调整。\n\n确认：\n本人/本公司（签署人）确认接受“光伏+电池+逆变器系统”及上述价格、规格、条款与条件，并同意由 Minova Holdings Sdn. Bhd. 开始进行系统设计、采购与安装。";
         const QUOTE_TERMS_OLD_DEFAULT_EN = "Conditions:\nThis quotation is subject to a thorough site assessment. The cost may vary if non-standard installation is applied which require additional hacking, cabling, trunking, customization, or any other out of our standard installation.\n\nConfirmation:\nI / We, the undersigned hereby accept the Solar PV with Battery + Inverter System and the aforementioned price, specification, terms and conditions and would like to commence with the design, procurement and installation of the system by Minova Holdings. Sdn. Bhd.";
         const normalizeQuoteTermsDefaultText = (value, fallback = QUOTE_TERMS_DEFAULT_EN) => {
             const raw = String(value ?? '');
             const norm = raw.replace(/\r\n/g, '\n').trim();
             if (!norm) return fallback;
-            if (norm === QUOTE_TERMS_OLD_DEFAULT_ZH.trim() || norm === QUOTE_TERMS_OLD_DEFAULT_EN.trim()) return fallback;
+            if (norm === QUOTE_TERMS_LEGACY_DEFAULT_EN.trim() || norm === QUOTE_TERMS_OLD_DEFAULT_ZH.trim() || norm === QUOTE_TERMS_OLD_DEFAULT_EN.trim()) return fallback;
             return raw;
         };
         try {
@@ -2418,9 +2528,9 @@
             zh: {
                 title: "报价单", toCustomer: "致客户：", quoteNo: "单据编号:", quoteDate: "报价日期:",
                 thDesc: "产品", thVendor: "品牌", thSpec: "规格型号", thBatch: "采购批次", thQty: "数量", thPrice: "单价", thMargin: "毛利%", thAmount: "小计",
-                terms: "备注与条款：", totalItems: "项目总数", avgMargin: "平均毛利率", grandTotal: "应付总额",
+                terms: "Proposal Acceptance, Terms & Conditions", totalItems: "项目总数", avgMargin: "平均毛利率", grandTotal: "应付总额",
                 authSign: "批准人签名", signDate: "日期",
-                termPlaceholder: "1. 报价有效期自即日起30天。\n2. 款项请汇至：XX银行 XXXX...",
+                termPlaceholder: "I.   Price                   : Price quoted as above...",
                 timeline: "预计时间表",
                 step1: "现场勘测",
                 step2: "材料采购与安装规划",
@@ -2539,9 +2649,9 @@
             en: {
                 title: "QUOTATION", toCustomer: "To Customer:", quoteNo: "Quote No.:", quoteDate: "Date:",
                 thDesc: "Description", thVendor: "Brand", thSpec: "Specification", thBatch: "Batch", thQty: "Qty", thPrice: "Unit Price", thMargin: "Margin%", thAmount: "Amount",
-                terms: "Terms & Conditions:", totalItems: "Total Items", avgMargin: "Avg Margin", grandTotal: "Grand Total",
+                terms: "Proposal Acceptance, Terms & Conditions", totalItems: "Total Items", avgMargin: "Avg Margin", grandTotal: "Grand Total",
                 authSign: "Authorized Signature", signDate: "Date",
-                termPlaceholder: "1. Quotation valid for 30 days.\n2. Please remit to: Bank XX, Acct...",
+                termPlaceholder: "I.   Price                   : Price quoted as above...",
                 timeline: "Estimated Timeline",
                 step1: "Site Survey",
                 step2: "Material Procurement & Installation Planning",
@@ -3794,7 +3904,7 @@
                         </div>
                         <div class="mt-1 flex items-center justify-between gap-2 text-[10px] font-bold text-slate-400">
                             <span>${htmlSafe(stage.desc)}</span>
-                            <span>均分 ${avg.toFixed(1)}</span>
+                            <span>Avg ${avg.toFixed(1)}</span>
                         </div>
                     </button>
                 `;
@@ -3804,7 +3914,7 @@
                 allBtn.className = supplierStageFilter === 'all'
                     ? 'px-3 py-2 rounded-xl border border-purple-200 bg-white text-xs font-black text-purple-800 shadow-sm'
                     : 'px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-black text-slate-600 hover:border-purple-200';
-                allBtn.textContent = `全部供应商 (${totalAll})`;
+                allBtn.textContent = `All Suppliers (${totalAll})`;
             }
         }
 
@@ -3824,7 +3934,7 @@
             ensureSupplierData();
             renderSupplierFunnelSummary(suppliers);
             if (!suppliers.length) {
-                list.innerHTML = `<tr><td colspan="13" class="py-12 text-center text-slate-400 text-sm">暂无供应商，请先新增供应商后再维护产品档案。</td></tr>`;
+                list.innerHTML = `<tr><td colspan="13" class="py-12 text-center text-slate-400 text-sm">No suppliers yet. Add a supplier before maintaining product records.</td></tr>`;
                 updateSupplierSelects();
                 return;
             }
@@ -3854,7 +3964,7 @@
                 return (b.details.totalScore - a.details.totalScore) || supplierStageIndex(b.details.stage) - supplierStageIndex(a.details.stage);
             });
             if (!rows.length) {
-                list.innerHTML = `<tr><td colspan="13" class="py-12 text-center text-slate-400 text-sm">没有匹配当前筛选条件的供应商。</td></tr>`;
+                list.innerHTML = `<tr><td colspan="13" class="py-12 text-center text-slate-400 text-sm">No suppliers match the current filters.</td></tr>`;
                 updateSupplierSelects();
                 return;
             }
@@ -3877,7 +3987,7 @@
                         <td class="py-4 px-4">${supplierStageBadgeHtml(details.stage)}</td>
                         <td class="py-4 px-4 text-right">
                             <div class="font-black text-sm text-slate-800">${details.totalScore.toFixed(1)}</div>
-                            <div class="text-[9px] text-slate-400 font-bold">建议 ${htmlSafe(getSupplierStageDef(details.suggestedStage).shortLabel)}</div>
+                            <div class="text-[9px] text-slate-400 font-bold">Suggested ${htmlSafe(getSupplierStageDef(details.suggestedStage).shortLabel)}</div>
                         </td>
                         <td class="py-4 px-4 text-xs text-slate-500">${htmlSafe(details.weakness)}</td>
                         <td class="py-4 px-4 text-xs text-slate-500">${htmlSafe(s.country || '-')}</td>
@@ -3962,21 +4072,21 @@
             const evidenceMaxStage = getSupplierEvidenceMaxStage(evaluation.evidence);
             const missing = getSupplierMissingEvidenceForStage(requestedStage, evaluation.evidence);
             const capNote = requestedStage === cappedStage
-                ? `可保存为 ${getSupplierStageDef(cappedStage).label}`
-                : `证据不足，保存时将降为 ${getSupplierStageDef(cappedStage).label}`;
-            const reviewedAt = window.__supplierLastReviewedAt ? new Date(window.__supplierLastReviewedAt).toLocaleDateString('zh-CN') : '未评估';
+                ? `Can be saved as ${getSupplierStageDef(cappedStage).label}`
+                : `Evidence is insufficient; it will be saved as ${getSupplierStageDef(cappedStage).label}`;
+            const reviewedAt = window.__supplierLastReviewedAt ? new Date(window.__supplierLastReviewedAt).toLocaleDateString('en-US') : 'Not reviewed';
             preview.innerHTML = `
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-2">
                     <div class="flex flex-wrap items-center gap-2">
                         <span class="text-2xl font-black text-purple-800">${evaluation.totalScore.toFixed(1)}</span>
                         <span class="text-[10px] font-black text-slate-400 uppercase">/ 100</span>
-                        <span class="text-xs font-bold text-slate-500">建议：${htmlSafe(getSupplierStageDef(suggestedStage).label)}</span>
-                        <span class="text-xs font-bold text-slate-500">证据上限：${htmlSafe(getSupplierStageDef(evidenceMaxStage).label)}</span>
+                        <span class="text-xs font-bold text-slate-500">Suggested: ${htmlSafe(getSupplierStageDef(suggestedStage).label)}</span>
+                        <span class="text-xs font-bold text-slate-500">Evidence Cap: ${htmlSafe(getSupplierStageDef(evidenceMaxStage).label)}</span>
                     </div>
-                    <span class="text-[10px] font-bold text-slate-400">上次评估：${htmlSafe(reviewedAt)}</span>
+                    <span class="text-[10px] font-bold text-slate-400">Last Reviewed: ${htmlSafe(reviewedAt)}</span>
                 </div>
                 <div class="mt-2 text-xs font-bold ${requestedStage === cappedStage ? 'text-emerald-700' : 'text-amber-700'}">${htmlSafe(capNote)}</div>
-                ${missing.length ? `<div class="mt-1 text-[11px] text-red-500 font-bold">缺少：${missing.map(htmlSafe).join('、')}</div>` : ''}
+                ${missing.length ? `<div class="mt-1 text-[11px] text-red-500 font-bold">Missing: ${missing.map(htmlSafe).join(', ')}</div>` : ''}
             `;
         };
 
@@ -4017,7 +4127,7 @@
             const supplier = window.__editingSupplierCode ? getSupplierByCode(window.__editingSupplierCode) : null;
             const modal = document.getElementById('supplier-modal');
             const title = document.getElementById('supplier-modal-title');
-            if (title) title.textContent = supplier ? '编辑供应商' : '新增供应商';
+            if (title) title.textContent = supplier ? 'Edit Supplier' : 'New Supplier';
             const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
             setVal('supplier-code', supplier?.code || makeUniqueSupplierCode('SUP'));
             setVal('supplier-name-zh', supplier?.nameZh || '');
@@ -4062,10 +4172,10 @@
             const code = normalizeSupplierCode(document.getElementById('supplier-code')?.value || '');
             const nameZh = String(document.getElementById('supplier-name-zh')?.value || '').trim();
             const nameEn = String(document.getElementById('supplier-name-en')?.value || '').trim();
-            if (!code) return alert('请输入供应商编码');
-            if (!nameZh && !nameEn) return alert('请至少填写中文名字或英文名字');
+            if (!code) return alert('Please enter a supplier code.');
+            if (!nameZh && !nameEn) return alert('Please enter at least a Chinese name or an English name.');
             const duplicate = suppliers.find(s => normalizeSupplierCode(s.code) === code && normalizeSupplierCode(s.code) !== oldCode);
-            if (duplicate) return alert('供应商编码已存在，请换一个编码');
+            if (duplicate) return alert('This supplier code already exists. Please use another code.');
             const prev = oldCode ? getSupplierByCode(oldCode) : null;
             const prevDisplay = prev ? getSupplierDisplayName(prev) : '';
             const assessment = readSupplierAssessmentFromModal();
@@ -4112,8 +4222,8 @@
             const supplier = getSupplierByCode(c);
             if (!supplier) return;
             const used = products.filter(p => normalizeSupplierCode(p.supplierCode) === c);
-            if (used.length) return alert(`该供应商已关联 ${used.length} 个产品，不能删除。请先调整产品档案。`);
-            if (!confirm(`确定删除供应商：${getSupplierDisplayName(supplier)}？`)) return;
+            if (used.length) return alert(`This supplier is linked to ${used.length} products and cannot be deleted. Adjust product records first.`);
+            if (!confirm(`Delete supplier: ${getSupplierDisplayName(supplier)}?`)) return;
             suppliers = suppliers.filter(s => normalizeSupplierCode(s.code) !== c);
             saveToLocal();
         };
@@ -4137,20 +4247,58 @@
             document.getElementById('btn-group-vendor').className = mode === 'vendor' ? 'px-4 py-1.5 text-xs font-bold rounded-lg transition-all bg-white shadow-sm text-purple-700' : 'px-4 py-1.5 text-xs font-bold rounded-lg transition-all text-slate-500';
             renderDb();
         };
+        const PRODUCT_LIST_DISPLAY_REPLACEMENTS = [
+            ['联塑 LESSO', 'LESSO'],
+            ['明匠', 'Mingjiang'],
+            ['埃克森', 'Exxon'],
+            ['汉伏', 'Hanfu'],
+            ['未指定供应商', 'Unassigned Supplier'],
+            ['未分类', 'Uncategorized'],
+            ['N-type组件', 'N-type Module'],
+            ['N-type 组件', 'N-type Module'],
+            ['三相逆变器', 'Three-Phase Inverter'],
+            ['堆叠式产品配件', 'Stackable Product Accessory'],
+            ['堆叠式单相逆变器', 'Stackable Single-Phase Inverter'],
+            ['堆叠式家储', 'Stackable Home Storage'],
+            ['堆叠式配件', 'Stackable Accessory'],
+            ['单相一体机', 'Single-Phase All-in-One'],
+            ['储能柜', 'Energy Storage Cabinet'],
+            ['户外柜', 'Outdoor Cabinet'],
+            ['光伏组件', 'PV Module'],
+            ['逆变器', 'Inverter'],
+            ['电池', 'Battery'],
+            ['配件', 'Accessory'],
+            ['一体机', 'All-in-One System'],
+            ['工商储', 'C&I Storage'],
+            ['三相', 'Three-Phase'],
+            ['单相', 'Single-Phase'],
+            ['双面', 'Bifacial'],
+            ['组件', 'Module'],
+            ['天', 'days'],
+            ['周', 'weeks']
+        ];
+        function productListDisplayText(value) {
+            let text = String(value ?? '').trim();
+            if (!text) return '-';
+            PRODUCT_LIST_DISPLAY_REPLACEMENTS.forEach(([from, to]) => {
+                text = text.split(from).join(to);
+            });
+            return text.replace(/\s+days\b/g, ' days').replace(/\s+weeks\b/g, ' weeks');
+        }
         window.renderDb = () => {
             const list = document.getElementById('db-list');
             ensureSupplierData();
             if(products.length === 0) {
-                list.innerHTML = `<tr><td colspan="15" class="py-20 text-center text-slate-400 text-sm">暂无入库产品...</td></tr>`;
+                list.innerHTML = `<tr><td colspan="15" class="py-20 text-center text-slate-400 text-sm">No product records yet.</td></tr>`;
                 return;
             }
             const sorted = [...products].sort((a,b) => (a[dbGroupMode] || '').localeCompare(b[dbGroupMode] || ''));
             list.innerHTML = sorted.map(p => {
                 const margin = p.price > 0 ? ((p.price - p.cost) / p.price * 100).toFixed(1) : 0;
-                const warrantyY = p.warrantyYears ? `${p.warrantyYears}年` : '-';
-                const warrantyC = p.warrantyCycles ? `${p.warrantyCycles}次` : '-';
+                const warrantyY = p.warrantyYears ? `${p.warrantyYears} years` : '-';
+                const warrantyC = p.warrantyCycles ? `${p.warrantyCycles} cycles` : '-';
                 const supplier = getProductSupplier(p);
-                const supplierName = supplier ? getSupplierDisplayName(supplier) : (p.vendor || '-');
+                const supplierName = productListDisplayText(supplier ? getSupplierDisplayName(supplier) : (p.vendor || '-'));
                 const productImg = String(p.productImageDataUrl || p.imageDataUrl || '').trim();
                 const productImgHtml = productImg
                     ? `<img src="${htmlSafe(productImg)}" class="h-10 w-16 object-contain rounded-lg border border-slate-100 bg-white" alt="${htmlSafe(p.name || '')}">`
@@ -4158,18 +4306,18 @@
                 const certReq = getProductCertificationRequirements(p);
                 const certTitle = `${(certReq.countries || []).join(', ')}\n${(certReq.standards || []).join('\n')}`;
                 const certBrief = (certReq.standards || []).slice(0, 2).join(', ') || '-';
-                const contactHtml = p.contact ? `<div class="relative group inline-block cursor-help"><span class="${p.contactInfo ? 'border-b border-dashed border-blue-400 text-blue-600' : ''}">${p.contact}</span>${p.contactInfo ? `<div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block px-3 py-2 bg-slate-800 text-white text-xs rounded-lg z-50 whitespace-nowrap">📞 ${p.contactInfo}</div>` : ''}</div>` : '-';
+                const contactHtml = p.contact ? `<div class="relative group inline-block cursor-help"><span class="${p.contactInfo ? 'border-b border-dashed border-blue-400 text-blue-600' : ''}">${productListDisplayText(p.contact)}</span>${p.contactInfo ? `<div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block px-3 py-2 bg-slate-800 text-white text-xs rounded-lg z-50 whitespace-nowrap">Phone: ${htmlSafe(p.contactInfo)}</div>` : ''}</div>` : '-';
                 return `
                     <tr class="hover:bg-slate-50 transition-colors group">
                         <td class="py-4 px-4 text-xs font-mono text-slate-500">${p.id || '-'}</td>
                         <td class="py-4 px-4">${productImgHtml}</td>
-                        <td class="py-4 px-4 font-bold text-slate-700 text-sm max-w-[200px] truncate" title="${p.name}">${p.name}</td>
+                        <td class="py-4 px-4 font-bold text-slate-700 text-sm max-w-[200px] truncate" title="${htmlSafe(productListDisplayText(p.name))}">${htmlSafe(productListDisplayText(p.name))}</td>
                         <td class="py-4 px-4 text-xs text-slate-600">${p.spec || '-'}</td>
-                        <td class="py-4 px-4 text-xs text-slate-500 uppercase tracking-tighter">${p.category}</td>
-                        <td class="py-4 px-4 text-xs text-slate-600">${p.scenario || '-'}</td>
+                        <td class="py-4 px-4 text-xs text-slate-500 uppercase tracking-tighter">${htmlSafe(productListDisplayText(p.category))}</td>
+                        <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(productListDisplayText(p.scenario))}</td>
                         <td class="py-4 px-4 text-xs text-slate-500 text-center">${warrantyY} / ${warrantyC}</td>
-                        <td class="py-4 px-4 text-xs text-slate-600">${p.leadTime || '-'}</td>
-                        <td class="py-4 px-4 text-xs text-slate-500">${supplierName}</td>
+                        <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(productListDisplayText(p.leadTime))}</td>
+                        <td class="py-4 px-4 text-xs text-slate-500">${htmlSafe(supplierName)}</td>
                         <td class="py-4 px-4 text-xs">${contactHtml}</td>
                         <td class="py-4 px-4 text-xs text-slate-500 max-w-[200px] truncate" title="${htmlSafe(certTitle)}">${htmlSafe(certBrief)}</td>
                         <td class="py-4 px-4 text-right text-sm font-mono text-slate-400">¥${(p.cost||0).toFixed(2)}</td>
@@ -4897,11 +5045,11 @@
 
         // --- 库存价格编辑逻辑 ---
         function getDefaultImportDutyPercent(category) {
-            const c = String(category || '');
-            if (c.includes('光伏组件')) return 0;
-            if (c.includes('一体机')) return 0;
-            if (c.includes('电池')) return 20;
-            if (c.includes('逆变器')) return 20;
+            const c = normalizeProductCategory(category);
+            if (c === 'PV Module') return 0;
+            if (c === 'All-in-One System') return 0;
+            if (c === 'Battery') return 20;
+            if (c === 'Inverter') return 20;
             return 0;
         }
         function getDefaultSstPercent() {
@@ -5056,13 +5204,12 @@
         }
 
         function getDefaultDomesticTaxRatePercent(category) {
-            const c = String(category || '');
-            if (c.includes('光伏组件')) return 13;
-            if (c.includes('光伏') && (c.includes('组件') || c.includes('板'))) return 13;
-            if (c.includes('一体机')) return 0;
-            if (c.includes('电池')) return 6;
-            if (c.includes('逆变器')) return 6;
-            if (c.includes('配件')) return 6;
+            const c = normalizeProductCategory(category);
+            if (c === 'PV Module') return 13;
+            if (c === 'All-in-One System') return 0;
+            if (c === 'Battery') return 6;
+            if (c === 'Inverter') return 6;
+            if (c === 'Accessory') return 6;
             return 6;
         }
 
@@ -5163,10 +5310,7 @@
         }
 
         function getInstallerScenario() {
-            try {
-                if (typeof getPickerCustomerMode === 'function') return getPickerCustomerMode() === 'biz' ? 'biz' : 'home';
-            } catch (e) {}
-            return window.pickerCustomerMode === 'biz' ? 'biz' : 'home';
+            return 'home';
         }
         function getProposedSystemSizeKwp() {
             const direct = parseFloat(String(document.getElementById('input-proposed-size')?.value || '').replace(/,/g, ''));
@@ -5243,7 +5387,7 @@
                 const desc = String(r.description || '').trim();
                 if (!desc) continue;
                 const p = products.find(x => String(x?.name || '').trim() === desc);
-                if (p && String(p.category || '').includes('光伏组件')) {
+                if (p && normalizeProductCategory(p.category) === 'PV Module') {
                     total += qty;
                     continue;
                 }
@@ -6211,12 +6355,12 @@
             const certSel = document.getElementById('price-list-cert-filter');
             if (!catSel || !brandSel || !countrySel || !certSel) return;
             const keep = {
-                cat: catSel.value,
+                cat: String(catSel.value || '').trim() ? normalizeProductCategory(catSel.value) : '',
                 brand: brandSel.value,
                 country: countrySel.value,
                 cert: certSel.value
             };
-            const cats = [...new Set(products.map(p => String(p.category || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+            const cats = [...new Set(products.map(p => normalizeProductCategory(p.category)).filter(Boolean))].sort((a, b) => a.localeCompare(b));
             const brands = [...new Set(products.map(p => getProductSupplierDisplay(p)).filter(Boolean))].sort((a, b) => a.localeCompare(b));
             const countryOptions = CERTIFICATION_COUNTRIES.map(c => ({ value: c.code, label: c.label }));
             const certSet = new Set();
@@ -6238,7 +6382,8 @@
         }
         function getFilteredPriceListProducts() {
             const q = String(document.getElementById('price-list-search')?.value || '').trim().toLowerCase();
-            const category = String(document.getElementById('price-list-category-filter')?.value || '').trim();
+            const rawCategory = String(document.getElementById('price-list-category-filter')?.value || '').trim();
+            const category = rawCategory ? normalizeProductCategory(rawCategory) : '';
             const brand = String(document.getElementById('price-list-brand-filter')?.value || '').trim();
             const country = String(document.getElementById('price-list-country-filter')?.value || '').trim();
             const cert = String(document.getElementById('price-list-cert-filter')?.value || '').trim();
@@ -6246,7 +6391,7 @@
                 const req = getProductCertificationRequirements(p);
                 const text = `${p.id || ''} ${p.name || ''} ${p.spec || ''} ${p.category || ''} ${p.scenario || ''} ${getProductSupplierDisplay(p)} ${(req.standards || []).join(' ')}`.toLowerCase();
                 if (q && !text.includes(q)) return false;
-                if (category && String(p.category || '') !== category) return false;
+                if (category && normalizeProductCategory(p.category) !== category) return false;
                 if (brand && getProductSupplierDisplay(p) !== brand) return false;
                 if (country && !(req.countries || []).includes(country)) return false;
                 if (cert && !(req.standards || []).includes(cert)) return false;
@@ -7160,7 +7305,7 @@
         window.openModal = () => {
             ensureSupplierData();
             if (!suppliers.length) {
-                alert('请先新增供应商，再创建产品档案。');
+                alert('Please add a supplier before creating a product record.');
                 openSupplierModal();
                 return;
             }
@@ -7198,10 +7343,10 @@
             renderProductImagePreview();
         };
         window.saveProduct = () => {
-            const category = document.getElementById('m-category').value || '未分类';
+            const category = normalizeProductCategory(document.getElementById('m-category').value, 'Uncategorized');
             const supplierCode = normalizeSupplierCode(document.getElementById('m-supplier-code')?.value || '');
             const supplier = getSupplierByCode(supplierCode);
-            if (!supplier) return alert('请选择供应商信息表单中的供应商');
+            if (!supplier) return alert('Please select a supplier from Supplier Master Data.');
             const data = {
                 id: window.editId || generateNextId(category),
                 name: document.getElementById('m-name').value,
@@ -7209,7 +7354,7 @@
                 supplierCode: supplier.code,
                 vendor: getSupplierDisplayName(supplier),
                 spec: document.getElementById('m-spec').value,
-                scenario: document.getElementById('m-scenario').value,
+                scenario: normalizeProductSubcategory(document.getElementById('m-scenario').value),
                 warrantyYears: document.getElementById('m-warranty-years').value,
                 warrantyCycles: document.getElementById('m-warranty-cycles').value,
                 leadTime: document.getElementById('m-lead-time').value,
@@ -7228,13 +7373,13 @@
                     data.certifications = existing.certifications;
                 }
             }
-            // 确保 certifications 字段存在
+            // Ensure the certifications field exists.
             if (!data.certifications) {
                 data.certifications = { tuvCerts: [], specSheets: [] };
             }
-            if(!data.name) return alert("请输入产品全称！");
-            const sub = (data.scenario || '').trim();
-            const cat = (data.category || '').trim() || '未分类';
+            if(!data.name) return alert("Please enter the product name.");
+            const sub = normalizeProductSubcategory(data.scenario);
+            const cat = normalizeProductCategory(data.category, 'Uncategorized');
             if (!subcategoriesByCategory[cat]) subcategoriesByCategory[cat] = [];
             if (sub && !subcategoriesByCategory[cat].includes(sub)) {
                 subcategoriesByCategory[cat].push(sub);
@@ -7275,7 +7420,7 @@
             renderProductCertsInModal();
         };
         window.deleteProduct = (id) => {
-            if(confirm('确定删除该产品档案吗？')) { products = products.filter(p => p.id !== id); saveToLocal(); }
+            if(confirm('Delete this product record?')) { products = products.filter(p => p.id !== id); saveToLocal(); }
         };
 
         // --- 批量导入逻辑 ---
@@ -7298,6 +7443,23 @@
             certificationStandards: '产品认证标准',
             cost: '基准采购价',
             price: '基准售价'
+        };
+        const systemFieldLabelsEnglish = {
+            id: 'Product ID',
+            name: 'Product Name',
+            category: 'Category',
+            vendor: 'Supplier',
+            spec: 'Specification',
+            scenario: 'Subcategory',
+            warrantyYears: 'Warranty Years',
+            warrantyCycles: 'Cycle Count',
+            leadTime: 'Lead Time',
+            contact: 'Contact',
+            contactInfo: 'Contact Info',
+            certificationCountries: 'Certification Countries',
+            certificationStandards: 'Certification Standards',
+            cost: 'Base Cost',
+            price: 'Base Price'
         };
 
         // 获取拼音首字母的简易映射
@@ -7352,15 +7514,15 @@
 
             const nextBtn = document.getElementById('import-next-btn');
             if (step === 1) {
-                nextBtn.textContent = '下一步';
+                nextBtn.textContent = 'Next';
                 nextBtn.onclick = () => goToStep(2);
                 nextBtn.disabled = !document.getElementById('excel-file-input').files.length;
             } else if (step === 2) {
-                nextBtn.textContent = '确认导入';
+                nextBtn.textContent = 'Confirm Import';
                 nextBtn.onclick = () => goToStep(3);
                 nextBtn.disabled = false;
             } else if (step === 3) {
-                nextBtn.textContent = '完成';
+                nextBtn.textContent = 'Done';
                 nextBtn.onclick = closeImportModal;
             }
         };
@@ -7368,7 +7530,7 @@
         window.handleFileSelect = (files) => {
             if (files.length === 0) return;
             const file = files[0];
-            document.getElementById('file-name-display').textContent = `已选择: ${file.name}`;
+            document.getElementById('file-name-display').textContent = `Selected: ${file.name}`;
             document.getElementById('import-next-btn').disabled = false;
             parseExcel(file);
         };
@@ -7376,12 +7538,12 @@
         function validateFile() {
             const fileInput = document.getElementById('excel-file-input');
             if (fileInput.files.length === 0) {
-                alert('请选择一个文件');
+                alert('Please select a file.');
                 return false;
             }
             const file = fileInput.files[0];
             if (file.size > 10 * 1024 * 1024) {
-                alert('文件大小不能超过 10MB');
+                alert('File size cannot exceed 10MB.');
                 return false;
             }
             return true;
@@ -7397,7 +7559,7 @@
                 const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
                 if (json.length < 2) {
-                    alert('Excel 文件为空或没有数据');
+                    alert('The Excel file is empty or has no data.');
                     return;
                 }
 
@@ -7409,7 +7571,7 @@
                 });
 
                 if (importData.length > 1000) {
-                    alert('单次最多导入1000条记录');
+                    alert('A single import supports up to 1000 records.');
                     importData = importData.slice(0, 1000);
                 }
 
@@ -7422,15 +7584,16 @@
         function renderFieldMapping() {
             const container = document.getElementById('field-mapping-container');
             const aliases = {
-                scenario: ['子类目', '应用场景'],
+                category: ['类目', 'Category', 'Product Category'],
+                scenario: ['子类目', '应用场景', 'Subcategory', 'Application Scenario'],
                 certificationCountries: ['产品认证国家', '认证国家', 'Certification Countries'],
                 certificationStandards: ['产品认证标准', '产品认证', 'Certification Standards', 'Product Certification']
             };
             container.innerHTML = Object.keys(systemFields).map(key => `
                 <div class="flex items-center">
-                    <label class="w-28 font-bold text-slate-600">${systemFields[key]}:</label>
+                    <label class="w-28 font-bold text-slate-600">${systemFieldLabelsEnglish[key] || systemFields[key]}:</label>
                     <select id="map-${key}" class="flex-1 border border-slate-300 rounded-md p-1.5 outline-none focus:border-blue-500 bg-white">
-                        <option value="">- 忽略此列 -</option>
+                        <option value="">- Ignore this column -</option>
                         ${importHeaders.map(h => {
                             const preferred = (aliases[key] || [systemFields[key]]).find(a => importHeaders.includes(a));
                             return `<option value="${h}" ${h === preferred ? 'selected' : ''}>${h}</option>`;
@@ -7468,21 +7631,23 @@
                     newProduct[key] = row[mapping[key]];
                 }
 
-                // 如果没填产品全称，跳过
+                // Skip rows without a product name.
                 if (!newProduct.name) {
                     failCount++;
-                    log.push(`<p class="text-red-500">第 ${i + 2} 行: 导入失败，产品全称不能为空。</p>`);
+                    log.push(`<p class="text-red-500">Row ${i + 2}: import failed because Product Name is required.</p>`);
                     return;
                 }
 
-                // 如果没填编号，则自动生成
+                // Generate a product ID when the import row does not provide one.
+                newProduct.category = normalizeProductCategory(newProduct.category, 'Uncategorized');
+                newProduct.scenario = normalizeProductSubcategory(newProduct.scenario);
                 if (!newProduct.id) {
-                    newProduct.id = generateNextId(newProduct.category || '通用');
+                    newProduct.id = generateNextId(newProduct.category || 'Generic');
                 } else {
                     newProduct.id = String(newProduct.id);
                 }
 
-                const supplier = ensureSupplierForVendorName(newProduct.vendor || '未指定供应商');
+                const supplier = ensureSupplierForVendorName(newProduct.vendor || 'Unassigned Supplier');
                 if (supplier) {
                     newProduct.supplierCode = supplier.code;
                     newProduct.vendor = getSupplierDisplayName(supplier);
@@ -7515,9 +7680,9 @@
 
         function renderImportLog(success, failed, details) {
             const logContainer = document.getElementById('import-log');
-            let summary = `<p>导入成功: <strong class="text-green-600">${success}</strong> 条</p>`;
+            let summary = `<p>Import succeeded: <strong class="text-green-600">${success}</strong> records</p>`;
             if (failed > 0) {
-                summary += `<p>导入失败: <strong class="text-red-600">${failed}</strong> 条</p>`;
+                summary += `<p>Import failed: <strong class="text-red-600">${failed}</strong> records</p>`;
             }
             logContainer.innerHTML = summary + '<div class="mt-4 text-xs max-h-60 overflow-y-auto border p-2 rounded-md">' + details.join('') + '</div>';
         }
@@ -7544,13 +7709,13 @@
 
             // 如果没数据，加一行示例
             if (data.length === 0) {
-                data.push(['GFB001', '示例产品', '光伏板', '通用供应商', '550W', '屋顶', '10', '0', '15天', '张经理', '13800138000', 'MY, US, EU', 'IEC 61215; IEC 61730', 500, 650]);
+                data.push(['PVM001', 'Sample Product', 'PV Module', 'Generic Supplier', '550W', 'Bifacial', '10', '0', '15 days', 'Sales Manager', 'sales@example.com', 'MY, US, EU', 'IEC 61215; IEC 61730', 500, 650]);
             }
 
             const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
             const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, '产品清单');
-            XLSX.writeFile(workbook, '库管理产品清单.xlsx');
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Product List');
+            XLSX.writeFile(workbook, 'product-master-list.xlsx');
         };
 
         // --- 选择器逻辑 ---
@@ -7606,8 +7771,19 @@
             window.pickerCostMode = mode === 'gray' ? 'gray' : 'clearance';
             renderPicker();
         };
-        window.setPickerCustomerMode = (mode) => {
-            window.pickerCustomerMode = mode === 'biz' ? 'biz' : 'home';
+        window.setPickerCustomerMode = (mode, opts = {}) => {
+            const next = mode === 'biz' ? 'biz' : 'home';
+            const solarMode = (typeof getQuoteSolarCustomerMode === 'function') ? getQuoteSolarCustomerMode() : 'home';
+            if (!opts.force && next !== solarMode) {
+                const solarLabel = solarMode === 'biz' ? 'C&I' : 'RESI';
+                const nextLabel = next === 'biz' ? 'C&I' : 'RESI';
+                const ok = confirm(`当前 Solar Calculation Inputs 选择的是 ${solarLabel}，From Inventory 将切换为 ${nextLabel} 报价，可能与当前 Solar 状态不一致。是否继续？`);
+                if (!ok) {
+                    updatePickerModeButtons();
+                    return;
+                }
+            }
+            window.pickerCustomerMode = next;
             renderPicker();
         };
         function formatPickerPrice(valueCny) {
@@ -7662,7 +7838,8 @@
             const selectedPriceLabel = getPickerSelectedPriceLabel();
             const query = (document.getElementById('picker-search')?.value || '').toLowerCase();
             const vendor = document.getElementById('picker-vendor')?.value || '';
-            const category = document.getElementById('picker-category')?.value || '';
+            const rawCategory = document.getElementById('picker-category')?.value || '';
+            const category = String(rawCategory).trim() ? normalizeProductCategory(rawCategory) : '';
             const list = document.getElementById('picker-list');
             if(!list) return;
 
@@ -7675,7 +7852,7 @@
 
                 const pid = String(item.productId || '').toLowerCase();
                 return (!vendor || getProductSupplierDisplay(p) === vendor) &&
-                       (!category || p.category === category) &&
+                       (!category || normalizeProductCategory(p.category) === category) &&
                        (!query || p.name.toLowerCase().includes(query) || p.category.toLowerCase().includes(query) || pid.includes(query));
             });
 
@@ -7701,7 +7878,7 @@
                     </div>
                     <div class="flex justify-between items-center mt-2">
                         <div class="flex gap-2">
-                            <span class="text-[9px] uppercase px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded">${p.category}</span>
+                            <span class="text-[9px] uppercase px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded">${normalizeProductCategory(p.category)}</span>
                             <span class="text-[9px] uppercase px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded">${getProductSupplierDisplay(p)}</span>
                         </div>
                         <div class="flex flex-wrap gap-2 justify-end">
@@ -7792,14 +7969,14 @@
         function updatePickerFilters() {
             ensureSupplierData();
             const vendors = [...new Set(products.map(p => getProductSupplierDisplay(p)).filter(Boolean))];
-            const categories = [...new Set(products.map(p => p.category).filter(Boolean))];
+            const categories = [...new Set(products.map(p => normalizeProductCategory(p.category)).filter(Boolean))];
             const vS = document.getElementById('picker-vendor'), cS = document.getElementById('picker-category');
             if(vS) vS.innerHTML = `<option value="">All Suppliers</option>` + vendors.map(v => `<option value="${htmlSafe(v)}">${htmlSafe(v)}</option>`).join('');
             if(cS) cS.innerHTML = `<option value="">All Categories</option>` + categories.map(c => `<option value="${htmlSafe(c)}">${htmlSafe(c)}</option>`).join('');
         }
         function updateDatalists() {
             ensureSupplierData();
-            const cats = [...new Set(products.map(p => p.category))];
+            const cats = [...new Set(products.map(p => normalizeProductCategory(p.category)).filter(Boolean))];
             const catList = document.getElementById('cat-suggestions');
             if (catList) catList.innerHTML = cats.map(c => `<option value="${htmlSafe(c)}">`).join('');
             updateSupplierSelects();
@@ -8762,7 +8939,7 @@
             const btn = document.getElementById('btn-toggle-company-cert');
             const isHidden = body.classList.contains('hidden');
             body.classList.toggle('hidden', !isHidden);
-            btn.textContent = isHidden ? '收起' : '展开';
+            btn.textContent = isHidden ? 'Collapse' : 'Expand';
             if (isHidden) renderCompanyCertList();
         };
 

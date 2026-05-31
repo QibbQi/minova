@@ -4,12 +4,16 @@ import test from 'node:test';
 
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 
-test('solar calculation inputs expose a snapshot-friendly RESI/C&S mode toggle', () => {
+test('solar calculation inputs expose a snapshot-friendly RESI/C&I mode toggle', () => {
   assert.match(html, /id="quote-solar-customer-mode"/, 'hidden solar customer mode field is present');
   assert.match(html, /id="quote-solar-customer-home"/, 'RESI solar mode button is present');
-  assert.match(html, /id="quote-solar-customer-biz"/, 'C&S solar mode button is present');
+  assert.match(html, /id="quote-solar-customer-biz"/, 'C&I solar mode button is present');
+  assert.match(html, /id="quote-solar-customer-biz"[\s\S]*?>C&amp;I<\/button>/, 'solar mode button is labeled C&I');
+  assert.match(html, /id="picker-customer-biz"[\s\S]*?>C&amp;I<\/button>/, 'inventory picker mode button is labeled C&I');
+  const legacyCustomerLabel = new RegExp(`C&(?:amp;)?${'S'}`);
+  assert.doesNotMatch(html, legacyCustomerLabel, 'legacy customer label is not present');
   assert.match(html, /setQuoteSolarCustomerMode\('home'\)/, 'RESI button wires to solar mode helper');
-  assert.match(html, /setQuoteSolarCustomerMode\('biz'\)/, 'C&S button wires to solar mode helper');
+  assert.match(html, /setQuoteSolarCustomerMode\('biz'\)/, 'C&I button wires to solar mode helper');
 });
 
 test('solar customer mode has helpers and does not drive installer formulas', () => {

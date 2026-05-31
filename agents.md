@@ -99,7 +99,7 @@ Minova 是一个纯静态、前端优先的 GitHub Pages 业务工具，用于�
 ### `test/`
 
 - `test/installer-cost.test.mjs`
-  - 从 `index.html` 的 `INSTALLER_QUOTE_MODEL_START/END` 代码块提取安装商报价模型并验证 RESI / C&S 成本计算。
+  - 从 `index.html` 的 `INSTALLER_QUOTE_MODEL_START/END` 代码块提取安装商报价模型并验证 RESI / C&I 成本计算。
 
 ## 关键数据流
 
@@ -244,6 +244,19 @@ node --test test/installer-cost.test.mjs
 
 修改 `github-sync/` 时优先运行 GitHub 同步测试。修改安装商报价模型时运行 installer 测试。修改 `index.html` UI、Site Overview 或 PDF 时，还需要启动本地静态服务并做浏览器人工/自动检查对应流程。
 
+### 隐藏页面与门禁检查
+
+Minova 会在未连接 GitHub/PAT 且通过 HTTP 访问时限制 `quotation`、`costcalc`、`database`、`pricelist`、`inventory`、`transport` 等 tab；`window.switchTab()` 中的 `localFileMode` 会在 `file:` 协议下绕过这层限制。检查报价页、From Inventory、Price List、弹窗、hover 菜单或其它默认隐藏区域时，不要只检查当前可见页面：
+
+- 首选直接用浏览器打开本地 `index.html` 文件（`file:///.../index.html`），或在控制台确认 `window.location.protocol === 'file:'` 后切换受限 tab。
+- 若必须通过 HTTP 预览，则先输入/解锁 GitHub PAT 连接，让受限 tab 实际可访问后再检查。
+- 对“全局改名/文案替换”这类任务，还要额外跑全 HTML 扫描，覆盖隐藏 DOM、HTML entity、模板字符串和动态拼接文案，例如：
+
+```bash
+LEGACY_LABEL='c(&amp;|&)'$'s|c\\u0026''s|c and ''s'
+rg -ni "$LEGACY_LABEL" .
+```
+
 ## 常见修改策略
 
 1. 先用 `rg` 搜索相关函数、DOM id、storage key 和数据字段。
@@ -253,7 +266,7 @@ node --test test/installer-cost.test.mjs
 5. 涉及状态结构时，同步检查内嵌状态、`state.json`、localStorage、`buildUpdatedHtml()` 和 `mergeState()`。
 6. 涉及已保存报价时，同步检查 `captureQuoteSnapshot()`、`applyQuoteSnapshot()`、`minova-data/quotes/index.json` 和 IndexedDB fallback。
 7. 涉及附件文件时，注意 GitHub commit、删除日志、本地状态和中文路径编码。
-8. 完成后至少运行相关 Node 测试；UI/PDF/Site Overview 改动还要本地预览。
+8. 完成后至少运行相关 Node 测试；UI/PDF/Site Overview 改动还要本地预览，并按“隐藏页面与门禁检查”覆盖默认隐藏区域。
 
 ## 当前仓库观察
 

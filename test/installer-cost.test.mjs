@@ -38,7 +38,7 @@ test('adds RESI power study when system size is above 15 kWp', () => {
   assert.equal(result.baseMyr, 17000);
 });
 
-test('computes C&S tiered cost from Proposed System Size', () => {
+test('computes C&I tiered cost from Proposed System Size', () => {
   const settings = normalizeInstallerQuoteSettings(null);
   const result = computeInstallerCost(100, 'biz', settings, { cnPct: 0, myPct: 0 }, 1.72);
 

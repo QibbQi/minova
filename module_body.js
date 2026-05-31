@@ -5192,7 +5192,7 @@
             const scenarioEl = document.getElementById('installer-scenario-label');
             const sizeEl = document.getElementById('installer-size-label');
             const detailEl = document.getElementById('installer-cost-detail');
-            if (scenarioEl) scenarioEl.textContent = result.scenario === 'biz' ? 'C&S' : 'RESI';
+            if (scenarioEl) scenarioEl.textContent = result.scenario === 'biz' ? 'C&I' : 'RESI';
             if (sizeEl) sizeEl.textContent = `${result.sizeKwp.toFixed(2)} kWp`;
             if (!detailEl) return;
             detailEl.innerHTML = result.detail.map(item => `
@@ -6112,9 +6112,9 @@
         let currentPriceListVisibleIds = [];
         const PRICE_LIST_TYPES = [
             { key: 'clearanceHomePrice', label: 'Clearance RESI', costKey: 'clearanceCost', profitTarget: 'home' },
-            { key: 'clearanceBizPrice', label: 'Clearance C&S', costKey: 'clearanceCost', profitTarget: 'biz' },
+            { key: 'clearanceBizPrice', label: 'Clearance C&I', costKey: 'clearanceCost', profitTarget: 'biz' },
             { key: 'grayHomePrice', label: 'Grey RESI', costKey: 'grayCost', profitTarget: 'home' },
-            { key: 'grayBizPrice', label: 'Grey C&S', costKey: 'grayCost', profitTarget: 'biz' }
+            { key: 'grayBizPrice', label: 'Grey C&I', costKey: 'grayCost', profitTarget: 'biz' }
         ];
         function getPriceListSelectedPriceType() {
             const basis = String(document.getElementById('price-list-price-basis')?.value || 'clearance') === 'gray' ? 'gray' : 'clearance';
@@ -6123,9 +6123,9 @@
         }
         function getPriceListSelectedPriceLabel() {
             const type = getPriceListSelectedPriceType();
-            if (type === 'clearance_biz') return 'Clearance C&S';
+            if (type === 'clearance_biz') return 'Clearance C&I';
             if (type === 'gray_home') return 'Grey RESI';
-            if (type === 'gray_biz') return 'Grey C&S';
+            if (type === 'gray_biz') return 'Grey C&I';
             return 'Clearance RESI';
         }
         function getPriceListSelectedPcsPrice(pricing = {}) {
@@ -6679,7 +6679,7 @@
                     <p>Clearance Cost: ${formatCny(r.avgCost, 4)} × (1 + ${r.dutyPct}% duty + ${r.sstPct}% SST) = <span class="font-black text-blue-200">${formatCny(r.clearanceCost, 4)}</span></p>
                     <p>Grey Cost: ${formatCny(r.avgCost, 4)} × (1 + ${r.grayPct}% grey tax) = <span class="font-black text-indigo-200">${formatCny(r.grayCost, 4)}</span></p>
                     <p>RESI Price: cost × (1 + ${r.cnHomePct}% CN + ${r.myHomePct}% MY) = +${homeProfit.toFixed(2)}%</p>
-                    <p>C&S Price: cost × (1 + ${r.cnBizPct}% CN + ${r.myBizPct}% MY) = +${bizProfit.toFixed(2)}%</p>
+                    <p>C&I Price: cost × (1 + ${r.cnBizPct}% CN + ${r.myBizPct}% MY) = +${bizProfit.toFixed(2)}%</p>
                     <p>Market 30D: <span class="font-black text-amber-200">${market.records.length ? formatMarketPrice(market.avgCny, market.unit, 'CNY') : '暂无30天市场价'}</span></p>
                     <p>FX: 1 MYR = ${getSalesOutRateCnyPerMyr().toFixed(4)} CNY</p>
                     <p class="pt-1 text-slate-300">Certifications: ${(req.standards || []).slice(0, 5).map(htmlSafe).join(', ') || '-'}</p>
@@ -6727,16 +6727,16 @@
                     '30D Market Avg MYR': market.records.length ? market.avgCny / getSalesOutRateCnyPerMyr() : '',
                     'Latest Market CNY': market.latest ? market.latest.priceCny : '',
                     'RESI Profit %': homeProfit,
-                    'C&S Profit %': bizProfit,
+                    'C&I Profit %': bizProfit,
                     'Clearance RESI CNY': r.clearanceHomePrice || 0,
                     'Clearance RESI MYR': (r.clearanceHomePrice || 0) / getSalesOutRateCnyPerMyr(),
-                    'Clearance C&S CNY': r.clearanceBizPrice || 0,
-                    'Clearance C&S MYR': (r.clearanceBizPrice || 0) / getSalesOutRateCnyPerMyr(),
+                    'Clearance C&I CNY': r.clearanceBizPrice || 0,
+                    'Clearance C&I MYR': (r.clearanceBizPrice || 0) / getSalesOutRateCnyPerMyr(),
                     'Grey RESI CNY': r.grayHomePrice || 0,
                     'Grey RESI MYR': (r.grayHomePrice || 0) / getSalesOutRateCnyPerMyr(),
-                    'Grey C&S CNY': r.grayBizPrice || 0,
-                    'Grey C&S MYR': (r.grayBizPrice || 0) / getSalesOutRateCnyPerMyr(),
-                    'Formula Note': `Clearance cost = Avg Cost * (1 + duty ${r.dutyPct}% + SST ${r.sstPct}%); Grey cost = Avg Cost * (1 + grey tax ${r.grayPct}%); RESI profit = CN ${r.cnHomePct}% + MY ${r.myHomePct}%; C&S profit = CN ${r.cnBizPct}% + MY ${r.myBizPct}%; FX 1 MYR = ${getSalesOutRateCnyPerMyr().toFixed(4)} CNY`,
+                    'Grey C&I CNY': r.grayBizPrice || 0,
+                    'Grey C&I MYR': (r.grayBizPrice || 0) / getSalesOutRateCnyPerMyr(),
+                    'Formula Note': `Clearance cost = Avg Cost * (1 + duty ${r.dutyPct}% + SST ${r.sstPct}%); Grey cost = Avg Cost * (1 + grey tax ${r.grayPct}%); RESI profit = CN ${r.cnHomePct}% + MY ${r.myHomePct}%; C&I profit = CN ${r.cnBizPct}% + MY ${r.myBizPct}%; FX 1 MYR = ${getSalesOutRateCnyPerMyr().toFixed(4)} CNY`,
                     'Certification Countries': (req.countries || []).map(priceListCountryLabel).join(', '),
                     'Certification Standards': (req.standards || []).join('; ')
                 };
@@ -7568,9 +7568,9 @@
         }
         function getPickerSelectedPriceLabel() {
             const type = getPickerSelectedPriceType();
-            if (type === 'clearance_biz') return 'Clearance C&S';
+            if (type === 'clearance_biz') return 'Clearance C&I';
             if (type === 'gray_home') return 'Grey RESI';
-            if (type === 'gray_biz') return 'Grey C&S';
+            if (type === 'gray_biz') return 'Grey C&I';
             return 'Clearance RESI';
         }
         function getPickerSelectedPriceValue(pricing, type) {

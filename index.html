@@ -901,7 +901,7 @@
                                         </div>
                                         <div class="inline-flex rounded-lg border border-slate-200 bg-white p-0.5">
                                             <button id="picker-customer-home" type="button" onclick="setPickerCustomerMode('home')" class="px-2 py-1 rounded-md text-[10px] font-black">RESI</button>
-                                            <button id="picker-customer-biz" type="button" onclick="setPickerCustomerMode('biz')" class="px-2 py-1 rounded-md text-[10px] font-black">C&amp;S</button>
+                                            <button id="picker-customer-biz" type="button" onclick="setPickerCustomerMode('biz')" class="px-2 py-1 rounded-md text-[10px] font-black">C&amp;I</button>
                                         </div>
                                         <button id="picker-currency-toggle" type="button" onclick="togglePickerCurrency()" class="px-2 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-black hover:bg-black border border-slate-900">RM / ¥</button>
                                     </div>
@@ -967,7 +967,7 @@
                         </div>
                         <div id="quote-solar-customer-toggle" class="no-print inline-flex rounded-lg border border-purple-100 bg-white/80 p-0.5 shadow-sm">
                             <button id="quote-solar-customer-home" type="button" onclick="setQuoteSolarCustomerMode('home')" class="px-2 py-1 rounded-md text-[10px] font-black transition-all">RESI</button>
-                            <button id="quote-solar-customer-biz" type="button" onclick="setQuoteSolarCustomerMode('biz')" class="px-2 py-1 rounded-md text-[10px] font-black transition-all">C&amp;S</button>
+                            <button id="quote-solar-customer-biz" type="button" onclick="setQuoteSolarCustomerMode('biz')" class="px-2 py-1 rounded-md text-[10px] font-black transition-all">C&amp;I</button>
                         </div>
                     </div>
                     <div class="quote-solar-grid">
@@ -1596,7 +1596,7 @@ I / We, the undersigned, hereby accept the Solar PV with Battery + Inverter Syst
                     </select>
                     <select id="price-list-price-target" onchange="renderPriceList()" class="px-3 py-2 rounded-xl bg-white text-slate-700 text-xs font-black border border-slate-200 outline-none focus:border-purple-500">
                         <option value="home" selected="">RESI</option>
-                        <option value="biz">C&amp;S</option>
+                        <option value="biz">C&amp;I</option>
                     </select>
                     <button id="price-list-currency-toggle" onclick="togglePriceListCurrency()" class="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-black hover:bg-black border border-slate-900">RM / ¥</button>
                     <span id="price-list-selected-count" class="text-xs font-black text-slate-400 uppercase tracking-widest">0 selected</span>
@@ -1669,11 +1669,11 @@ I / We, the undersigned, hereby accept the Solar PV with Battery + Inverter Syst
                             <th class="py-4 px-4 text-right">Avg Cost</th>
                             <th class="py-4 px-4 text-right">30D Market</th>
                             <th class="py-4 px-4 text-right">RESI Profit</th>
-                            <th class="py-4 px-4 text-right">C&amp;S Profit</th>
+                            <th class="py-4 px-4 text-right">C&amp;I Profit</th>
                             <th class="py-4 px-4 text-right">Clearance RESI</th>
-                            <th class="py-4 px-4 text-right">Clearance C&amp;S</th>
+                            <th class="py-4 px-4 text-right">Clearance C&amp;I</th>
                             <th class="py-4 px-4 text-right">Grey RESI</th>
-                            <th class="py-4 px-4 text-right">Grey C&amp;S</th>
+                            <th class="py-4 px-4 text-right">Grey C&amp;I</th>
                             <th class="py-4 px-4">Certification</th>
                         </tr>
                     </thead>
@@ -3897,7 +3897,7 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                     <div class="p-6 border-b border-slate-100">
                         <h3 class="text-lg font-bold text-slate-800">海外安装商报价</h3>
-                        <p class="text-xs text-slate-400 mt-1">按 Excel 劳工价格表计算：基础安装成本（RM）= 变量项 × Proposed System Size + RESI/C&amp;S 固定与分档项目。</p>
+                        <p class="text-xs text-slate-400 mt-1">按 Excel 劳工价格表计算：基础安装成本（RM）= 变量项 × Proposed System Size + RESI/C&amp;I 固定与分档项目。</p>
                     </div>
                     <div class="p-6 grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
                         <div>
@@ -4641,7 +4641,7 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
                     <p>Clearance Cost: ¥0.6056 × (1 + 20% duty + 10% SST) = <span class="font-black text-blue-200">¥0.7873</span></p>
                     <p>Grey Cost: ¥0.6056 × (1 + 5% grey tax) = <span class="font-black text-indigo-200">¥0.6359</span></p>
                     <p>RESI Price: cost × (1 + 30% CN + 15% MY) = +45.00%</p>
-                    <p>C&amp;S Price: cost × (1 + 30% CN + 15% MY) = +45.00%</p>
+                    <p>C&amp;I Price: cost × (1 + 30% CN + 15% MY) = +45.00%</p>
                     <p>Market 30D: <span class="font-black text-amber-200">暂无30天市场价</span></p>
                     <p>FX: 1 MYR = 1.7200 CNY</p>
                     <p class="pt-1 text-slate-300">Certifications: IEC 62109-1, IEC 62109-2, IEC 62477 (when applicable), IEC 62109-1/2, SIRIM / local utility requirements where applicable</p>
@@ -10023,7 +10023,7 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
             const scenarioEl = document.getElementById('installer-scenario-label');
             const sizeEl = document.getElementById('installer-size-label');
             const detailEl = document.getElementById('installer-cost-detail');
-            if (scenarioEl) scenarioEl.textContent = result.scenario === 'biz' ? 'C&S' : 'RESI';
+            if (scenarioEl) scenarioEl.textContent = result.scenario === 'biz' ? 'C&I' : 'RESI';
             if (sizeEl) sizeEl.textContent = `${result.sizeKwp.toFixed(2)} kWp`;
             if (!detailEl) return;
             detailEl.innerHTML = result.detail.map(item => `
@@ -10943,9 +10943,9 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
         let currentPriceListVisibleIds = [];
         const PRICE_LIST_TYPES = [
             { key: 'clearanceHomePrice', label: 'Clearance RESI', costKey: 'clearanceCost', profitTarget: 'home' },
-            { key: 'clearanceBizPrice', label: 'Clearance C&S', costKey: 'clearanceCost', profitTarget: 'biz' },
+            { key: 'clearanceBizPrice', label: 'Clearance C&I', costKey: 'clearanceCost', profitTarget: 'biz' },
             { key: 'grayHomePrice', label: 'Grey RESI', costKey: 'grayCost', profitTarget: 'home' },
-            { key: 'grayBizPrice', label: 'Grey C&S', costKey: 'grayCost', profitTarget: 'biz' }
+            { key: 'grayBizPrice', label: 'Grey C&I', costKey: 'grayCost', profitTarget: 'biz' }
         ];
         function getPriceListSelectedPriceType() {
             const basis = String(document.getElementById('price-list-price-basis')?.value || 'clearance') === 'gray' ? 'gray' : 'clearance';
@@ -10954,9 +10954,9 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
         }
         function getPriceListSelectedPriceLabel() {
             const type = getPriceListSelectedPriceType();
-            if (type === 'clearance_biz') return 'Clearance C&S';
+            if (type === 'clearance_biz') return 'Clearance C&I';
             if (type === 'gray_home') return 'Grey RESI';
-            if (type === 'gray_biz') return 'Grey C&S';
+            if (type === 'gray_biz') return 'Grey C&I';
             return 'Clearance RESI';
         }
         function getPriceListSelectedPcsPrice(pricing = {}) {
@@ -11510,7 +11510,7 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
                     <p>Clearance Cost: ${formatCny(r.avgCost, 4)} × (1 + ${r.dutyPct}% duty + ${r.sstPct}% SST) = <span class="font-black text-blue-200">${formatCny(r.clearanceCost, 4)}</span></p>
                     <p>Grey Cost: ${formatCny(r.avgCost, 4)} × (1 + ${r.grayPct}% grey tax) = <span class="font-black text-indigo-200">${formatCny(r.grayCost, 4)}</span></p>
                     <p>RESI Price: cost × (1 + ${r.cnHomePct}% CN + ${r.myHomePct}% MY) = +${homeProfit.toFixed(2)}%</p>
-                    <p>C&S Price: cost × (1 + ${r.cnBizPct}% CN + ${r.myBizPct}% MY) = +${bizProfit.toFixed(2)}%</p>
+                    <p>C&I Price: cost × (1 + ${r.cnBizPct}% CN + ${r.myBizPct}% MY) = +${bizProfit.toFixed(2)}%</p>
                     <p>Market 30D: <span class="font-black text-amber-200">${market.records.length ? formatMarketPrice(market.avgCny, market.unit, 'CNY') : '暂无30天市场价'}</span></p>
                     <p>FX: 1 MYR = ${getSalesOutRateCnyPerMyr().toFixed(4)} CNY</p>
                     <p class="pt-1 text-slate-300">Certifications: ${(req.standards || []).slice(0, 5).map(htmlSafe).join(', ') || '-'}</p>
@@ -11558,16 +11558,16 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
                     '30D Market Avg MYR': market.records.length ? market.avgCny / getSalesOutRateCnyPerMyr() : '',
                     'Latest Market CNY': market.latest ? market.latest.priceCny : '',
                     'RESI Profit %': homeProfit,
-                    'C&S Profit %': bizProfit,
+                    'C&I Profit %': bizProfit,
                     'Clearance RESI CNY': r.clearanceHomePrice || 0,
                     'Clearance RESI MYR': (r.clearanceHomePrice || 0) / getSalesOutRateCnyPerMyr(),
-                    'Clearance C&S CNY': r.clearanceBizPrice || 0,
-                    'Clearance C&S MYR': (r.clearanceBizPrice || 0) / getSalesOutRateCnyPerMyr(),
+                    'Clearance C&I CNY': r.clearanceBizPrice || 0,
+                    'Clearance C&I MYR': (r.clearanceBizPrice || 0) / getSalesOutRateCnyPerMyr(),
                     'Grey RESI CNY': r.grayHomePrice || 0,
                     'Grey RESI MYR': (r.grayHomePrice || 0) / getSalesOutRateCnyPerMyr(),
-                    'Grey C&S CNY': r.grayBizPrice || 0,
-                    'Grey C&S MYR': (r.grayBizPrice || 0) / getSalesOutRateCnyPerMyr(),
-                    'Formula Note': `Clearance cost = Avg Cost * (1 + duty ${r.dutyPct}% + SST ${r.sstPct}%); Grey cost = Avg Cost * (1 + grey tax ${r.grayPct}%); RESI profit = CN ${r.cnHomePct}% + MY ${r.myHomePct}%; C&S profit = CN ${r.cnBizPct}% + MY ${r.myBizPct}%; FX 1 MYR = ${getSalesOutRateCnyPerMyr().toFixed(4)} CNY`,
+                    'Grey C&I CNY': r.grayBizPrice || 0,
+                    'Grey C&I MYR': (r.grayBizPrice || 0) / getSalesOutRateCnyPerMyr(),
+                    'Formula Note': `Clearance cost = Avg Cost * (1 + duty ${r.dutyPct}% + SST ${r.sstPct}%); Grey cost = Avg Cost * (1 + grey tax ${r.grayPct}%); RESI profit = CN ${r.cnHomePct}% + MY ${r.myHomePct}%; C&I profit = CN ${r.cnBizPct}% + MY ${r.myBizPct}%; FX 1 MYR = ${getSalesOutRateCnyPerMyr().toFixed(4)} CNY`,
                     'Certification Countries': (req.countries || []).map(priceListCountryLabel).join(', '),
                     'Certification Standards': (req.standards || []).join('; ')
                 };
@@ -12416,9 +12416,9 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
         }
         function getPickerSelectedPriceLabel() {
             const type = getPickerSelectedPriceType();
-            if (type === 'clearance_biz') return 'Clearance C&S';
+            if (type === 'clearance_biz') return 'Clearance C&I';
             if (type === 'gray_home') return 'Grey RESI';
-            if (type === 'gray_biz') return 'Grey C&S';
+            if (type === 'gray_biz') return 'Grey C&I';
             return 'Clearance RESI';
         }
         function getPickerSelectedPriceValue(pricing, type) {
@@ -12458,8 +12458,8 @@ AS/NZS compliance where applicable">Project-specific electrical/import complianc
             const next = mode === 'biz' ? 'biz' : 'home';
             const solarMode = (typeof getQuoteSolarCustomerMode === 'function') ? getQuoteSolarCustomerMode() : 'home';
             if (!opts.force && next !== solarMode) {
-                const solarLabel = solarMode === 'biz' ? 'C&S' : 'RESI';
-                const nextLabel = next === 'biz' ? 'C&S' : 'RESI';
+                const solarLabel = solarMode === 'biz' ? 'C&I' : 'RESI';
+                const nextLabel = next === 'biz' ? 'C&I' : 'RESI';
                 const ok = confirm(`当前 Solar Calculation Inputs 选择的是 ${solarLabel}，From Inventory 将切换为 ${nextLabel} 报价，可能与当前 Solar 状态不一致。是否继续？`);
                 if (!ok) {
                     updatePickerModeButtons();

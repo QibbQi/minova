@@ -3351,6 +3351,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <input type="text" id="inv-product-id" list="inv-product-suggestions" oninput="onInventoryProductChange()" onchange="onInventoryProductChange()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
                         <datalist id="inv-product-suggestions"><option value="GFZJ001">210R N-type组件 (联塑 LESSO)</option><option value="GFZJ002">211R N-type 组件 (汉伏)</option><option value="NBQ001">25kW 三相逆变器 (明匠)</option><option value="DC001">5kW 电池 (明匠)</option><option value="NBQ002">5.5kW 逆变器 (明匠)</option><option value="J001">堆叠式配件 (明匠)</option><option value="PROD001">5.5kW-5kWh 一体机 (明匠)</option><option value="PROD002">5.5kW-10kWh 一体机 (明匠)</option><option value="PROD003">11kW-15kWh 一体机 (明匠)</option><option value="C001">125kW-261kWh 户外柜 (埃克森)</option></datalist>
                     </div>
+                    <div id="inv-product-name-container" class="md:col-span-2" style="display: none;">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">产品名称</label>
+                        <input type="text" id="inv-product-name" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                    </div>
                     <div>
                         <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">子类目（自动）</label>
                         <input type="text" id="inv-subcategory" readonly="" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-slate-50 text-slate-600">
@@ -9603,10 +9607,14 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 productEl.classList.toggle('bg-slate-50', productEl.readOnly);
             }
             const qtyLabel = document.getElementById('inv-quantity-label');
+            const productNameWrap = document.getElementById('inv-product-name-container');
+            const productNameEl = document.getElementById('inv-product-name');
             const outDateWrap = document.getElementById('inv-out-date-container');
             const outNatureWrap = document.getElementById('inv-out-nature-container');
             const transferFromWrap = document.getElementById('inv-transfer-from-container');
             const transferToWrap = document.getElementById('inv-transfer-to-container');
+            if (productNameWrap) productNameWrap.style.display = type === 'edit' ? 'block' : 'none';
+            if (productNameEl && type !== 'edit') productNameEl.value = '';
             if (outDateWrap) outDateWrap.style.display = type === 'out' ? 'block' : 'none';
             if (outNatureWrap) outNatureWrap.style.display = type === 'out' ? 'block' : 'none';
             if (transferFromWrap) transferFromWrap.style.display = 'none';
@@ -9655,7 +9663,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 document.getElementById('inv-title').innerText = '修改入库';
                 const item = inventory.find(i => i.id === targetId);
                 if(item) {
+                    const product = products.find(p => p.id === item.productId);
                     document.getElementById('inv-product-id').value = item.productId;
+                    if (productNameEl) productNameEl.value = product?.name || '';
                     document.getElementById('inv-quantity').value = String(parseInt(item.quantity, 10) || 0);
                     document.getElementById('inv-spec').value = String(Number.isFinite(parseFloat(item.spec)) ? parseFloat(item.spec) : 1);
                     document.getElementById('inv-price').value = String(parseFloat(item.purchasePrice) || 0);
@@ -9760,6 +9770,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const quantity = parseInt(document.getElementById('inv-quantity').value) || 0;
             const purchasePrice = parseFloat(document.getElementById('inv-price').value) || 0;
             const location = document.getElementById('inv-location').value;
+            const nextProductName = String(document.getElementById('inv-product-name')?.value || '').trim();
 
             if(!productId) return alert("请选择产品编号！");
             const product = products.find(p => p.id === productId);
@@ -9833,6 +9844,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 if (inventory.some(i => i.id !== item.id && String(i.batchNo || '') === String(batchNo))) {
                     return alert("采购批次号已存在，请调整采购入库时间后自动生成新批次号！");
                 }
+                const oldProductName = String(product.name || '').trim();
+                let nameChangeNote = '';
+                if (nextProductName && nextProductName !== oldProductName) {
+                    product.name = nextProductName;
+                    product.ts = Date.now();
+                    nameChangeNote = ` | 产品名称 ${oldProductName || '-'} → ${nextProductName}`;
+                }
                 const spec = parseFloat(document.getElementById('inv-spec').value) || 0;
                 const shippingRatePct = parseFloat(document.getElementById('inv-shipping-rate').value) || 0;
                 const domesticTaxRatePct = parseFloat(document.getElementById('inv-domestic-tax-rate').value) || 0;
@@ -9860,10 +9878,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     ts: Date.now(),
                     type: 'modify',
                     productId,
-                    productName,
+                    productName: product.name || productName,
                     quantity,
                     batchNo,
-                    note: `修改入库 ${purchaseDate} | 存放 ${location || '未指定位置'} | 总成本¥${totalCost.toFixed(2)}`
+                    note: `修改入库 ${purchaseDate} | 存放 ${location || '未指定位置'} | 总成本¥${totalCost.toFixed(2)}${nameChangeNote}`
                 });
             } else {
                 const item = inventory.find(i => i.id === window.inventoryTargetId);

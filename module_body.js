@@ -5811,10 +5811,14 @@
                 productEl.classList.toggle('bg-slate-50', productEl.readOnly);
             }
             const qtyLabel = document.getElementById('inv-quantity-label');
+            const productNameWrap = document.getElementById('inv-product-name-container');
+            const productNameEl = document.getElementById('inv-product-name');
             const outDateWrap = document.getElementById('inv-out-date-container');
             const outNatureWrap = document.getElementById('inv-out-nature-container');
             const transferFromWrap = document.getElementById('inv-transfer-from-container');
             const transferToWrap = document.getElementById('inv-transfer-to-container');
+            if (productNameWrap) productNameWrap.style.display = type === 'edit' ? 'block' : 'none';
+            if (productNameEl && type !== 'edit') productNameEl.value = '';
             if (outDateWrap) outDateWrap.style.display = type === 'out' ? 'block' : 'none';
             if (outNatureWrap) outNatureWrap.style.display = type === 'out' ? 'block' : 'none';
             if (transferFromWrap) transferFromWrap.style.display = 'none';
@@ -5863,7 +5867,9 @@
                 document.getElementById('inv-title').innerText = '修改入库';
                 const item = inventory.find(i => i.id === targetId);
                 if(item) {
+                    const product = products.find(p => p.id === item.productId);
                     document.getElementById('inv-product-id').value = item.productId;
+                    if (productNameEl) productNameEl.value = product?.name || '';
                     document.getElementById('inv-quantity').value = String(parseInt(item.quantity, 10) || 0);
                     document.getElementById('inv-spec').value = String(Number.isFinite(parseFloat(item.spec)) ? parseFloat(item.spec) : 1);
                     document.getElementById('inv-price').value = String(parseFloat(item.purchasePrice) || 0);
@@ -5968,6 +5974,7 @@
             const quantity = parseInt(document.getElementById('inv-quantity').value) || 0;
             const purchasePrice = parseFloat(document.getElementById('inv-price').value) || 0;
             const location = document.getElementById('inv-location').value;
+            const nextProductName = String(document.getElementById('inv-product-name')?.value || '').trim();
 
             if(!productId) return alert("请选择产品编号！");
             const product = products.find(p => p.id === productId);
@@ -6041,6 +6048,13 @@
                 if (inventory.some(i => i.id !== item.id && String(i.batchNo || '') === String(batchNo))) {
                     return alert("采购批次号已存在，请调整采购入库时间后自动生成新批次号！");
                 }
+                const oldProductName = String(product.name || '').trim();
+                let nameChangeNote = '';
+                if (nextProductName && nextProductName !== oldProductName) {
+                    product.name = nextProductName;
+                    product.ts = Date.now();
+                    nameChangeNote = ` | 产品名称 ${oldProductName || '-'} → ${nextProductName}`;
+                }
                 const spec = parseFloat(document.getElementById('inv-spec').value) || 0;
                 const shippingRatePct = parseFloat(document.getElementById('inv-shipping-rate').value) || 0;
                 const domesticTaxRatePct = parseFloat(document.getElementById('inv-domestic-tax-rate').value) || 0;
@@ -6068,10 +6082,10 @@
                     ts: Date.now(),
                     type: 'modify',
                     productId,
-                    productName,
+                    productName: product.name || productName,
                     quantity,
                     batchNo,
-                    note: `修改入库 ${purchaseDate} | 存放 ${location || '未指定位置'} | 总成本¥${totalCost.toFixed(2)}`
+                    note: `修改入库 ${purchaseDate} | 存放 ${location || '未指定位置'} | 总成本¥${totalCost.toFixed(2)}${nameChangeNote}`
                 });
             } else {
                 const item = inventory.find(i => i.id === window.inventoryTargetId);

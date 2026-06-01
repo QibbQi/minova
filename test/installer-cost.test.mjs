@@ -20,30 +20,30 @@ vm.runInContext(`${modelMatch[1]}; window.__testInstallerModel = { normalizeInst
 
 const { normalizeInstallerQuoteSettings, computeInstallerCost } = sandbox.window.__testInstallerModel;
 
-test('computes RESI Excel base cost and additive installer profit', () => {
+test('computes RESI variable installation cost and additive installer profit', () => {
   const settings = normalizeInstallerQuoteSettings(null);
   const result = computeInstallerCost(11.7, 'home', settings, { cnPct: 5, myPct: 15 }, 1.72);
 
-  assert.equal(result.baseMyr, 13635);
-  assert.equal(result.finalMyr, 16362);
-  assert.equal(result.finalCny, 28142.64);
-  assert.equal(result.detail.find((item) => item.key === 'powerStudy').amount, 0);
+  assert.equal(result.baseMyr, 6435);
+  assert.equal(result.finalMyr, 7722);
+  assert.equal(result.finalCny, 13281.84);
+  assert.equal(result.detail.map((item) => item.key).join(','), 'installation,frameMounting,cable');
 });
 
-test('adds RESI power study when system size is above 15 kWp', () => {
+test('does not add RESI fixed items when system size is above 15 kWp', () => {
   const settings = normalizeInstallerQuoteSettings(null);
   const result = computeInstallerCost(16, 'home', settings, { cnPct: 0, myPct: 0 }, 1.72);
 
-  assert.equal(result.detail.find((item) => item.key === 'powerStudy').amount, 1000);
-  assert.equal(result.baseMyr, 17000);
+  assert.equal(result.detail.some((item) => item.key === 'powerStudy'), false);
+  assert.equal(result.baseMyr, 8800);
 });
 
-test('computes C&I tiered cost from Proposed System Size', () => {
+test('computes C&I cost from variable items only', () => {
   const settings = normalizeInstallerQuoteSettings(null);
   const result = computeInstallerCost(100, 'biz', settings, { cnPct: 0, myPct: 0 }, 1.72);
 
-  assert.equal(result.detail.find((item) => item.key === 'powerStudy').amount, 5000);
-  assert.equal(result.detail.find((item) => item.key === 'design').amount, 3600);
-  assert.equal(result.detail.find((item) => item.key === 'db').amount, 10500);
-  assert.equal(result.baseMyr, 76100);
+  assert.equal(result.detail.some((item) => item.key === 'powerStudy'), false);
+  assert.equal(result.detail.some((item) => item.key === 'design'), false);
+  assert.equal(result.detail.some((item) => item.key === 'db'), false);
+  assert.equal(result.baseMyr, 55000);
 });

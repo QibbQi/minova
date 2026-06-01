@@ -1956,31 +1956,6 @@
                 { key: 'frameMounting', label: 'Frame/Mounting', amount: s.frameMountingRmPerKwp * size, formula: `${s.frameMountingRmPerKwp}/kWp × ${size.toFixed(2)}` },
                 { key: 'cable', label: 'DC and AC Cable', amount: s.cableRmPerKwp * size, formula: `${s.cableRmPerKwp}/kWp × ${size.toFixed(2)}` }
             ];
-            if (target === 'biz') {
-                const b = s.biz;
-                const powerStudy = size > b.powerStudyMinKwp && size < b.powerStudyMaxKwp ? b.powerStudyFee : 0;
-                const design = size <= b.designBaseThresholdKwp ? b.designBaseFee : b.designBaseFee + ((size - b.designBaseThresholdKwp) * b.designAdditionalPerKwp);
-                const db = (b.dbPer100Kwp / 100) * size;
-                detail.push(
-                    { key: 'peEndorsement', label: 'PE Endorsement', amount: b.peEndorsement, formula: 'per case' },
-                    { key: 'powerStudy', label: 'Power Study', amount: powerStudy, formula: `${b.powerStudyMinKwp}<kWp<${b.powerStudyMaxKwp}` },
-                    { key: 'design', label: 'Design and Applications', amount: design, formula: `<=${b.designBaseThresholdKwp}kWp ${b.designBaseFee}; +${b.designAdditionalPerKwp}/kWp above` },
-                    { key: 'db', label: 'DB c/w Breakers & SPD', amount: db, formula: `${b.dbPer100Kwp}/100kWp` },
-                    { key: 'wireman', label: 'Wireman', amount: b.wireman, formula: 'per case' },
-                    { key: 'chargeman', label: 'Chargeman', amount: b.chargeman, formula: 'appointed by owner' }
-                );
-            } else {
-                const h = s.home;
-                const powerStudy = size > h.powerStudyThresholdKwp ? h.powerStudyFee : 0;
-                detail.push(
-                    { key: 'peEndorsement', label: 'PE Endorsement', amount: h.peEndorsement, formula: 'per case' },
-                    { key: 'powerStudy', label: 'Power Study', amount: powerStudy, formula: `above ${h.powerStudyThresholdKwp} kWp` },
-                    { key: 'design', label: 'Design and Applications', amount: h.designApplications, formula: 'per case' },
-                    { key: 'db', label: 'DB c/w Breakers & SPD', amount: h.db, formula: 'below 20kWp' },
-                    { key: 'wireman', label: 'Wireman', amount: h.wireman, formula: 'per case' },
-                    { key: 'chargeman', label: 'Chargeman', amount: h.chargeman, formula: 'per case' }
-                );
-            }
             detail.forEach(item => { item.amount = Math.round((installerNum(item.amount, 0) + Number.EPSILON) * 10000) / 10000; });
             const baseMyr = Math.round((detail.reduce((sum, item) => sum + item.amount, 0) + Number.EPSILON) * 10000) / 10000;
             const cnPct = installerNum(profit.cnPct, 0);

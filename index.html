@@ -2886,7 +2886,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                     <div class="p-6 border-b border-slate-100">
                         <h3 class="text-lg font-bold text-slate-800">Overseas Installer Quote</h3>
-                        <p class="text-xs text-slate-400 mt-1">Calculated from the Excel labor sheet: base installation cost (RM) = variable items × Proposed System Size + RESI/C&amp;I fixed and tiered items.</p>
+                        <p class="text-xs text-slate-400 mt-1">Calculated from the Excel labor sheet: base installation cost (RM) = variable items × Proposed System Size.</p>
                     </div>
                     <div class="p-6 grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
                         <div>
@@ -2908,13 +2908,6 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <div class="md:col-span-2">
                             <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Base Installation Cost (RMB)</label>
                             <input type="text" id="installer-total-cny" readonly="" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-slate-50 text-slate-700 font-bold text-right">
-                        </div>
-                        <div class="md:col-span-6 rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
-                            <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
-                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Excel Cost Breakdown</p>
-                                <p class="text-[11px] font-bold text-slate-500"><span id="installer-scenario-label">RESI</span> · <span id="installer-size-label">0.00 kWp</span></p>
-                            </div>
-                            <div id="installer-cost-detail" class="grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px] text-slate-600"></div>
                         </div>
                     </div>
                 </div>
@@ -5755,31 +5748,6 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 { key: 'frameMounting', label: 'Frame/Mounting', amount: s.frameMountingRmPerKwp * size, formula: `${s.frameMountingRmPerKwp}/kWp × ${size.toFixed(2)}` },
                 { key: 'cable', label: 'DC and AC Cable', amount: s.cableRmPerKwp * size, formula: `${s.cableRmPerKwp}/kWp × ${size.toFixed(2)}` }
             ];
-            if (target === 'biz') {
-                const b = s.biz;
-                const powerStudy = size > b.powerStudyMinKwp && size < b.powerStudyMaxKwp ? b.powerStudyFee : 0;
-                const design = size <= b.designBaseThresholdKwp ? b.designBaseFee : b.designBaseFee + ((size - b.designBaseThresholdKwp) * b.designAdditionalPerKwp);
-                const db = (b.dbPer100Kwp / 100) * size;
-                detail.push(
-                    { key: 'peEndorsement', label: 'PE Endorsement', amount: b.peEndorsement, formula: 'per case' },
-                    { key: 'powerStudy', label: 'Power Study', amount: powerStudy, formula: `${b.powerStudyMinKwp}<kWp<${b.powerStudyMaxKwp}` },
-                    { key: 'design', label: 'Design and Applications', amount: design, formula: `<=${b.designBaseThresholdKwp}kWp ${b.designBaseFee}; +${b.designAdditionalPerKwp}/kWp above` },
-                    { key: 'db', label: 'DB c/w Breakers & SPD', amount: db, formula: `${b.dbPer100Kwp}/100kWp` },
-                    { key: 'wireman', label: 'Wireman', amount: b.wireman, formula: 'per case' },
-                    { key: 'chargeman', label: 'Chargeman', amount: b.chargeman, formula: 'appointed by owner' }
-                );
-            } else {
-                const h = s.home;
-                const powerStudy = size > h.powerStudyThresholdKwp ? h.powerStudyFee : 0;
-                detail.push(
-                    { key: 'peEndorsement', label: 'PE Endorsement', amount: h.peEndorsement, formula: 'per case' },
-                    { key: 'powerStudy', label: 'Power Study', amount: powerStudy, formula: `above ${h.powerStudyThresholdKwp} kWp` },
-                    { key: 'design', label: 'Design and Applications', amount: h.designApplications, formula: 'per case' },
-                    { key: 'db', label: 'DB c/w Breakers & SPD', amount: h.db, formula: 'below 20kWp' },
-                    { key: 'wireman', label: 'Wireman', amount: h.wireman, formula: 'per case' },
-                    { key: 'chargeman', label: 'Chargeman', amount: h.chargeman, formula: 'per case' }
-                );
-            }
             detail.forEach(item => { item.amount = Math.round((installerNum(item.amount, 0) + Number.EPSILON) * 10000) / 10000; });
             const baseMyr = Math.round((detail.reduce((sum, item) => sum + item.amount, 0) + Number.EPSILON) * 10000) / 10000;
             const cnPct = installerNum(profit.cnPct, 0);

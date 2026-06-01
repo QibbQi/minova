@@ -1577,6 +1577,73 @@
         function getProductSupplierDisplay(product) {
             return getSupplierDisplayName(getProductSupplier(product)) || String(product?.vendor || '').trim() || '-';
         }
+        function normalizeProductPriceCurrency(value) {
+            return String(value || '').trim().toUpperCase() === 'MYR' ? 'MYR' : 'CNY';
+        }
+        function inferSupplierPriceCurrency(supplier) {
+            const text = [
+                supplier?.country,
+                supplier?.region,
+                supplier?.address,
+                supplier?.notes
+            ].map(v => String(v || '').trim().toLowerCase()).filter(Boolean).join(' ');
+            if (/(malaysia|malaysian|\bmy\b|马来西亚|馬來西亞)/i.test(text)) return 'MYR';
+            if (/(china|chinese|\bcn\b|中国|中國|mainland)/i.test(text)) return 'CNY';
+            return 'CNY';
+        }
+        function getProductCurrency(product, field = 'cost') {
+            const p = product && typeof product === 'object' ? product : {};
+            const direct = field === 'price' ? p.priceCurrency : p.costCurrency;
+            if (direct) return normalizeProductPriceCurrency(direct);
+            if (p.currency) return normalizeProductPriceCurrency(p.currency);
+            return inferSupplierPriceCurrency(getProductSupplier(p));
+        }
+        function productAmountToCny(value, currency) {
+            const n = Number.isFinite(parseFloat(value)) ? parseFloat(value) : 0;
+            return normalizeProductPriceCurrency(currency) === 'MYR' ? n * getSalesOutRateCnyPerMyr() : n;
+        }
+        function getProductCostCny(product) {
+            return productAmountToCny(product?.cost, getProductCurrency(product, 'cost'));
+        }
+        function getProductPriceCny(product) {
+            return productAmountToCny(product?.price, getProductCurrency(product, 'price'));
+        }
+        function getProductCurrencySymbol(currency) {
+            return normalizeProductPriceCurrency(currency) === 'MYR' ? 'RM' : '¥';
+        }
+        function formatProductBaseAmount(product, field = 'cost', digits = 2) {
+            const p = product && typeof product === 'object' ? product : {};
+            const currency = getProductCurrency(p, field);
+            const amount = Number.isFinite(parseFloat(p[field])) ? parseFloat(p[field]) : 0;
+            return `${getProductCurrencySymbol(currency)} ${amount.toFixed(digits)}`;
+        }
+        function updateProductPriceUnitNote() {
+            const note = document.getElementById('m-price-unit-note');
+            if (!note) return;
+            const category = document.getElementById('m-category')?.value || '';
+            const unit = normalizeUnitLabel(getMarketCategoryUnitMeta(category).unit || 'unit');
+            note.textContent = `Unit: /${unit}`;
+        }
+        function updateProductPriceCurrencyUi() {
+            const currency = normalizeProductPriceCurrency(document.getElementById('m-price-currency')?.value || 'CNY');
+            const symbol = getProductCurrencySymbol(currency);
+            const costLabel = document.getElementById('m-cost-currency-label');
+            const priceLabel = document.getElementById('m-price-currency-label');
+            if (costLabel) costLabel.textContent = symbol;
+            if (priceLabel) priceLabel.textContent = symbol;
+            updateProductPriceUnitNote();
+        }
+        function updateProductCurrencyFromSupplier(options = {}) {
+            const currencyEl = document.getElementById('m-price-currency');
+            if (!currencyEl) return;
+            if (options.skipExisting && window.editId) return;
+            const supplier = getSupplierByCode(document.getElementById('m-supplier-code')?.value || '');
+            currencyEl.value = inferSupplierPriceCurrency(supplier);
+            updateProductPriceCurrencyUi();
+        }
+        window.updateProductPriceUnitNote = updateProductPriceUnitNote;
+        window.updateProductPriceCurrencyUi = updateProductPriceCurrencyUi;
+        window.updateProductCurrencyFromSupplier = updateProductCurrencyFromSupplier;
         function getProductSupplierBrandForLang(product, lang = currentLang) {
             const supplier = getProductSupplier(product);
             return getSupplierDisplayNameForLang(supplier, lang) || String(product?.vendor || '').trim() || '-';
@@ -4311,7 +4378,9 @@
             }
             const sorted = [...products].sort((a,b) => (a[dbGroupMode] || '').localeCompare(b[dbGroupMode] || ''));
             list.innerHTML = sorted.map(p => {
-                const margin = p.price > 0 ? ((p.price - p.cost) / p.price * 100).toFixed(1) : 0;
+                const costCny = getProductCostCny(p);
+                const priceCny = getProductPriceCny(p);
+                const margin = priceCny > 0 ? ((priceCny - costCny) / priceCny * 100).toFixed(1) : 0;
                 const warrantyY = p.warrantyYears ? `${p.warrantyYears} years` : '-';
                 const warrantyC = p.warrantyCycles ? `${p.warrantyCycles} cycles` : '-';
                 const supplier = getProductSupplier(p);
@@ -4337,8 +4406,8 @@
                         <td class="py-4 px-4 text-xs text-slate-500">${htmlSafe(supplierName)}</td>
                         <td class="py-4 px-4 text-xs">${contactHtml}</td>
                         <td class="py-4 px-4 text-xs text-slate-500 max-w-[200px] truncate" title="${htmlSafe(certTitle)}">${htmlSafe(certBrief)}</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-400">¥${(p.cost||0).toFixed(2)}</td>
-                        <td class="py-4 px-4 text-right text-sm font-bold text-purple-700">¥${(p.price||0).toFixed(2)}</td>
+                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-400">${formatProductBaseAmount(p, 'cost')}</td>
+                        <td class="py-4 px-4 text-right text-sm font-bold text-purple-700">${formatProductBaseAmount(p, 'price')}</td>
                         <td class="py-4 px-4 text-right"><span class="text-[10px] font-black px-2 py-1 rounded ${margin > 30 ? 'bg-green-50 text-green-600' : 'bg-slate-50 text-slate-400'}">${margin}%</span></td>
                         <td class="py-4 px-4 text-center">
                             <div class="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
@@ -5266,7 +5335,7 @@
             if (subEl) subEl.value = p?.scenario || '';
             if (p) {
                 const priceEl = document.getElementById('inv-price');
-                if (priceEl && !priceEl.value) priceEl.value = String(parseFloat(p.cost || 0).toFixed(2));
+                if (priceEl && !priceEl.value) priceEl.value = String(getProductCostCny(p).toFixed(2));
                 const taxEl = document.getElementById('inv-domestic-tax-rate');
                 if (taxEl && !taxEl.value) taxEl.value = String(getDefaultDomesticTaxRatePercent(p.category));
             }
@@ -6328,7 +6397,7 @@
                 : (Number.isFinite(parseFloat(p.spec)) ? parseFloat(p.spec) : 1);
             const def = getDefaultTaxInputsForProduct(p);
             const inventoryAvg = getAverageInventoryCostPerSpec(p.id, spec);
-            const avgFallback = Number.isFinite(parseFloat(p.cost)) ? parseFloat(p.cost) : 0;
+            const avgFallback = getProductCostCny(p);
             const avgCost = inventoryAvg > 0 ? inventoryAvg : avgFallback;
             const costUnit = getMarketCategoryUnitMeta(p.category || '').unit;
             const pcsMultiplier = getProductSpecMultiplierForUnit(p, spec, costUnit);
@@ -7341,6 +7410,7 @@
                 return;
             }
             updateSupplierSelects(window.editId ? (products.find(p => p.id === window.editId)?.supplierCode || '') : '');
+            updateProductCurrencyFromSupplier({ skipExisting: true });
             updateSubcatSuggestions();
             if (!window.editId) {
                 ['tuv', 'specs'].forEach(type => {
@@ -7366,6 +7436,9 @@
                 const el = document.getElementById(id);
                 if (el) el.value = '';
             });
+            const currencyEl = document.getElementById('m-price-currency');
+            if (currencyEl) currencyEl.value = 'CNY';
+            updateProductPriceCurrencyUi();
             renderCertificationCountryChoices();
             window.__certificationAutoFilled = false;
             window.__productImageDraft = '';
@@ -7378,6 +7451,7 @@
             const supplierCode = normalizeSupplierCode(document.getElementById('m-supplier-code')?.value || '');
             const supplier = getSupplierByCode(supplierCode);
             if (!supplier) return alert('Please select a supplier from Supplier Master Data.');
+            const productCurrency = normalizeProductPriceCurrency(document.getElementById('m-price-currency')?.value || inferSupplierPriceCurrency(supplier));
             const data = {
                 id: window.editId || generateNextId(category),
                 name: document.getElementById('m-name').value,
@@ -7392,7 +7466,9 @@
                 contact: document.getElementById('m-contact').value,
                 contactInfo: document.getElementById('m-contact-info').value,
                 cost: parseFloat(document.getElementById('m-cost').value) || 0,
+                costCurrency: productCurrency,
                 price: parseFloat(document.getElementById('m-price').value) || 0,
+                priceCurrency: productCurrency,
                 certificationRequirements: readProductCertificationRequirementsFromModal(),
                 productImageDataUrl: String(window.__productImageDraft || ''),
                 ts: Date.now()
@@ -7438,6 +7514,8 @@
             document.getElementById('m-contact-info').value = p.contactInfo || '';
             document.getElementById('m-cost').value = p.cost || 0;
             document.getElementById('m-price').value = p.price || 0;
+            if (document.getElementById('m-price-currency')) document.getElementById('m-price-currency').value = getProductCurrency(p, 'cost');
+            updateProductPriceCurrencyUi();
             const certReq = getProductCertificationRequirements(p);
             renderCertificationCountryChoices(certReq.countries);
             const certTextarea = document.getElementById('m-cert-requirements');
@@ -7472,6 +7550,7 @@
             contactInfo: '联系方式',
             certificationCountries: '产品认证国家',
             certificationStandards: '产品认证标准',
+            costCurrency: '基准币种',
             cost: '基准采购价',
             price: '基准售价'
         };
@@ -7489,6 +7568,7 @@
             contactInfo: 'Contact Info',
             certificationCountries: 'Certification Countries',
             certificationStandards: 'Certification Standards',
+            costCurrency: 'Base Currency',
             cost: 'Base Cost',
             price: 'Base Price'
         };
@@ -7618,7 +7698,8 @@
                 category: ['类目', 'Category', 'Product Category'],
                 scenario: ['应用场景', 'Subcategory', 'Application Scenario'],
                 certificationCountries: ['产品认证国家', '认证国家', 'Certification Countries'],
-                certificationStandards: ['产品认证标准', '产品认证', 'Certification Standards', 'Product Certification']
+                certificationStandards: ['产品认证标准', '产品认证', 'Certification Standards', 'Product Certification'],
+                costCurrency: ['基准币种', 'Base Currency', 'Currency', 'Cost Currency', 'Price Currency']
             };
             container.innerHTML = Object.keys(systemFields).map(key => `
                 <div class="flex items-center">
@@ -7683,6 +7764,9 @@
                     newProduct.supplierCode = supplier.code;
                     newProduct.vendor = getSupplierDisplayName(supplier);
                 }
+                const importedCurrency = normalizeProductPriceCurrency(newProduct.costCurrency || newProduct.priceCurrency || inferSupplierPriceCurrency(supplier));
+                newProduct.costCurrency = importedCurrency;
+                newProduct.priceCurrency = importedCurrency;
                 if (newProduct.certificationCountries || newProduct.certificationStandards) {
                     const countries = uniqueCertList(String(newProduct.certificationCountries || '').split(/[\n;,/]+/)).map(v => v.toUpperCase());
                     const standards = uniqueCertList(String(newProduct.certificationStandards || '').split(/[\n;,]+/));
@@ -7719,7 +7803,7 @@
         }
 
         window.downloadTemplate = () => {
-            const headers = ['Product ID', 'Product Name', 'Category', 'Supplier', 'Spec Model', 'Subcategory', 'Warranty Years', 'Cycle Count', 'Lead Time', 'Contact', 'Contact Method', 'Product Certification Countries', 'Product Certification Standards', 'Base Cost', 'Base Price'];
+            const headers = ['Product ID', 'Product Name', 'Category', 'Supplier', 'Spec Model', 'Subcategory', 'Warranty Years', 'Cycle Count', 'Lead Time', 'Contact', 'Contact Method', 'Product Certification Countries', 'Product Certification Standards', 'Base Currency', 'Base Cost', 'Base Price'];
             const data = products.map(p => [
                 p.id || '',
                 p.name || '',
@@ -7734,13 +7818,14 @@
                 p.contactInfo || '',
                 (getProductCertificationRequirements(p).countries || []).join(', '),
                 (getProductCertificationRequirements(p).standards || []).join('; '),
+                getProductCurrency(p, 'cost'),
                 p.cost || 0,
                 p.price || 0
             ]);
 
             // 如果没数据，加一行示例
             if (data.length === 0) {
-                data.push(['PVM001', 'Sample Product', 'PV Module', 'Generic Supplier', '550W', 'Bifacial', '10', '0', '15 days', 'Sales Manager', 'sales@example.com', 'MY, US, EU', 'IEC 61215; IEC 61730', 500, 650]);
+                data.push(['PVM001', 'Sample Product', 'PV Module', 'Generic Supplier', '550W', 'Bifacial', '10', '0', '15 days', 'Sales Manager', 'sales@example.com', 'MY, US, EU', 'IEC 61215; IEC 61730', 'CNY', 500, 650]);
             }
 
             const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
@@ -7868,8 +7953,8 @@
             return {
                 costUnit: normalizeUnitLabel(unit),
                 pcsMultiplier,
-                pcsPrice: (parseFloat(p.price) || 0) * pcsMultiplier,
-                pcsCost: (parseFloat(p.cost) || 0) * pcsMultiplier,
+                pcsPrice: getProductPriceCny(p) * pcsMultiplier,
+                pcsCost: getProductCostCny(p) * pcsMultiplier,
                 priceType
             };
         }

@@ -34,7 +34,7 @@ function scriptText(fragment) {
 
 test('operations tabs and modals expose English visible UI text', () => {
   const fragments = [
-    snippetBetween('<nav class="flex">', '</nav>'),
+    snippetBetween('<nav class="app-shell-nav flex">', '</nav>'),
     snippetBetween('<main id="view-inventory"', '<main id="view-transport"'),
     snippetBetween('<main id="view-transport"', '<main id="view-database"'),
     snippetBetween('<main id="view-pvcalc"', '<main id="view-costcalc"'),

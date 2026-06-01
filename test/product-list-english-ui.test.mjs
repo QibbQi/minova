@@ -134,3 +134,36 @@ test('product import still accepts legacy Chinese column headers', () => {
     assert.equal(html.includes(text), true, `Missing legacy import compatibility text: ${text}`);
   });
 });
+
+test('product base prices support supplier-defaulted CNY and MYR currencies', () => {
+  const productModal = snippetBetween('<div id="modal"', '<div id="inventory-modal"');
+  const script = snippetBetween('function normalizeSupplierRecord', '// --- 批量导入逻辑 ---');
+
+  [
+    'id="m-price-currency"',
+    'onchange="updateProductPriceCurrencyUi()"',
+    'CNY ¥',
+    'MYR RM',
+    'Base Cost (<span id="m-cost-currency-label">¥</span>)',
+    'Base Price (<span id="m-price-currency-label">¥</span>)'
+  ].forEach((text) => {
+    assert.equal(productModal.includes(text), true, `Product modal is missing currency UI: ${text}`);
+  });
+
+  [
+    'function inferSupplierPriceCurrency',
+    'function getProductCostCny',
+    'function getProductPriceCny',
+    "costCurrency: productCurrency",
+    "priceCurrency: productCurrency",
+    'updateProductCurrencyFromSupplier({ skipExisting: true })',
+    "document.getElementById('m-price-currency').value = getProductCurrency(p, 'cost')",
+    'getProductPriceCny(p)',
+    'getProductCostCny(p)'
+  ].forEach((text) => {
+    assert.equal(script.includes(text), true, `Product currency logic is missing: ${text}`);
+  });
+
+  assert.match(script, /china[\s\S]*CNY/i, 'Supplier country inference should default China suppliers to CNY');
+  assert.match(script, /malaysia[\s\S]*MYR/i, 'Supplier country inference should default Malaysia suppliers to MYR');
+});

@@ -990,11 +990,15 @@
         let profitTarget = 'home';
         let installerProfitSettings = { cnPct: 0, myPct: 0 };
         let installerQuoteSettings = null;
+        let nonStockPricingStrategies = {};
         function safeJsonParseLoose(raw, fallback) {
             try { return raw ? JSON.parse(raw) : fallback; } catch { return fallback; }
         }
         function htmlSafe(v) {
             return String(v ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+        }
+        function domSafeId(v) {
+            return String(v ?? '').replace(/[^A-Za-z0-9_-]/g, '_');
         }
         const PRODUCT_CATEGORY_ALIASES = [
             ['光伏组件', 'PV Module'],
@@ -2243,6 +2247,7 @@
                     profitSettings = normalizeProfitSettings(embedded.data.profitSettings || null);
                     installerProfitSettings = normalizeInstallerProfitSettings(embedded.data.installerProfitSettings || installerProfitSettings || null);
                     installerQuoteSettings = normalizeInstallerQuoteSettings(embedded.data.installerQuoteSettings || installerQuoteSettings || null);
+                    nonStockPricingStrategies = normalizeNonStockPricingStrategies(embedded.data.nonStockPricingStrategies || safeJsonParseLoose(localStorage.getItem('minova_non_stock_pricing_v1'), {}));
                     normalizeProductClassificationData();
                     try {
                         if (embeddedAt) localStorage.setItem('minova_embedded_updatedAt', String(embeddedAt));
@@ -2257,6 +2262,7 @@
                         localStorage.setItem('minova_profit_settings_v1', JSON.stringify(profitSettings));
                         localStorage.setItem('minova_installer_profit_v1', JSON.stringify(installerProfitSettings));
                         localStorage.setItem('minova_installer_quote_settings_v1', JSON.stringify(installerQuoteSettings));
+                        localStorage.setItem('minova_non_stock_pricing_v1', JSON.stringify(nonStockPricingStrategies));
                     } catch (e) {}
                     companyCerts = embedded.data.companyCerts && typeof embedded.data.companyCerts === 'object' ? embedded.data.companyCerts : companyCerts;
                     transportRecords = Array.isArray(embedded.data.transportRecords) ? embedded.data.transportRecords : [];
@@ -2282,6 +2288,12 @@
         try {
             const raw = localStorage.getItem('minova_market_prices_v1');
             if (raw) marketPrices = normalizeMarketPrices(JSON.parse(raw));
+        } catch (e) {}
+        try {
+            const raw = localStorage.getItem('minova_non_stock_pricing_v1');
+            if (raw && (!nonStockPricingStrategies || Object.keys(nonStockPricingStrategies).length === 0)) {
+                nonStockPricingStrategies = normalizeNonStockPricingStrategies(JSON.parse(raw));
+            }
         } catch (e) {}
         normalizeProductUnitFields();
         try {
@@ -2349,6 +2361,7 @@
                     updateDatalists();
                 } else if (key === 'inventory') {
                     renderInventory();
+                    renderNonStockPricingStrategies();
                     renderSalesRecords();
                     renderHistoricalInventory();
                     renderInventoryHistory();
@@ -2427,6 +2440,7 @@
             profitSettings = normalizeProfitSettings(data?.profitSettings || profitSettings || null);
             installerProfitSettings = normalizeInstallerProfitSettings(data?.installerProfitSettings || installerProfitSettings || null);
             installerQuoteSettings = normalizeInstallerQuoteSettings(data?.installerQuoteSettings || installerQuoteSettings || null);
+            nonStockPricingStrategies = normalizeNonStockPricingStrategies(data?.nonStockPricingStrategies || nonStockPricingStrategies || {});
             normalizeProductClassificationData();
             try {
                 if (stampMs) localStorage.setItem('minova_embedded_updatedAt', String(stampMs));
@@ -2441,6 +2455,7 @@
                 localStorage.setItem('minova_profit_settings_v1', JSON.stringify(profitSettings));
                 localStorage.setItem('minova_installer_profit_v1', JSON.stringify(installerProfitSettings));
                 localStorage.setItem('minova_installer_quote_settings_v1', JSON.stringify(installerQuoteSettings));
+                localStorage.setItem('minova_non_stock_pricing_v1', JSON.stringify(nonStockPricingStrategies));
             } catch (e) {}
             // companyCerts 也从 applyStateFromData 恢复（保持同步）
             if (data.companyCerts && typeof data.companyCerts === 'object') {
@@ -2519,9 +2534,11 @@
             rebuildSubcategoryIndexFromProducts();
             saveSubcategoryIndex();
             ensureProfitSettingsCoverage();
+            nonStockPricingStrategies = normalizeNonStockPricingStrategies(nonStockPricingStrategies);
             try { localStorage.setItem('minova_profit_settings_v1', JSON.stringify(profitSettings)); } catch (e) {}
             try { localStorage.setItem('minova_installer_quote_settings_v1', JSON.stringify(normalizeInstallerQuoteSettings(installerQuoteSettings))); } catch (e) {}
             try { localStorage.setItem('minova_installer_profit_v1', JSON.stringify(normalizeInstallerProfitSettings(installerProfitSettings))); } catch (e) {}
+            try { localStorage.setItem('minova_non_stock_pricing_v1', JSON.stringify(nonStockPricingStrategies)); } catch (e) {}
             refreshAfterDataChange();
             try { if (!suppressGitHubSync) window.__minovaSync?.enqueueSnapshot('state update'); } catch (e) {}
         }
@@ -4392,6 +4409,98 @@
                         </td>
                     </tr>`;
             }).join('');
+        };
+
+        function getNonStockProductsForPricing() {
+            return products
+                .filter(p => String(p?.id || '').trim() && getTotalStockQty(p.id) <= 0)
+                .sort((a, b) => String(a.category || '').localeCompare(String(b.category || '')) || String(a.id || '').localeCompare(String(b.id || '')));
+        }
+        window.renderNonStockPricingStrategies = () => {
+            const list = document.getElementById('non-stock-pricing-list');
+            const summary = document.getElementById('non-stock-pricing-summary');
+            if (!list) return;
+            const rows = getNonStockProductsForPricing();
+            if (summary) summary.textContent = `${rows.length} products`;
+            if (!rows.length) {
+                list.innerHTML = `<tr><td colspan="12" class="py-12 text-center text-slate-400 text-sm">No non-stock products need fallback pricing.</td></tr>`;
+                return;
+            }
+            list.innerHTML = rows.map(p => {
+                const sid = domSafeId(p.id);
+                const strategy = getNonStockPricingStrategy(p.id);
+                const encodedId = encodeURIComponent(p.id);
+                const def = getDefaultTaxInputsForProduct(p);
+                const pricing = priceListProductPricing(p);
+                const unit = normalizeUnitLabel(pricing.costUnit || getMarketCategoryUnitMeta(p.category || '').unit || 'pcs');
+                const avgValue = Number.isFinite(parseFloat(strategy.avgCostOverride)) ? parseFloat(strategy.avgCostOverride) : '';
+                const dutyValue = Number.isFinite(parseFloat(strategy.dutyPct)) ? parseFloat(strategy.dutyPct) : def.dutyPct;
+                const sstValue = Number.isFinite(parseFloat(strategy.sstPct)) ? parseFloat(strategy.sstPct) : def.sstPct;
+                const grayValue = Number.isFinite(parseFloat(strategy.grayPct)) ? parseFloat(strategy.grayPct) : def.grayPct;
+                return `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="py-4 px-4 text-xs font-mono text-slate-500">${htmlSafe(p.id)}</td>
+                        <td class="py-4 px-4 font-bold text-slate-700 text-sm max-w-[220px] truncate" title="${htmlSafe(productListDisplayText(p.name || ''))}">${htmlSafe(productListDisplayText(p.name || '-'))}</td>
+                        <td class="py-4 px-4 text-xs text-slate-500 uppercase tracking-tighter">${htmlSafe(normalizeProductCategory(p.category || '-'))}</td>
+                        <td class="py-4 px-4 text-xs font-bold text-slate-500">${htmlSafe(unit)}</td>
+                        <td class="py-4 px-4 text-right text-xs font-mono text-slate-500">${formatCny(getProductCostCny(p), 4)}</td>
+                        <td class="py-3 px-3 text-right">
+                            <input id="non-stock-avg-${sid}" type="number" step="0.0001" min="0" value="${avgValue}" placeholder="${(getProductCostCny(p) || 0).toFixed(4)}" class="w-28 px-3 py-2 rounded-lg border border-slate-200 text-right text-xs font-mono focus:outline-none focus:ring-2 focus:ring-purple-100">
+                        </td>
+                        <td class="py-3 px-3 text-right">
+                            <input id="non-stock-duty-${sid}" type="number" step="0.01" min="0" value="${dutyValue}" class="w-20 px-3 py-2 rounded-lg border border-slate-200 text-right text-xs font-mono focus:outline-none focus:ring-2 focus:ring-purple-100">
+                        </td>
+                        <td class="py-3 px-3 text-right">
+                            <input id="non-stock-sst-${sid}" type="number" step="0.01" min="0" value="${sstValue}" class="w-20 px-3 py-2 rounded-lg border border-slate-200 text-right text-xs font-mono focus:outline-none focus:ring-2 focus:ring-purple-100">
+                        </td>
+                        <td class="py-3 px-3 text-right">
+                            <input id="non-stock-gray-${sid}" type="number" step="0.01" min="0" value="${grayValue}" class="w-20 px-3 py-2 rounded-lg border border-slate-200 text-right text-xs font-mono focus:outline-none focus:ring-2 focus:ring-purple-100">
+                        </td>
+                        <td class="py-4 px-4 text-right text-xs font-black text-purple-700">${formatCny((pricing.clearanceHomePrice || 0) * (pricing.pcsMultiplier || 1), 2)}</td>
+                        <td class="py-4 px-4 text-right text-xs font-black text-slate-700">${formatCny((pricing.grayHomePrice || 0) * (pricing.pcsMultiplier || 1), 2)}</td>
+                        <td class="py-3 px-4 text-center">
+                            <div class="flex items-center justify-center gap-2">
+                                <button onclick="saveNonStockPricingStrategy(decodeURIComponent('${htmlSafe(encodedId)}'))" class="px-3 py-2 rounded-lg bg-purple-700 text-white text-xs font-black hover:bg-purple-800">Save</button>
+                                <button onclick="resetNonStockPricingStrategy(decodeURIComponent('${htmlSafe(encodedId)}'))" class="px-3 py-2 rounded-lg bg-slate-100 text-slate-600 text-xs font-black hover:bg-slate-200">Reset</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        };
+        window.saveNonStockPricingStrategy = (productId) => {
+            const id = String(productId || '').trim();
+            if (!id) return;
+            const sid = domSafeId(id);
+            const readNum = (field) => {
+                const raw = document.getElementById(`non-stock-${field}-${sid}`)?.value;
+                const n = parseFloat(raw);
+                return Number.isFinite(n) && n >= 0 ? n : null;
+            };
+            const next = normalizeNonStockPricingStrategy({
+                avgCostOverride: readNum('avg'),
+                dutyPct: readNum('duty'),
+                sstPct: readNum('sst'),
+                grayPct: readNum('gray'),
+                updatedAt: new Date().toISOString()
+            });
+            nonStockPricingStrategies = normalizeNonStockPricingStrategies(nonStockPricingStrategies);
+            if (Object.keys(next).length > 1) nonStockPricingStrategies[id] = next;
+            else delete nonStockPricingStrategies[id];
+            saveToLocal();
+            renderNonStockPricingStrategies();
+            renderPriceList();
+            renderPriceListPicker();
+        };
+        window.resetNonStockPricingStrategy = (productId) => {
+            const id = String(productId || '').trim();
+            if (!id) return;
+            nonStockPricingStrategies = normalizeNonStockPricingStrategies(nonStockPricingStrategies);
+            delete nonStockPricingStrategies[id];
+            saveToLocal();
+            renderNonStockPricingStrategies();
+            renderPriceList();
+            renderPriceListPicker();
         };
 
         window.renderInventory = () => {
@@ -6295,6 +6404,33 @@
                 grayPct: getDefaultGrayTaxPercent()
             };
         }
+        function normalizeNonStockPricingStrategy(raw = {}) {
+            const source = raw && typeof raw === 'object' ? raw : {};
+            const out = {};
+            ['avgCostOverride', 'dutyPct', 'sstPct', 'grayPct'].forEach(key => {
+                const n = parseFloat(source[key]);
+                if (Number.isFinite(n) && n >= 0) out[key] = n;
+            });
+            if (String(source.updatedAt || '').trim()) out.updatedAt = String(source.updatedAt);
+            return out;
+        }
+        function normalizeNonStockPricingStrategies(raw) {
+            const source = raw && typeof raw === 'object' ? raw : {};
+            const out = {};
+            Object.entries(source).forEach(([productId, strategy]) => {
+                const id = String(productId || '').trim();
+                if (!id) return;
+                const normalized = normalizeNonStockPricingStrategy(strategy);
+                if (Object.keys(normalized).length) out[id] = normalized;
+            });
+            return out;
+        }
+        function getNonStockPricingStrategy(productId) {
+            const id = String(productId || '').trim();
+            if (!id) return {};
+            nonStockPricingStrategies = normalizeNonStockPricingStrategies(nonStockPricingStrategies);
+            return nonStockPricingStrategies[id] || {};
+        }
         function computeSalesPricingForProduct({ productId, dutyPct, sstPct, grayPct }) {
             const p = products.find(x => x.id === productId) || {};
             const batches = getFifoBatchesForProduct(productId);
@@ -6372,8 +6508,14 @@
                 : (Number.isFinite(parseFloat(p.spec)) ? parseFloat(p.spec) : 1);
             const def = getDefaultTaxInputsForProduct(p);
             const inventoryAvg = getAverageInventoryCostPerSpec(p.id, spec);
-            const avgFallback = getProductCostCny(p);
+            const strategy = getNonStockPricingStrategy(p.id);
+            const strategyAvg = Number.isFinite(parseFloat(strategy.avgCostOverride)) ? parseFloat(strategy.avgCostOverride) : NaN;
+            const avgFallback = Number.isFinite(strategyAvg) ? strategyAvg : getProductCostCny(p);
             const avgCost = inventoryAvg > 0 ? inventoryAvg : avgFallback;
+            const hasInventoryCost = inventoryAvg > 0;
+            const dutyPct = hasInventoryCost ? def.dutyPct : (Number.isFinite(parseFloat(strategy.dutyPct)) ? parseFloat(strategy.dutyPct) : def.dutyPct);
+            const sstPct = hasInventoryCost ? def.sstPct : (Number.isFinite(parseFloat(strategy.sstPct)) ? parseFloat(strategy.sstPct) : def.sstPct);
+            const grayPct = hasInventoryCost ? def.grayPct : (Number.isFinite(parseFloat(strategy.grayPct)) ? parseFloat(strategy.grayPct) : def.grayPct);
             const costUnit = getMarketCategoryUnitMeta(p.category || '').unit;
             const pcsMultiplier = getProductSpecMultiplierForUnit(p, spec, costUnit);
             const pcsCost = avgCost * pcsMultiplier;
@@ -6382,9 +6524,9 @@
                     productId: p.id,
                     spec,
                     avgCostOverride: avgCost,
-                    importDutyPct: def.dutyPct,
-                    sstPct: def.sstPct,
-                    grayTaxPct: def.grayPct
+                    importDutyPct: dutyPct,
+                    sstPct,
+                    grayTaxPct: grayPct
                 },
                 product: p
             });
@@ -7922,14 +8064,16 @@
         }
         function getPriceListProductPcsPricing(product, priceType = getPickerSelectedPriceType()) {
             const p = product || {};
-            const unit = getMarketCategoryUnitMeta(p.category || '').unit || 'pcs';
-            const multiplierRaw = getProductSpecMultiplierForUnit(p, null, unit);
+            const pricing = priceListProductPricing(p);
+            const multiplierRaw = Number.isFinite(parseFloat(pricing.pcsMultiplier)) ? parseFloat(pricing.pcsMultiplier) : 1;
             const pcsMultiplier = multiplierRaw > 0 ? multiplierRaw : 1;
+            const selectedUnitPrice = getPickerSelectedPriceValue(pricing, priceType);
             return {
-                costUnit: normalizeUnitLabel(unit),
+                ...pricing,
+                costUnit: normalizeUnitLabel(pricing.costUnit || getMarketCategoryUnitMeta(p.category || '').unit || 'pcs'),
                 pcsMultiplier,
-                pcsPrice: getProductPriceCny(p) * pcsMultiplier,
-                pcsCost: getProductCostCny(p) * pcsMultiplier,
+                pcsPrice: selectedUnitPrice * pcsMultiplier,
+                pcsCost: pricing.pcsCost || ((pricing.avgCost || 0) * pcsMultiplier),
                 priceType
             };
         }
@@ -9102,7 +9246,8 @@
                 subcategoriesByCategory,
                 profitSettings,
                 installerProfitSettings,
-                installerQuoteSettings
+                installerQuoteSettings,
+                nonStockPricingStrategies
             }),
             applyRemoteState: (data) => {
                 applyStateFromData(data, Date.now());
@@ -9127,7 +9272,8 @@
                     subcategoriesByCategory,
                     profitSettings,
                     installerProfitSettings,
-                    installerQuoteSettings
+                    installerQuoteSettings,
+                    nonStockPricingStrategies
                 }
             };
             const json = JSON.stringify(snapshot).replaceAll('<', '\\u003c');

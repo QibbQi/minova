@@ -97,6 +97,7 @@ export function mergeState(remote, local) {
     transportRecords: mergeByKey(rData.transportRecords, lData.transportRecords, stableRecordKey),
     fileDeleteLogs: mergeByKey(rData.fileDeleteLogs, lData.fileDeleteLogs, stableRecordKey),
     subcategoriesByCategory: { ...(rData.subcategoriesByCategory || {}), ...(lData.subcategoriesByCategory || {}) },
+    nonStockPricingStrategies: { ...(rData.nonStockPricingStrategies || {}), ...(lData.nonStockPricingStrategies || {}) },
     settings: { ...(rData.settings || {}), ...(lData.settings || {}) }
   }
 

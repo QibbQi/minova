@@ -28,3 +28,11 @@ test('price-list picker adds quote rows without an inventory id', () => {
   assert.match(html, /inventoryId:\s*''/, 'helper leaves inserted rows without an inventory id');
   assert.match(html, /window\.pickPriceListProduct\s*=/, 'price-list picker exposes a pick function');
 });
+
+test('price-list picker reuses the same pcs price strategy as Product Price List', () => {
+  const helper = html.match(/function getPriceListProductPcsPricing\(product,\s*priceType\s*=\s*getPickerSelectedPriceType\(\)\) \{([\s\S]*?)\n\s*\}/);
+  assert.ok(helper, 'price-list picker pricing helper is present');
+  assert.match(helper[1], /priceListProductPricing\(p\)/, 'picker uses Product Price List pricing model');
+  assert.match(helper[1], /getPickerSelectedPriceValue\(pricing,\s*priceType\)/, 'picker uses the selected clearance/grey and RESI/C&I price');
+  assert.doesNotMatch(helper[1], /getProductPriceCny\(p\)\s*\*\s*pcsMultiplier/, 'picker must not bypass price-list pricing with base product price');
+});

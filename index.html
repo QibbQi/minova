@@ -590,23 +590,6 @@
             border-bottom: 1px solid rgba(88, 44, 131, 0.62);
         }
 
-        .quote-view-font-control {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.25rem;
-            border: 1px solid #e9d5ff;
-            border-radius: 9999px;
-            background: #faf5ff;
-            padding: 0.2rem;
-        }
-
-        .quote-view-font-control button,
-        .quote-view-font-control span {
-            font-size: 0.625rem;
-            line-height: 1;
-            font-weight: 900;
-        }
-
         @media print {
             .quote-page-break-warning { display: none !important; }
             .quote-page-break-before { break-before: page !important; page-break-before: always !important; }
@@ -660,15 +643,9 @@
         <div class="flex items-center gap-2">
             <label class="text-sm font-bold text-slate-600">Saved Quotes:</label>
             <select id="saved-quotes-select" onchange="onSavedQuoteSelectChange()" class="text-sm border border-slate-200 rounded p-1 outline-none w-48"><option value="">-- 新Quote --</option><option value="3429ce65-8b77-4fb3-9163-f246e60e22dd">ABCDEFG</option><option value="b3a111dc-769d-413b-a16d-f56f6cd77eaf">xxxx</option><option value="601e55cc-36ba-47f8-b950-c9111eafe683">ininini</option><option value="e9c91f18-7390-406b-945c-17ad3f506eff">987</option></select>
-            <button onclick="loadSavedQuote()" class="text-xs bg-blue-100 text-blue-700 px-3 py-1.5 rounded hover:bg-blue-200">加载</button>
+            <button onclick="loadSavedQuote()" class="text-xs bg-blue-100 text-blue-700 px-3 py-1.5 rounded hover:bg-blue-200">Load</button>
             <button onclick="openSaveQuoteModal()" class="text-xs bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded hover:bg-emerald-200">Save</button>
             <button onclick="openDeleteQuoteModal()" class="text-xs bg-red-100 text-red-700 px-3 py-1.5 rounded hover:bg-red-200">Delete</button>
-            <div class="quote-view-font-control" title="调整当前视图字号">
-                <button type="button" onclick="adjustCurrentQuoteViewFont(-0.05)" class="px-2 py-1 rounded-full text-slate-500 hover:bg-white hover:text-purple-700">A-</button>
-                <span id="quote-view-font-label" class="min-w-[38px] text-center text-purple-700">80%</span>
-                <button type="button" onclick="adjustCurrentQuoteViewFont(0.05)" class="px-2 py-1 rounded-full text-slate-500 hover:bg-white hover:text-purple-700">A+</button>
-                <button type="button" onclick="resetCurrentQuoteViewFont()" class="px-2 py-1 rounded-full text-slate-500 hover:bg-white hover:text-purple-700">Reset</button>
-            </div>
         </div>
         <div class="flex items-center gap-2">
             <label class="text-sm font-bold text-slate-600">Current View:</label>
@@ -14694,21 +14671,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if(page == 1) requestAnimationFrame(() => window.updateQuoteA4PageBreakWarning?.());
             const target = document.getElementById('quote-page-' + page);
             if (target) requestAnimationFrame(() => window.autosizeAllTextareas?.(target));
-            applyQuoteViewFontScale(`quote-page-${page}`);
         }
 
         window.__quoteMonthlyUsageManual = false;
         window.__quotePvSizeManual = false;
         window.__quoteSnapshotView = window.__quoteSnapshotView || '10';
         window.__quoteAutoQtySyncing = false;
-        window.__quoteViewFontScale = (() => {
-            try {
-                const saved = JSON.parse(localStorage.getItem('minova_quote_view_font_scale_v1') || '{}');
-                return (saved && typeof saved === 'object') ? saved : {};
-            } catch (e) {
-                return {};
-            }
-        })();
         window.__quoteSolarFont = (() => {
             try {
                 const saved = JSON.parse(localStorage.getItem('minova_quote_solar_font_v1') || '{}');
@@ -14720,57 +14688,6 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 return { title: 10, content: 14 };
             }
         })();
-
-        function currentQuoteViewKey() {
-            const page = String(document.getElementById('quote-page-select')?.value || '1').replace(/[^1-5]/g, '') || '1';
-            return `quote-page-${page}`;
-        }
-
-        function saveQuoteViewFontScale() {
-            try { localStorage.setItem('minova_quote_view_font_scale_v1', JSON.stringify(window.__quoteViewFontScale || {})); } catch (e) {}
-        }
-
-        function defaultQuoteViewScale(pageKey) {
-            return pageKey === 'quote-page-1' ? 0.8 : 1;
-        }
-
-        function clampQuoteViewScale(scale) {
-            const n = Number(scale);
-            return Math.min(1.25, Math.max(0.8, Number.isFinite(n) ? n : 1));
-        }
-
-        function applyQuoteViewFontScale(pageKey) {
-            const key = pageKey || currentQuoteViewKey();
-            const scale = clampQuoteViewScale(window.__quoteViewFontScale?.[key] ?? defaultQuoteViewScale(key));
-            for (let i = 1; i <= 5; i++) {
-                const page = document.getElementById(`quote-page-${i}`);
-                const pageKeyForScale = `quote-page-${i}`;
-                if (page) page.style.setProperty('--quote-view-font-scale', String(clampQuoteViewScale(window.__quoteViewFontScale?.[pageKeyForScale] ?? defaultQuoteViewScale(pageKeyForScale))));
-            }
-            const label = document.getElementById('quote-view-font-label');
-            if (label) label.textContent = `${Math.round(scale * 100)}%`;
-            const target = document.getElementById(key);
-            if (target) requestAnimationFrame(() => window.autosizeAllTextareas?.(target));
-            if (key === 'quote-page-1') requestAnimationFrame(() => window.fitGrandTotalAmount?.());
-        }
-
-        window.adjustCurrentQuoteViewFont = (delta) => {
-            const key = currentQuoteViewKey();
-            const state = window.__quoteViewFontScale || {};
-            state[key] = clampQuoteViewScale((Number(state[key] ?? defaultQuoteViewScale(key))) + (Number(delta) || 0));
-            window.__quoteViewFontScale = state;
-            saveQuoteViewFontScale();
-            applyQuoteViewFontScale(key);
-        };
-
-        window.resetCurrentQuoteViewFont = () => {
-            const key = currentQuoteViewKey();
-            const state = window.__quoteViewFontScale || {};
-            delete state[key];
-            window.__quoteViewFontScale = state;
-            saveQuoteViewFontScale();
-            applyQuoteViewFontScale(key);
-        };
 
         function quoteNum(v, fallback = 0) {
             const n = Number(v);
@@ -15410,7 +15327,6 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             try { renderPartBreakdown(); } catch (e) {}
             try { calculateROI(); } catch (e) {}
         };
-        try { applyQuoteViewFontScale(); } catch (e) {}
         try { applyQuoteSolarFont(); } catch (e) {}
         try { calculateROI(); } catch (e) {}
 

@@ -1,11 +1,11 @@
 {
   "v": 1,
-  "updatedAt": "2026-05-31T05:30:59.870Z",
+  "updatedAt": "2026-06-01T01:11:37.467Z",
   "data": {
     "products": [
       {
         "id": "GFZJ001",
-        "name": "210R N-type组件",
+        "name": "210R N-type Components",
         "category": "PV Module",
         "vendor": "联塑 / LESSO",
         "spec": "610W",
@@ -17,7 +17,7 @@
         "contactInfo": "",
         "cost": 0.8,
         "price": 1.45,
-        "ts": 1776758723498,
+        "ts": 1780276294267,
         "certifications": {
           "tuvCerts": [],
           "specSheets": []
@@ -359,6 +359,15 @@
         "quantity": 1,
         "batchNo": "20260410-002",
         "note": "采购入库 2026-04-10 | 入库到 马来西亚仓库 | 总成本¥7749.00"
+      },
+      {
+        "ts": 1780276294267,
+        "type": "modify",
+        "productId": "GFZJ001",
+        "productName": "210R N-type Components",
+        "quantity": 72,
+        "batchNo": "20250411-001",
+        "note": "Edit Stock-In 2025-04-11 | Stored At 马来西亚仓库 | Total Cost ¥34543.08 | Product Name 210R N-type组件 → 210R N-type Components"
       }
     ],
     "marketPrices": {

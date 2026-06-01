@@ -2322,6 +2322,7 @@
                     updateDatalists();
                     try { renderQuoteSolarCustomerMode(); } catch (e) {}
                     renderPicker();
+                    renderPriceListPicker();
                     try { renderPartBreakdown(); } catch (e) {}
                     try { calculateROI(); } catch (e) {}
                 } else if (key === 'pvcalc') {
@@ -7796,10 +7797,15 @@
             setClass('picker-cost-gray', costMode === 'gray');
             setClass('picker-customer-home', customerMode === 'home');
             setClass('picker-customer-biz', customerMode === 'biz');
+            setClass('price-list-picker-cost-clearance', costMode === 'clearance');
+            setClass('price-list-picker-cost-gray', costMode === 'gray');
+            setClass('price-list-picker-customer-home', customerMode === 'home');
+            setClass('price-list-picker-customer-biz', customerMode === 'biz');
         }
         window.setPickerCostMode = (mode) => {
             window.pickerCostMode = mode === 'gray' ? 'gray' : 'clearance';
             renderPicker();
+            renderPriceListPicker();
         };
         window.setPickerCustomerMode = (mode, opts = {}) => {
             const next = mode === 'biz' ? 'biz' : 'home';
@@ -7807,7 +7813,7 @@
             if (!opts.force && next !== solarMode) {
                 const solarLabel = solarMode === 'biz' ? 'C&I' : 'RESI';
                 const nextLabel = next === 'biz' ? 'C&I' : 'RESI';
-                const ok = confirm(`当前 Solar Calculation Inputs Select的是 ${solarLabel}，From Inventory 将切换为 ${nextLabel} Quote，可能与当前 Solar Status不一致。是否继续？`);
+                const ok = confirm(`当前 Solar Calculation Inputs Select的是 ${solarLabel}，Product Picker 将切换为 ${nextLabel} Quote，可能与当前 Solar Status不一致。是否继续？`);
                 if (!ok) {
                     updatePickerModeButtons();
                     return;
@@ -7815,6 +7821,7 @@
             }
             window.pickerCustomerMode = next;
             renderPicker();
+            renderPriceListPicker();
         };
         function formatPickerPrice(valueCny) {
             const v = Number.isFinite(parseFloat(valueCny)) ? parseFloat(valueCny) : 0;
@@ -7853,9 +7860,37 @@
             const fallback = String(product?.spec || '').trim();
             return fallback || `1 ${unit}`;
         }
+        function getPriceListProductPcsPricing(product, priceType = getPickerSelectedPriceType()) {
+            const p = product || {};
+            const unit = getMarketCategoryUnitMeta(p.category || '').unit || 'pcs';
+            const multiplierRaw = getProductSpecMultiplierForUnit(p, null, unit);
+            const pcsMultiplier = multiplierRaw > 0 ? multiplierRaw : 1;
+            return {
+                costUnit: normalizeUnitLabel(unit),
+                pcsMultiplier,
+                pcsPrice: (parseFloat(p.price) || 0) * pcsMultiplier,
+                pcsCost: (parseFloat(p.cost) || 0) * pcsMultiplier,
+                priceType
+            };
+        }
+        function formatPriceListProductSpec(product) {
+            const unit = normalizeUnitLabel(getMarketCategoryUnitMeta(product?.category || '').unit || 'pcs');
+            const multiplierRaw = getProductSpecMultiplierForUnit(product || {}, null, unit);
+            if (multiplierRaw > 0) return `${formatNumberAuto(multiplierRaw, 4)} ${unit}`;
+            const fallback = String(product?.spec || '').trim();
+            return fallback || `1 ${unit}`;
+        }
+        function getProductDeliveryTime(product) {
+            return String(product?.leadTime || product?.deliveryTime || '').trim() || '-';
+        }
+        function getSupplierCountryLabelForProduct(product) {
+            const supplier = getProductSupplier(product);
+            return String(supplier?.country || supplier?.region || '').trim() || '-';
+        }
         window.togglePickerCurrency = () => {
             window.pickerDisplayCurrency = getPickerCurrency() === 'MYR' ? 'CNY' : 'MYR';
             renderPicker();
+            renderPriceListPicker();
         };
         window.renderPicker = () => {
             if (!window.pickerDisplayCurrency) window.pickerDisplayCurrency = currentCurrency || 'MYR';
@@ -7863,6 +7898,8 @@
             if (!window.pickerCustomerMode) window.pickerCustomerMode = 'home';
             const currencyBtn = document.getElementById('picker-currency-toggle');
             if (currencyBtn) currencyBtn.textContent = getPickerCurrency() === 'MYR' ? 'RM / ¥' : '¥ / RM';
+            const priceListCurrencyBtn = document.getElementById('price-list-picker-currency-toggle');
+            if (priceListCurrencyBtn) priceListCurrencyBtn.textContent = getPickerCurrency() === 'MYR' ? 'RM / ¥' : '¥ / RM';
             updatePickerModeButtons();
             const selectedPriceType = getPickerSelectedPriceType();
             const selectedPriceLabel = getPickerSelectedPriceLabel();
@@ -7917,6 +7954,71 @@
                     </div>
                 </div>`}).join('');
         };
+        window.renderPriceListPicker = () => {
+            if (!window.pickerDisplayCurrency) window.pickerDisplayCurrency = currentCurrency || 'MYR';
+            if (!window.pickerCostMode) window.pickerCostMode = 'clearance';
+            if (!window.pickerCustomerMode) window.pickerCustomerMode = 'home';
+            const currencyBtn = document.getElementById('price-list-picker-currency-toggle');
+            if (currencyBtn) currencyBtn.textContent = getPickerCurrency() === 'MYR' ? 'RM / ¥' : '¥ / RM';
+            updatePickerModeButtons();
+            const selectedPriceType = getPickerSelectedPriceType();
+            const selectedPriceLabel = getPickerSelectedPriceLabel();
+            const query = (document.getElementById('price-list-picker-search')?.value || '').toLowerCase();
+            const vendor = document.getElementById('price-list-picker-vendor')?.value || '';
+            const rawCategory = document.getElementById('price-list-picker-category')?.value || '';
+            const category = String(rawCategory).trim() ? normalizeProductCategory(rawCategory) : '';
+            const country = document.getElementById('price-list-picker-country')?.value || '';
+            const list = document.getElementById('price-list-picker-list');
+            if(!list) return;
+
+            const filtered = products.filter(p => {
+                const supplier = getProductSupplier(p);
+                const supplierName = getProductSupplierDisplay(p);
+                const supplierCountry = String(supplier?.country || supplier?.region || '').trim();
+                const delivery = getProductDeliveryTime(p);
+                const hay = [
+                    p.id, p.name, p.category, p.scenario, p.spec,
+                    supplierName, supplierCountry, delivery
+                ].join(' ').toLowerCase();
+                return (!vendor || supplierName === vendor) &&
+                       (!category || normalizeProductCategory(p.category) === category) &&
+                       (!country || supplierCountry === country) &&
+                       (!query || hay.includes(query));
+            });
+
+            if(filtered.length === 0) { list.innerHTML = `<div class="p-8 text-center text-xs text-slate-400 italic">No price-list products found...</div>`; return; }
+
+            list.innerHTML = filtered.map(p => {
+                const pickerPricing = getPriceListProductPcsPricing(p, selectedPriceType);
+                const selectedPrice = pickerPricing.pcsPrice || 0;
+                const specLabel = formatPriceListProductSpec(p);
+                const supplierName = getProductSupplierDisplay(p);
+                const countryLabel = getSupplierCountryLabelForProduct(p);
+                const deliveryLabel = getProductDeliveryTime(p);
+                return `
+                <div class="p-3 hover:bg-purple-50 transition-colors group border-b border-slate-50" onmousemove="showMarketPriceTooltip(event, '${htmlSafe(p.id || '')}')" onmouseleave="hidePriceListTooltip()">
+                    <div class="flex justify-between items-start gap-3">
+                        <div class="min-w-0">
+                            <div class="text-sm font-bold text-slate-700 truncate" title="${htmlSafe(p.name || '')}">${htmlSafe(p.name || '')}</div>
+                            <div class="text-[10px] font-mono text-slate-400">${htmlSafe(p.id || '')}</div>
+                        </div>
+                        <div class="text-right shrink-0">
+                            <span class="text-[10px] text-slate-400 block">Supplier Country: <span class="font-black text-slate-600">${htmlSafe(countryLabel)}</span></span>
+                            <span class="text-[10px] text-slate-400 block">Delivery: <span class="font-black text-slate-600">${htmlSafe(deliveryLabel)}</span></span>
+                            <span class="text-[10px] text-slate-400 block">Spec: <span class="font-black text-slate-600">${htmlSafe(specLabel)}</span></span>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center mt-2 gap-2">
+                        <div class="flex gap-2 min-w-0 flex-wrap">
+                            <span class="text-[9px] uppercase px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded">${htmlSafe(normalizeProductCategory(p.category))}</span>
+                            <span class="text-[9px] uppercase px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded">${htmlSafe(supplierName)}</span>
+                        </div>
+                        <div class="flex flex-wrap gap-2 justify-end">
+                            <button onclick="pickPriceListProduct('${htmlSafe(p.id || '')}', '${selectedPriceType}')" class="${getPickerSelectedButtonClass(selectedPriceType)}">${selectedPriceLabel} ${formatPickerPrice(selectedPrice)}/pcs</button>
+                        </div>
+                    </div>
+                </div>`}).join('');
+        };
         function addProductToQuote(inventoryId, priceType) {
             const item = inventory.find(i => i.id === inventoryId); if(!item) return;
             const p = products.find(prod => prod.id === item.productId); if(!p) return;
@@ -7950,8 +8052,52 @@
             renderQuote();
         }
 
+        function addPriceListProductToQuote(productId, priceType) {
+            const p = products.find(prod => String(prod.id || '') === String(productId || '')); if(!p) return;
+
+            const pickerPricing = getPriceListProductPcsPricing(p, priceType);
+            const price = pickerPricing.pcsPrice || 0;
+            const cost = pickerPricing.pcsCost || 0;
+
+            const firstBlankIdx = quoteRows.findIndex(r => r.isBlank);
+            const insertIdx = firstBlankIdx === -1 ? quoteRows.length : firstBlankIdx;
+            const candidateIdx = Math.min(Math.max(insertIdx - 1, 0), quoteRows.length - 1);
+            const candidate = quoteRows[candidateIdx];
+            const supplier = getProductSupplier(p);
+            const supplierCode = p.supplierCode || supplier?.code || '';
+            const brand = getSupplierDisplayNameForLang(supplier, currentLang) || getProductSupplierBrandForLang(p, currentLang);
+
+            if (candidate && !candidate.isBlank && !candidate.description && candidate.price === 0) {
+                candidate.description = p.name;
+                candidate.vendor = brand;
+                candidate.vendorManualOverride = false;
+                candidate.supplierCode = supplierCode;
+                candidate.spec = p.spec || '';
+                candidate.batchNo = '';
+                candidate.price = price;
+                candidate.cost = cost;
+                candidate.productId = p.id || '';
+                candidate.inventoryId = '';
+            } else {
+                quoteRows.splice(insertIdx, 0, { id: Date.now(), description: p.name, vendor: brand, vendorManualOverride: false, supplierCode, spec: p.spec || '', batchNo: '', quantity: 1, price: price, cost: cost, productId: p.id || '', inventoryId: '' });
+            }
+            renderQuote();
+        }
+
         window.openBatteryProgramModal = (inventoryId, priceType) => {
-            window.__pendingBatteryPick = { inventoryId, priceType };
+            window.__pendingBatteryPick = { source: 'inventory', inventoryId, priceType };
+            const select = document.getElementById('battery-program-select');
+            const current = document.getElementById('select-solar-program')?.value || '';
+            if (select) select.value = BATTERY_SOLAR_PROGRAMS.includes(current) ? current : (window.__lastBatterySolarProgram || 'offgrid');
+            const modal = document.getElementById('battery-program-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+        };
+
+        window.openBatteryPriceListProgramModal = (productId, priceType) => {
+            window.__pendingBatteryPick = { source: 'priceList', productId, priceType };
             const select = document.getElementById('battery-program-select');
             const current = document.getElementById('select-solar-program')?.value || '';
             if (select) select.value = BATTERY_SOLAR_PROGRAMS.includes(current) ? current : (window.__lastBatterySolarProgram || 'offgrid');
@@ -7980,7 +8126,8 @@
             window.__lastBatterySolarProgram = quoteProgram?.value || 'offgrid';
             window.resetQuoteExportFactorForProgram?.({ recalc: false });
             window.closeBatteryProgramModal();
-            addProductToQuote(pending.inventoryId, pending.priceType);
+            if (pending.source === 'priceList') addPriceListProductToQuote(pending.productId, pending.priceType);
+            else addProductToQuote(pending.inventoryId, pending.priceType);
             window.updateQuoteSolarProgramAvailability?.({ fromUser: true });
             try { window.calculateROI?.(); } catch (e) {}
         };
@@ -7995,14 +8142,31 @@
             addProductToQuote(inventoryId, priceType);
         };
 
+        window.pickPriceListProduct = (productId, priceType) => {
+            const p = products.find(prod => String(prod.id || '') === String(productId || '')); if(!p) return;
+            if (quoteProductHasBattery(p, null, null)) {
+                window.openBatteryPriceListProgramModal(productId, priceType);
+                return;
+            }
+            addPriceListProductToQuote(productId, priceType);
+        };
+
         // --- Other工具 ---
         function updatePickerFilters() {
             ensureSupplierData();
             const vendors = [...new Set(products.map(p => getProductSupplierDisplay(p)).filter(Boolean))];
             const categories = [...new Set(products.map(p => normalizeProductCategory(p.category)).filter(Boolean))];
+            const countries = [...new Set(products.map(p => {
+                const supplier = getProductSupplier(p);
+                return String(supplier?.country || supplier?.region || '').trim();
+            }).filter(Boolean))].sort((a, b) => a.localeCompare(b));
             const vS = document.getElementById('picker-vendor'), cS = document.getElementById('picker-category');
             if(vS) vS.innerHTML = `<option value="">All Suppliers</option>` + vendors.map(v => `<option value="${htmlSafe(v)}">${htmlSafe(v)}</option>`).join('');
             if(cS) cS.innerHTML = `<option value="">All Categories</option>` + categories.map(c => `<option value="${htmlSafe(c)}">${htmlSafe(c)}</option>`).join('');
+            const plVS = document.getElementById('price-list-picker-vendor'), plCS = document.getElementById('price-list-picker-category'), plCountry = document.getElementById('price-list-picker-country');
+            if(plVS) plVS.innerHTML = `<option value="">All Suppliers</option>` + vendors.map(v => `<option value="${htmlSafe(v)}">${htmlSafe(v)}</option>`).join('');
+            if(plCS) plCS.innerHTML = `<option value="">All Categories</option>` + categories.map(c => `<option value="${htmlSafe(c)}">${htmlSafe(c)}</option>`).join('');
+            if(plCountry) plCountry.innerHTML = `<option value="">All Countries</option>` + countries.map(c => `<option value="${htmlSafe(c)}">${htmlSafe(c)}</option>`).join('');
         }
         function updateDatalists() {
             ensureSupplierData();

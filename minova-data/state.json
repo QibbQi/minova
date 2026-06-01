@@ -1,6 +1,6 @@
 {
   "v": 1,
-  "updatedAt": "2026-06-01T01:11:37.467Z",
+  "updatedAt": "2026-06-01T01:12:57.833Z",
   "data": {
     "products": [
       {
@@ -60,7 +60,7 @@
       },
       {
         "id": "DC001",
-        "name": "5kW 电池",
+        "name": "5kW Battery",
         "category": "Battery",
         "vendor": "明匠 / SunC",
         "spec": "5kWh",
@@ -72,7 +72,7 @@
         "contactInfo": "",
         "cost": 0.66,
         "price": 1.848,
-        "ts": 1776763554691,
+        "ts": 1780276318666,
         "certifications": {
           "tuvCerts": [],
           "specSheets": []
@@ -81,7 +81,7 @@
       },
       {
         "id": "NBQ002",
-        "name": "5.5kW 逆变器",
+        "name": "5.5kW Inverter",
         "category": "Inverter",
         "vendor": "明匠 / SunC",
         "spec": "5.5kW",
@@ -93,12 +93,12 @@
         "contactInfo": "",
         "cost": 0.35,
         "price": 0.7105,
-        "ts": 1775705274152,
+        "ts": 1780276331867,
         "supplierCode": "SUP1186"
       },
       {
         "id": "J001",
-        "name": "堆叠式配件",
+        "name": "Stackable Accessory",
         "category": "Accessory",
         "vendor": "明匠 / SunC",
         "spec": "pcs",
@@ -110,7 +110,7 @@
         "contactInfo": "",
         "cost": 360,
         "price": 600,
-        "ts": 1775705274152,
+        "ts": 1780276350217,
         "supplierCode": "SUP1186"
       },
       {
@@ -132,7 +132,7 @@
       },
       {
         "id": "PROD002",
-        "name": "5.5kW-10kWh 一体机",
+        "name": "5.5kW-10kWh All-in-One System",
         "category": "All-in-One System",
         "vendor": "明匠 / SunC",
         "spec": "5.5kW-10kWh",
@@ -144,7 +144,7 @@
         "contactInfo": "",
         "cost": 7300,
         "price": 18000,
-        "ts": 1775705274152,
+        "ts": 1780276364600,
         "supplierCode": "SUP1186"
       },
       {
@@ -368,6 +368,42 @@
         "quantity": 72,
         "batchNo": "20250411-001",
         "note": "Edit Stock-In 2025-04-11 | Stored At 马来西亚仓库 | Total Cost ¥34543.08 | Product Name 210R N-type组件 → 210R N-type Components"
+      },
+      {
+        "ts": 1780276318667,
+        "type": "modify",
+        "productId": "DC001",
+        "productName": "5kW Battery",
+        "quantity": 18,
+        "batchNo": "20250411-002",
+        "note": "Edit Stock-In 2025-04-11 | Stored At 马来西亚仓库 | Total Cost ¥67716.00 | Product Name 5kW 电池 → 5kW Battery"
+      },
+      {
+        "ts": 1780276331867,
+        "type": "modify",
+        "productId": "NBQ002",
+        "productName": "5.5kW Inverter",
+        "quantity": 6,
+        "batchNo": "20250411-003",
+        "note": "Edit Stock-In 2025-04-11 | Stored At 马来西亚仓库 | Total Cost ¥13168.50 | Product Name 5.5kW 逆变器 → 5.5kW Inverter"
+      },
+      {
+        "ts": 1780276350217,
+        "type": "modify",
+        "productId": "J001",
+        "productName": "Stackable Accessory",
+        "quantity": 3,
+        "batchNo": "20260410-001",
+        "note": "Edit Stock-In 2026-04-10 | Stored At 马来西亚仓库 | Total Cost ¥1231.20 | Product Name 堆叠式配件 → Stackable Accessory"
+      },
+      {
+        "ts": 1780276364600,
+        "type": "modify",
+        "productId": "PROD002",
+        "productName": "5.5kW-10kWh All-in-One System",
+        "quantity": 1,
+        "batchNo": "20260410-002",
+        "note": "Edit Stock-In 2026-04-10 | Stored At 马来西亚仓库 | Total Cost ¥7749.00 | Product Name 5.5kW-10kWh 一体机 → 5.5kW-10kWh All-in-One System"
       }
     ],
     "marketPrices": {

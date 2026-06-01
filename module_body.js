@@ -518,7 +518,7 @@
                 const form = el('div', { class: 'mt-5 grid grid-cols-1 gap-4' });
                 const repoHint = el('div', { class: 'rounded-xl border border-slate-200 p-4 bg-slate-50 text-xs text-slate-600' });
                 const passphrase = el('input', { class: 'w-full border border-slate-200 rounded-xl p-3 text-sm outline-none', placeholder: '本地加密口令（用于加密 PAT）', type: 'password' });
-                const pat = el('input', { class: 'w-full border border-slate-200 rounded-xl p-3 text-sm outline-none', placeholder: '粘贴 GitHub PAT（fine-grained，限定 minova 仓库 Contents 读写）', type: 'password' });
+                const pat = el('input', { class: 'w-full border border-slate-200 rounded-xl p-3 text-sm outline-none', placeholder: '粘贴 GitHub PAT（fine-grained，限定 minova Warehouse Contents 读写）', type: 'password' });
                 form.append(repoHint, passphrase, pat);
 
                 const msg = el('div', { class: 'mt-3 text-xs text-slate-500 whitespace-pre-line' });
@@ -539,7 +539,7 @@
                 };
 
                 const footer = el('div', { class: 'mt-6 flex flex-wrap gap-3 justify-end' });
-                const btnClose = el('button', { class: 'px-4 py-2 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50', text: '关闭' });
+                const btnClose = el('button', { class: 'px-4 py-2 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50', text: 'Close' });
                 const btnCheck = el('button', { class: 'px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 border border-slate-200', text: '连接自检' });
                 const btnConnectPat = el('button', { class: 'px-4 py-2 rounded-xl bg-slate-900 text-white font-bold hover:bg-black', text: '使用 PAT 连接' });
                 const btnSyncData = el('button', { class: 'px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700', text: 'Sync Data' });
@@ -587,7 +587,7 @@
                     btnSyncData.style.display = s.connected ? '' : 'none';
                     btnPublish.style.display = s.connected ? '' : 'none';
                     const cfg = s.config || {};
-                    repoHint.textContent = `目标仓库：${cfg.owner || defaults.owner}/${cfg.repo || defaults.repo}（分支：${cfg.branch || defaults.branch}）`;
+                    repoHint.textContent = `目标Warehouse：${cfg.owner || defaults.owner}/${cfg.repo || defaults.repo}（分支：${cfg.branch || defaults.branch}）`;
                 };
 
                 btn.onclick = () => {
@@ -749,25 +749,25 @@
 
                 certModal.innerHTML = `
 <div class="bg-white rounded-3xl p-8 w-full max-w-xl shadow-2xl max-h-[90vh] overflow-y-auto">
-    <h3 class="text-xl font-bold text-slate-800 mb-2">选择附上认证文件</h3>
-    <p class="text-xs text-slate-400 mb-5">勾选本次报价需要附上的认证文件，将拼接在报价 PDF 后面一起交付</p>
+    <h3 class="text-xl font-bold text-slate-800 mb-2">SelectAttach Certification Files</h3>
+    <p class="text-xs text-slate-400 mb-5">勾选本次Quote需要附上的认证文件，将拼接在Quote PDF 后面一起交付</p>
 
-    <!-- 附加页面选择 -->
+    <!-- 附加页面Select -->
     <div class="border border-slate-200 rounded-xl mb-4">
         <div class="flex items-center justify-between p-4 cursor-pointer" onclick="toggleCertSection('pages')">
-            <span class="text-sm font-bold text-slate-700">【附加页面选择】</span>
+            <span class="text-sm font-bold text-slate-700">【附加页面Select】</span>
             <span id="qa-pages-cert-count" class="text-xs text-slate-400">4 项</span>
             <span id="qa-pages-cert-arrow">▼</span>
         </div>
         <div id="qa-pages-cert-body" class="px-4 pb-4">
             <div class="flex justify-end gap-2 mb-2">
-                <button onclick="toggleAllPages(true)" class="text-xs text-purple-600 hover:underline">全选</button>
-                <button onclick="toggleAllPages(false)" class="text-xs text-slate-500 hover:underline">不选</button>
+                <button onclick="toggleAllPages(true)" class="text-xs text-purple-600 hover:underline">Select All</button>
+                <button onclick="toggleAllPages(false)" class="text-xs text-slate-500 hover:underline">Select None</button>
             </div>
             <div class="space-y-2">
                 <label class="flex items-center gap-2 py-1">
                     <input type="checkbox" class="w-4 h-4 text-purple-600" disabled checked>
-                    <span class="text-sm text-slate-400">1. 报价单 (Quotation) - 必选</span>
+                    <span class="text-sm text-slate-400">1. Quotation (Quotation) - Required</span>
                 </label>
                 <label class="flex items-center gap-2 py-1 cursor-pointer">
                     <input type="checkbox" value="2" class="print-page-checkbox w-4 h-4 text-purple-600" checked onchange="updateCertSelectedSummary()">
@@ -791,14 +791,14 @@
 
     <div class="border border-slate-200 rounded-xl mb-4">
         <div class="flex items-center justify-between p-4">
-            <span class="text-sm font-bold text-slate-700">【导出选项】</span>
+            <span class="text-sm font-bold text-slate-700">【Export选项】</span>
         </div>
         <div class="px-4 pb-4">
             <label class="flex items-start gap-2 py-1 cursor-pointer">
                 <input id="qa-rotate-siteoverview" type="checkbox" class="w-4 h-4 text-purple-600 mt-0.5" onchange="onRotateSiteOverviewPrintChanged(this.checked)">
                 <div class="flex flex-col">
                     <span class="text-sm text-slate-700">第 5 页画布旋转打印（右转 90°）</span>
-                    <span class="text-xs text-slate-400">仅影响 PDF 导出，不影响网页端显示</span>
+                    <span class="text-xs text-slate-400">仅影响 PDF Export，不影响网页端显示</span>
                 </div>
             </label>
         </div>
@@ -817,7 +817,7 @@
                 <div id="qa-iso-cert-checkboxes"></div>
             </div>
             <div>
-                <p class="text-xs font-bold text-slate-500 mb-2">运输文件 (UN38.3/MSDS)</p>
+                <p class="text-xs font-bold text-slate-500 mb-2">Transport Files (UN38.3/MSDS)</p>
                 <div id="qa-transport-cert-checkboxes"></div>
             </div>
         </div>
@@ -832,7 +832,7 @@
         </div>
         <div id="qa-product-cert-body" class="hidden px-4 pb-4">
             <div id="qa-product-cert-list"></div>
-            <p id="qa-product-cert-empty" class="text-xs text-slate-400 hidden">报价单中暂无有认证文件的产品</p>
+            <p id="qa-product-cert-empty" class="text-xs text-slate-400 hidden">No quoted products have certification files</p>
         </div>
     </div>
 
@@ -840,8 +840,8 @@
     <div class="flex justify-between items-center mt-4">
         <span id="qa-cert-selected-summary" class="text-xs text-slate-500">已选 0 个文件</span>
         <div class="flex gap-3">
-            <button onclick="closeCertAttachmentModal()" class="px-4 py-2 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50">取消</button>
-            <button onclick="confirmAndGeneratePDF()" class="px-4 py-2 rounded-xl bg-purple-700 text-white font-bold hover:bg-purple-800">生成 PDF</button>
+            <button onclick="closeCertAttachmentModal()" class="px-4 py-2 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50">Cancel</button>
+            <button onclick="confirmAndGeneratePDF()" class="px-4 py-2 rounded-xl bg-purple-700 text-white font-bold hover:bg-purple-800">Generate PDF</button>
         </div>
     </div>
 </div>
@@ -999,6 +999,7 @@
         const PRODUCT_CATEGORY_ALIASES = [
             ['光伏组件', 'PV Module'],
             ['光伏板', 'PV Module'],
+            ['PV Module', 'PV Module'],
             ['PV Modules', 'PV Module'],
             ['Pv Module', 'PV Module'],
             ['逆变器', 'Inverter'],
@@ -1234,8 +1235,8 @@
             const rate = Number.isFinite(parseFloat(raw.rateCnyPerMyr)) ? parseFloat(raw.rateCnyPerMyr) : getSalesOutRateCnyPerMyr();
             const quotedAt = String(raw.quotedAt || prev.quotedAt || '').trim() || new Date().toISOString().slice(0, 10);
             const ts = Date.parse(quotedAt) || prev.ts || Date.now();
-            if (!category) throw new Error('请选择类目');
-            if (!unit) throw new Error('请选择单位');
+            if (!category) throw new Error('SelectCategory');
+            if (!unit) throw new Error('SelectUnit');
             if (price <= 0) throw new Error('请输入有效市场价');
             upsertMarketCategoryUnit(category, unit);
             marketPrices.records[idx] = {
@@ -1309,7 +1310,7 @@
             const zh = String(s.nameZh || s.nameCn || '').trim();
             const en = String(s.nameEn || s.name || '').trim();
             if (zh && en && zh !== en) return `${zh} / ${en}`;
-            return zh || en || String(s.code || '').trim() || '未命名供应商';
+            return zh || en || String(s.code || '').trim() || '未命名Supplier';
         }
         function getSupplierDisplayNameForLang(supplier, lang = currentLang) {
             if (!supplier || typeof supplier !== 'object') return '';
@@ -1319,7 +1320,7 @@
             const code = String(s.code || '').trim();
             return lang === 'en'
                 ? (en || zh || code || 'Unnamed Supplier')
-                : (zh || en || code || '未命名供应商');
+                : (zh || en || code || '未命名Supplier');
         }
         function getSupplierLogo(supplier) {
             const s = supplier && typeof supplier === 'object' ? supplier : {};
@@ -1361,7 +1362,7 @@
                 '实地调研级': 'research',
                 '初步合作级': 'trial',
                 '试单合作级': 'trial',
-                '核心供应商级': 'core',
+                '核心Supplier级': 'core',
                 '战略核心级': 'core'
             };
             return mapped[raw] || 'info';
@@ -1592,7 +1593,7 @@
             updatedAt: '2026-05-15',
             rules: {
                 pvModule: {
-                    match: ['光伏组件', 'pv module', 'solar panel', 'module'],
+                    match: ['光伏Module', 'pv module', 'solar panel', 'module'],
                     common: ['IEC 61215', 'IEC 61730'],
                     countries: {
                         MY: ['SIRIM / MS IEC 61215', 'SIRIM / MS IEC 61730', 'IEC TS 62804-1 (PID, when applicable)'],
@@ -1603,7 +1604,7 @@
                     }
                 },
                 inverter: {
-                    match: ['逆变器', 'inverter', 'pcs', 'converter'],
+                    match: ['Inverter', 'inverter', 'pcs', 'converter'],
                     common: ['IEC 62109-1', 'IEC 62109-2', 'IEC 62477 (when applicable)'],
                     countries: {
                         MY: ['IEC 62109-1/2', 'SIRIM / local utility requirements where applicable'],
@@ -1614,7 +1615,7 @@
                     }
                 },
                 battery: {
-                    match: ['电池', 'battery', '储能', 'energy storage', 'ess'],
+                    match: ['Battery', 'battery', '储能', 'energy storage', 'ess'],
                     common: ['IEC 62619', 'UN 38.3', 'MSDS'],
                     countries: {
                         MY: ['IEC 62619', 'UN 38.3', 'MSDS', 'SIRIM / local battery requirements where applicable'],
@@ -1625,7 +1626,7 @@
                     }
                 },
                 accessory: {
-                    match: ['配件', 'accessory', 'mounting', 'bracket', 'cable'],
+                    match: ['Accessory', 'accessory', 'mounting', 'bracket', 'cable'],
                     common: ['Project-specific electrical/import compliance review'],
                     countries: {
                         MY: ['SIRIM / local import compliance where applicable'],
@@ -1773,7 +1774,7 @@
         function renderSupplierOptions(selectedCode = '') {
             ensureSupplierData();
             const cur = normalizeSupplierCode(selectedCode);
-            const options = [`<option value="">请选择供应商</option>`].concat((suppliers || []).map(s => {
+            const options = [`<option value="">SelectSupplier</option>`].concat((suppliers || []).map(s => {
                 const label = `${s.code} · ${getSupplierDisplayName(s)}`;
                 return `<option value="${htmlSafe(s.code)}" ${normalizeSupplierCode(s.code) === cur ? 'selected' : ''}>${htmlSafe(label)}</option>`;
             }));
@@ -1937,8 +1938,8 @@
             const base = next && typeof next === 'object' ? next : {};
             const companies = Array.isArray(base.companies) ? base.companies.filter(c => c && c.id && c.name) : [];
             const seeded = companies.length ? companies : [
-                { id: 'cn_parent', name: '中国母公司', locked: true },
-                { id: 'my_sub', name: '马来西亚子公司' }
+                { id: 'cn_parent', name: 'CN Parent Company', locked: true },
+                { id: 'my_sub', name: 'Malaysia Subsidiary' }
             ];
             const settings = {
                 v: 1,
@@ -2018,7 +2019,7 @@
             if (!profitSettings) return;
             const c = profitSettings.companies.find(x => x.id === companyId);
             if (!c || c.locked) return;
-            if (!confirm(`确定删除公司主体：${c.name}？`)) return;
+            if (!confirm(`Delete company entity: ${c.name}？`)) return;
             profitSettings.companies = profitSettings.companies.filter(x => x.id !== companyId);
             delete profitSettings.categoryProfitPct[companyId];
             delete profitSettings.subcatProfitPct[companyId];
@@ -2094,10 +2095,10 @@
             }).join('');
 
             head.innerHTML = [
-                `<th class="py-3 px-4">类目</th>`,
-                `<th class="py-3 px-4">子类目</th>`,
-                `<th class="py-3 px-4 text-center">启用</th>`,
-                ...profitSettings.companies.map(c => `<th class="py-3 px-4 text-right">${c.name} 利润%</th>`)
+                `<th class="py-3 px-4">Category</th>`,
+                `<th class="py-3 px-4">Subcategory</th>`,
+                `<th class="py-3 px-4 text-center">Enabled</th>`,
+                ...profitSettings.companies.map(c => `<th class="py-3 px-4 text-right">${c.name} Margin%</th>`)
             ].join('');
 
             const cats = Object.keys(subcategoriesByCategory || {}).sort((a, b) => String(a).localeCompare(String(b)));
@@ -2115,7 +2116,7 @@
                     return `
                         <tr class="bg-slate-50/50">
                             <td class="py-3 px-4 font-bold text-slate-700">${cat}</td>
-                            <td class="py-3 px-4 text-xs text-slate-400">（类目默认）</td>
+                            <td class="py-3 px-4 text-xs text-slate-400">（Category默认）</td>
                             <td class="py-3 px-4 text-center text-slate-300">-</td>
                             ${profitSettings.companies.map(c => {
                                 const v = profitSettings.categoryProfitPct?.[c.id]?.[profitTarget]?.[cat];
@@ -2145,11 +2146,11 @@
             }).join('');
 
             outHead.innerHTML = [
-                `<th class="py-3 px-4">类目</th>`,
-                `<th class="py-3 px-4">子类目</th>`,
+                `<th class="py-3 px-4">Category</th>`,
+                `<th class="py-3 px-4">Subcategory</th>`,
                 ...profitSettings.companies.flatMap(c => [
-                    `<th class="py-3 px-4 text-right">${c.name}子类目利润（家用）%</th>`,
-                    `<th class="py-3 px-4 text-right">${c.name}子类目利润（工商业）%</th>`
+                    `<th class="py-3 px-4 text-right">${c.name}SubcategoryMargin (RESI)%</th>`,
+                    `<th class="py-3 px-4 text-right">${c.name}SubcategoryMargin (C&I)%</th>`
                 ])
             ].join('');
 
@@ -2510,7 +2511,7 @@
         const QUOTE_TERMS_ALIGNED_PREVIOUS_DEFAULT_EN = "I.   Price                   : Price quoted as above are strictly for the above project with the models & quantity stated only.\nII.  Payment                 : Strictly base on Payment Terms above\nIII. Validity                : 30 days\nIV.  Delivery & Installation : As above unless stated otherwise, upon confirmation of date and time.\nV.   Order Amendments        : No cancellation or variation of an accepted customer's order shall be valid unless agreed upon in writing.\nVI.  Warranty Period         : 𝐈𝐧𝐯𝐞𝐫𝐭𝐞𝐫 - 60 months (5 years) upon installation date.\n                               𝐁𝐚𝐭𝐭𝐞𝐫𝐲 (if applicable) - 60 months (5 years) upon installation date.\nVII. Warranty Conditions     : The item is warranted against defects arising from faulty design or manufacturing defects for the period\n                               expressly stated in the Terms and Conditions in writing, except that no warranty is offered by SELLER in the case of:\n                               a. Replacement or repairs necessitated by normal wear and tear of Goods, damage caused by lack of care,\n                                  insufficient inspection or maintenance, improper storage or use of Goods, or failure to follow instructions\n                                  on use, inspection, storage, or maintenance;\n                               b. Goods that have been repaired or modified by buyer or by third parties\n                               c. This warranty is limited to the repair, modification or replacement subject to assessment.";
         const QUOTE_TERMS_PREVIOUS_DEFAULT_EN = "I.   Price                   : Price quoted as above are strictly for the above project with the models & quantity stated only.\nII.  Payment                 : Strictly base on Payment Terms above\nIII. Validity                : 30 days\nIV.  Delivery & Installation : As above unless stated otherwise, upon confirmation of date and time.\nV.   Order Ammendments       : No cancellation or variation of an accepted customer's order shall be valid unless agreed upon in writing.\n\nVI.  Warranty Period         : Inverter - 60 months (5 years) upon installation date.\n                               Battery (if applicable) - 60 months (5 years) upon installation date.\nVII. Warranty Conditions     : The item against any defects in from faulty design or manufacturing defects, for a period to be expressly\n                               stated in the Terms and Conditions in writing, except that no warranty is offered by SELLER in the case of:\n                               a. Replacement or repairs necessitated by the normal wear and tear of Goods or by damage caused by lack of care,\n                                  insufficient inspection or maintenance or the improper storage of use of Goods (including failure to follow any instructions\n                                  on use, inspection, storage, or maintained);\n                               b. Goods that have been repaired or modified by buyer or by third parties\n                               c. This warranty is limited to the repair, modification or replacement subject to assessment.";
         const QUOTE_TERMS_LEGACY_DEFAULT_EN = "Terms:\nThis quotation is subject to a thorough site assessment. Costs may vary if non-standard installation is required, including but not limited to additional hacking, cabling, trunking, customization, or any work outside the standard installation scope.\n\nConfirmation:\nI / We, the undersigned, hereby accept the Solar PV with Battery + Inverter System and the aforementioned price, specifications, terms and conditions, and agree for Minova Holdings Sdn. Bhd. to commence the system design, procurement and installation.";
-        const QUOTE_TERMS_OLD_DEFAULT_ZH = "条款：\n本报价以现场全面勘察为准。如需采用非标准安装方式（包括但不限于额外开槽/破拆、布线、线槽/桥架、定制加工或任何超出标准安装范围的工作），费用可能调整。\n\n确认：\n本人/本公司（签署人）确认接受“光伏+电池+逆变器系统”及上述价格、规格、条款与条件，并同意由 Minova Holdings Sdn. Bhd. 开始进行系统设计、采购与安装。";
+        const QUOTE_TERMS_OLD_DEFAULT_ZH = "条款：\n本Quote以现场全面勘察为准。如需采用非标准安装Method（包括但不限于额外开槽/破拆, 布线, 线槽/桥架, 定制加工或任何超出标准安装范围的工作），费用可能调整。\n\n确认：\n本人/本公司（签署人）确认接受“光伏+Battery+Inverter系统”及上述价格, Spec, 条款与条件，并同意由 Minova Holdings Sdn. Bhd. 开始进行系统设计, 采购与安装。";
         const QUOTE_TERMS_OLD_DEFAULT_EN = "Conditions:\nThis quotation is subject to a thorough site assessment. The cost may vary if non-standard installation is applied which require additional hacking, cabling, trunking, customization, or any other out of our standard installation.\n\nConfirmation:\nI / We, the undersigned hereby accept the Solar PV with Battery + Inverter System and the aforementioned price, specification, terms and conditions and would like to commence with the design, procurement and installation of the system by Minova Holdings. Sdn. Bhd.";
         const normalizeQuoteTermsDefaultText = (value, fallback = QUOTE_TERMS_DEFAULT_EN) => {
             const raw = String(value ?? '');
@@ -2529,9 +2530,9 @@
 
         const i18n = {
             zh: {
-                title: "报价单", toCustomer: "致客户：", quoteNo: "单据编号:", quoteDate: "报价日期:",
-                thDesc: "产品", thVendor: "品牌", thSpec: "规格型号", thBatch: "采购批次", thQty: "数量", thPrice: "单价", thMargin: "毛利%", thAmount: "小计",
-                terms: "Proposal Acceptance, Terms & Conditions", totalItems: "项目总数", avgMargin: "平均毛利率", grandTotal: "应付总额",
+                title: "Quotation", toCustomer: "致客户：", quoteNo: "单据编号:", quoteDate: "Quote日期:",
+                thDesc: "产品", thVendor: "品牌", thSpec: "Spec Model", thBatch: "Purchase Batch", thQty: "Quantity", thPrice: "单价", thMargin: "毛利%", thAmount: "小计",
+                terms: "Proposal Acceptance, Terms & Conditions", totalItems: "Item总数", avgMargin: "平均毛利率", grandTotal: "应付总额",
                 authSign: "批准人签名", signDate: "日期",
                 termPlaceholder: "I.   Price                   : Price quoted as above...",
                 timeline: "预计时间表",
@@ -2549,13 +2550,13 @@
                 subTotal: "小计 (Sub-Total)",
                 sst: "销售服务税 (SST 6%)",
                 paymentWarning: "⚠️ 支付比例总和必须等于 100%（当前：{total}%）",
-                shippingHandling: "运输与装卸",
+                shippingHandling: "Transport与装卸",
                 included: "INCLUDED",
                 customerNamePlaceholder: "输入客户公司",
-                customerContactPlaceholder: "联系人/职位",
+                customerContactPlaceholder: "Contact/职位",
                 siteAddressLabel: "Site Address：",
                 siteAddressPlaceholder: "填写现场地址",
-                validityLabel: "报价有效期：",
+                validityLabel: "Quote有效期：",
                 validityUnit: "天",
                 validityError: "请输入 1-999 之间的整数",
                 signature: "签名",
@@ -2568,9 +2569,9 @@
                 siteOverview: {
                     uploadBg: "上传背景",
                     addPv: "添加PV",
-                    addComp: "其他组件",
+                    addComp: "OtherModule",
                     copy: "复制",
-                    del: "删除",
+                    del: "Delete",
                     toTop: "置顶",
                     moveUp: "上移",
                     rotL: "左90°",
@@ -2578,11 +2579,11 @@
                     undo: "撤销",
                     redo: "重做",
                     clearMarks: "清除标注",
-                    deleteMarks: "删除标注",
-                    clearAll: "清除全部",
+                    deleteMarks: "Delete标注",
+                    clearAll: "清除All",
                     toolbarMode: "模式",
-                    toolbarSelect: "选择组件",
-                    toolbarMarks: "选择标注",
+                    toolbarSelect: "SelectModule",
+                    toolbarMarks: "Select标注",
                     toolbarDist: "测距",
                     toolbarArea: "面积",
                     toolbarEditVertices: "编辑顶点",
@@ -2591,12 +2592,12 @@
                     toolbarRulers: "标尺",
                     toolbarSnap: "磁吸",
                     toolbarGrid: "网格",
-                    cardModule: "组件",
+                    cardModule: "Module",
                     cardText: "文字",
                     cardMeasure: "测距/面积",
                     moduleRoof: "屋顶 (m)",
-                    moduleDims: "组件 (m)",
-                    qty: "数量",
+                    moduleDims: "Module (m)",
+                    qty: "Quantity",
                     opacity: "透明度",
                     vertexLock: "顶点锁定",
                     textSize: "字号",
@@ -2607,7 +2608,7 @@
                     weightBold: "粗",
                     textColor: "字色",
                     bg: "底色",
-                    noBg: "无背景",
+                    noBg: "None背景",
                     content: "内容",
                     distColor: "颜色",
                     distMarker: "端点",
@@ -2630,7 +2631,7 @@
                     hatchCross: "交叉",
                     hatchGrid: "网格",
                     areaText: "文字",
-                    customTitle: "添加其他组件",
+                    customTitle: "添加OtherModule",
                     customText: "文字",
                     customShape: "图形",
                     shapeRect: "矩形",
@@ -2643,9 +2644,9 @@
                     customPolyVerts: "顶点数",
                     customVLock: "顶点锁定",
                     customBg: "背景色",
-                    customNoBg: "无背景",
+                    customNoBg: "None背景",
                     customFg: "字体色",
-                    cancel: "取消",
+                    cancel: "Cancel",
                     add: "添加"
                 }
             },
@@ -2993,18 +2994,18 @@
                 btn.className = disabled
                     ? 'text-xs bg-slate-50 text-slate-300 px-4 py-2 rounded-lg font-bold transition-all border border-slate-200 flex items-center gap-1 cursor-not-allowed'
                     : 'text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded-lg font-bold transition-all border border-slate-200 flex items-center gap-1';
-                btn.title = disabled ? '报价明细为空，无法分割' : '在报价明细与备注条款之间插入分割线，并在打印/PDF中分页';
+                btn.title = disabled ? 'QuoteDetails为空，None法分割' : '在QuoteDetails与Remark条款之间插入分割线，并在打印/PDF中分页';
             }
 
-            if (lbl) lbl.textContent = quoteSplit.enabled ? '取消分割' : '从此分割';
+            if (lbl) lbl.textContent = quoteSplit.enabled ? 'Cancel分割' : '从此分割';
             if (preview) preview.classList.toggle('hidden', !quoteSplit.enabled);
             if (afterDetails) afterDetails.dataset.splitEnabled = quoteSplit.enabled ? 'true' : 'false';
         }
 
         window.toggleQuoteSplit = () => {
-            if (isQuoteEffectivelyEmpty()) return alert('报价明细为空，无法分割。请先添加报价内容。');
+            if (isQuoteEffectivelyEmpty()) return alert('QuoteDetails为空，None法分割。请先添加Quote内容。');
             if (!quoteSplit.enabled) {
-                if (!confirm('确定在报价明细与备注条款之间插入分割线，并在打印/PDF中从新页开始显示下方内容吗？')) return;
+                if (!confirm('确定在QuoteDetails与Remark条款之间插入分割线，并在打印/PDF中从新页开始显示下方内容吗？')) return;
                 quoteSplit.enabled = true;
                 quoteSplit.afterRowId = quoteRows[quoteRows.length - 1]?.id || null;
                 saveQuoteSplit();
@@ -3013,7 +3014,7 @@
                 updateQuoteSplitUI();
                 return;
             }
-            if (!confirm('确定取消分割线吗？')) return;
+            if (!confirm('确定Cancel分割线吗？')) return;
             quoteSplit.enabled = false;
             quoteSplit.afterRowId = null;
             saveQuoteSplit();
@@ -3208,7 +3209,7 @@
             const p2 = document.getElementById('lbl-page2-title');
             if(p2) p2.textContent = currentLang === 'zh' ? '投资回报分析' : 'FINANCIAL ANALYSIS';
             const p3 = document.getElementById('lbl-page3-title');
-            if(p3) p3.innerHTML = currentLang === 'zh' ? '产品明细与质保' : 'PART BREAKDOWN<br>&amp; WARRANTY';
+            if(p3) p3.innerHTML = currentLang === 'zh' ? '产品Details与质保' : 'PART BREAKDOWN<br>&amp; WARRANTY';
             const p4 = document.getElementById('lbl-page4-title');
             if(p4) p4.textContent = currentLang === 'zh' ? '参考信息' : 'REFERENCE';
             const p5 = document.getElementById('lbl-page5-title');
@@ -3329,7 +3330,7 @@
             if(lblCost) lblCost.textContent = currentLang === 'zh' ? `系统总成本 (${currentCurrency === 'CNY' ? '¥' : 'RM'})` : `System Cost (${currentCurrency === 'CNY' ? '¥' : 'RM'})`;
         };
 
-        // --- 报价单逻辑 ---
+        // --- Quotation逻辑 ---
         const BATTERY_SOLAR_PROGRAMS = ['offgrid', 'hybrid', 'microgrid'];
         const NON_BATTERY_SOLAR_PROGRAMS = ['gridtied', 'directdrive'];
         window.__lastBatterySolarProgram = window.__lastBatterySolarProgram || 'offgrid';
@@ -3378,7 +3379,7 @@
 
         function quoteProductHasBattery(product, item, row) {
             const hay = `${product?.category || ''} ${product?.name || ''} ${product?.spec || ''} ${product?.scenario || ''} ${item?.spec || ''} ${row?.description || ''} ${row?.spec || ''}`.toLowerCase();
-            return hay.includes('电池') || hay.includes('储能') || hay.includes('battery') || hay.includes('bess') || /\bk\s*w\s*h\b/i.test(hay) || /kwh/i.test(hay);
+            return hay.includes('Battery') || hay.includes('储能') || hay.includes('battery') || hay.includes('bess') || /\bk\s*w\s*h\b/i.test(hay) || /kwh/i.test(hay);
         }
 
         function quoteRowHasBattery(row) {
@@ -3390,13 +3391,13 @@
         function quoteRowIsPvModule(row) {
             const product = resolveQuoteProduct(row);
             const hay = `${product?.category || ''} ${product?.name || ''} ${product?.spec || ''} ${row?.description || ''} ${row?.spec || ''}`.toLowerCase();
-            return hay.includes('光伏组件') || hay.includes('光伏板') || hay.includes('photovoltaic') || hay.includes('solar panel') || hay.includes('pv module') || hay.includes('panel') || hay.includes('组件');
+            return hay.includes('光伏Module') || hay.includes('PV Module') || hay.includes('photovoltaic') || hay.includes('solar panel') || hay.includes('pv module') || hay.includes('panel') || hay.includes('Module');
         }
 
         function quoteRowIsInverter(row) {
             const product = resolveQuoteProduct(row);
             const hay = `${product?.category || ''} ${product?.name || ''} ${product?.spec || ''} ${row?.description || ''} ${row?.spec || ''}`.toLowerCase();
-            return hay.includes('逆变器') || hay.includes('inverter');
+            return hay.includes('Inverter') || hay.includes('inverter');
         }
 
         function quoteHasBatteryRows() {
@@ -3793,7 +3794,7 @@
                         <div class="quote-row-actions flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
                             <button type="button" onclick="moveRow(${r.id}, -1)" class="px-2 py-1 text-[10px] font-black text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-md border border-slate-200" title="上移">↑</button>
                             <button type="button" onclick="moveRow(${r.id}, 1)" class="px-2 py-1 text-[10px] font-black text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-md border border-slate-200" title="下移">↓</button>
-                            <button type="button" onclick="removeRow(${r.id})" class="px-2 py-1 text-[10px] font-black text-red-500 bg-red-50 hover:bg-red-100 rounded-md border border-red-200" title="删除">✕</button>
+                            <button type="button" onclick="removeRow(${r.id})" class="px-2 py-1 text-[10px] font-black text-red-500 bg-red-50 hover:bg-red-100 rounded-md border border-red-200" title="Delete">✕</button>
                         </div>
                     </td>
                 </tr>
@@ -3802,7 +3803,7 @@
                     <td class="py-2 px-2 text-center text-[10px] font-mono text-slate-300">${displayNo}</td>
                     <td class="py-2 px-2" style="vertical-align:top;"><textarea rows="1" oninput="updateRow(${r.id}, 'description', this.value); this.style.height=''; this.style.height=this.scrollHeight + 'px';" class="quote-desc-textarea w-full bg-transparent outline-none text-sm font-medium focus:text-blue-600 resize-none overflow-hidden" placeholder="${currentLang === 'en' ? 'Description' : '描述'}">${htmlSafe(descVal)}</textarea></td>
                     <td class="py-2 px-2"><input type="text" value="${htmlSafe(brandVal)}" oninput="updateRow(${r.id}, 'vendor', this.value)" class="w-full bg-transparent outline-none text-center text-sm focus:text-blue-600" placeholder="${currentLang === 'en' ? 'Brand' : '品牌'}"></td>
-                    <td class="py-2 px-2"><input type="text" value="${r.spec}" oninput="updateRow(${r.id}, 'spec', this.value)" class="w-full bg-transparent outline-none text-center text-sm focus:text-blue-600" placeholder="${currentLang === 'en' ? 'Spec' : '规格'}"></td>
+                    <td class="py-2 px-2"><input type="text" value="${r.spec}" oninput="updateRow(${r.id}, 'spec', this.value)" class="w-full bg-transparent outline-none text-center text-sm focus:text-blue-600" placeholder="${currentLang === 'en' ? 'Spec' : 'Spec'}"></td>
                     <td class="py-2 px-2">${qtyHtml}</td>
                     <td class="py-2 px-2 print:hidden no-print whitespace-nowrap">${priceHtml}</td>
                     <td id="amount-cell-${r.id}" class="py-2 px-2 text-right font-black text-slate-700 text-sm whitespace-nowrap relative">${amountHtml}</td>
@@ -3810,7 +3811,7 @@
                         <div class="quote-row-actions flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
                             <button type="button" onclick="moveRow(${r.id}, -1)" class="px-2 py-1 text-[10px] font-black text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-md border border-slate-200" title="上移">↑</button>
                             <button type="button" onclick="moveRow(${r.id}, 1)" class="px-2 py-1 text-[10px] font-black text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-md border border-slate-200" title="下移">↓</button>
-                            <button type="button" onclick="removeRow(${r.id})" class="px-2 py-1 text-[10px] font-black text-red-500 bg-red-50 hover:bg-red-100 rounded-md border border-red-200" title="删除">✕</button>
+                            <button type="button" onclick="removeRow(${r.id})" class="px-2 py-1 text-[10px] font-black text-red-500 bg-red-50 hover:bg-red-100 rounded-md border border-red-200" title="Delete">✕</button>
                         </div>
                     </td>
                 </tr>
@@ -3824,7 +3825,7 @@
                             <div class="quote-row-actions no-print flex items-center gap-1">
                                 <button type="button" onclick="moveQuoteSplit(-1)" class="px-2 py-1 text-[10px] font-black text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-md border border-slate-200" title="上移">↑</button>
                                 <button type="button" onclick="moveQuoteSplit(1)" class="px-2 py-1 text-[10px] font-black text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-md border border-slate-200" title="下移">↓</button>
-                                <button type="button" onclick="toggleQuoteSplit()" class="px-2 py-1 text-[10px] font-black text-red-500 bg-red-50 hover:bg-red-100 rounded-md border border-red-200" title="删除">✕</button>
+                                <button type="button" onclick="toggleQuoteSplit()" class="px-2 py-1 text-[10px] font-black text-red-500 bg-red-50 hover:bg-red-100 rounded-md border border-red-200" title="Delete">✕</button>
                             </div>
                         </div>
                     </td>
@@ -3842,7 +3843,7 @@
         window.renderQuote = renderQuote;
         window.calculateQuote = calculateQuote;
 
-        // --- 供应商与库管理逻辑 ---
+        // --- Supplier与库管理逻辑 ---
         async function readMinovaImageFile(file) {
             if (typeof window.handleImageUpload === 'function') return window.handleImageUpload(file);
             return new Promise((resolve) => {
@@ -4255,28 +4256,40 @@
             ['明匠', 'Mingjiang'],
             ['埃克森', 'Exxon'],
             ['汉伏', 'Hanfu'],
-            ['未指定供应商', 'Unassigned Supplier'],
+            ['未指定Supplier', 'Unassigned Supplier'],
+            ['未指定位置', 'Unassigned Location'],
+            ['马来西亚仓库', 'Malaysia Warehouse'],
+            ['A 仓库', 'Warehouse A'],
             ['未分类', 'Uncategorized'],
+            ['N-type Module', 'N-type Module'],
             ['N-type组件', 'N-type Module'],
-            ['N-type 组件', 'N-type Module'],
-            ['三相逆变器', 'Three-Phase Inverter'],
-            ['堆叠式产品配件', 'Stackable Product Accessory'],
+            ['组件', 'Module'],
+            ['逆变器', 'Inverter'],
+            ['电池', 'Battery'],
             ['堆叠式单相逆变器', 'Stackable Single-Phase Inverter'],
             ['堆叠式家储', 'Stackable Home Storage'],
+            ['堆叠式产品配件', 'Stackable Product Accessory'],
             ['堆叠式配件', 'Stackable Accessory'],
             ['单相一体机', 'Single-Phase All-in-One'],
+            ['一体机', 'All-in-One System'],
             ['储能柜', 'Energy Storage Cabinet'],
             ['户外柜', 'Outdoor Cabinet'],
             ['光伏组件', 'PV Module'],
-            ['逆变器', 'Inverter'],
-            ['电池', 'Battery'],
+            ['光伏板', 'PV Module'],
+            ['储能电池', 'Battery'],
             ['配件', 'Accessory'],
-            ['一体机', 'All-in-One System'],
             ['工商储', 'C&I Storage'],
+            ['工商业储能', 'C&I Storage'],
+            ['采购入库', 'Stock In'],
+            ['删除入库记录', 'Deleted stock-in record'],
+            ['修改入库', 'Edited stock-in'],
+            ['入库到', 'to'],
+            ['存放', 'Stored at'],
+            ['总成本', 'Total Cost'],
+            ['批次', 'Batch'],
             ['三相', 'Three-Phase'],
             ['单相', 'Single-Phase'],
             ['双面', 'Bifacial'],
-            ['组件', 'Module'],
             ['天', 'days'],
             ['周', 'weeks']
         ];
@@ -4341,17 +4354,17 @@
             const headRow = document.getElementById('inventory-head-row');
             if (headRow && !inventoryFullHeadHtml) inventoryFullHeadHtml = headRow.innerHTML;
             const btn = document.getElementById('btn-inv-summary');
-            if (btn) btn.innerHTML = inventorySummaryMode ? '<span>取消汇总</span>' : '<span>一键汇总</span>';
+            if (btn) btn.innerHTML = inventorySummaryMode ? '<span>Cancel Summary</span>' : '<span>Summary</span>';
             if (inventorySummaryMode && headRow) {
                 headRow.innerHTML = `
-                    <th class="py-4 px-4">产品编号</th>
-                    <th class="py-4 px-4">产品全称</th>
-                    <th class="py-4 px-4">类目</th>
-                    <th class="py-4 px-4">子类目</th>
-                    <th class="py-4 px-4">供应商</th>
-                    <th class="py-4 px-4">规格</th>
-                    <th class="py-4 px-4 text-center">库存数量(汇总)</th>
-                    <th class="py-4 px-4 text-right">总库存平均成本(¥)</th>
+                    <th class="py-4 px-4">Product ID</th>
+                    <th class="py-4 px-4">Product Name</th>
+                    <th class="py-4 px-4">Category</th>
+                    <th class="py-4 px-4">Subcategory</th>
+                    <th class="py-4 px-4">Supplier</th>
+                    <th class="py-4 px-4">Spec</th>
+                    <th class="py-4 px-4 text-center">Inventory Quantity (Summary)</th>
+                    <th class="py-4 px-4 text-right">Average Inventory Cost (¥)</th>
                 `;
             } else if (!inventorySummaryMode && headRow && inventoryFullHeadHtml) {
                 headRow.innerHTML = inventoryFullHeadHtml;
@@ -4359,7 +4372,7 @@
 
             if (inventorySummaryMode) {
                 if (inventory.length === 0) {
-                    list.innerHTML = `<tr><td colspan="8" class="py-20 text-center text-slate-400 text-sm">暂无库存记录...</td></tr>`;
+                    list.innerHTML = `<tr><td colspan="8" class="py-20 text-center text-slate-400 text-sm">No inventory records yet...</td></tr>`;
                     return;
                 }
                 const grouped = new Map();
@@ -4381,10 +4394,10 @@
                     return `
                         <tr class="hover:bg-slate-50 transition-colors">
                             <td class="py-4 px-4 text-xs font-mono text-slate-500">${r.productId}</td>
-                            <td class="py-4 px-4 font-bold text-slate-700 text-sm">${p.name || '未知产品'}</td>
+                            <td class="py-4 px-4 font-bold text-slate-700 text-sm">${htmlSafe(productListDisplayText(p.name || 'Unknown Product'))}</td>
                             <td class="py-4 px-4 text-xs text-slate-500 uppercase tracking-tighter">${p.category || '-'}</td>
                             <td class="py-4 px-4 text-xs text-slate-600">${p.scenario || '-'}</td>
-                            <td class="py-4 px-4 text-xs text-slate-600">${getProductSupplierDisplay(p)}</td>
+                            <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(productListDisplayText(getProductSupplierDisplay(p)))}</td>
                             <td class="py-4 px-4 text-xs text-slate-600">${specNum}</td>
                             <td class="py-4 px-4 text-center font-black text-green-700">${formatNumberAuto(r.quantity, 4)}</td>
                             <td class="py-4 px-4 text-right text-sm font-mono text-slate-700">¥${(parseFloat(avgCost) || 0).toFixed(4)}</td>
@@ -4395,7 +4408,7 @@
             }
 
             if(inventory.length === 0) {
-                list.innerHTML = `<tr><td colspan="21" class="py-20 text-center text-slate-400 text-sm">暂无库存记录...</td></tr>`;
+                list.innerHTML = `<tr><td colspan="21" class="py-20 text-center text-slate-400 text-sm">No inventory records yet...</td></tr>`;
                 return;
             }
             list.innerHTML = inventory.map(item => {
@@ -4404,7 +4417,7 @@
                 if (locked) selectedInventoryForTransport.delete(item.id);
                 const checked = !locked && selectedInventoryForTransport.has(item.id) ? 'checked' : '';
                 const disabled = locked ? 'disabled' : '';
-                const lockTitle = locked ? 'title="已生成运输单"' : '';
+                const lockTitle = locked ? 'title="Transport order created"' : '';
 
                 const unitPrice = item.unitPurchasePrice || ((item.purchasePrice || 0) * (item.spec || 1));
                 const purchaseDate = item.purchaseDate ? String(item.purchaseDate) : '-';
@@ -4427,10 +4440,10 @@
                             onmouseleave="hideInventoryTooltip()">
                             ${item.productId}
                         </td>
-                        <td class="py-4 px-4 font-bold text-slate-700 text-sm">${product.name || '未知产品'}</td>
+                        <td class="py-4 px-4 font-bold text-slate-700 text-sm">${htmlSafe(productListDisplayText(product.name || 'Unknown Product'))}</td>
                         <td class="py-4 px-4 text-xs text-slate-500 uppercase tracking-tighter">${product.category || '-'}</td>
                         <td class="py-4 px-4 text-xs text-slate-600">${product.scenario || '-'}</td>
-                        <td class="py-4 px-4 text-xs text-slate-600">${getProductSupplierDisplay(product)}</td>
+                        <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(productListDisplayText(getProductSupplierDisplay(product)))}</td>
                         <td class="py-4 px-4 text-xs text-slate-600">${purchaseDate}</td>
                         <td class="py-4 px-4 text-center font-bold text-green-600">${item.quantity}</td>
                         <td class="py-4 px-4 text-xs text-slate-600">${item.batchNo || '-'}</td>
@@ -4444,12 +4457,12 @@
                         <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">¥${domesticTax.toFixed(2)}</td>
                         <td class="py-4 px-4 text-right text-sm font-mono text-slate-900 font-bold">¥${totalCost.toFixed(2)}</td>
                         <td class="py-4 px-4 text-right text-sm font-mono text-slate-700">¥${avgCost.toFixed(2)}</td>
-                        <td class="py-4 px-4 text-xs text-slate-600">${item.location || '-'}</td>
+                        <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(productListDisplayText(item.location || '-'))}</td>
                         <td class="py-4 px-4 text-center">
                             <div class="flex items-center justify-center gap-2">
-                                <button onclick="openInventoryEditModal('${item.id}')" class="text-purple-700 hover:bg-purple-50 p-1 rounded text-xs">定价</button>
-                                <button onclick="openInventoryModal('edit', '${item.id}')" class="text-blue-600 hover:bg-blue-50 p-1 rounded text-xs">修改</button>
-                                <button onclick="openInventoryModal('out', '${item.id}')" class="text-orange-500 hover:bg-orange-50 p-1 rounded text-xs">出库</button>
+                                <button onclick="openInventoryEditModal('${item.id}')" class="text-purple-700 hover:bg-purple-50 p-1 rounded text-xs">Pricing</button>
+                                <button onclick="openInventoryModal('edit', '${item.id}')" class="text-blue-600 hover:bg-blue-50 p-1 rounded text-xs">Edit</button>
+                                <button onclick="openInventoryModal('out', '${item.id}')" class="text-orange-500 hover:bg-orange-50 p-1 rounded text-xs">Stock Out</button>
                                 <button onclick="deleteInventoryItem('${item.id}')" class="text-red-300 hover:text-red-500 p-1 rounded">🗑</button>
                             </div>
                         </td>
@@ -4477,17 +4490,17 @@
         };
 
         function getTransportMethodLabel(v) {
-            if (v === 'sea') return '海运';
-            if (v === 'air') return '空运';
-            if (v === 'land') return '陆运';
-            if (v === 'other') return '其他';
+            if (v === 'sea') return 'Sea';
+            if (v === 'air') return 'Air';
+            if (v === 'land') return 'Land';
+            if (v === 'other') return 'Other';
             return '-';
         }
         function getTransportStatusLabel(v) {
-            if (v === 'draft') return '草稿';
-            if (v === 'in_transit') return '运输中';
-            if (v === 'delivered') return '已到货';
-            if (v === 'cancelled') return '已取消';
+            if (v === 'draft') return 'Draft';
+            if (v === 'in_transit') return 'In Transit';
+            if (v === 'delivered') return 'Delivered';
+            if (v === 'cancelled') return 'Cancelled';
             return '-';
         }
         window.renderTransport = () => {
@@ -4516,7 +4529,7 @@
             });
 
             if (!filtered.length) {
-                list.innerHTML = `<tr><td colspan="12" class="py-20 text-center text-slate-400 text-sm">暂无运输记录...</td></tr>`;
+                list.innerHTML = `<tr><td colspan="12" class="py-20 text-center text-slate-400 text-sm">No transport records yet...</td></tr>`;
                 return;
             }
 
@@ -4528,11 +4541,11 @@
                 const lines = Array.isArray(r.lines) ? r.lines : [];
                 const totalWeight = Number.isFinite(parseFloat(r.totalWeightKg)) ? parseFloat(r.totalWeightKg) : lines.reduce((s, l) => s + (parseFloat(l.weightKg) || 0), 0);
                 const totalVol = Number.isFinite(parseFloat(r.totalVolumeM3)) ? parseFloat(r.totalVolumeM3) : lines.reduce((s, l) => s + (parseFloat(l.volumeM3) || 0), 0);
-                const brief = lines.slice(0, 2).map(l => `${l.productId || ''}×${l.quantity || 0}`).filter(Boolean).join('、');
-                const more = lines.length > 2 ? ` 等${lines.length}项` : (lines.length ? '' : '无');
+                const brief = lines.slice(0, 2).map(l => `${l.productId || ''}×${l.quantity || 0}`).filter(Boolean).join(', ');
+                const more = lines.length > 2 ? ` + ${lines.length} items` : (lines.length ? '' : 'None');
                 const batches = [...new Set(lines.map(l => String(l.batchNo || '').trim()).filter(Boolean))];
-                const batchFull = batches.join('、');
-                const batchBrief = batches.slice(0, 2).join('、') + (batches.length > 2 ? ` 等${batches.length}批` : (batches.length ? '' : '无'));
+                const batchFull = batches.join(', ');
+                const batchBrief = batches.slice(0, 2).join(', ') + (batches.length > 2 ? ` + ${batches.length} batches` : (batches.length ? '' : 'None'));
                 const checked = selectedTransportRecords.has(r.id) ? 'checked' : '';
                 return `
                     <tr class="hover:bg-slate-50 transition-colors">
@@ -4545,10 +4558,10 @@
                         <td class="py-4 px-4 text-xs text-slate-600">${getTransportMethodLabel(r.method)}</td>
                         <td class="py-4 px-4">
                             <select class="border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold outline-none" onchange="updateTransportStatus('${r.id}', this.value)">
-                                <option value="draft" ${r.status === 'draft' ? 'selected' : ''}>草稿</option>
-                                <option value="in_transit" ${r.status === 'in_transit' ? 'selected' : ''}>运输中</option>
-                                <option value="delivered" ${r.status === 'delivered' ? 'selected' : ''}>已到货</option>
-                                <option value="cancelled" ${r.status === 'cancelled' ? 'selected' : ''}>已取消</option>
+                                <option value="draft" ${r.status === 'draft' ? 'selected' : ''}>Draft</option>
+                                <option value="in_transit" ${r.status === 'in_transit' ? 'selected' : ''}>In Transit</option>
+                                <option value="delivered" ${r.status === 'delivered' ? 'selected' : ''}>Delivered</option>
+                                <option value="cancelled" ${r.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
                             </select>
                         </td>
                         <td class="py-4 px-4 text-right text-sm font-mono text-slate-700">${fmtMoney(r.freight)}</td>
@@ -4558,8 +4571,8 @@
                         <td class="py-4 px-4 text-xs text-slate-600">${brief}${more}</td>
                         <td class="py-4 px-4 text-center">
                             <div class="flex items-center justify-center gap-3">
-                                <button onclick="openTransportEditModal('${r.id}')" class="text-blue-600 hover:text-blue-800 text-xs font-bold">编辑</button>
-                                <button onclick="deleteTransportRecord('${r.id}')" class="text-red-400 hover:text-red-600 text-xs font-bold">删除</button>
+                                <button onclick="openTransportEditModal('${r.id}')" class="text-blue-600 hover:text-blue-800 text-xs font-bold">Edit</button>
+                                <button onclick="deleteTransportRecord('${r.id}')" class="text-red-400 hover:text-red-600 text-xs font-bold">Delete</button>
                             </div>
                         </td>
                     </tr>
@@ -4576,8 +4589,8 @@
 
         window.deleteSelectedTransportRecords = () => {
             const ids = Array.from(selectedTransportRecords);
-            if (!ids.length) return alert('请先勾选要删除的运输记录');
-            if (!confirm(`确定删除选中的 ${ids.length} 条运输记录？`)) return;
+            if (!ids.length) return alert('Please select transport records to delete first.');
+            if (!confirm(`Delete the selected ${ids.length} transport records?`)) return;
             for (const id of ids) {
                 const idx = transportRecords.findIndex(r => r.id === id);
                 if (idx === -1) continue;
@@ -4607,7 +4620,7 @@
         };
 
         window.deleteTransportRecord = (id) => {
-            if (!confirm('确定删除该运输记录？')) return;
+            if (!confirm('Delete this transport record?')) return;
             const idx = transportRecords.findIndex(r => r.id === id);
             if (idx === -1) return;
             const rec = transportRecords[idx];
@@ -4641,25 +4654,25 @@
                     <table class="w-full text-left whitespace-nowrap">
                         <thead class="bg-slate-50/50">
                             <tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
-                                <th class="py-3 px-3">产品编号</th>
-                                <th class="py-3 px-3">产品全称</th>
-                                <th class="py-3 px-3">类目</th>
-                                <th class="py-3 px-3">子类目</th>
-                                <th class="py-3 px-3">供应商</th>
-                                <th class="py-3 px-3 text-right">运输数量</th>
-                                <th class="py-3 px-3 text-right">重量(kg)</th>
-                                <th class="py-3 px-3 text-right">体积(m³)</th>
-                                <th class="py-3 px-3">批次</th>
+                                <th class="py-3 px-3">Product ID</th>
+                                <th class="py-3 px-3">Product Name</th>
+                                <th class="py-3 px-3">Category</th>
+                                <th class="py-3 px-3">Subcategory</th>
+                                <th class="py-3 px-3">Supplier</th>
+                                <th class="py-3 px-3 text-right">Transport Quantity</th>
+                                <th class="py-3 px-3 text-right">Weight (kg)</th>
+                                <th class="py-3 px-3 text-right">Volume (m³)</th>
+                                <th class="py-3 px-3">Batch</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
                             ${lines.map((l, i) => `
                                 <tr>
                                     <td class="py-3 px-3 text-xs font-mono text-slate-600">${safe(l.productId)}</td>
-                                    <td class="py-3 px-3 text-xs text-slate-700">${safe(l.productName)}</td>
+                                    <td class="py-3 px-3 text-xs text-slate-700">${safe(productListDisplayText(l.productName))}</td>
                                     <td class="py-3 px-3 text-xs text-slate-600">${safe(l.category)}</td>
                                     <td class="py-3 px-3 text-xs text-slate-600">${safe(l.subcategory)}</td>
-                                    <td class="py-3 px-3 text-xs text-slate-600">${safe(l.vendor)}</td>
+                                    <td class="py-3 px-3 text-xs text-slate-600">${safe(productListDisplayText(l.vendor))}</td>
                                     <td class="py-3 px-3"><input id="tr-line-qty-${i}" type="number" min="0" class="w-24 text-right border border-slate-200 rounded-lg px-2 py-1 text-xs outline-none" value="${safe(l.quantity)}"></td>
                                     <td class="py-3 px-3"><input id="tr-line-w-${i}" type="number" min="0" step="0.01" class="w-28 text-right border border-slate-200 rounded-lg px-2 py-1 text-xs outline-none" value="${safe(l.weightKg)}"></td>
                                     <td class="py-3 px-3"><input id="tr-line-v-${i}" type="number" min="0" step="0.001" class="w-28 text-right border border-slate-200 rounded-lg px-2 py-1 text-xs outline-none" value="${safe(l.volumeM3)}"></td>
@@ -4688,9 +4701,9 @@
             const safe = (v) => String(v ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
             const carriers = [...new Set((Array.isArray(transportRecords) ? transportRecords : []).map(r => String(r?.carrierCompany || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
             const carrierOptions = [
-                `<option value="">请选择</option>`,
+                `<option value="">Select</option>`,
                 ...carriers.map(c => `<option value="${safe(c)}">${safe(c)}</option>`),
-                `<option value="__new__">新增...</option>`
+                `<option value="__new__">Add...</option>`
             ].join('');
             const isEdit = !!(preset && typeof preset === 'object' && preset.id);
             const saveId = isEdit ? String(preset.id) : '';
@@ -4698,42 +4711,42 @@
                 <div class="bg-white rounded-3xl p-6 w-full max-w-5xl shadow-2xl max-h-[90vh] overflow-y-auto">
                     <div class="flex items-center justify-between mb-4">
                         <div>
-                            <h3 class="text-xl font-bold text-slate-800">${isEdit ? '编辑运输单' : '新建运输单'}</h3>
-                            <p class="text-xs text-slate-400 mt-1">请补全重量/体积等信息后保存</p>
+                            <h3 class="text-xl font-bold text-slate-800">${isEdit ? 'Edit Transport Order' : 'New Transport Order'}</h3>
+                            <p class="text-xs text-slate-400 mt-1">Complete weight and volume before saving.</p>
                         </div>
                         <button onclick="closeTransportModal()" class="text-slate-400 hover:text-slate-600 text-2xl">×</button>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                         <div>
-                            <div class="text-xs font-bold text-slate-500 mb-1">运输单号</div>
-                            <input id="tr-tracking-no" type="text" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none" placeholder="如：AWB/BL/Tracking No">
+                            <div class="text-xs font-bold text-slate-500 mb-1">Transport Order No.</div>
+                            <input id="tr-tracking-no" type="text" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none" placeholder="e.g. AWB / BL / Tracking No.">
                         </div>
                         <div>
-                            <div class="text-xs font-bold text-slate-500 mb-1">货运公司</div>
+                            <div class="text-xs font-bold text-slate-500 mb-1">Freight Company</div>
                             <select id="tr-carrier" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none" onchange="onTransportCarrierSelectChange(this.value)">
                                 ${carrierOptions}
                             </select>
-                            <input id="tr-carrier-new" type="text" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none mt-2" placeholder="输入新的货运公司" style="display:none">
+                            <input id="tr-carrier-new" type="text" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none mt-2" placeholder="Enter a new freight company" style="display:none">
                         </div>
                         <div>
-                            <div class="text-xs font-bold text-slate-500 mb-1">运输方式</div>
+                            <div class="text-xs font-bold text-slate-500 mb-1">Transport Method</div>
                             <select id="tr-method" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none">
-                                <option value="">请选择</option>
-                                <option value="sea">海运</option>
-                                <option value="air">空运</option>
-                                <option value="land">陆运</option>
-                                <option value="other">其他</option>
+                                <option value="">Select</option>
+                                <option value="sea">Sea</option>
+                                <option value="air">Air</option>
+                                <option value="land">Land</option>
+                                <option value="other">Other</option>
                             </select>
                         </div>
                         <div>
-                            <div class="text-xs font-bold text-slate-500 mb-1">运费金额(¥)</div>
+                            <div class="text-xs font-bold text-slate-500 mb-1">Freight Amount (¥)</div>
                             <input id="tr-freight" type="number" min="0" step="0.01" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none" value="0">
                         </div>
                     </div>
-                    ${lines.length ? buildTransportLinesTable(lines) : `<div class="py-16 text-center text-slate-400 text-sm border border-dashed border-slate-200 rounded-2xl">请从库存管理中勾选记录后点击“生成运输单”</div>`}
+                    ${lines.length ? buildTransportLinesTable(lines) : `<div class="py-16 text-center text-slate-400 text-sm border border-dashed border-slate-200 rounded-2xl">Select inventory records and click "Create Transport Order"</div>`}
                     <div class="flex justify-end gap-3 mt-5">
-                        <button onclick="closeTransportModal()" class="px-4 py-2 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50">取消</button>
-                        <button onclick="saveTransportFromModal('${encodeURIComponent(JSON.stringify(lines))}', '${safe(saveId)}')" class="px-4 py-2 rounded-xl bg-purple-700 text-white font-bold hover:bg-purple-800">保存</button>
+                        <button onclick="closeTransportModal()" class="px-4 py-2 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50">Cancel</button>
+                        <button onclick="saveTransportFromModal('${encodeURIComponent(JSON.stringify(lines))}', '${safe(saveId)}')" class="px-4 py-2 rounded-xl bg-purple-700 text-white font-bold hover:bg-purple-800">Save</button>
                     </div>
                 </div>
             `;
@@ -4815,7 +4828,7 @@
                 return hay.includes(q);
             });
             if (!filtered.length) {
-                list.innerHTML = `<div class="py-16 text-center text-slate-400 text-sm">暂无可用库存记录...</div>`;
+                list.innerHTML = `<div class="py-16 text-center text-slate-400 text-sm">No available inventory records yet...</div>`;
                 return;
             }
             list.innerHTML = filtered.map(it => {
@@ -4826,11 +4839,11 @@
                         <div class="flex items-center gap-3 min-w-0">
                             <input type="checkbox" class="h-4 w-4" ${checked} onchange="toggleInventoryForTransportPicker('${it.id}', this.checked)">
                             <div class="min-w-0">
-                                <div class="text-sm font-bold text-slate-800 truncate">${p.name || '未知产品'}</div>
-                                <div class="text-[10px] text-slate-500 truncate">${it.productId || ''} ｜ ${getProductSupplierDisplay(p)} ｜ 批次 ${it.batchNo || '-'} ｜ 库存 ${formatNumberAuto(it.quantity, 4)}</div>
+                                <div class="text-sm font-bold text-slate-800 truncate">${htmlSafe(productListDisplayText(p.name || 'Unknown Product'))}</div>
+                                <div class="text-[10px] text-slate-500 truncate">${it.productId || ''} | ${htmlSafe(productListDisplayText(getProductSupplierDisplay(p)))} | Batch ${it.batchNo || '-'} | Inventory ${formatNumberAuto(it.quantity, 4)}</div>
                             </div>
                         </div>
-                        <div class="text-[10px] text-slate-400 text-right whitespace-nowrap">${it.location || '-'}</div>
+                        <div class="text-[10px] text-slate-400 text-right whitespace-nowrap">${htmlSafe(productListDisplayText(it.location || '-'))}</div>
                     </label>
                 `;
             }).join('');
@@ -4842,18 +4855,18 @@
                 <div class="bg-white rounded-3xl p-6 w-full max-w-3xl shadow-2xl max-h-[90vh] overflow-y-auto">
                     <div class="flex items-center justify-between mb-4">
                         <div>
-                            <h3 class="text-xl font-bold text-slate-800">从库存生成运输单</h3>
-                            <p class="text-xs text-slate-400 mt-1">仅显示未生成运输单的库存记录（${eligibleCount} 条）</p>
+                            <h3 class="text-xl font-bold text-slate-800">Create Transport Order from Inventory</h3>
+                            <p class="text-xs text-slate-400 mt-1">Only inventory records without transport orders are shown（${eligibleCount} records）</p>
                         </div>
                         <button onclick="closeTransportInventoryPickerModal()" class="text-slate-400 hover:text-slate-600 text-2xl">×</button>
                     </div>
                     <div class="mb-3">
-                        <input id="tr-inv-picker-search" type="text" placeholder="搜索：产品编号/名称/供应商/批次/仓库" oninput="renderTransportInventoryPickerList()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none">
+                        <input id="tr-inv-picker-search" type="text" placeholder="Search: product ID/name/supplier/batch/warehouse" oninput="renderTransportInventoryPickerList()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none">
                     </div>
                     <div id="tr-inv-picker-list" class="border border-slate-200 rounded-2xl overflow-hidden"></div>
                     <div class="flex justify-end gap-3 mt-5">
-                        <button onclick="closeTransportInventoryPickerModal()" class="px-4 py-2 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50">取消</button>
-                        <button onclick="confirmTransportCreateFromInventoryPicker()" class="px-4 py-2 rounded-xl bg-purple-700 text-white font-bold hover:bg-purple-800">下一步</button>
+                        <button onclick="closeTransportInventoryPickerModal()" class="px-4 py-2 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50">Cancel</button>
+                        <button onclick="confirmTransportCreateFromInventoryPicker()" class="px-4 py-2 rounded-xl bg-purple-700 text-white font-bold hover:bg-purple-800">Next</button>
                     </div>
                 </div>
             `;
@@ -4864,7 +4877,7 @@
         window.confirmTransportCreateFromInventoryPicker = () => {
             const ids = Array.from(selectedInventoryForTransportPicker);
             const selected = ids.map(id => inventory.find(x => x.id === id)).filter(Boolean);
-            if (!selected.length) return alert('请先勾选要生成运输单的库存记录');
+            if (!selected.length) return alert('Select inventory records to create a transport order.');
             const lines = selected.map(it => {
                 const p = products.find(x => x.id === it.productId) || {};
                 return {
@@ -4889,7 +4902,7 @@
             const ids = Array.from(selectedInventoryForTransport);
             const rawSelected = ids.map(id => inventory.find(x => x.id === id)).filter(Boolean);
             const selected = rawSelected.filter(it => !(Array.isArray(it.transportIds) && it.transportIds.length > 0));
-            if (!selected.length) return alert('请先在库存管理中勾选需要运输的记录');
+            if (!selected.length) return alert('Select inventory records in Inventory Management first.');
             const lines = selected.map(it => {
                 const p = products.find(x => x.id === it.productId) || {};
                 return {
@@ -4911,7 +4924,7 @@
 
         window.openTransportEditModal = (id) => {
             const rec = (Array.isArray(transportRecords) ? transportRecords : []).find(r => r.id === id);
-            if (!rec) return alert('未找到该运输记录');
+            if (!rec) return alert('Transport record not found.');
             const lines = Array.isArray(rec.lines) ? rec.lines : [];
             openTransportCreateModal(lines, rec);
         };
@@ -4925,10 +4938,10 @@
             const freight = parseFloat(document.getElementById('tr-freight')?.value || '0') || 0;
             const rawLines = JSON.parse(decodeURIComponent(linesJsonEncoded || '%5B%5D'));
             const lines = Array.isArray(rawLines) ? rawLines : [];
-            if (!trackingNo) return alert('运输单号不能为空');
-            if (!carrierCompany) return alert('请选择或填写货运公司');
-            if (!method) return alert('请选择运输方式');
-            if (!lines.length) return alert('运输明细不能为空');
+            if (!trackingNo) return alert('Transport Order No. is required.');
+            if (!carrierCompany) return alert('Select or enter a freight company.');
+            if (!method) return alert('Select a transport method.');
+            if (!lines.length) return alert('Transport details are required.');
 
             const finalLines = [];
             let totalW = 0;
@@ -4938,9 +4951,9 @@
                 const qty = parseFloat(document.getElementById(`tr-line-qty-${i}`)?.value || '0') || 0;
                 const w = parseFloat(document.getElementById(`tr-line-w-${i}`)?.value || '') ;
                 const v = parseFloat(document.getElementById(`tr-line-v-${i}`)?.value || '') ;
-                if (!(qty > 0)) return alert(`第 ${i + 1} 行：运输数量必须大于 0`);
-                if (!Number.isFinite(w) || w < 0) return alert(`第 ${i + 1} 行：请填写重量(kg)`);
-                if (!Number.isFinite(v) || v < 0) return alert(`第 ${i + 1} 行：请填写体积(m³)`);
+                if (!(qty > 0)) return alert(`Line ${i + 1}: transport quantity must be greater than 0.`);
+                if (!Number.isFinite(w) || w < 0) return alert(`Line ${i + 1}: enter weight (kg).`);
+                if (!Number.isFinite(v) || v < 0) return alert(`Line ${i + 1}: enter volume (m³).`);
                 totalW += w;
                 totalV += v;
                 finalLines.push({ ...base, quantity: qty, weightKg: w, volumeM3: v });
@@ -4949,7 +4962,7 @@
             const editId = String(editingId || '').trim();
             if (editId) {
                 const idx = transportRecords.findIndex(r => r.id === editId);
-                if (idx === -1) return alert('未找到要编辑的运输记录');
+                if (idx === -1) return alert('Transport record to edit was not found.');
                 const old = transportRecords[idx] || {};
                 const oldInvIds = new Set((Array.isArray(old.lines) ? old.lines : []).map(l => l.inventoryId).filter(Boolean));
                 const nextInvIds = new Set(finalLines.map(l => l.inventoryId).filter(Boolean));
@@ -5019,15 +5032,15 @@
             const tooltip = document.getElementById('global-tooltip');
 
             tooltip.innerHTML = `
-                <p class="font-bold text-base mb-2 border-b border-slate-600 pb-1">库存汇总: ${productId}</p>
+                <p class="font-bold text-base mb-2 border-b border-slate-600 pb-1">Inventory Summary: ${productId}</p>
                 <div class="space-y-1">
-                    <p class="flex justify-between"><span>总数量:</span> <span class="font-bold text-green-400">${summary.totalQuantity}</span></p>
-                    <p class="flex justify-between"><span>平均采购价:</span> <span class="font-bold text-blue-400">¥${summary.avgPrice.toFixed(2)}</span></p>
+                    <p class="flex justify-between"><span>Total Quantity:</span> <span class="font-bold text-green-400">${summary.totalQuantity}</span></p>
+                    <p class="flex justify-between"><span>Average Purchase Price:</span> <span class="font-bold text-blue-400">¥${summary.avgPrice.toFixed(2)}</span></p>
                     <div class="pt-2">
-                        <p class="font-bold text-slate-400 mb-1">位置分布:</p>
+                        <p class="font-bold text-slate-400 mb-1">Location Breakdown:</p>
                         ${Object.entries(summary.locations).map(([loc, qty]) =>
-                            `<p class="flex justify-between text-[10px]"><span>${loc}:</span> <span>${qty}</span></p>`
-                        ).join('') || '<p class="italic text-slate-500 text-[10px]">无位置信息</p>'}
+                            `<p class="flex justify-between text-[10px]"><span>${productListDisplayText(loc)}:</span> <span>${qty}</span></p>`
+                        ).join('') || '<p class="italic text-slate-500 text-[10px]">No location information</p>'}
                     </div>
                 </div>
             `;
@@ -5046,7 +5059,7 @@
             document.getElementById('global-tooltip').classList.add('hidden');
         };
 
-        // --- 库存价格编辑逻辑 ---
+        // --- Inventory pricing logic ---
         function getDefaultImportDutyPercent(category) {
             const c = normalizeProductCategory(category);
             if (c === 'PV Module') return 0;
@@ -5186,10 +5199,10 @@
                 ts: Date.now(),
                 type: 'price',
                 productId: item.productId,
-                productName: product.name || '未知产品',
+                productName: product.name || 'Unknown Product',
                 quantity: item.quantity,
                 batchNo: item.batchNo,
-                note: `定价 税率 关税:${oldDuty.toFixed(2)}→${dutyPct.toFixed(2)} SST:${oldSst.toFixed(2)}→${sstPct.toFixed(2)} 灰清:${oldGray.toFixed(2)}→${grayPct.toFixed(2)} | 清关家用:${oldCh.toFixed(2)}→${r.clearanceHomePrice.toFixed(2)} 清关工商:${oldCb.toFixed(2)}→${r.clearanceBizPrice.toFixed(2)} 灰清家用:${oldGh.toFixed(2)}→${r.grayHomePrice.toFixed(2)} 灰清工商:${oldGb.toFixed(2)}→${r.grayBizPrice.toFixed(2)}`
+                note: `Pricing Tax rates - duty:${oldDuty.toFixed(2)}→${dutyPct.toFixed(2)} SST:${oldSst.toFixed(2)}→${sstPct.toFixed(2)} 灰清:${oldGray.toFixed(2)}→${grayPct.toFixed(2)} | Clearance RESI:${oldCh.toFixed(2)}→${r.clearanceHomePrice.toFixed(2)} Clearance C&I:${oldCb.toFixed(2)}→${r.clearanceBizPrice.toFixed(2)} Grey RESI:${oldGh.toFixed(2)}→${r.grayHomePrice.toFixed(2)} Grey C&I:${oldGb.toFixed(2)}→${r.grayBizPrice.toFixed(2)}`
             });
 
             saveToLocal();
@@ -5394,7 +5407,7 @@
                     total += qty;
                     continue;
                 }
-                if (desc.includes('光伏组件') || desc.includes('组件')) total += qty;
+                if (desc.includes('光伏Module') || desc.includes('Module')) total += qty;
             }
             return total > 0 ? total : 1;
         }
@@ -5463,9 +5476,9 @@
             const itemsEl = document.getElementById('install-overseas-items');
 
             const isDomestic = window.installMode === 'domestic';
-            if (titleEl) titleEl.textContent = isDomestic ? '施工安装 · 国内施工费' : '施工安装 · 海外施工费';
-            if (descEl) descEl.value = isDomestic ? '国内施工费' : '海外施工费';
-            if (qtyUnitEl) qtyUnitEl.textContent = isDomestic ? '项' : 'kWp';
+            if (titleEl) titleEl.textContent = isDomestic ? 'Installation Work · Domestic' : 'Installation Work · Overseas';
+            if (descEl) descEl.value = isDomestic ? 'Domestic Installation Work' : 'Overseas Installation Work';
+            if (qtyUnitEl) qtyUnitEl.textContent = isDomestic ? 'item' : 'kWp';
             if (itemsEl) itemsEl.classList.toggle('hidden', isDomestic);
             if (!isDomestic) resetInstallOptionItems();
 
@@ -5504,11 +5517,11 @@
             if (el) el.value = sub.toFixed(4);
         };
         window.applyInstallToQuote = () => {
-            const desc = String(document.getElementById('install-desc')?.value || '').trim() || '施工安装';
+            const desc = String(document.getElementById('install-desc')?.value || '').trim() || 'Installation Work';
             const unit = parseFloat(document.getElementById('install-unit-price')?.value) || 0;
             const qty = Math.max(0, parseFloat(document.getElementById('install-qty')?.value) || 0);
-            if (qty <= 0) return alert('请输入数量');
-            if (unit < 0) return alert('单价不能为负数');
+            if (qty <= 0) return alert('Enter a valid quantity.');
+            if (unit < 0) return alert('Unit price cannot be negative.');
 
             const firstBlankIdx = quoteRows.findIndex(r => r.isBlank);
             const insertIdx = firstBlankIdx === -1 ? quoteRows.length : firstBlankIdx;
@@ -5517,7 +5530,7 @@
                     .filter(item => item.locked || item.checked)
                     .map(item => String(item.text || '').trim())
                     .filter(Boolean);
-                if (!items.length) return alert('请至少选择一个施工项目');
+                if (!items.length) return alert('Select at least one installation item.');
                 const rows = items.map((text, idx) => ({
                     id: Date.now() + idx,
                     description: text,
@@ -5548,18 +5561,18 @@
 
         window.exportInventoryHistory = () => {
             const rows = [...inventoryHistory].reverse().map(h => ({
-                操作时间: new Date(h.ts).toLocaleString(),
-                类型: h.type,
-                产品编号: h.productId,
-                产品名称: h.productName,
-                数量: h.quantity,
-                批次号: h.batchNo || '',
-                说明: h.note || ''
+                'Operation Time': new Date(h.ts).toLocaleString(),
+                Type: h.type,
+                'Product ID': h.productId,
+                'Product Name': productListDisplayText(h.productName),
+                Quantity: h.quantity,
+                'Batch No.': h.batchNo || '',
+                Notes: productListDisplayText(h.note || '')
             }));
             const ws = XLSX.utils.json_to_sheet(rows);
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, '历史操作记录');
-            XLSX.writeFile(wb, '库存历史操作记录.xlsx');
+            XLSX.utils.book_append_sheet(wb, ws, 'Operation History');
+            XLSX.writeFile(wb, 'InventoryOperation History.xlsx');
         };
 
         window.renderInventoryHistory = () => {
@@ -5571,27 +5584,27 @@
             const start = (inventoryHistoryPage - 1) * per;
             const slice = [...inventoryHistory].reverse().slice(start, start + per);
             if(inventoryHistory.length === 0) {
-                list.innerHTML = `<tr><td colspan="7" class="py-10 text-center text-slate-400 text-sm">暂无操作记录...</td></tr>`;
+                list.innerHTML = `<tr><td colspan="7" class="py-10 text-center text-slate-400 text-sm">No operation records yet...</td></tr>`;
                 const pageEl = document.getElementById('inventory-history-page');
                 if (pageEl) pageEl.textContent = `1 / 1`;
                 const sumEl = document.getElementById('inventory-history-summary');
-                if (sumEl) sumEl.textContent = `共 0 条`;
+                if (sumEl) sumEl.textContent = `0 records`;
                 return;
             }
             const pageEl = document.getElementById('inventory-history-page');
             if (pageEl) pageEl.textContent = `${inventoryHistoryPage} / ${totalPages}`;
             const sumEl = document.getElementById('inventory-history-summary');
-            if (sumEl) sumEl.textContent = `共 ${inventoryHistory.length} 条（每页 10 条，最多保留 1000 条）`;
+            if (sumEl) sumEl.textContent = `Total ${inventoryHistory.length} records (10 per page, keeping up to 1000 records)`;
 
             list.innerHTML = slice.map(h => `
                 <tr class="hover:bg-slate-50 transition-colors">
                     <td class="py-3 px-4 text-xs text-slate-500">${new Date(h.ts).toLocaleString()}</td>
-                    <td class="py-3 px-4 text-xs font-bold ${h.type === 'in' ? 'text-green-600' : h.type === 'out' ? 'text-orange-600' : (h.type === 'price' || h.type === 'edit') ? 'text-purple-600' : h.type === 'modify' ? 'text-blue-600' : 'text-red-600'}">${h.type === 'in' ? '入库' : h.type === 'out' ? '出库' : (h.type === 'price' || h.type === 'edit') ? '定价' : h.type === 'modify' ? '修改' : '删除'}</td>
+                    <td class="py-3 px-4 text-xs font-bold ${h.type === 'in' ? 'text-green-600' : h.type === 'out' ? 'text-orange-600' : (h.type === 'price' || h.type === 'edit') ? 'text-purple-600' : h.type === 'modify' ? 'text-blue-600' : 'text-red-600'}">${h.type === 'in' ? 'Stock In' : h.type === 'out' ? 'Stock Out' : (h.type === 'price' || h.type === 'edit') ? 'Pricing' : h.type === 'modify' ? 'Edit' : 'Delete'}</td>
                     <td class="py-3 px-4 text-xs font-mono text-slate-500">${h.productId}</td>
-                    <td class="py-3 px-4 text-xs text-slate-700">${h.productName}</td>
+                    <td class="py-3 px-4 text-xs text-slate-700">${htmlSafe(productListDisplayText(h.productName))}</td>
                     <td class="py-3 px-4 text-xs font-bold">${h.type === 'in' ? '+' : h.type === 'out' ? '-' : ''}${h.quantity ?? ''}</td>
                     <td class="py-3 px-4 text-xs text-slate-500">${h.batchNo || '-'}</td>
-                    <td class="py-3 px-4 text-xs text-slate-500 truncate max-w-[150px]" title="${h.note || ''}">${h.note || '-'}</td>
+                    <td class="py-3 px-4 text-xs text-slate-500 truncate max-w-[150px]" title="${htmlSafe(productListDisplayText(h.note || ''))}">${htmlSafe(productListDisplayText(h.note || '-'))}</td>
                 </tr>
             `).join('');
         };
@@ -5601,9 +5614,9 @@
             const sumEl = document.getElementById('sales-records-summary');
             if (!list || !sumEl) return;
             const rows = Array.isArray(salesRecords) ? salesRecords : [];
-            sumEl.textContent = `共 ${rows.length} 条`;
+            sumEl.textContent = `Total ${rows.length} records`;
             if (rows.length === 0) {
-                list.innerHTML = `<tr><td colspan="18" class="py-10 text-center text-slate-400 text-sm">暂无销售记录...</td></tr>`;
+                list.innerHTML = `<tr><td colspan="18" class="py-10 text-center text-slate-400 text-sm">No sales records yet...</td></tr>`;
                 return;
             }
             list.innerHTML = rows.slice(0, 500).map(r => {
@@ -5628,10 +5641,10 @@
                 return `
                     <tr class="hover:bg-slate-50 transition-colors">
                         <td class="py-3 px-4 text-xs font-mono text-slate-600">${r.productId || '-'}</td>
-                        <td class="py-3 px-4 text-xs font-bold text-slate-700 max-w-[180px] truncate" title="${r.productName || ''}">${r.productName || '-'}</td>
+                        <td class="py-3 px-4 text-xs font-bold text-slate-700 max-w-[180px] truncate" title="${htmlSafe(productListDisplayText(r.productName || ''))}">${htmlSafe(productListDisplayText(r.productName || '-'))}</td>
                         <td class="py-3 px-4 text-xs text-slate-600">${r.category || '-'}</td>
                         <td class="py-3 px-4 text-xs text-slate-600">${r.subcategory || '-'}</td>
-                        <td class="py-3 px-4 text-xs text-slate-600">${r.vendor || '-'}</td>
+                        <td class="py-3 px-4 text-xs text-slate-600">${htmlSafe(productListDisplayText(r.vendor || '-'))}</td>
                         <td class="py-3 px-4 text-xs text-slate-500">${r.outAt ? `${r.outDate || ''} ${new Date(r.outAt).toLocaleTimeString()}`.trim() : (r.outDate || '-')}</td>
                         <td class="py-3 px-4 text-xs text-right font-bold text-slate-700">${qty}</td>
                         <td class="py-3 px-4 text-xs text-slate-600">${r.contractNo || '-'}</td>
@@ -5643,11 +5656,11 @@
                         <td class="py-3 px-4 text-xs text-right font-mono text-slate-900 font-black">¥${profit.toFixed(2)}</td>
                         <td class="py-3 px-4 text-xs text-right"><span class="px-2 py-1 rounded ${mClass} text-[10px] font-black">${margin.toFixed(1)}%</span></td>
                         <td class="py-3 px-4 text-xs text-slate-600">${r.salesperson || '-'}</td>
-                        <td class="py-3 px-4 text-xs text-slate-600">${r.outWarehouse || '-'}</td>
+                        <td class="py-3 px-4 text-xs text-slate-600">${htmlSafe(productListDisplayText(r.outWarehouse || '-'))}</td>
                         <td class="py-3 px-4 text-xs text-center">
                             <div class="flex items-center justify-center gap-2">
-                                <button onclick="editSalesRecord('${r.id}')" class="text-blue-700 hover:bg-blue-50 p-1 rounded text-xs">修改</button>
-                                <button onclick="deleteSalesRecord('${r.id}')" class="text-red-600 hover:bg-red-50 p-1 rounded text-xs">删除</button>
+                                <button onclick="editSalesRecord('${r.id}')" class="text-blue-700 hover:bg-blue-50 p-1 rounded text-xs">Edit</button>
+                                <button onclick="deleteSalesRecord('${r.id}')" class="text-red-600 hover:bg-red-50 p-1 rounded text-xs">Delete</button>
                             </div>
                         </td>
                     </tr>
@@ -5708,9 +5721,9 @@
             const sumEl = document.getElementById('historical-inventory-summary');
             if (!list || !sumEl) return;
             const rows = Array.isArray(historicalInventory) ? historicalInventory : [];
-            sumEl.textContent = `共 ${rows.length} 条`;
+            sumEl.textContent = `Total ${rows.length} records`;
             if (rows.length === 0) {
-                list.innerHTML = `<tr><td colspan="12" class="py-10 text-center text-slate-400 text-sm">暂无历史库存...</td></tr>`;
+                list.innerHTML = `<tr><td colspan="12" class="py-10 text-center text-slate-400 text-sm">No archived inventory yet...</td></tr>`;
                 return;
             }
             list.innerHTML = rows.slice(0, 500).map(it => {
@@ -5719,16 +5732,16 @@
                     <tr class="hover:bg-slate-50 transition-colors">
                         <td class="py-3 px-4 text-xs text-slate-500">${it.archivedAt ? new Date(it.archivedAt).toLocaleString() : '-'}</td>
                         <td class="py-3 px-4 text-xs font-mono text-slate-600">${it.productId || '-'}</td>
-                        <td class="py-3 px-4 text-xs font-bold text-slate-700 max-w-[180px] truncate" title="${p.name || ''}">${p.name || '-'}</td>
+                        <td class="py-3 px-4 text-xs font-bold text-slate-700 max-w-[180px] truncate" title="${htmlSafe(productListDisplayText(p.name || ''))}">${htmlSafe(productListDisplayText(p.name || '-'))}</td>
                         <td class="py-3 px-4 text-xs text-slate-600">${p.category || '-'}</td>
                         <td class="py-3 px-4 text-xs text-slate-600">${p.scenario || '-'}</td>
-                        <td class="py-3 px-4 text-xs text-slate-600">${getProductSupplierDisplay(p)}</td>
+                        <td class="py-3 px-4 text-xs text-slate-600">${htmlSafe(productListDisplayText(getProductSupplierDisplay(p)))}</td>
                         <td class="py-3 px-4 text-xs text-slate-500">${it.purchaseDate || '-'}</td>
                         <td class="py-3 px-4 text-xs text-slate-500">${it.batchNo || '-'}</td>
                         <td class="py-3 px-4 text-xs text-right font-mono text-slate-700">${(parseFloat(it.spec) || 1).toFixed(2)}</td>
                         <td class="py-3 px-4 text-xs text-right font-mono text-slate-700">¥${(parseFloat(it.purchasePrice) || 0).toFixed(4)}</td>
-                        <td class="py-3 px-4 text-xs text-slate-600">${it.location || '-'}</td>
-                        <td class="py-3 px-4 text-xs text-slate-500 truncate max-w-[160px]" title="${it.archivedReason || ''}">${it.archivedReason || '-'}</td>
+                        <td class="py-3 px-4 text-xs text-slate-600">${htmlSafe(productListDisplayText(it.location || '-'))}</td>
+                        <td class="py-3 px-4 text-xs text-slate-500 truncate max-w-[160px]" title="${htmlSafe(productListDisplayText(it.archivedReason || ''))}">${htmlSafe(productListDisplayText(it.archivedReason || '-'))}</td>
                     </tr>
                 `;
             }).join('');
@@ -5737,28 +5750,28 @@
             const rows = (Array.isArray(historicalInventory) ? historicalInventory : []).map(it => {
                 const p = products.find(x => x.id === it.productId) || {};
                 return {
-                    归档时间: it.archivedAt ? new Date(it.archivedAt).toLocaleString() : '',
-                    归档原因: it.archivedReason || '',
-                    产品编号: it.productId || '',
-                    产品全称: p.name || '',
-                    类目: p.category || '',
-                    子类目: p.scenario || '',
-                    供应商: getProductSupplierDisplay(p),
-                    采购入库时间: it.purchaseDate || '',
-                    批次号: it.batchNo || '',
-                    规格: parseFloat(it.spec) || 1,
-                    批次采购价格: parseFloat(it.purchasePrice) || 0,
-                    单位采购价: parseFloat(it.unitPurchasePrice) || 0,
-                    运费比率: parseFloat(it.shippingRate) || 0,
-                    国内税率: parseFloat(it.domesticTaxRate) || 0,
-                    仓库: it.location || '',
-                    原始记录: JSON.stringify(it)
+                    'Archived At': it.archivedAt ? new Date(it.archivedAt).toLocaleString() : '',
+                    'Archive Reason': it.archivedReason || '',
+                    'Product ID': it.productId || '',
+                    'Product Name': productListDisplayText(p.name || ''),
+                    Category: p.category || '',
+                    Subcategory: p.scenario || '',
+                    Supplier: productListDisplayText(getProductSupplierDisplay(p)),
+                    'Stock-In Date': it.purchaseDate || '',
+                    'Batch No.': it.batchNo || '',
+                    Spec: parseFloat(it.spec) || 1,
+                    'Batch Purchase Price': parseFloat(it.purchasePrice) || 0,
+                    'Unit Purchase Price': parseFloat(it.unitPurchasePrice) || 0,
+                    'Freight Rate': parseFloat(it.shippingRate) || 0,
+                    'Domestic Tax Rate': parseFloat(it.domesticTaxRate) || 0,
+                    Warehouse: productListDisplayText(it.location || ''),
+                    'Raw Record': JSON.stringify(it)
                 };
             });
             const ws = XLSX.utils.json_to_sheet(rows);
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, '历史库存');
-            XLSX.writeFile(wb, '历史库存.xlsx');
+            XLSX.utils.book_append_sheet(wb, ws, 'Archived Inventory');
+            XLSX.writeFile(wb, 'Archived Inventory.xlsx');
         };
 
         window.editSalesRecord = (id) => {
@@ -5770,7 +5783,7 @@
             const idx = salesRecords.findIndex(x => x.id === id);
             if (idx === -1) return;
             const r = salesRecords[idx];
-            if (!confirm('确定删除该销售出库记录吗？将尝试回滚库存。')) return;
+            if (!confirm('Delete this sales-out record and attempt to roll inventory back?')) return;
             const alloc = Array.isArray(r.allocations) ? r.allocations : [];
             for (const a of alloc) {
                 restoreArchivedInventoryItemById(a.id, a.qty);
@@ -5783,7 +5796,7 @@
                 productName: r.productName,
                 quantity: r.quantity,
                 batchNo: '',
-                note: `删除销售出库记录并回滚库存 | 合同：${r.contractNo || '-'}`
+                note: `Deleted sales-out record and rolled inventory back | Contract: ${r.contractNo || '-'}`
             });
             saveToLocal();
         };
@@ -5804,7 +5817,7 @@
             const modal = document.getElementById('inventory-modal');
             modal.classList.remove('hidden');
             window.inventoryType = type;
-            window.inventoryTargetId = targetId; // 记录是针对哪个批次的出库
+            window.inventoryTargetId = targetId; // Tracks which batch is being stocked out
             const productEl = document.getElementById('inv-product-id');
             if (productEl) {
                 productEl.readOnly = type === 'out' || type === 'edit';
@@ -5825,8 +5838,8 @@
             if (transferToWrap) transferToWrap.style.display = 'none';
 
             if(type === 'in') {
-                if (qtyLabel) qtyLabel.textContent = '采购数量';
-                document.getElementById('inv-title').innerText = '产品入库';
+                if (qtyLabel) qtyLabel.textContent = 'Purchase Quantity';
+                document.getElementById('inv-title').innerText = 'Stock In';
                 document.getElementById('inv-product-id').value = targetId; // 这里targetId传的是productId
                 document.getElementById('inv-quantity').value = '';
                 document.getElementById('inv-spec').value = '1';
@@ -5863,8 +5876,8 @@
 
                 onInventoryProductChange();
             } else if (type === 'edit') {
-                if (qtyLabel) qtyLabel.textContent = '采购数量';
-                document.getElementById('inv-title').innerText = '修改入库';
+                if (qtyLabel) qtyLabel.textContent = 'Purchase Quantity';
+                document.getElementById('inv-title').innerText = 'Edit Stock-In';
                 const item = inventory.find(i => i.id === targetId);
                 if(item) {
                     const product = products.find(p => p.id === item.productId);
@@ -5899,8 +5912,8 @@
                 ].forEach(id => { const el = document.getElementById(id); if (el?.parentElement) el.parentElement.style.display = 'block'; });
                 onInventoryProductChange();
             } else {
-                if (qtyLabel) qtyLabel.textContent = '出库数量';
-                document.getElementById('inv-title').innerText = '产品出库';
+                if (qtyLabel) qtyLabel.textContent = 'Stock OutQuantity';
+                document.getElementById('inv-title').innerText = 'Stock Out';
                 const item = inventory.find(i => i.id === targetId);
                 if(item) {
                     document.getElementById('inv-product-id').value = item.productId;
@@ -5947,7 +5960,7 @@
             const transferFromEl = document.getElementById('inv-transfer-from');
             const transferToEl = document.getElementById('inv-transfer-to');
             if (outNature === 'transfer') {
-                const fromLoc = String(item?.location || '').trim() || '未指定位置';
+                const fromLoc = String(item?.location || '').trim() || 'Unspecified Location';
                 if (transferFromEl) transferFromEl.value = fromLoc;
                 if (transferFromWrap) transferFromWrap.style.display = 'block';
                 if (transferToWrap) transferToWrap.style.display = 'block';
@@ -5955,7 +5968,7 @@
                 const locations = [...new Set(inventory.map(i => String(i.location || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
                 const opts = locations.filter(x => x !== fromLoc);
                 if (transferToEl) {
-                    transferToEl.innerHTML = `<option value="">请选择</option>` + opts.map(x => `<option value="${x.replaceAll('"', '&quot;')}">${x}</option>`).join('');
+                    transferToEl.innerHTML = `<option value="">Select</option>` + opts.map(x => `<option value="${x.replaceAll('"', '&quot;')}">${x}</option>`).join('');
                     if (transferToEl.value === fromLoc) transferToEl.value = '';
                 }
                 return;
@@ -5976,9 +5989,9 @@
             const location = document.getElementById('inv-location').value;
             const nextProductName = String(document.getElementById('inv-product-name')?.value || '').trim();
 
-            if(!productId) return alert("请选择产品编号！");
+            if(!productId) return alert("Select a product ID.");
             const product = products.find(p => p.id === productId);
-            if(!product) return alert("请选择产品清单中已有的产品编号！");
+            if(!product) return alert("Select a product ID from the product list.");
             if (window.inventoryType === 'out') {
                 const outNature = String(document.getElementById('inv-out-nature')?.value || 'sale');
                 if (outNature === 'sale') {
@@ -5987,13 +6000,13 @@
                     return;
                 }
             }
-            if(quantity <= 0) return alert("请输入有效数量！");
+            if(quantity <= 0) return alert("Enter a valid quantity.");
 
-            const productName = product ? product.name : '未知产品';
+            const productName = product ? product.name : 'Unknown Product';
 
             if(window.inventoryType === 'in') {
                 const purchaseDate = document.getElementById('inv-purchase-date').value;
-                if (!purchaseDate) return alert("请选择采购入库时间！");
+                if (!purchaseDate) return alert("Select a stock-in date.");
                 const ymd = formatYmd(purchaseDate);
                 let newBatchNo = document.getElementById('inv-batch-no').value || generateNextBatchNoForDate(ymd);
                 if (inventory.some(i => String(i.batchNo || '') === newBatchNo)) {
@@ -6036,24 +6049,24 @@
                     productName,
                     quantity,
                     batchNo: newBatchNo,
-                    note: `采购入库 ${purchaseDate} | 入库到 ${location || '未指定位置'} | 总成本¥${totalCost.toFixed(2)}`
+                    note: `Stock In ${purchaseDate} | Received To ${location || 'Unspecified Location'} | Total Cost ¥${totalCost.toFixed(2)}`
                 });
             } else if (window.inventoryType === 'edit') {
                 const item = inventory.find(i => i.id === window.inventoryTargetId);
-                if(!item) return alert("未找到该入库记录！");
+                if(!item) return alert("Stock-in record not found.");
                 const purchaseDate = document.getElementById('inv-purchase-date').value;
-                if (!purchaseDate) return alert("请选择采购入库时间！");
+                if (!purchaseDate) return alert("Select a stock-in date.");
                 const batchNo = document.getElementById('inv-batch-no').value || '';
-                if (!batchNo) return alert("采购批次号不能为空！");
+                if (!batchNo) return alert("Purchase Batch No. is required.");
                 if (inventory.some(i => i.id !== item.id && String(i.batchNo || '') === String(batchNo))) {
-                    return alert("采购批次号已存在，请调整采购入库时间后自动生成新批次号！");
+                    return alert("Purchase Batch No. already exists. Adjust the stock-in date to generate a new batch no.");
                 }
                 const oldProductName = String(product.name || '').trim();
                 let nameChangeNote = '';
                 if (nextProductName && nextProductName !== oldProductName) {
                     product.name = nextProductName;
                     product.ts = Date.now();
-                    nameChangeNote = ` | 产品名称 ${oldProductName || '-'} → ${nextProductName}`;
+                    nameChangeNote = ` | Product Name ${oldProductName || '-'} → ${nextProductName}`;
                 }
                 const spec = parseFloat(document.getElementById('inv-spec').value) || 0;
                 const shippingRatePct = parseFloat(document.getElementById('inv-shipping-rate').value) || 0;
@@ -6085,7 +6098,7 @@
                     productName: product.name || productName,
                     quantity,
                     batchNo,
-                    note: `修改入库 ${purchaseDate} | 存放 ${location || '未指定位置'} | 总成本¥${totalCost.toFixed(2)}${nameChangeNote}`
+                    note: `Edit Stock-In ${purchaseDate} | Stored At ${location || 'Unspecified Location'} | Total Cost ¥${totalCost.toFixed(2)}${nameChangeNote}`
                 });
             } else {
                 const item = inventory.find(i => i.id === window.inventoryTargetId);
@@ -6097,12 +6110,12 @@
                     return;
                 }
                 if (outNature === 'transfer') {
-                    if (!item) return alert('找不到该批次库存记录');
-                    const fromLoc = String(item.location || '').trim() || '未指定位置';
+                    if (!item) return alert('Batch inventory record not found.');
+                    const fromLoc = String(item.location || '').trim() || 'Unspecified Location';
                     const toLoc = String(document.getElementById('inv-transfer-to')?.value || '').trim();
-                    if (!toLoc) return alert('请选择调入仓库');
-                    if (!quantity || quantity <= 0) return alert('请输入有效出库数量');
-                    if (item.quantity < quantity) return alert('该批次库存不足！');
+                    if (!toLoc) return alert('Select a destination warehouse.');
+                    if (!quantity || quantity <= 0) return alert('Enter a valid stock-out quantity.');
+                    if (item.quantity < quantity) return alert('This batch does not have enough stock.');
 
                     item.quantity -= quantity;
                     const dest = inventory.find(i =>
@@ -6129,7 +6142,7 @@
                         productName,
                         quantity,
                         batchNo: item.batchNo,
-                        note: `出库性质：调拨出库 | 出库日期：${outDate || '-'} | 调出：${fromLoc} → 调入：${toLoc}`
+                        note: `Stock-Out Type: Transfer Out | Stock-Out Date: ${outDate || '-'} | From: ${fromLoc} -> To: ${toLoc}`
                     });
                     pushInventoryHistory({
                         ts: Date.now(),
@@ -6138,14 +6151,14 @@
                         productName,
                         quantity,
                         batchNo: item.batchNo,
-                        note: `入库性质：调拨入库 | 入库日期：${outDate || '-'} | 调入：${toLoc} ← 调出：${fromLoc}`
+                        note: `Stock-In Type: Transfer In | Stock-In Date: ${outDate || '-'} | To: ${toLoc} <- From: ${fromLoc}`
                     });
-                    archiveZeroQtyInventoryItems(`调拨出库 | ${fromLoc}→${toLoc}`);
+                    archiveZeroQtyInventoryItems(`Transfer Out | ${fromLoc} -> ${toLoc}`);
                     saveToLocal();
                     closeInventoryModal();
                     return;
                 }
-                if(!item || item.quantity < quantity) return alert("该批次库存不足！");
+                if(!item || item.quantity < quantity) return alert("This batch does not have enough stock.");
                 item.quantity -= quantity;
 
                 pushInventoryHistory({
@@ -6155,10 +6168,10 @@
                     productName,
                     quantity,
                     batchNo: item.batchNo,
-                    note: `出库性质：${outNature} | 出库日期：${outDate || '-'} | 从 ${item.location || '未指定位置'} 出库`
+                    note: `Stock-Out Type: ${outNature} | Stock-Out Date: ${outDate || '-'} | From ${productListDisplayText(item.location || 'Unspecified Location')} stock out`
                 });
 
-                archiveZeroQtyInventoryItems(`批次出库 | ${outNature}`);
+                archiveZeroQtyInventoryItems(`Batch Stock-Out | ${outNature}`);
             }
 
             saveToLocal();
@@ -6191,7 +6204,7 @@
                 const avail = parseInt(b.quantity, 10) || 0;
                 if (avail <= 0) continue;
                 const take = Math.min(avail, remaining);
-                alloc.push({ id: b.id, batchNo: b.batchNo || '-', purchaseDate: b.purchaseDate || '-', location: b.location || '未指定位置', qty: take, spec: Number.isFinite(parseFloat(b.spec)) ? parseFloat(b.spec) : 1 });
+                alloc.push({ id: b.id, batchNo: b.batchNo || '-', purchaseDate: b.purchaseDate || '-', location: b.location || 'Unspecified Location', qty: take, spec: Number.isFinite(parseFloat(b.spec)) ? parseFloat(b.spec) : 1 });
                 remaining -= take;
             }
             return { requested: qty, allocated: qty - remaining, remaining, allocations: alloc };
@@ -6205,8 +6218,8 @@
         function formatAllocationsPreview(allocations, maxLines = 3) {
             const list = Array.isArray(allocations) ? allocations : [];
             const slice = list.slice(0, maxLines);
-            const lines = slice.map(a => `批次 ${a.batchNo} | ${a.purchaseDate} | ${a.location} | 数量 ${a.qty}`);
-            if (list.length > maxLines) lines.push(`… 还有 ${list.length - maxLines} 个批次`);
+            const lines = slice.map(a => `Batch ${a.batchNo} | ${a.purchaseDate} | ${a.location} | Quantity ${a.qty}`);
+            if (list.length > maxLines) lines.push(`... ${list.length - maxLines} more batches`);
             return lines;
         }
         function getSalespeopleList() {
@@ -6451,7 +6464,7 @@
             const source = meta.source === 'manual' ? 'manual override' : 'auto from inventory/spec';
             const recent = summary.records.length
                 ? `30D avg ${formatMarketPrice(summary.avgCny, summary.unit, 'CNY')} / ${formatMarketPrice(summary.avgCny, summary.unit, 'MYR')}`
-                : '暂无30天市场价';
+                : 'No 30-day market price';
             hint.textContent = `${cat} unit: /${summary.unit} (${source}). ${recent}.`;
         }
         window.onMarketPriceCategoryChange = () => {
@@ -6486,9 +6499,9 @@
                 saveToLocal();
                 renderMarketPriceForm();
                 renderPriceList();
-                showToast('市场价已保存', 'success');
+                showToast('Market price saved', 'success');
             } catch (e) {
-                alert(e?.message || '市场价保存失败');
+                alert(e?.message || 'Market price save failed');
             }
         };
         function renderMarketSummaryCell(category) {
@@ -6499,7 +6512,7 @@
                 const latest = summary.latest;
                 return `
                     <button type="button" onclick="openMarketTrendModal('${htmlSafe(category)}')" class="text-right hover:underline">
-                        <div class="font-black text-slate-400">暂无30天市场价</div>
+                        <div class="font-black text-slate-400">No 30-day market price</div>
                         <div class="text-[10px] text-slate-400">${latest ? `Latest ${formatMarketPrice(latest.priceCny, latest.unit || summary.unit, 'CNY')}` : `Unit /${summary.unit}`}</div>
                     </button>
                 `;
@@ -6517,7 +6530,7 @@
             const trendSign = summary.trendCny > 0 ? '+' : '';
             const recentLine = summary.records.length
                 ? `<p>30D Avg: <span class="font-black text-white">${formatMarketPrice(summary.avgCny, summary.unit, 'CNY')}</span> (${formatMarketPrice(summary.avgCny, summary.unit, 'MYR')})</p>`
-                : '<p class="text-amber-200">暂无30天市场价</p>';
+                : '<p class="text-amber-200">No 30-day market price</p>';
             return `
                 <p class="font-black text-sm mb-2 border-b border-slate-600 pb-1">${htmlSafe(category || '-')} Market</p>
                 <div class="space-y-1">
@@ -6719,13 +6732,13 @@
         };
         window.removeMarketPriceRecord = (id) => {
             const recordId = String(id || '').trim();
-            if (!recordId || !confirm('确定删除这条市场价记录吗？')) return;
+            if (!recordId || !confirm('Delete this market price record?')) return;
             deleteMarketPriceRecord(recordId);
             saveToLocal();
             renderPriceList();
             const modal = document.getElementById('market-trend-modal');
             renderMarketTrendBody(modal?.dataset?.category || '', modal?.dataset?.range || 'day');
-            showToast('市场价已删除', 'success');
+            showToast('市场价已Delete', 'success');
         };
         window.closeMarketTrendModal = () => {
             const modal = document.getElementById('market-trend-modal');
@@ -6842,7 +6855,7 @@
                     <p>Grey Cost: ${formatCny(r.avgCost, 4)} × (1 + ${r.grayPct}% grey tax) = <span class="font-black text-indigo-200">${formatCny(r.grayCost, 4)}</span></p>
                     <p>RESI Price: cost × (1 + ${r.cnHomePct}% CN + ${r.myHomePct}% MY) = +${homeProfit.toFixed(2)}%</p>
                     <p>C&I Price: cost × (1 + ${r.cnBizPct}% CN + ${r.myBizPct}% MY) = +${bizProfit.toFixed(2)}%</p>
-                    <p>Market 30D: <span class="font-black text-amber-200">${market.records.length ? formatMarketPrice(market.avgCny, market.unit, 'CNY') : '暂无30天市场价'}</span></p>
+                    <p>Market 30D: <span class="font-black text-amber-200">${market.records.length ? formatMarketPrice(market.avgCny, market.unit, 'CNY') : 'No 30-day market price'}</span></p>
                     <p>FX: 1 MYR = ${getSalesOutRateCnyPerMyr().toFixed(4)} CNY</p>
                     <p class="pt-1 text-slate-300">Certifications: ${(req.standards || []).slice(0, 5).map(htmlSafe).join(', ') || '-'}</p>
                 </div>
@@ -6948,7 +6961,7 @@
                 const options = ids.map(id => {
                     const p = products.find(x => x.id === id) || {};
                     const qty = getTotalStockQty(id);
-                    const label = `${id}（库存 ${qty}）${p.name ? ` - ${p.name}` : ''}`;
+                    const label = `${id}（Inventory ${qty}）${p.name ? ` - ${p.name}` : ''}`;
                     return `<option value="${id}">${label.replaceAll('<', '&lt;')}</option>`;
                 }).join('');
                 dl.innerHTML = options;
@@ -7032,8 +7045,8 @@
                 const batches = getFifoBatchesForProduct(productId);
                 const spec = batches.length ? (Number.isFinite(parseFloat(batches[0].spec)) ? parseFloat(batches[0].spec) : 1) : 1;
                 if (specEl) specEl.value = String(spec);
-                const lines = batches.slice(0, 3).map(b => `批次 ${b.batchNo || '-'} | ${b.purchaseDate || '-'} | ${b.location || '未指定位置'} | 库存 ${b.quantity}`);
-                if (batches.length > 3) lines.push(`… 还有 ${batches.length - 3} 个批次`);
+                const lines = batches.slice(0, 3).map(b => `Batch ${b.batchNo || '-'} | ${b.purchaseDate || '-'} | ${productListDisplayText(b.location || 'Unspecified Location')} | Inventory ${b.quantity}`);
+                if (batches.length > 3) lines.push(`... ${batches.length - 3} more batches`);
                 breakdownEl.innerHTML = lines.length ? lines.map(x => `<div>${x}</div>`).join('') : `<div>-</div>`;
             }
 
@@ -7122,7 +7135,7 @@
             if (locEl) locEl.textContent = allocations.length ? getLocationSummaryFromAllocations(allocations) : '-';
 
             if (remaining > 0) {
-                if (previewEl) previewEl.innerHTML = `<div class="text-red-600 font-black">库存不足：缺少 ${remaining}</div>` + (previewEl.innerHTML || '');
+                if (previewEl) previewEl.innerHTML = `<div class="text-red-600 font-black">Insufficient inventory: short ${remaining}</div>` + (previewEl.innerHTML || '');
             }
         };
         window.confirmSalesOut = () => {
@@ -7131,12 +7144,12 @@
             const editingPrev = editingIdx >= 0 ? salesRecords[editingIdx] : null;
 
             const productId = String(document.getElementById('sales-out-product-id')?.value || '').trim();
-            if (!productId) return alert('请选择产品编号');
+            if (!productId) return alert('Select a product ID.');
             const p = products.find(x => x.id === productId) || {};
-            const productName = p.name || '未知产品';
+            const productName = p.name || 'Unknown Product';
             const outDate = String(document.getElementById('sales-out-date')?.value || '').trim();
             const qty = parseInt(document.getElementById('sales-out-qty')?.value || '0', 10) || 0;
-            if (qty <= 0) return alert('请输入有效出库数量');
+            if (qty <= 0) return alert('Enter a valid stock-out quantity.');
 
             const priceType = String(document.getElementById('sales-out-price-type')?.value || 'clearance_home');
             const unitPriceCny = salesOutCnyFromDisplay(parseFloat(document.getElementById('sales-out-unit-price')?.value) || 0);
@@ -7153,7 +7166,7 @@
             const prevAlloc = editingPrev && Array.isArray(editingPrev.allocations) ? editingPrev.allocations : null;
             if (editingPrev && !prevAlloc) {
                 if (qty !== (parseInt(editingPrev.quantity, 10) || 0)) {
-                    return alert('该销售记录缺少批次扣减明细，无法修改出库数量（仅允许修改合同/人员/价格等信息）');
+                    return alert('This sales record has no batch allocation details, so the stock-out quantity cannot be edited. Only contract, staff, and pricing fields can be edited.');
                 }
                 const avgCostPerSpec = parseFloat(document.getElementById('sales-out-avg-cost')?.value) || (parseFloat(editingPrev.avgCostPerSpec) || 0);
                 const goodsCost = avgCostPerSpec * spec * qty;
@@ -7167,7 +7180,7 @@
                     productName,
                     quantity: qty,
                     batchNo: '',
-                    note: `修改销售出库（未回滚库存） | 出库日期：${outDate || '-'} | 合同：${contractNo || '-'} | 价格：${priceType} ¥${unitPriceCny.toFixed(2)} | 合同总价¥${finalPriceCny.toFixed(2)} | 销售：${salesperson || '-'}`
+                    note: `Edit Sales Out (inventory not rolled back) | Stock-Out Date: ${outDate || '-'} | Contract: ${contractNo || '-'} | Price Type: ${priceType} ¥${unitPriceCny.toFixed(2)} | Contract Total: ¥${finalPriceCny.toFixed(2)} | Salesperson: ${salesperson || '-'}`
                 });
                 salesRecords[editingIdx] = {
                     ...editingPrev,
@@ -7210,7 +7223,7 @@
                         item.quantity = (parseInt(item.quantity, 10) || 0) - (parseInt(a.qty, 10) || 0);
                     }
                 }
-                return alert('库存不足');
+                return alert('Insufficient inventory.');
             }
 
             for (const a of allocations) {
@@ -7219,8 +7232,8 @@
                 item.quantity = (parseInt(item.quantity, 10) || 0) - (parseInt(a.qty, 10) || 0);
             }
 
-            const allocLines = formatAllocationsPreview(allocations, 3).join('；');
-            const note = `出库性质：销售出库 | 出库日期：${outDate || '-'} | 合同：${contractNo || '-'} | 价格：${priceType} ¥${unitPriceCny.toFixed(2)} | 合同总价¥${finalPriceCny.toFixed(2)} | 销售：${salesperson || '-'} | 税费：运费${shippingRatePct.toFixed(1)}%/国内税${domesticTaxRatePct.toFixed(1)}%/关税${dutyPct.toFixed(1)}%/SST${sstPct.toFixed(1)}%/灰清${grayPct.toFixed(1)}% | 扣减：${allocLines || '-'}`;
+            const allocLines = formatAllocationsPreview(allocations, 3).join('; ');
+            const note = `Stock-Out Type: Sales Out | Stock-Out Date: ${outDate || '-'} | Contract: ${contractNo || '-'} | Price Type: ${priceType} ¥${unitPriceCny.toFixed(2)} | Contract Total: ¥${finalPriceCny.toFixed(2)} | Salesperson: ${salesperson || '-'} | Taxes: Freight ${shippingRatePct.toFixed(1)}% / Domestic Tax ${domesticTaxRatePct.toFixed(1)}% / Duty ${dutyPct.toFixed(1)}% / SST ${sstPct.toFixed(1)}% / Gray ${grayPct.toFixed(1)}% | Allocation: ${allocLines || '-'}`;
             if (editingPrev) {
                 pushInventoryHistory({
                     ts: Date.now(),
@@ -7229,7 +7242,7 @@
                     productName,
                     quantity: qty,
                     batchNo: '',
-                    note: `修改销售出库 | ${note}`
+                    note: `EditSales Out | ${note}`
                 });
             } else {
                 for (const a of allocations) {
@@ -7288,7 +7301,7 @@
                 if (salesRecords.length > 5000) salesRecords = salesRecords.slice(0, 5000);
             }
 
-            archiveZeroQtyInventoryItems(`销售出库 | 合同：${contractNo || '-'} | 价格类型：${priceType}`);
+            archiveZeroQtyInventoryItems(`Sales Out | Contract: ${contractNo || '-'} | Price Type: ${priceType}`);
 
             if (salesperson) {
                 const list = getSalespeopleList();
@@ -7304,16 +7317,16 @@
         window.deleteInventoryItem = (id) => {
             const item = inventory.find(i => i.id === id);
             if(!item) return;
-            if(confirm('确定删除该入库记录吗？删除会记录在历史中。')) {
+            if(confirm('Delete this stock-in record? The deletion will be recorded in history.')) {
                 const product = products.find(p => p.id === item.productId) || {};
                 pushInventoryHistory({
                     ts: Date.now(),
                     type: 'delete',
                     productId: item.productId,
-                    productName: product.name || '未知产品',
+                    productName: product.name || 'Unknown Product',
                     quantity: item.quantity,
                     batchNo: item.batchNo,
-                    note: `删除入库记录 | 批次 ${item.batchNo || '-'}`
+                    note: `Delete Stock-In Record | Batch ${item.batchNo || '-'}`
                 });
                 inventory = inventory.filter(i => i.id !== id);
                 saveToLocal();
@@ -7450,7 +7463,7 @@
             category: '类目',
             vendor: '供应商',
             spec: '规格型号',
-            scenario: '子类目',
+            scenario: '应用场景',
             warrantyYears: '质保年限',
             warrantyCycles: '循环次数',
             leadTime: '供货周期',
@@ -7511,7 +7524,7 @@
         window.openImportModal = () => document.getElementById('import-modal').classList.remove('hidden');
         window.closeImportModal = () => {
             document.getElementById('import-modal').classList.add('hidden');
-            // 重置状态
+            // 重置Status
             goToStep(1, true);
             document.getElementById('excel-file-input').value = '';
             document.getElementById('file-name-display').textContent = '';
@@ -7602,7 +7615,7 @@
             const container = document.getElementById('field-mapping-container');
             const aliases = {
                 category: ['类目', 'Category', 'Product Category'],
-                scenario: ['子类目', '应用场景', 'Subcategory', 'Application Scenario'],
+                scenario: ['应用场景', 'Subcategory', 'Application Scenario'],
                 certificationCountries: ['产品认证国家', '认证国家', 'Certification Countries'],
                 certificationStandards: ['产品认证标准', '产品认证', 'Certification Standards', 'Product Certification']
             };
@@ -7705,7 +7718,7 @@
         }
 
         window.downloadTemplate = () => {
-            const headers = ['产品编号', '产品全称', '类目', '供应商', '规格型号', '子类目', '质保年限', '循环次数', '供货周期', '联系人', '联系方式', '产品认证国家', '产品认证标准', '基准采购价', '基准售价'];
+            const headers = ['Product ID', 'Product Name', 'Category', 'Supplier', 'Spec Model', 'Subcategory', 'Warranty Years', 'Cycle Count', 'Lead Time', 'Contact', 'Contact Method', 'Product Certification Countries', 'Product Certification Standards', 'Base Cost', 'Base Price'];
             const data = products.map(p => [
                 p.id || '',
                 p.name || '',
@@ -7735,7 +7748,7 @@
             XLSX.writeFile(workbook, 'product-master-list.xlsx');
         };
 
-        // --- 选择器逻辑 ---
+        // --- Select器逻辑 ---
         function getPickerCurrency() {
             return window.pickerDisplayCurrency || currentCurrency || 'MYR';
         }
@@ -7794,7 +7807,7 @@
             if (!opts.force && next !== solarMode) {
                 const solarLabel = solarMode === 'biz' ? 'C&I' : 'RESI';
                 const nextLabel = next === 'biz' ? 'C&I' : 'RESI';
-                const ok = confirm(`当前 Solar Calculation Inputs 选择的是 ${solarLabel}，From Inventory 将切换为 ${nextLabel} 报价，可能与当前 Solar 状态不一致。是否继续？`);
+                const ok = confirm(`当前 Solar Calculation Inputs Select的是 ${solarLabel}，From Inventory 将切换为 ${nextLabel} Quote，可能与当前 Solar Status不一致。是否继续？`);
                 if (!ok) {
                     updatePickerModeButtons();
                     return;
@@ -7860,7 +7873,7 @@
             const list = document.getElementById('picker-list');
             if(!list) return;
 
-            // 过滤逻辑：必须在库存中有记录且数量 > 0
+            // Filter logic：必须在Inventory中有记录且Quantity > 0
             const availableBatches = inventory.filter(i => i.quantity > 0);
 
             const filtered = availableBatches.filter(item => {
@@ -7982,7 +7995,7 @@
             addProductToQuote(inventoryId, priceType);
         };
 
-        // --- 其他工具 ---
+        // --- Other工具 ---
         function updatePickerFilters() {
             ensureSupplierData();
             const vendors = [...new Set(products.map(p => getProductSupplierDisplay(p)).filter(Boolean))];
@@ -8011,7 +8024,7 @@
             const nameEl = document.getElementById('m-name'); if(!nameEl.value) return;
             try {
                 const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
-                    method: 'POST', body: JSON.stringify({ contents: [{ parts: [{ text: `将以下产品名称润色得更专业（15字内）：${nameEl.value}` }] }] })
+                    method: 'POST', body: JSON.stringify({ contents: [{ parts: [{ text: `将以下Product Name润色得更专业（15字内）：${nameEl.value}` }] }] })
                 });
                 const d = await res.json(); nameEl.value = d.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || nameEl.value;
             } catch(e) {}
@@ -8748,8 +8761,8 @@
         };
 
         let costData = {
-            pv: [{ name: '光伏板', price: 1, freight: 5, importTax: 0, sst: 10, profit: 1.1 }, { name: '支架', price: 0.4, freight: 5, importTax: 0, sst: 10, profit: 1.1 }, { name: '逆变器', price: 0.275, freight: 5, importTax: 0, sst: 10, profit: 1.1 }, { name: '辅材', price: 0.2, freight: 5, importTax: 0, sst: 10, profit: 1.1 }, { name: '并网柜', price: 0.1, freight: 5, importTax: 0, sst: 10, profit: 1.1 }, { name: '安装管理费', price: 0.3, freight: 0, importTax: 0, sst: 0, profit: 1.1 }, { name: '其他管理费', price: 0.1, freight: 0, importTax: 0, sst: 0, profit: 1.1 }, { name: '安装费', price: 0.4, freight: 0, importTax: 0, sst: 0, profit: 1.1 }],
-            bat: [{ name: '纯电池', price: 0.55, freight: 5, importTax: 20, sst: 10, profit: 1.2 }, { name: '并机柜防逆流', price: 0.2, freight: 5, importTax: 0, sst: 10, profit: 1.2 }, { name: '其他材料', price: 0.15, freight: 5, importTax: 0, sst: 10, profit: 1.2 }]
+            pv: [{ name: 'PV Module', price: 1, freight: 5, importTax: 0, sst: 10, profit: 1.1 }, { name: 'Mounting Structure', price: 0.4, freight: 5, importTax: 0, sst: 10, profit: 1.1 }, { name: 'Inverter', price: 0.275, freight: 5, importTax: 0, sst: 10, profit: 1.1 }, { name: 'Auxiliary Materials', price: 0.2, freight: 5, importTax: 0, sst: 10, profit: 1.1 }, { name: 'Grid Connection Cabinet', price: 0.1, freight: 5, importTax: 0, sst: 10, profit: 1.1 }, { name: 'Installation Management Fee', price: 0.3, freight: 0, importTax: 0, sst: 0, profit: 1.1 }, { name: 'Other Management Fee', price: 0.1, freight: 0, importTax: 0, sst: 0, profit: 1.1 }, { name: 'Installation Fee', price: 0.4, freight: 0, importTax: 0, sst: 0, profit: 1.1 }],
+            bat: [{ name: 'Battery Cell', price: 0.55, freight: 5, importTax: 20, sst: 10, profit: 1.2 }, { name: 'Parallel Cabinet & Anti-Reverse Flow', price: 0.2, freight: 5, importTax: 0, sst: 10, profit: 1.2 }, { name: 'Other Materials', price: 0.15, freight: 5, importTax: 0, sst: 10, profit: 1.2 }]
         };
         window.updateCostData = (group, index, field, value) => { costData[group][index][field] = parseFloat(value) || 0; renderCostCalcUI(); };
         window.renderCostCalcUI = () => {
@@ -8763,15 +8776,15 @@
                     sTC += tC; sQRmb += qRmb; sQRm += qRm;
                     return `<tr><td class="py-3 px-4 font-medium text-slate-700">${item.name}</td><td class="py-3 px-4 text-right"><input type="number" step="0.01" value="${item.price}" oninput="updateCostData('${g}', ${idx}, 'price', this.value)" class="w-16 text-right bg-transparent border-b border-dashed border-slate-300 outline-none text-blue-600 font-bold"></td><td class="py-3 px-4 text-right"><input type="number" value="${item.freight}" oninput="updateCostData('${g}', ${idx}, 'freight', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right"><input type="number" value="${item.importTax}" oninput="updateCostData('${g}', ${idx}, 'importTax', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right"><input type="number" value="${item.sst}" oninput="updateCostData('${g}', ${idx}, 'sst', this.value)" class="w-12 text-right bg-transparent border-b border-dashed border-slate-300 outline-none"></td><td class="py-3 px-4 text-right bg-slate-100/50 font-mono text-slate-600">${tC.toFixed(4)}</td><td class="py-3 px-4 text-right"><input type="number" step="0.1" value="${item.profit}" oninput="updateCostData('${g}', ${idx}, 'profit', this.value)" class="w-16 text-right bg-transparent border-b border-dashed border-slate-300 outline-none font-bold"></td><td class="py-3 px-4 text-right bg-blue-50/50 font-black text-blue-700">${qRmb.toFixed(4)}</td><td class="py-3 px-4 text-right bg-green-50/50 font-black text-green-700">${qRm.toFixed(4)}</td></tr>`;
                 }).join('');
-                tF.innerHTML = `<tr><td colspan="5" class="py-4 px-4 text-right text-slate-500">合计：</td><td class="py-4 px-4 text-right bg-slate-200/50 font-mono text-slate-800">${sTC.toFixed(4)}</td><td class="py-4 px-4"></td><td class="py-4 px-4 text-right bg-blue-100/50 font-black text-blue-800 text-lg">${sQRmb.toFixed(4)}</td><td class="py-4 px-4 text-right bg-green-100/50 font-black text-green-800 text-lg">${sQRm.toFixed(4)}</td></tr>`;
+                tF.innerHTML = `<tr><td colspan="5" class="py-4 px-4 text-right text-slate-500">Total:</td><td class="py-4 px-4 text-right bg-slate-200/50 font-mono text-slate-800">${sTC.toFixed(4)}</td><td class="py-4 px-4"></td><td class="py-4 px-4 text-right bg-blue-100/50 font-black text-blue-800 text-lg">${sQRmb.toFixed(4)}</td><td class="py-4 px-4 text-right bg-green-100/50 font-black text-green-700">${sQRm.toFixed(4)}</td></tr>`;
             };
             renderG('pv', 'cost-pv-body', 'cost-pv-foot'); renderG('bat', 'cost-bat-body', 'cost-bat-foot');
             recalcInstallerQuote();
         };
         window.fetchLiveRate = async (btn) => {
-            if(!btn) return; const oT = btn.innerHTML; btn.innerHTML = '获取中...'; btn.disabled = true;
+            if(!btn) return; const oT = btn.innerHTML; btn.innerHTML = 'Fetching...'; btn.disabled = true;
             try { const res = await fetch('https://api.exchangerate-api.com/v4/latest/MYR'); const data = await res.json(); if(data?.rates?.CNY) { document.getElementById('rate-myr-cny').value = data.rates.CNY.toFixed(4); renderCostCalcUI(); } }
-            catch(e) { console.error('获取汇率失败:', e); } finally { btn.innerHTML = oT; btn.disabled = false; }
+            catch(e) { console.error('Failed to fetch exchange rate:', e); } finally { btn.innerHTML = oT; btn.disabled = false; }
         };
         window.generateQuoteNo = () => {
             const dateVal = document.getElementById('currentDate').value; if(!dateVal) return;
@@ -8968,7 +8981,7 @@
                 const cur = String(isoSel.value || '');
                 ensureSupplierData();
                 const vendors = [...new Set((Array.isArray(suppliers) ? suppliers : []).map(s => getSupplierDisplayName(s)).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-                isoSel.innerHTML = `<option value="">选择供应商</option>` + vendors.map(v => `<option value="${safe(v)}">${safe(v)}</option>`).join('') + `<option value="未指定">未指定</option>`;
+                isoSel.innerHTML = `<option value="">SelectSupplier</option>` + vendors.map(v => `<option value="${safe(v)}">${safe(v)}</option>`).join('') + `<option value="未指定">未指定</option>`;
                 if (cur && (vendors.includes(cur) || cur === '未指定')) isoSel.value = cur;
                 isoSel.onchange = () => { try { renderCompanyCertList(); } catch (e) {} };
             }
@@ -8977,11 +8990,11 @@
             if (trSel) {
                 const cur = String(trSel.value || '');
                 const rows = (Array.isArray(transportRecords) ? transportRecords : []).slice().sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
-                trSel.innerHTML = `<option value="">选择运输单号</option>` + rows.map(r => {
+                trSel.innerHTML = `<option value="">SelectTransport Order No.</option>` + rows.map(r => {
                     const lines = Array.isArray(r?.lines) ? r.lines : [];
                     const batches = [...new Set(lines.map(l => String(l?.batchNo || '').trim()).filter(Boolean))];
                     let batchBrief = '';
-                    if (batches.length === 0) batchBrief = '无批次';
+                    if (batches.length === 0) batchBrief = 'None批次';
                     else if (batches.length === 1) batchBrief = batches[0];
                     else batchBrief = `${batches[0]}+${batches.length - 1}`;
                     const label = `${String(r?.trackingNo || '-')}${batchBrief ? `（${batchBrief}）` : ''}`;
@@ -9009,22 +9022,22 @@
                     const vendor = norm(document.getElementById('iso-cert-vendor-select')?.value || '');
                     if (!vendor) {
                         files = [];
-                        empty.textContent = '请先选择供应商后查看已上传文件';
+                        empty.textContent = '请先SelectSupplier后查看已上传文件';
                     } else {
                         const vendorK = normKey(vendor);
                         files = files.filter(f => normKey(f?.vendor) === vendorK);
-                        empty.textContent = files.length ? '' : `未找到该供应商已上传的文件（${vendor}）`;
+                        empty.textContent = files.length ? '' : `未找到该Supplier已上传的文件（${vendor}）`;
                     }
                 } else {
                     const transportId = norm(document.getElementById('transport-cert-transport-select')?.value || '');
                     if (!transportId) {
                         files = [];
-                        empty.textContent = '请先选择运输单号后查看已上传文件';
+                        empty.textContent = '请先SelectTransport Order No.后查看已上传文件';
                     } else {
                         const rec = (Array.isArray(transportRecords) ? transportRecords : []).find(r => norm(r?.id) === transportId) || {};
                         const trackingNo = norm(rec?.trackingNo);
                         files = files.filter(f => norm(f?.transportId) === transportId || (trackingNo && norm(f?.trackingNo) === trackingNo));
-                        empty.textContent = files.length ? '' : '未找到该运输单号已上传的文件';
+                        empty.textContent = files.length ? '' : '未找到该Transport Order No.已上传的文件';
                     }
                 }
 
@@ -9050,7 +9063,7 @@
                         a.onclick = (e) => { e.preventDefault(); previewCertFile(f.path); };
                         const btn = document.createElement('button');
                         btn.className = 'text-red-400 hover:text-red-600 ml-2 text-xs font-bold';
-                        btn.textContent = '删除';
+                        btn.textContent = 'Delete';
                         btn.onclick = () => deleteCompanyCert(type, f.id);
                         div.appendChild(a);
                         div.appendChild(btn);
@@ -9065,14 +9078,14 @@
             const meta = {};
             if (t === 'iso') {
                 const vendor = String(document.getElementById('iso-cert-vendor-select')?.value || '').trim();
-                if (!vendor) return alert('请先选择供应商');
+                if (!vendor) return alert('请先SelectSupplier');
                 meta.vendor = vendor;
             } else if (t === 'transport') {
                 const transportId = String(document.getElementById('transport-cert-transport-select')?.value || '').trim();
-                if (!transportId) return alert('请先选择运输单号');
+                if (!transportId) return alert('请先SelectTransport Order No.');
                 const rec = (Array.isArray(transportRecords) ? transportRecords : []).find(r => String(r.id) === transportId) || {};
                 const trackingNo = String(rec.trackingNo || '').trim();
-                if (!trackingNo) return alert('该运输记录缺少运输单号');
+                if (!trackingNo) return alert('This transport record has no transport order no.');
                 meta.transportId = transportId;
                 meta.trackingNo = trackingNo;
             }
@@ -9152,7 +9165,7 @@
         }
         function extractStateJsonFromHtml(html) {
             const m = String(html || '').match(/\x3Cscript id="minova-embedded-state"[^>]*>([\s\S]*?)<\/script>/i);
-            if (!m) throw new Error('无法提取 state 快照');
+            if (!m) throw new Error('None法提取 state 快照');
             const parsed = JSON.parse(m[1]);
             return JSON.stringify(parsed, null, 2);
         }
@@ -9164,10 +9177,10 @@
             const owner = cfg.owner;
             const repo = cfg.repo;
             const branch = cfg.branch || 'main';
-            if (!owner || !repo) throw new Error('缺少仓库配置');
+            if (!owner || !repo) throw new Error('缺少Warehouse配置');
 
             const html = window.buildUpdatedHtml?.();
-            if (!html) throw new Error('无法生成更新后的 HTML');
+            if (!html) throw new Error('None法生成更新后的 HTML');
             const stateJson = extractStateJsonFromHtml(html);
 
             const del = Array.isArray(deletePaths) ? deletePaths.filter(Boolean) : [];
@@ -9180,9 +9193,9 @@
         }
 
         window.deleteCompanyCert = async (type, certId) => {
-            if (!confirm('确定删除该文件？')) return;
+            if (!confirm('确定Delete该文件？')) return;
             const s = window.__minovaSync?.getStatus?.();
-            if (!s?.connected) return alert('请先连接 GitHub（需要同步删除线上文件）');
+            if (!s?.connected) return alert('请先连接 GitHub（需要同步Delete线上文件）');
 
             const certs = type === 'iso' ? companyCerts.isoCerts : companyCerts.transportCerts;
             const idx = certs.findIndex(c => c.id === certId);
@@ -9207,7 +9220,7 @@
                 try { fileDeleteLogs = JSON.parse(beforeLogs); } catch (e2) {}
                 saveToLocal();
                 renderCompanyCertList();
-                alert('删除失败：' + String(e?.message || e || ''));
+                alert('Delete失败：' + String(e?.message || e || ''));
             }
         };
 
@@ -9320,9 +9333,9 @@
         };
 
         window.deleteProductCert = async (type, certId) => {
-            if (!confirm('确定删除？')) return;
+            if (!confirm('确定Delete？')) return;
             const s = window.__minovaSync?.getStatus?.();
-            if (!s?.connected) return alert('请先连接 GitHub（需要同步删除线上文件）');
+            if (!s?.connected) return alert('请先连接 GitHub（需要同步Delete线上文件）');
 
             const pid = window.editId;
             const p = products.find(x => x.id === pid);
@@ -9350,7 +9363,7 @@
                 try { fileDeleteLogs = JSON.parse(beforeLogs); } catch (e2) {}
                 saveToLocal();
                 renderProductCertsInModal();
-                alert('删除失败：' + String(e?.message || e || ''));
+                alert('Delete失败：' + String(e?.message || e || ''));
             }
         };
 
@@ -9381,18 +9394,18 @@
 
             const norm = (v) => String(v || '').trim();
             if (!hasQuotedProducts) {
-                isoContainer.innerHTML = '<p class="text-xs text-slate-400">报价表未选择产品，暂不显示公司级认证文件</p>';
-                transportContainer.innerHTML = '<p class="text-xs text-slate-400">报价表未选择产品，暂不显示公司级认证文件</p>';
+                isoContainer.innerHTML = '<p class="text-xs text-slate-400">Quote表未Select Product，暂不显示公司级认证文件</p>';
+                transportContainer.innerHTML = '<p class="text-xs text-slate-400">Quote表未Select Product，暂不显示公司级认证文件</p>';
                 updateCertSectionCount('company');
                 return;
             }
             if (isoCerts.length === 0) {
-                isoContainer.innerHTML = '<p class="text-xs text-slate-400">暂无文件</p>';
+                isoContainer.innerHTML = '<p class="text-xs text-slate-400">暂None文件</p>';
             } else {
                 if (vendorsInQuote.size) {
                     const matchedIso = isoCerts.filter(f => vendorsInQuote.has(norm(f?.vendor)));
                     if (!matchedIso.length) {
-                        isoContainer.innerHTML = `<p class="text-xs text-slate-400">未找到匹配的工厂ISO认证文件（供应商：${[...vendorsInQuote].join('、')}）。请先上传并绑定供应商。</p>`;
+                        isoContainer.innerHTML = `<p class="text-xs text-slate-400">未找到匹配的工厂ISO认证文件（Supplier：${[...vendorsInQuote].join(', ')}）。请先上传并绑定Supplier。</p>`;
                     } else {
                         isoContainer.innerHTML = matchedIso.map(f => `
                             <label class="flex items-center gap-2 py-1 cursor-pointer">
@@ -9413,7 +9426,7 @@
 
             const transportCerts = certs?.transportCerts || [];
             if (transportCerts.length === 0) {
-                transportContainer.innerHTML = '<p class="text-xs text-slate-400">暂无文件</p>';
+                transportContainer.innerHTML = '<p class="text-xs text-slate-400">暂None文件</p>';
             } else {
                 if (batchesInQuote.size) {
                     const hitTransportIds = new Set();
@@ -9431,7 +9444,7 @@
                         ? transportCerts.filter(f => hitTransportIds.has(String(f?.transportId || '')))
                         : [];
                     if (!matchedTransport.length) {
-                        transportContainer.innerHTML = `<p class="text-xs text-slate-400">未找到匹配的运输文件（采购批次：${[...batchesInQuote].join('、')}）。请先创建运输单并上传运输文件绑定到对应运输单号。</p>`;
+                        transportContainer.innerHTML = `<p class="text-xs text-slate-400">未找到匹配的Transport Files（Purchase Batch：${[...batchesInQuote].join(', ')}）。请先创建Transport单并上传Transport Files绑定到对应Transport Order No.。</p>`;
                     } else {
                         transportContainer.innerHTML = matchedTransport.map(f => `
                             <label class="flex items-center gap-2 py-1 cursor-pointer">
@@ -9499,7 +9512,7 @@
                             <label class="flex items-center gap-2 py-1 pl-2 cursor-pointer">
                                 <input type="checkbox" class="cert-checkbox" data-type="specs" data-id="${f.id}" data-path="${f.path}" data-name="${f.name}" data-product-id="${p.id}">
                                 <span class="text-xs text-slate-700 truncate flex-1">${f.name}</span>
-                                <span class="text-xs text-slate-400">规格书</span>
+                                <span class="text-xs text-slate-400">Spec书</span>
                             </label>
                         `).join('') : ''}
                     </div>
@@ -9622,7 +9635,7 @@
         };
 
         window.onRotateSiteOverviewPrintChanged = (checked) => {
-            if (checked) showToast('已开启：导出 PDF 时第 5 页画布将向右旋转 90°（仅影响PDF，不影响网页显示）', 'info');
+            if (checked) showToast('已开启：Export PDF 时第 5 页画布将向右旋转 90°（仅影响PDF，不影响网页显示）', 'info');
         };
 
         window.buildAttachmentHtml = (selectedFiles) => {
@@ -9692,7 +9705,7 @@
             const owner = cfg.owner || 'QibbQi';
             const repo = cfg.repo || 'minova';
             const branch = cfg.branch || 'main';
-            if (!owner || !repo) throw new Error('未连接 GitHub，无法下载附件');
+            if (!owner || !repo) throw new Error('未连接 GitHub，None法下载附件');
             const url = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${String(path).replace(/^\//, '')}?v=${Date.now()}`;
             const res = await fetch(url, { cache: 'no-store' });
             if (!res.ok) throw new Error(`附件下载失败：${res.status}`);
@@ -9714,7 +9727,7 @@
         window.confirmAndGeneratePDF = async () => {
             const modal = document.getElementById('cert-attachment-modal');
             const rotateSiteOverview = !!document.getElementById('qa-rotate-siteoverview')?.checked;
-            if (rotateSiteOverview) showToast('提示：本次导出第 5 页画布将向右旋转 90°（仅影响PDF）', 'info');
+            if (rotateSiteOverview) showToast('提示：本次Export第 5 页画布将向右旋转 90°（仅影响PDF）', 'info');
 
             if (modal) {
                 const pageCheckboxes = modal.querySelectorAll('.print-page-checkbox:checked');
@@ -9734,7 +9747,7 @@
 
             const PDFLibRef = window.PDFLib;
             if (!PDFLibRef?.PDFDocument) {
-                showToast('当前环境未加载 PDFLib，无法生成合并文件', 'error');
+                showToast('当前环境未加载 PDFLib，None法生成合并文件', 'error');
                 return;
             }
 
@@ -9850,8 +9863,8 @@
                                     const rowSpec = String(liveRow?.spec || row.children?.[3]?.textContent || '').trim();
                                     const hay = `${product?.category || ''} ${product?.name || ''} ${product?.spec || ''} ${liveRow?.description || ''} ${liveRow?.spec || ''} ${desc} ${rowSpec}`.toLowerCase();
                                     const hasPanelRating = /(\d+(?:\.\d+)?)\s*(?:wp|w)(?!h)/i.test(hay) || /(\d+(?:\.\d+)?)\s*瓦/.test(hay);
-                                    const isPv = hay.includes('光伏组件') || hay.includes('光伏板') || hay.includes('photovoltaic') || hay.includes('solar panel') || hay.includes('pv module') || (hay.includes('panel') && hasPanelRating) || (hay.includes('组件') && hasPanelRating);
-                                    const isInverter = hay.includes('逆变器') || hay.includes('inverter');
+                                    const isPv = hay.includes('光伏Module') || hay.includes('PV Module') || hay.includes('photovoltaic') || hay.includes('solar panel') || hay.includes('pv module') || (hay.includes('panel') && hasPanelRating) || (hay.includes('Module') && hasPanelRating);
+                                    const isInverter = hay.includes('Inverter') || hay.includes('inverter');
                                     if (isPv) {
                                         const panelCount = String(document.getElementById('quote-panel-count')?.textContent || '').trim() || String(liveRow?.quantity || '');
                                         qtyCell.innerHTML = `<span class="block text-center font-medium text-slate-700">${panelCount}</span>`;

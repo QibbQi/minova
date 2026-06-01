@@ -45,7 +45,7 @@ function normalizedBypassText(source) {
 test('product list tab labels and related modal UI are English', () => {
   const databaseTab = mainSnippet('<main id="view-database"');
   const supplierModal = snippetBetween('<div id="supplier-modal"', '<div id="modal"');
-  const productModal = snippetBetween('<div id="modal"', '<!-- 库存管理弹窗 -->');
+  const productModal = snippetBetween('<div id="modal"', '<div id="inventory-modal"');
   const importModal = snippetBetween('<div id="import-modal"', '<script id="minova-embedded-state"');
   const productListUi = `${databaseTab}\n${supplierModal}\n${productModal}\n${importModal}`;
 
@@ -85,7 +85,7 @@ test('product list tab labels and related modal UI are English', () => {
 test('hidden-bypass check exposes English product list UI with migrated category data', () => {
   const databaseTab = mainSnippet('<main id="view-database"');
   const supplierModal = snippetBetween('<div id="supplier-modal"', '<div id="modal"');
-  const productModal = snippetBetween('<div id="modal"', '<!-- 库存管理弹窗 -->');
+  const productModal = snippetBetween('<div id="modal"', '<div id="inventory-modal"');
   const importModal = snippetBetween('<div id="import-modal"', '<script id="minova-embedded-state"');
   const bypassText = normalizedBypassText(`${databaseTab}\n${supplierModal}\n${productModal}\n${importModal}`);
 

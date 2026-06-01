@@ -593,12 +593,12 @@
       "companies": [
         {
           "id": "cn_parent",
-          "name": "中国母公司",
+          "name": "CN Parent Company",
           "locked": true
         },
         {
           "id": "my_sub",
-          "name": "马来西亚子公司",
+          "name": "Malaysia Subsidiary",
           "locked": false
         }
       ],

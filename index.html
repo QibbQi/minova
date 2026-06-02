@@ -1797,7 +1797,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     <p class="text-xs text-slate-400 mt-1">Track stock-in/out, purchase batches, and cost history</p>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
-                    <button id="inventory-currency-toggle" onclick="toggleInventoryCurrency()" class="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-black hover:bg-black border border-slate-900">¥ / RM</button>
+                    <button id="inventory-currency-toggle" onclick="window.toggleInventoryCurrency()" class="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-black hover:bg-black border border-slate-900">¥ / RM</button>
                     <button onclick="toggleInventorySummary()" id="btn-inv-summary" class="bg-slate-100 text-slate-700 px-3 py-2 rounded-xl text-xs font-black shadow-lg shadow-slate-100 hover:bg-slate-200 border border-slate-200 flex items-center gap-1.5"><span>Summary</span></button>
                     <button onclick="openHistoricalInventoryModal()" class="bg-yellow-100 text-yellow-800 px-3 py-2 rounded-xl text-xs font-black shadow-lg shadow-yellow-100 hover:bg-yellow-50 border border-yellow-200 flex items-center gap-1.5">
                         <span>Archived Inventory</span>
@@ -1812,6 +1812,18 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4"><path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z"></path></svg>
                         <span>New Stock-In</span>
                     </button>
+                </div>
+            </div>
+            <div class="px-6 py-3 border-b border-slate-100 bg-slate-50/60 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Live FX Rate (MYR to CNY)</div>
+                    <div class="text-xs text-slate-500 mt-0.5">Inventory Management and Non-Stock pricing use this page rate.</div>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-xs font-bold text-slate-600">1 RM =</span>
+                    <input id="inventory-rate-myr-cny" type="number" value="1.5300" step="0.0001" min="0.0001" oninput="window.refreshInventoryFxDependentViews()" onchange="window.refreshInventoryFxDependentViews()" class="w-24 border border-slate-200 rounded-lg px-2 py-1.5 text-sm font-black text-blue-600 outline-none text-center bg-white focus:border-purple-500">
+                    <span class="text-xs font-bold text-slate-600">RMB</span>
+                    <button id="inventory-sync-quote-fx" onclick="window.refreshInventoryLiveFx({ render: true, btn: this })" class="px-3 py-1.5 rounded-lg bg-white text-slate-600 text-xs font-black border border-slate-200 hover:bg-slate-50">Sync Quote FX</button>
                 </div>
             </div>
             <div class="overflow-x-auto">
@@ -1855,7 +1867,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     <p class="text-xs text-slate-400 mt-1">Manage fallback cost and tax inputs for products without inventory batches</p>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
-                    <button id="non-stock-currency-toggle" onclick="toggleNonStockCurrency()" class="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-black hover:bg-black border border-slate-900">¥ / RM</button>
+                    <button id="non-stock-currency-toggle" onclick="window.toggleNonStockCurrency()" class="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-black hover:bg-black border border-slate-900">¥ / RM</button>
                     <button id="non-stock-target-home" onclick="window.setNonStockProfitTarget('home')" class="px-3 py-2 rounded-xl bg-purple-700 text-white text-xs font-black border border-purple-700">RESI</button>
                     <button id="non-stock-target-biz" onclick="window.setNonStockProfitTarget('biz')" class="px-3 py-2 rounded-xl bg-white text-slate-700 text-xs font-black border border-slate-200 hover:bg-slate-50">C&amp;I</button>
                     <div id="non-stock-pricing-summary" class="text-xs text-slate-400 font-bold">0 products</div>
@@ -1870,7 +1882,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             <th class="py-4 px-4">Category</th>
                             <th class="py-4 px-4">Unit</th>
                             <th class="py-4 px-4 text-right">Base Cost</th>
-                            <th class="py-4 px-4 text-right">Purchase Price</th>
+                            <th id="non-stock-purchase-price-head" class="py-4 px-4 text-right">Purchase Price (¥)</th>
+                            <th class="py-4 px-4 text-right">Price Updated</th>
                             <th class="py-4 px-4 text-right">Qty/PCS</th>
                             <th class="py-4 px-4 text-right">PCS Purchase Price</th>
                             <th class="py-4 px-4 text-right">Freight %</th>
@@ -1889,7 +1902,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         </tr>
                     </thead>
                     <tbody id="non-stock-pricing-list" class="divide-y divide-slate-50">
-                        <tr><td colspan="21" class="py-12 text-center text-slate-400 text-sm">Loading non-stock pricing...</td></tr>
+                        <tr><td colspan="22" class="py-12 text-center text-slate-400 text-sm">Loading non-stock pricing...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -2872,7 +2885,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Live FX Rate (MYR to CNY)</span>
                         <div class="flex items-center gap-2 mt-1">
                             <span class="text-sm font-bold text-slate-600">1 RM =</span>
-                            <input type="number" id="rate-myr-cny" value="1.5300" step="0.01" oninput="window.refreshFxDependentPricingViews()" class="w-20 border border-slate-200 rounded p-1 text-sm font-bold text-blue-600 outline-none text-center bg-slate-50 focus:bg-white focus:border-blue-400">
+                            <input type="number" id="rate-myr-cny" value="1.5300" step="0.01" oninput="window.refreshFxDependentPricingViews()" onchange="window.refreshFxDependentPricingViews()" class="w-20 border border-slate-200 rounded p-1 text-sm font-bold text-blue-600 outline-none text-center bg-slate-50 focus:bg-white focus:border-blue-400">
                             <span class="text-sm font-bold text-slate-600">RMB</span>
                         </div>
                     </div>
@@ -6887,6 +6900,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     });
                 }
             }
+            if (tab === 'inventory') {
+                window.refreshInventoryLiveFx?.({ render: true });
+            }
             if (tab === 'quotation') {
                 const page = document.getElementById('quote-page-select')?.value || '1';
                 const target = document.getElementById('quote-page-' + page);
@@ -8440,24 +8456,31 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const list = document.getElementById('non-stock-pricing-list');
             const summary = document.getElementById('non-stock-pricing-summary');
             const currencyBtn = document.getElementById('non-stock-currency-toggle');
+            const purchaseHead = document.getElementById('non-stock-purchase-price-head');
             if (currencyBtn) currencyBtn.textContent = getNonStockDisplayCurrency() === 'MYR' ? 'RM / ¥' : '¥ / RM';
+            if (purchaseHead) purchaseHead.textContent = `Purchase Price (${getNonStockDisplayCurrency() === 'MYR' ? 'RM' : '¥'})`;
             updateNonStockProfitTargetButtons();
             if (!list) return;
             const rows = getNonStockProductsForPricing();
             const targetLabel = getNonStockProfitTarget() === 'biz' ? 'C&I' : 'RESI';
-            if (summary) summary.textContent = `${rows.length} products | ${targetLabel} | ${getNonStockDisplayCurrency()} | 1 MYR = ${getSalesOutRateCnyPerMyr().toFixed(4)} CNY`;
+            if (summary) summary.textContent = `${rows.length} products | ${targetLabel} | ${getNonStockDisplayCurrency()} | 1 MYR = ${getInventoryFxRateCnyPerMyr().toFixed(4)} CNY`;
             if (!rows.length) {
-                list.innerHTML = `<tr><td colspan="21" class="py-12 text-center text-slate-400 text-sm">No non-stock products need fallback pricing.</td></tr>`;
+                list.innerHTML = `<tr><td colspan="22" class="py-12 text-center text-slate-400 text-sm">No non-stock products need fallback pricing.</td></tr>`;
+                window.__nonStockRenderedCurrency = getNonStockDisplayCurrency();
+                window.__nonStockRenderedRateCnyPerMyr = getInventoryFxRateCnyPerMyr();
                 return;
             }
+            const draftStrategies = window.__nonStockPricingDrafts && typeof window.__nonStockPricingDrafts === 'object' ? window.__nonStockPricingDrafts : {};
             list.innerHTML = rows.map(p => {
                 const sid = domSafeId(p.id);
-                const strategy = getNonStockPricingStrategy(p.id);
+                const strategy = draftStrategies[p.id] ? normalizeNonStockPricingStrategy(draftStrategies[p.id]) : getNonStockPricingStrategy(p.id);
                 const encodedId = encodeURIComponent(p.id);
                 const def = getDefaultTaxInputsForProduct(p);
                 const pricing = priceListProductPricing(p);
                 const unit = normalizeUnitLabel(pricing.costUnit || getMarketCategoryUnitMeta(p.category || '').unit || 'pcs');
-                const purchaseValue = Number.isFinite(parseFloat(strategy.purchasePrice)) ? parseFloat(strategy.purchasePrice) : (Number.isFinite(parseFloat(strategy.avgCostOverride)) ? parseFloat(strategy.avgCostOverride) : '');
+                const purchaseCnyValue = Number.isFinite(parseFloat(strategy.purchasePrice)) ? parseFloat(strategy.purchasePrice) : (Number.isFinite(parseFloat(strategy.avgCostOverride)) ? parseFloat(strategy.avgCostOverride) : NaN);
+                const purchaseValue = Number.isFinite(purchaseCnyValue) ? nonStockDisplayFromCny(purchaseCnyValue).toFixed(getNonStockDisplayCurrency() === 'MYR' ? 4 : 4) : '';
+                const purchasePlaceholder = nonStockDisplayFromCny(getProductCostCny(p) || 0).toFixed(4);
                 const shippingValue = Number.isFinite(parseFloat(strategy.shippingRatePct)) ? parseFloat(strategy.shippingRatePct) : def.shippingRatePct;
                 const domesticValue = Number.isFinite(parseFloat(strategy.domesticTaxRatePct)) ? parseFloat(strategy.domesticTaxRatePct) : def.domesticTaxRatePct;
                 const dutyValue = Number.isFinite(parseFloat(strategy.dutyPct)) ? parseFloat(strategy.dutyPct) : def.dutyPct;
@@ -8477,8 +8500,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <td class="py-4 px-4 text-xs font-bold text-slate-500">${htmlSafe(unit)}</td>
                         <td class="py-4 px-4 text-right text-xs font-mono text-slate-500">${formatNonStockAmount(getProductCostCny(p), 4, unit)}</td>
                         <td class="py-3 px-3 text-right">
-                            <input id="non-stock-purchase-${sid}" type="number" step="0.0001" min="0" value="${purchaseValue}" placeholder="${(getProductCostCny(p) || 0).toFixed(4)}" class="w-28 px-3 py-2 rounded-lg border border-slate-200 text-right text-xs font-mono focus:outline-none focus:ring-2 focus:ring-purple-100">
+                            <input id="non-stock-purchase-${sid}" type="number" step="0.0001" min="0" value="${purchaseValue}" placeholder="${purchasePlaceholder}" class="w-28 px-3 py-2 rounded-lg border border-slate-200 text-right text-xs font-mono focus:outline-none focus:ring-2 focus:ring-purple-100">
                         </td>
+                        <td class="py-4 px-4 text-right text-xs font-mono text-slate-400">${formatNonStockPriceUpdatedAt(strategy.updatedAt)}</td>
                         <td class="py-4 px-4 text-right text-xs font-bold text-slate-500">${htmlSafe(pricing.pricingMeta?.label || `${formatNumberAuto(pricing.pcsMultiplier, 4)} ${unit}/pcs`)}</td>
                         <td class="py-4 px-4 text-right text-xs font-mono text-slate-600">${formatNonStockAmount(pcsPurchasePrice, 2, 'pcs')}</td>
                         <td class="py-3 px-3 text-right">
@@ -8517,6 +8541,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     </tr>
                 `;
             }).join('');
+            window.__nonStockRenderedCurrency = getNonStockDisplayCurrency();
+            window.__nonStockRenderedRateCnyPerMyr = getInventoryFxRateCnyPerMyr();
         };
         window.saveNonStockPricingStrategy = (productId) => {
             const id = String(productId || '').trim();
@@ -8527,9 +8553,11 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 const n = parseFloat(raw);
                 return Number.isFinite(n) && n >= 0 ? n : null;
             };
+            const purchaseDisplay = readNum('purchase');
+            const purchaseCny = purchaseDisplay === null ? null : nonStockCnyFromDisplay(purchaseDisplay);
             const next = normalizeNonStockPricingStrategy({
-                purchasePrice: readNum('purchase'),
-                avgCostOverride: readNum('purchase'),
+                purchasePrice: purchaseCny,
+                avgCostOverride: purchaseCny,
                 shippingRatePct: readNum('shipping'),
                 domesticTaxRatePct: readNum('domestic'),
                 dutyPct: readNum('duty'),
@@ -8540,6 +8568,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             nonStockPricingStrategies = normalizeNonStockPricingStrategies(nonStockPricingStrategies);
             if (Object.keys(next).length > 1) nonStockPricingStrategies[id] = next;
             else delete nonStockPricingStrategies[id];
+            if (window.__nonStockPricingDrafts && typeof window.__nonStockPricingDrafts === 'object') delete window.__nonStockPricingDrafts[id];
             saveToLocal();
             renderNonStockPricingStrategies();
             renderPriceList();
@@ -8550,6 +8579,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (!id) return;
             nonStockPricingStrategies = normalizeNonStockPricingStrategies(nonStockPricingStrategies);
             delete nonStockPricingStrategies[id];
+            if (window.__nonStockPricingDrafts && typeof window.__nonStockPricingDrafts === 'object') delete window.__nonStockPricingDrafts[id];
             saveToLocal();
             renderNonStockPricingStrategies();
             renderPriceList();
@@ -10534,6 +10564,11 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const rate = parseFloat(document.getElementById('rate-myr-cny')?.value) || 1.53;
             return rate > 0 ? rate : 1.53;
         }
+        function getInventoryFxRateCnyPerMyr() {
+            const direct = parseFloat(document.getElementById('inventory-rate-myr-cny')?.value);
+            if (Number.isFinite(direct) && direct > 0) return direct;
+            return getSalesOutRateCnyPerMyr();
+        }
         function getInventoryDisplayCurrency() {
             return window.inventoryDisplayCurrency === 'MYR' ? 'MYR' : 'CNY';
         }
@@ -10543,21 +10578,75 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         function getNonStockProfitTarget() {
             return window.nonStockProfitTarget === 'biz' ? 'biz' : 'home';
         }
-        function formatAmountFromCnyForTable(valueCny, currency, digits = 2, unit = '') {
+        function formatAmountFromCnyForTable(valueCny, currency, digits = 2, unit = '', rateCnyPerMyr = getSalesOutRateCnyPerMyr()) {
             const suffix = unit ? `/${normalizeUnitLabel(unit)}` : '';
-            return `${formatCurrencyFromCny(valueCny, currency, digits)}${suffix}`;
+            const n = Number.isFinite(parseFloat(valueCny)) ? parseFloat(valueCny) : 0;
+            const amount = String(currency || '').toUpperCase() === 'MYR'
+                ? `RM ${(n / Math.max(0.0001, rateCnyPerMyr)).toFixed(digits)}`
+                : `¥${n.toFixed(digits)}`;
+            return `${amount}${suffix}`;
         }
         function formatInventoryAmount(valueCny, digits = 2, unit = '') {
-            return formatAmountFromCnyForTable(valueCny, getInventoryDisplayCurrency(), digits, unit);
+            return formatAmountFromCnyForTable(valueCny, getInventoryDisplayCurrency(), digits, unit, getInventoryFxRateCnyPerMyr());
         }
         function formatNonStockAmount(valueCny, digits = 2, unit = '') {
-            return formatAmountFromCnyForTable(valueCny, getNonStockDisplayCurrency(), digits, unit);
+            return formatAmountFromCnyForTable(valueCny, getNonStockDisplayCurrency(), digits, unit, getInventoryFxRateCnyPerMyr());
+        }
+        function nonStockDisplayFromCny(valueCny) {
+            const n = Number.isFinite(parseFloat(valueCny)) ? parseFloat(valueCny) : 0;
+            return getNonStockDisplayCurrency() === 'MYR' ? n / getInventoryFxRateCnyPerMyr() : n;
+        }
+        function nonStockCnyFromDisplay(value, currency = getNonStockDisplayCurrency(), rateCnyPerMyr = getInventoryFxRateCnyPerMyr()) {
+            const n = Number.isFinite(parseFloat(value)) ? parseFloat(value) : 0;
+            return currency === 'MYR' ? n * rateCnyPerMyr : n;
+        }
+        function readNonStockNumFromDom(field, sid) {
+            const raw = document.getElementById(`non-stock-${field}-${sid}`)?.value;
+            const n = parseFloat(raw);
+            return Number.isFinite(n) && n >= 0 ? n : null;
+        }
+        function captureNonStockPricingDraftsFromDom() {
+            const renderedCurrency = window.__nonStockRenderedCurrency === 'MYR' ? 'MYR' : 'CNY';
+            const renderedRate = Number.isFinite(parseFloat(window.__nonStockRenderedRateCnyPerMyr))
+                ? parseFloat(window.__nonStockRenderedRateCnyPerMyr)
+                : getInventoryFxRateCnyPerMyr();
+            const drafts = {};
+            const rows = getNonStockProductsForPricing();
+            rows.forEach(p => {
+                const sid = domSafeId(p.id);
+                const purchaseDisplay = readNonStockNumFromDom('purchase', sid);
+                const shippingRatePct = readNonStockNumFromDom('shipping', sid);
+                const domesticTaxRatePct = readNonStockNumFromDom('domestic', sid);
+                const dutyPct = readNonStockNumFromDom('duty', sid);
+                const sstPct = readNonStockNumFromDom('sst', sid);
+                const grayPct = readNonStockNumFromDom('gray', sid);
+                const existing = getNonStockPricingStrategy(p.id);
+                drafts[p.id] = normalizeNonStockPricingStrategy({
+                    ...existing,
+                    purchasePrice: purchaseDisplay === null ? existing.purchasePrice : nonStockCnyFromDisplay(purchaseDisplay, renderedCurrency, renderedRate),
+                    avgCostOverride: purchaseDisplay === null ? existing.avgCostOverride : nonStockCnyFromDisplay(purchaseDisplay, renderedCurrency, renderedRate),
+                    shippingRatePct: shippingRatePct === null ? existing.shippingRatePct : shippingRatePct,
+                    domesticTaxRatePct: domesticTaxRatePct === null ? existing.domesticTaxRatePct : domesticTaxRatePct,
+                    dutyPct: dutyPct === null ? existing.dutyPct : dutyPct,
+                    sstPct: sstPct === null ? existing.sstPct : sstPct,
+                    grayPct: grayPct === null ? existing.grayPct : grayPct
+                });
+            });
+            window.__nonStockPricingDrafts = drafts;
+        }
+        function formatNonStockPriceUpdatedAt(value) {
+            const raw = String(value || '').trim();
+            if (!raw) return '-';
+            const d = new Date(raw);
+            if (Number.isNaN(d.getTime())) return htmlSafe(raw);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
         }
         window.toggleInventoryCurrency = () => {
             window.inventoryDisplayCurrency = getInventoryDisplayCurrency() === 'MYR' ? 'CNY' : 'MYR';
             renderInventory();
         };
         window.toggleNonStockCurrency = () => {
+            captureNonStockPricingDraftsFromDom();
             window.nonStockDisplayCurrency = getNonStockDisplayCurrency() === 'MYR' ? 'CNY' : 'MYR';
             renderNonStockPricingStrategies();
         };
@@ -10593,11 +10682,66 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         window.renderNonStockProfitSplitCell = renderNonStockProfitSplitCell;
         window.refreshFxDependentPricingViews = () => {
             window.renderCostCalcUI?.();
-            window.renderInventory?.();
-            window.renderNonStockPricingStrategies?.();
             window.renderPriceList?.();
             window.renderPriceListPicker?.();
             window.recalcInstallerQuote?.();
+        };
+        window.refreshInventoryFxDependentViews = () => {
+            captureNonStockPricingDraftsFromDom();
+            window.renderInventory?.();
+            window.renderNonStockPricingStrategies?.();
+        };
+        window.applyInventoryFxRate = (rate, { render = false, syncQuote = true } = {}) => {
+            const n = parseFloat(rate);
+            if (!Number.isFinite(n) || n <= 0) return false;
+            if (render) {
+                captureNonStockPricingDraftsFromDom();
+            } else {
+                window.__nonStockPricingDrafts = {};
+            }
+            const fixed = n.toFixed(4);
+            const inventoryRateEl = document.getElementById('inventory-rate-myr-cny');
+            if (inventoryRateEl) inventoryRateEl.value = fixed;
+            if (syncQuote) {
+                const quoteRateEl = document.getElementById('rate-myr-cny');
+                if (quoteRateEl) quoteRateEl.value = fixed;
+            }
+            if (render) {
+                window.renderInventory?.();
+                window.renderNonStockPricingStrategies?.();
+            } else {
+                window.__nonStockRenderedRateCnyPerMyr = n;
+                window.__nonStockRenderedCurrency = getNonStockDisplayCurrency();
+            }
+            return true;
+        };
+        window.syncInventoryFxRateFromQuoteSettings = ({ render = false } = {}) => {
+            window.applyInventoryFxRate(getSalesOutRateCnyPerMyr(), { render, syncQuote: false });
+        };
+        window.refreshInventoryLiveFx = async ({ render = true, btn = null } = {}) => {
+            const rateBtn = btn || document.getElementById('inventory-sync-quote-fx');
+            const originalText = rateBtn?.innerHTML || '';
+            if (rateBtn) {
+                rateBtn.innerHTML = 'Fetching...';
+                rateBtn.disabled = true;
+            }
+            try {
+                const res = await fetch('https://api.exchangerate-api.com/v4/latest/MYR');
+                const data = await res.json();
+                if (data?.rates?.CNY && window.applyInventoryFxRate(data.rates.CNY, { render, syncQuote: true })) {
+                    window.refreshFxDependentPricingViews?.();
+                    return true;
+                }
+            } catch (e) {
+                console.error('Failed to fetch inventory exchange rate:', e);
+            } finally {
+                if (rateBtn) {
+                    rateBtn.innerHTML = originalText;
+                    rateBtn.disabled = false;
+                }
+            }
+            window.syncInventoryFxRateFromQuoteSettings({ render });
+            return false;
         };
         function getSalesOutCurrency() {
             return window.salesOutCurrency === 'MYR' ? 'MYR' : 'CNY';

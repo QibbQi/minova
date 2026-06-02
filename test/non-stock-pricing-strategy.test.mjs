@@ -11,6 +11,7 @@ test('inventory management exposes a non-stock pricing strategy table', () => {
   assert.match(html, /id="non-stock-currency-toggle"/, 'non-stock strategy table has a currency toggle');
   assert.match(html, /id="non-stock-target-home"/, 'non-stock strategy table has a RESI display toggle');
   assert.match(html, /id="non-stock-target-biz"/, 'non-stock strategy table has a C&I display toggle');
+  assert.match(html, /id="non-stock-purchase-price-head"/, 'purchase price header can show the active currency');
   assert.match(html, /non-stock-purchase-\$\{sid\}/, 'non-stock strategy captures expected purchase price');
   assert.match(html, /non-stock-shipping-\$\{sid\}/, 'non-stock strategy captures expected freight rate');
   assert.match(html, /non-stock-domestic-\$\{sid\}/, 'non-stock strategy captures expected domestic tax rate');
@@ -19,14 +20,47 @@ test('inventory management exposes a non-stock pricing strategy table', () => {
 });
 
 test('inventory and non-stock tables share live FX currency display controls', () => {
+  assert.match(html, /id="inventory-rate-myr-cny"/, 'inventory page exposes its own live FX rate input');
+  assert.match(html, /Live FX Rate \(MYR to CNY\)/, 'inventory page labels the page-level live FX rate');
+  const inventorySection = html.match(/<main id="view-inventory"[\s\S]*?<main id="view-transport"/);
+  assert.ok(inventorySection, 'inventory view section is present');
+  assert.match(inventorySection[0], /id="inventory-rate-myr-cny"/, 'inventory FX rate input is inside the inventory view');
+  assert.match(inventorySection[0], /id="inventory-sync-quote-fx"/, 'inventory FX refresh button has a stable hook');
+  assert.match(inventorySection[0], /Sync Quote FX/, 'inventory FX sync button is inside the inventory view');
+  assert.match(inventorySection[0], /onclick="window\.refreshInventoryLiveFx\(\{ render: true, btn: this \}\)"/, 'inventory FX button fetches a live rate directly');
   assert.match(html, /id="inventory-currency-toggle"/, 'inventory table has a currency toggle');
   assert.match(html, /window\.toggleInventoryCurrency/, 'inventory currency toggle is wired');
+  assert.match(html, /onclick="window\.toggleInventoryCurrency\(\)"/, 'inventory currency button calls the module-safe global');
   assert.match(html, /window\.toggleNonStockCurrency/, 'non-stock currency toggle is wired');
+  assert.match(html, /function getInventoryFxRateCnyPerMyr\(\)/, 'inventory page has a dedicated FX getter');
+  assert.match(html, /formatAmountFromCnyForTable\(valueCny, getInventoryDisplayCurrency\(\), digits, unit, getInventoryFxRateCnyPerMyr\(\)\)/, 'inventory amounts use the page FX rate');
+  assert.match(html, /formatAmountFromCnyForTable\(valueCny, getNonStockDisplayCurrency\(\), digits, unit, getInventoryFxRateCnyPerMyr\(\)\)/, 'non-stock amounts use the inventory page FX rate');
   assert.match(html, /formatInventoryAmount\(purchaseTotal, 2\)/, 'inventory purchase totals use live FX display formatting');
   assert.match(html, /formatNonStockAmount\(pricing\.avgCost \|\| 0, 4, unit\)/, 'non-stock expected average cost uses live FX display formatting');
-  assert.match(html, /oninput="window\.refreshFxDependentPricingViews\(\)"/, 'manual live FX edits refresh dependent pricing views');
-  assert.match(html, /window\.refreshFxDependentPricingViews\(\); \} \}/, 'fetched live FX refreshes dependent pricing views');
-  assert.match(html, /window\.refreshFxDependentPricingViews/, 'shared FX refresh helper exists');
+  assert.match(html, /nonStockDisplayFromCny\(purchaseCnyValue\)/, 'purchase price input displays the active currency amount');
+  assert.match(html, /nonStockCnyFromDisplay\(purchaseDisplay\)/, 'purchase price saves back to CNY');
+  assert.match(html, /oninput="window\.refreshInventoryFxDependentViews\(\)"/, 'manual inventory FX edits refresh inventory page pricing views');
+  assert.match(html, /onchange="window\.refreshInventoryFxDependentViews\(\)"/, 'committed inventory FX edits refresh inventory page pricing views');
+  assert.match(html, /window\.refreshInventoryLiveFx\?\.\(\{ render: true \}\)/, 'opening the inventory tab fetches a fresh live FX rate for the page');
+  assert.match(html, /window\.refreshInventoryLiveFx = async/, 'inventory page has a dedicated live FX refresh helper');
+  assert.match(html, /window\.applyInventoryFxRate/, 'inventory page applies fetched FX rates to page and Quote Settings controls');
+  assert.match(html, /window\.syncInventoryFxRateFromQuoteSettings/, 'inventory page keeps a Quote Settings FX fallback');
+});
+
+test('non-stock FX refresh preserves current table values before rerendering', () => {
+  assert.match(html, /function captureNonStockPricingDraftsFromDom\(\)/, 'non-stock table can capture current editable values before rerendering');
+  assert.match(html, /window\.__nonStockRenderedRateCnyPerMyr/, 'non-stock table records the rate used for the current render');
+  assert.match(html, /window\.__nonStockRenderedCurrency/, 'non-stock table records the currency used for the current render');
+  assert.match(html, /nonStockCnyFromDisplay\(purchaseDisplay, renderedCurrency, renderedRate\)/, 'purchase price draft converts using the prior rendered rate');
+  assert.match(html, /captureNonStockPricingDraftsFromDom\(\);\s*window\.nonStockDisplayCurrency/, 'currency toggle captures drafts before changing display currency');
+  assert.match(html, /window\.refreshInventoryFxDependentViews = \(\) => \{\s*captureNonStockPricingDraftsFromDom\(\);/, 'inventory FX refresh captures drafts before rerendering dependent views');
+  assert.match(html, /const strategy = draftStrategies\[p\.id\]/, 'renderer prefers captured drafts during live FX refresh');
+});
+
+test('non-stock purchase price is maintainable with update time', () => {
+  assert.match(html, /Price Updated/, 'non-stock table shows purchase price maintenance time');
+  assert.match(html, /formatNonStockPriceUpdatedAt\(strategy\.updatedAt\)/, 'non-stock rows render strategy update time');
+  assert.match(html, /updatedAt: new Date\(\)\.toISOString\(\)/, 'saving non-stock strategy records the maintenance time');
 });
 
 test('non-stock strategy shows RESI and C&I profit split by company', () => {
@@ -44,6 +78,7 @@ test('non-stock strategy columns follow formula calculation order', () => {
   const ordered = [
     'Base Cost',
     'Purchase Price',
+    'Price Updated',
     'Qty/PCS',
     'PCS Purchase Price',
     'Freight %',

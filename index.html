@@ -1826,16 +1826,16 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             <th class="py-4 px-4">Stock-In Date</th>
                             <th class="py-4 px-4 text-center">InventoryQuantity</th>
                             <th class="py-4 px-4">Purchase Batch</th>
-                            <th class="py-4 px-4 text-right">Batch Purchase Price(¥)</th>
-                            <th class="py-4 px-4 text-right">Spec</th>
-                            <th class="py-4 px-4 text-right">Unit Purchase Price (¥)</th>
+                            <th class="py-4 px-4 text-right">Purchase Price</th>
+                            <th class="py-4 px-4 text-right">Qty/PCS</th>
+                            <th class="py-4 px-4 text-right">PCS Purchase Price</th>
                             <th class="py-4 px-4 text-right">Purchase Total (¥)</th>
                             <th class="py-4 px-4 text-right">Freight Rate</th>
                             <th class="py-4 px-4 text-right">Domestic Tax Rate</th>
                             <th class="py-4 px-4 text-right">Freight (¥)</th>
                             <th class="py-4 px-4 text-right">Domestic Tax (¥)</th>
                             <th class="py-4 px-4 text-right">Total Cost (¥)</th>
-                            <th class="py-4 px-4 text-right">Average Inventory Cost (¥)</th>
+                            <th class="py-4 px-4 text-right">Average Inventory Cost</th>
                             <th class="py-4 px-4">Storage Location</th>
                             <th class="py-4 px-4 text-center">Actions</th>
                         </tr>
@@ -3251,7 +3251,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     <!-- Add字段区段 -->
                     <div class="col-span-1">
                         <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Specification</label>
-                        <input type="text" id="m-spec" placeholder="e.g. 550W/48V" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                        <input type="text" id="m-spec" placeholder="e.g. 550W/48V" oninput="updateProductPriceUnitNote()" onchange="updateProductPriceUnitNote()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
                     </div>
                     <div class="col-span-1">
                         <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Subcategory</label>
@@ -3312,6 +3312,21 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             <p id="m-price-unit-note" class="text-[10px] text-slate-400 font-bold">Unit: per product unit</p>
                         </div>
                         <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Price Basis Unit</label>
+                            <select id="m-price-basis-unit" onchange="updateProductPriceUnitNote()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500 bg-white">
+                                <option value="">Auto</option>
+                                <option value="W">W</option>
+                                <option value="kW">kW</option>
+                                <option value="kWh">kWh</option>
+                                <option value="pcs">pcs</option>
+                                <option value="set">set</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Qty per PCS</label>
+                            <input type="number" id="m-unit-qty-per-pcs" step="0.0001" min="0" placeholder="Auto from spec" oninput="updateProductPriceUnitNote()" onchange="updateProductPriceUnitNote()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                        </div>
                         <div>
                             <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Base Cost (<span id="m-cost-currency-label">¥</span>)</label>
                             <input type="number" id="m-cost" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
@@ -3427,15 +3442,15 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <select id="inv-transfer-to" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500 bg-white"></select>
                     </div>
                     <div id="inv-spec-container">
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Spec</label>
+                        <label id="inv-spec-label" class="block text-[10px] font-black text-slate-400 uppercase mb-1">Qty per PCS</label>
                         <input type="number" id="inv-spec" step="0.01" value="1" oninput="recalcInventoryCosts()" onchange="recalcInventoryCosts()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
                     </div>
                     <div id="inv-price-container">
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Batch Purchase Price (¥)</label>
+                        <label id="inv-price-label" class="block text-[10px] font-black text-slate-400 uppercase mb-1">Purchase Price (¥/unit)</label>
                         <input type="number" id="inv-price" step="0.01" oninput="recalcInventoryCosts()" onchange="recalcInventoryCosts()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Unit Purchase Price (¥)</label>
+                        <label id="inv-unit-price-label" class="block text-[10px] font-black text-slate-400 uppercase mb-1">Unit Purchase Price (¥/pcs)</label>
                         <input type="number" id="inv-unit-price" readonly="" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-slate-50 text-slate-600">
                     </div>
                     <div>
@@ -3459,7 +3474,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <input type="number" id="inv-domestic-tax" readonly="" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-slate-50 text-slate-600">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Average Inventory Cost (¥)</label>
+                        <label id="inv-avg-cost-label" class="block text-[10px] font-black text-slate-400 uppercase mb-1">Average Inventory Cost (¥/unit)</label>
                         <input type="number" id="inv-avg-cost" readonly="" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-slate-50 text-slate-600 font-bold">
                     </div>
                     <div class="md:col-span-2">
@@ -4922,6 +4937,57 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         function normalizeMarketUnit(unit) {
             return normalizeUnitLabel(unit);
         }
+        function normalizePricingUnit(unit) {
+            const raw = String(unit || '').trim();
+            const normalized = normalizeUnitLabel(raw);
+            const lower = String(normalized || '').trim().toLowerCase();
+            if (lower === 'w') return 'W';
+            if (lower === 'kw') return 'kW';
+            if (lower === 'kwh') return 'kWh';
+            if (lower === 'pcs') return 'pcs';
+            if (lower === 'set') return 'set';
+            return normalized || 'pcs';
+        }
+        function inferProductPricingUnit(product) {
+            const p = product || {};
+            const explicit = String(p.priceBasisUnit || p.pricingUnit || p.costUnit || '').trim();
+            if (explicit) return normalizePricingUnit(explicit);
+            const categoryUnit = getMarketCategoryUnitMeta(p.category || '').unit || '';
+            return normalizePricingUnit(categoryUnit || 'pcs');
+        }
+        function inferProductUnitQtyPerPcs(product, inventoryItem, unit) {
+            const p = product || {};
+            const u = normalizePricingUnit(unit || inferProductPricingUnit(p));
+            const explicitQty = parseFloat(p.unitQtyPerPcs);
+            if (Number.isFinite(explicitQty) && explicitQty > 0) return explicitQty;
+            if (inventoryItem) {
+                const invQty = parseFloat(inventoryItem.spec);
+                if (Number.isFinite(invQty) && invQty > 0) return invQty;
+            }
+            if (u === 'pcs' || u === 'set') return 1;
+            const text = String((p.spec || '') + ' ' + (p.name || ''));
+            const unitPattern = u.replace(/[^A-Za-z]/g, '');
+            const match = text.match(new RegExp('(\\d+(?:\\.\\d+)?)\\s*' + unitPattern + '\\b', 'i'));
+            const parsed = match ? parseFloat(match[1]) : NaN;
+            if (Number.isFinite(parsed) && parsed > 0) return parsed;
+            const numericSpec = parseFloat(p.spec);
+            return Number.isFinite(numericSpec) && numericSpec > 0 ? numericSpec : 1;
+        }
+        function getProductPricingMeta(product, inventoryItem) {
+            const p = product || {};
+            const unit = inferProductPricingUnit(p);
+            const explicitQty = parseFloat(p.unitQtyPerPcs);
+            let qty = inferProductUnitQtyPerPcs(p, inventoryItem, unit);
+            const rounded = Math.round(qty * 1000000) / 1000000;
+            const qtyLabel = Number.isInteger(rounded) ? String(rounded) : String(rounded).replace(/0+$/, '').replace(/\.$/, '');
+            const hasExplicit = !!String(p.priceBasisUnit || p.pricingUnit || p.costUnit || '').trim() || (Number.isFinite(explicitQty) && explicitQty > 0);
+            return {
+                priceBasisUnit: unit,
+                unitQtyPerPcs: rounded,
+                source: hasExplicit ? 'explicit' : 'inferred',
+                label: qtyLabel + ' ' + unit + '/pcs'
+            };
+        }
         function normalizeMarketPrices(data) {
             const raw = data && typeof data === 'object' ? data : {};
             const unitSource = raw.categoryUnits && typeof raw.categoryUnits === 'object' ? raw.categoryUnits : {};
@@ -4979,6 +5045,14 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         scenario: normalizeProductSubcategory(p.scenario)
                     };
                     if (String(next.spec || '').trim() === '个') next.spec = 'pcs';
+                    if (String(next.priceBasisUnit || next.pricingUnit || next.costUnit || '').trim()) {
+                        next.priceBasisUnit = normalizePricingUnit(next.priceBasisUnit || next.pricingUnit || next.costUnit);
+                    }
+                    if (next.unitQtyPerPcs != null) {
+                        const qty = parseFloat(next.unitQtyPerPcs);
+                        if (Number.isFinite(qty) && qty > 0) next.unitQtyPerPcs = qty;
+                        else delete next.unitQtyPerPcs;
+                    }
                     return next;
                 });
             }
@@ -5450,8 +5524,17 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const note = document.getElementById('m-price-unit-note');
             if (!note) return;
             const category = document.getElementById('m-category')?.value || '';
-            const unit = normalizeUnitLabel(getMarketCategoryUnitMeta(category).unit || 'unit');
-            note.textContent = `Unit: /${unit}`;
+            const spec = document.getElementById('m-spec')?.value || '';
+            const unitEl = document.getElementById('m-price-basis-unit');
+            const qtyEl = document.getElementById('m-unit-qty-per-pcs');
+            const draft = {
+                category,
+                spec,
+                priceBasisUnit: unitEl?.value || '',
+                unitQtyPerPcs: qtyEl?.value || ''
+            };
+            const meta = getProductPricingMeta(draft);
+            note.textContent = `Base cost/price: /${meta.priceBasisUnit} · Quote price: ${meta.label}`;
         }
         function updateProductPriceCurrencyUi() {
             const currency = normalizeProductPriceCurrency(document.getElementById('m-price-currency')?.value || 'CNY');
@@ -8197,6 +8280,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             list.innerHTML = sorted.map(p => {
                 const costCny = getProductCostCny(p);
                 const priceCny = getProductPriceCny(p);
+                const pricingMeta = getProductPricingMeta(p);
                 const margin = priceCny > 0 ? ((priceCny - costCny) / priceCny * 100).toFixed(1) : 0;
                 const warrantyY = p.warrantyYears ? `${p.warrantyYears} years` : '-';
                 const warrantyC = p.warrantyCycles ? `${p.warrantyCycles} cycles` : '-';
@@ -8215,7 +8299,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <td class="py-4 px-4 text-xs font-mono text-slate-500">${p.id || '-'}</td>
                         <td class="py-4 px-4">${productImgHtml}</td>
                         <td class="py-4 px-4 font-bold text-slate-700 text-sm max-w-[200px] truncate" title="${htmlSafe(productListDisplayText(p.name))}">${htmlSafe(productListDisplayText(p.name))}</td>
-                        <td class="py-4 px-4 text-xs text-slate-600">${p.spec || '-'}</td>
+                        <td class="py-4 px-4 text-xs text-slate-600">
+                            <div>${p.spec || '-'}</div>
+                            <div class="text-[10px] text-slate-400 font-bold">${htmlSafe(pricingMeta.label)}</div>
+                        </td>
                         <td class="py-4 px-4 text-xs text-slate-500 uppercase tracking-tighter">${htmlSafe(productListDisplayText(p.category))}</td>
                         <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(productListDisplayText(p.scenario))}</td>
                         <td class="py-4 px-4 text-xs text-slate-500 text-center">${warrantyY} / ${warrantyC}</td>
@@ -8223,8 +8310,14 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <td class="py-4 px-4 text-xs text-slate-500">${htmlSafe(supplierName)}</td>
                         <td class="py-4 px-4 text-xs">${contactHtml}</td>
                         <td class="py-4 px-4 text-xs text-slate-500 max-w-[200px] truncate" title="${htmlSafe(certTitle)}">${htmlSafe(certBrief)}</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-400">${formatProductBaseAmount(p, 'cost')}</td>
-                        <td class="py-4 px-4 text-right text-sm font-bold text-purple-700">${formatProductBaseAmount(p, 'price')}</td>
+                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-400">
+                            <div>${formatProductBaseAmount(p, 'cost')}</div>
+                            <div class="text-[10px] font-bold text-slate-300">/${htmlSafe(pricingMeta.priceBasisUnit)}</div>
+                        </td>
+                        <td class="py-4 px-4 text-right text-sm font-bold text-purple-700">
+                            <div>${formatProductBaseAmount(p, 'price')}</div>
+                            <div class="text-[10px] font-bold text-purple-300">/${htmlSafe(pricingMeta.priceBasisUnit)}</div>
+                        </td>
                         <td class="py-4 px-4 text-right"><span class="text-[10px] font-black px-2 py-1 rounded ${margin > 30 ? 'bg-green-50 text-green-600' : 'bg-slate-50 text-slate-400'}">${margin}%</span></td>
                         <td class="py-4 px-4 text-center">
                             <div class="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
@@ -8341,9 +8434,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     <th class="py-4 px-4">Category</th>
                     <th class="py-4 px-4">Subcategory</th>
                     <th class="py-4 px-4">Supplier</th>
-                    <th class="py-4 px-4">Spec</th>
+                    <th class="py-4 px-4">Qty/PCS</th>
                     <th class="py-4 px-4 text-center">Inventory Quantity (Summary)</th>
-                    <th class="py-4 px-4 text-right">Average Inventory Cost (¥)</th>
+                    <th class="py-4 px-4 text-right">Average Inventory Cost</th>
                 `;
             } else if (!inventorySummaryMode && headRow && inventoryFullHeadHtml) {
                 headRow.innerHTML = inventoryFullHeadHtml;
@@ -8368,8 +8461,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 list.innerHTML = rows.map(r => {
                     const p = products.find(x => x.id === r.productId) || {};
                     const ref = inventory.find(x => x.productId === r.productId && (parseFloat(x.quantity) || 0) > 0) || inventory.find(x => x.productId === r.productId);
-                    const specNum = Number.isFinite(parseFloat(ref?.spec)) ? parseFloat(ref.spec) : 1;
-                    const avgCost = getAverageInventoryCostPerSpec(r.productId, specNum);
+                    const pricingMeta = getProductPricingMeta(p, ref);
+                    const qtyPerPcs = pricingMeta.unitQtyPerPcs || 1;
+                    const avgCost = getAverageInventoryCostPerSpec(r.productId, qtyPerPcs);
+                    const avgPcsCost = (parseFloat(avgCost) || 0) * qtyPerPcs;
                     return `
                         <tr class="hover:bg-slate-50 transition-colors">
                             <td class="py-4 px-4 text-xs font-mono text-slate-500">${r.productId}</td>
@@ -8377,9 +8472,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             <td class="py-4 px-4 text-xs text-slate-500 uppercase tracking-tighter">${p.category || '-'}</td>
                             <td class="py-4 px-4 text-xs text-slate-600">${p.scenario || '-'}</td>
                             <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(productListDisplayText(getProductSupplierDisplay(p)))}</td>
-                            <td class="py-4 px-4 text-xs text-slate-600">${specNum}</td>
+                            <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(pricingMeta.label)}</td>
                             <td class="py-4 px-4 text-center font-black text-green-700">${formatNumberAuto(r.quantity, 4)}</td>
-                            <td class="py-4 px-4 text-right text-sm font-mono text-slate-700">¥${(parseFloat(avgCost) || 0).toFixed(4)}</td>
+                            <td class="py-4 px-4 text-right text-sm font-mono text-slate-700">
+                                <div>¥${(parseFloat(avgCost) || 0).toFixed(4)}/${htmlSafe(pricingMeta.priceBasisUnit)}</div>
+                                <div class="text-[10px] text-slate-400">¥${avgPcsCost.toFixed(2)}/pcs</div>
+                            </td>
                         </tr>
                     `;
                 }).join('');
@@ -8398,9 +8496,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 const disabled = locked ? 'disabled' : '';
                 const lockTitle = locked ? 'title="Transport order created"' : '';
 
-                const unitPrice = item.unitPurchasePrice || ((item.purchasePrice || 0) * (item.spec || 1));
+                const pricingMeta = getProductPricingMeta(product, item);
+                const spec = pricingMeta.unitQtyPerPcs || 1;
+                const unitPrice = item.unitPurchasePrice || ((item.purchasePrice || 0) * spec);
                 const purchaseDate = item.purchaseDate ? String(item.purchaseDate) : '-';
-                const spec = Number.isFinite(parseFloat(item.spec)) ? parseFloat(item.spec) : 1;
                 const purchaseTotal = item.purchaseTotal || (unitPrice * (item.quantity || 0));
                 const shippingRatePct = ((item.shippingRate ?? 0.08) * 100);
                 const taxRatePct = ((item.domesticTaxRate ?? 0.06) * 100);
@@ -8408,6 +8507,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 const domesticTax = item.domesticTax ?? (purchaseTotal * (taxRatePct / 100));
                 const totalCost = item.totalCost ?? (purchaseTotal + shippingCost + domesticTax);
                 const avgCost = getAverageInventoryCostPerSpec(item.productId, spec);
+                const avgPcsCost = (parseFloat(avgCost) || 0) * spec;
 
                 return `
                     <tr class="hover:bg-slate-50 transition-colors">
@@ -8426,16 +8526,19 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <td class="py-4 px-4 text-xs text-slate-600">${purchaseDate}</td>
                         <td class="py-4 px-4 text-center font-bold text-green-600">${item.quantity}</td>
                         <td class="py-4 px-4 text-xs text-slate-600">${item.batchNo || '-'}</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">¥${(item.purchasePrice || 0).toFixed(2)}</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">${spec}</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">¥${unitPrice.toFixed(2)}</td>
+                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">¥${(item.purchasePrice || 0).toFixed(4)}/${htmlSafe(pricingMeta.priceBasisUnit)}</td>
+                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">${htmlSafe(pricingMeta.label)}</td>
+                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">¥${unitPrice.toFixed(2)}/pcs</td>
                         <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">¥${purchaseTotal.toFixed(2)}</td>
                         <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">${shippingRatePct.toFixed(1)}%</td>
                         <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">${taxRatePct.toFixed(1)}%</td>
                         <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">¥${shippingCost.toFixed(2)}</td>
                         <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">¥${domesticTax.toFixed(2)}</td>
                         <td class="py-4 px-4 text-right text-sm font-mono text-slate-900 font-bold">¥${totalCost.toFixed(2)}</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-700">¥${avgCost.toFixed(2)}</td>
+                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-700">
+                            <div>¥${avgCost.toFixed(4)}/${htmlSafe(pricingMeta.priceBasisUnit)}</div>
+                            <div class="text-[10px] text-slate-400">¥${avgPcsCost.toFixed(2)}/pcs</div>
+                        </td>
                         <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(productListDisplayText(item.location || '-'))}</td>
                         <td class="py-4 px-4 text-center">
                             <div class="flex items-center justify-center gap-2">
@@ -9235,6 +9338,21 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (el && ymd) el.value = generateNextBatchNoForDate(ymd);
         };
 
+        function updateInventoryPricingLabels(product) {
+            const productId = document.getElementById('inv-product-id')?.value || '';
+            const p = product || products.find(x => x.id === productId) || {};
+            const meta = getProductPricingMeta(p);
+            const unit = meta.priceBasisUnit || 'unit';
+            const setText = (id, text) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = text;
+            };
+            setText('inv-spec-label', `Qty per PCS (${meta.label})`);
+            setText('inv-price-label', `Purchase Price (¥/${unit})`);
+            setText('inv-unit-price-label', 'Unit Purchase Price (¥/pcs)');
+            setText('inv-avg-cost-label', `Average Inventory Cost (¥/${unit})`);
+        }
+
         window.onInventoryProductChange = () => {
             const productId = document.getElementById('inv-product-id')?.value || '';
             const p = products.find(x => x.id === productId);
@@ -9243,11 +9361,15 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (vendorEl) vendorEl.value = p ? getProductSupplierDisplay(p) : '';
             if (subEl) subEl.value = p?.scenario || '';
             if (p) {
+                const meta = getProductPricingMeta(p);
+                const specEl = document.getElementById('inv-spec');
+                if (specEl && (!specEl.value || parseFloat(specEl.value) === 1)) specEl.value = String(meta.unitQtyPerPcs || 1);
                 const priceEl = document.getElementById('inv-price');
                 if (priceEl && !priceEl.value) priceEl.value = String(getProductCostCny(p).toFixed(2));
                 const taxEl = document.getElementById('inv-domestic-tax-rate');
                 if (taxEl && !taxEl.value) taxEl.value = String(getDefaultDomesticTaxRatePercent(p.category));
             }
+            updateInventoryPricingLabels(p);
             recalcInventoryCosts();
         };
 
@@ -10328,9 +10450,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         function priceListProductPricing(product) {
             const p = product || {};
             const batches = getFifoBatchesForProduct(p.id);
-            const spec = batches.length
-                ? (Number.isFinite(parseFloat(batches[0].spec)) ? parseFloat(batches[0].spec) : 1)
-                : (Number.isFinite(parseFloat(p.spec)) ? parseFloat(p.spec) : 1);
+            const pricingMeta = getProductPricingMeta(p, batches[0]);
+            const spec = pricingMeta.unitQtyPerPcs || 1;
             const def = getDefaultTaxInputsForProduct(p);
             const inventoryAvg = getAverageInventoryCostPerSpec(p.id, spec);
             const strategy = getNonStockPricingStrategy(p.id);
@@ -10341,8 +10462,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const dutyPct = hasInventoryCost ? def.dutyPct : (Number.isFinite(parseFloat(strategy.dutyPct)) ? parseFloat(strategy.dutyPct) : def.dutyPct);
             const sstPct = hasInventoryCost ? def.sstPct : (Number.isFinite(parseFloat(strategy.sstPct)) ? parseFloat(strategy.sstPct) : def.sstPct);
             const grayPct = hasInventoryCost ? def.grayPct : (Number.isFinite(parseFloat(strategy.grayPct)) ? parseFloat(strategy.grayPct) : def.grayPct);
-            const costUnit = getMarketCategoryUnitMeta(p.category || '').unit;
-            const pcsMultiplier = getProductSpecMultiplierForUnit(p, spec, costUnit);
+            const costUnit = pricingMeta.priceBasisUnit;
+            const pcsMultiplier = spec > 0 ? spec : 1;
             const pcsCost = avgCost * pcsMultiplier;
             const r = computeInventoryPricing({
                 item: {
@@ -10355,7 +10476,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 },
                 product: p
             });
-            return { ...r, spec, costUnit, pcsMultiplier, pcsCost, stockQty: getTotalStockQty(p.id), usedInventoryCost: inventoryAvg > 0 };
+            return { ...r, spec, costUnit, pcsMultiplier, pcsCost, pricingMeta, stockQty: getTotalStockQty(p.id), usedInventoryCost: inventoryAvg > 0 };
         }
         function getProductSpecMultiplierForUnit(product, fallbackSpec, unit) {
             const p = product || {};
@@ -10792,12 +10913,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <td class="py-4 px-4 text-center"><input type="checkbox" class="price-list-row-check h-4 w-4 accent-purple-700" value="${htmlSafe(p.id)}" ${checked} onchange="togglePriceListProduct('${htmlSafe(p.id)}', this.checked)"></td>
                         <td class="py-4 px-4">
                             <div class="font-black text-slate-800 text-sm">${htmlSafe(p.name || '-')}</div>
-                            <div class="text-[10px] font-mono text-slate-400">${htmlSafe(p.id || '-')} | ${htmlSafe(p.spec || '-')} | Stock ${formatNumberAuto(pricing.stockQty, 4)}</div>
+                            <div class="text-[10px] font-mono text-slate-400">${htmlSafe(p.id || '-')} | ${htmlSafe(p.spec || '-')} | ${htmlSafe(pricing.pricingMeta?.label || '')} | Stock ${formatNumberAuto(pricing.stockQty, 4)}</div>
                         </td>
                         <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(p.category || '-')}<div class="text-[10px] text-slate-400">${htmlSafe(p.scenario || '-')}</div></td>
                         <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(getProductSupplierDisplay(p))}</td>
-                        <td class="py-4 px-4 text-right">${renderDualCurrencyAmount(selectedPcsPrice, 2, 'pcs')}<div class="text-[10px] text-slate-400">${htmlSafe(selectedPriceLabel)} × ${formatNumberAuto(pricing.pcsMultiplier, 4)} ${htmlSafe(pricing.costUnit)}/pcs</div></td>
-                        <td class="py-4 px-4 text-right">${renderDualCurrencyAmount(pricing.pcsCost, 4, 'pcs')}<div class="text-[10px] text-slate-400">${formatNumberAuto(pricing.pcsMultiplier, 4)} ${htmlSafe(pricing.costUnit)}/pcs</div></td>
+                        <td class="py-4 px-4 text-right">${renderDualCurrencyAmount(selectedPcsPrice, 2, 'pcs')}<div class="text-[10px] text-slate-400">${htmlSafe(selectedPriceLabel)} × ${htmlSafe(pricing.pricingMeta?.label || `${formatNumberAuto(pricing.pcsMultiplier, 4)} ${pricing.costUnit}/pcs`)}</div></td>
+                        <td class="py-4 px-4 text-right">${renderDualCurrencyAmount(pricing.pcsCost, 4, 'pcs')}<div class="text-[10px] text-slate-400">${htmlSafe(pricing.pricingMeta?.label || `${formatNumberAuto(pricing.pcsMultiplier, 4)} ${pricing.costUnit}/pcs`)}</div></td>
                         <td class="py-4 px-4 text-right">${renderDualCurrencyAmount(pricing.avgCost, 4, pricing.costUnit)}<div class="text-[10px] text-slate-400">${pricing.usedInventoryCost ? 'Inventory avg' : 'Base cost fallback'}</div></td>
                         <td class="py-4 px-4 text-right">${renderMarketSummaryCell(p.category || '')}</td>
                         <td class="py-4 px-4 text-right font-black text-green-700">${homeProfit.toFixed(2)}%</td>
@@ -11374,7 +11495,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         window.closeModal = () => {
             document.getElementById('modal').classList.add('hidden');
             window.editId = null;
-            ['m-name', 'm-category', 'm-supplier-code', 'm-spec', 'm-scenario', 'm-warranty-years', 'm-warranty-cycles', 'm-lead-time', 'm-contact', 'm-contact-info', 'm-cost', 'm-price', 'm-cert-requirements'].forEach(id => {
+            ['m-name', 'm-category', 'm-supplier-code', 'm-spec', 'm-scenario', 'm-warranty-years', 'm-warranty-cycles', 'm-lead-time', 'm-contact', 'm-contact-info', 'm-price-basis-unit', 'm-unit-qty-per-pcs', 'm-cost', 'm-price', 'm-cert-requirements'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.value = '';
             });
@@ -11394,6 +11515,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const supplier = getSupplierByCode(supplierCode);
             if (!supplier) return alert('Please select a supplier from Supplier Master Data.');
             const productCurrency = normalizeProductPriceCurrency(document.getElementById('m-price-currency')?.value || inferSupplierPriceCurrency(supplier));
+            const pricingDraft = getProductPricingMeta({
+                category,
+                spec: document.getElementById('m-spec').value,
+                priceBasisUnit: document.getElementById('m-price-basis-unit')?.value || '',
+                unitQtyPerPcs: document.getElementById('m-unit-qty-per-pcs')?.value || ''
+            });
             const data = {
                 id: window.editId || generateNextId(category),
                 name: document.getElementById('m-name').value,
@@ -11401,6 +11528,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 supplierCode: supplier.code,
                 vendor: getSupplierDisplayName(supplier),
                 spec: document.getElementById('m-spec').value,
+                priceBasisUnit: normalizePricingUnit(document.getElementById('m-price-basis-unit')?.value || pricingDraft.priceBasisUnit),
+                unitQtyPerPcs: parseFloat(document.getElementById('m-unit-qty-per-pcs')?.value) || pricingDraft.unitQtyPerPcs,
                 scenario: normalizeProductSubcategory(document.getElementById('m-scenario').value),
                 warrantyYears: document.getElementById('m-warranty-years').value,
                 warrantyCycles: document.getElementById('m-warranty-cycles').value,
@@ -11456,6 +11585,11 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             document.getElementById('m-contact-info').value = p.contactInfo || '';
             document.getElementById('m-cost').value = p.cost || 0;
             document.getElementById('m-price').value = p.price || 0;
+            const pricingMeta = getProductPricingMeta(p);
+            const unitEl = document.getElementById('m-price-basis-unit');
+            const qtyEl = document.getElementById('m-unit-qty-per-pcs');
+            if (unitEl) unitEl.value = p.priceBasisUnit ? pricingMeta.priceBasisUnit : '';
+            if (qtyEl) qtyEl.value = p.unitQtyPerPcs ? pricingMeta.unitQtyPerPcs : '';
             if (document.getElementById('m-price-currency')) document.getElementById('m-price-currency').value = getProductCurrency(p, 'cost');
             updateProductPriceCurrencyUi();
             const certReq = getProductCertificationRequirements(p);
@@ -11493,6 +11627,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             certificationCountries: '产品认证国家',
             certificationStandards: '产品认证标准',
             costCurrency: '基准币种',
+            priceBasisUnit: '计价单位',
+            unitQtyPerPcs: '每PCS含量',
             cost: '基准采购价',
             price: '基准售价'
         };
@@ -11511,6 +11647,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             certificationCountries: 'Certification Countries',
             certificationStandards: 'Certification Standards',
             costCurrency: 'Base Currency',
+            priceBasisUnit: 'Price Basis Unit',
+            unitQtyPerPcs: 'Qty per PCS',
             cost: 'Base Cost',
             price: 'Base Price'
         };
@@ -11641,7 +11779,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 scenario: ['应用场景', 'Subcategory', 'Application Scenario'],
                 certificationCountries: ['产品认证国家', '认证国家', 'Certification Countries'],
                 certificationStandards: ['产品认证标准', '产品认证', 'Certification Standards', 'Product Certification'],
-                costCurrency: ['基准币种', 'Base Currency', 'Currency', 'Cost Currency', 'Price Currency']
+                costCurrency: ['基准币种', 'Base Currency', 'Currency', 'Cost Currency', 'Price Currency'],
+                priceBasisUnit: ['计价单位', 'Price Basis Unit', 'Pricing Unit', 'Unit'],
+                unitQtyPerPcs: ['每PCS含量', 'Qty per PCS', 'Unit Qty per PCS', 'Qty/PCS']
             };
             container.innerHTML = Object.keys(systemFields).map(key => `
                 <div class="flex items-center">
@@ -11709,6 +11849,18 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 const importedCurrency = normalizeProductPriceCurrency(newProduct.costCurrency || newProduct.priceCurrency || inferSupplierPriceCurrency(supplier));
                 newProduct.costCurrency = importedCurrency;
                 newProduct.priceCurrency = importedCurrency;
+                const pricingMeta = getProductPricingMeta(newProduct);
+                if (String(newProduct.priceBasisUnit || '').trim()) {
+                    newProduct.priceBasisUnit = normalizePricingUnit(newProduct.priceBasisUnit);
+                } else {
+                    delete newProduct.priceBasisUnit;
+                }
+                const qtyPerPcs = parseFloat(newProduct.unitQtyPerPcs);
+                if (Number.isFinite(qtyPerPcs) && qtyPerPcs > 0) {
+                    newProduct.unitQtyPerPcs = qtyPerPcs;
+                } else {
+                    newProduct.unitQtyPerPcs = pricingMeta.unitQtyPerPcs;
+                }
                 if (newProduct.certificationCountries || newProduct.certificationStandards) {
                     const countries = uniqueCertList(String(newProduct.certificationCountries || '').split(/[\n;,/]+/)).map(v => v.toUpperCase());
                     const standards = uniqueCertList(String(newProduct.certificationStandards || '').split(/[\n;,]+/));
@@ -11745,8 +11897,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
 
         window.downloadTemplate = () => {
-            const headers = ['Product ID', 'Product Name', 'Category', 'Supplier', 'Spec Model', 'Subcategory', 'Warranty Years', 'Cycle Count', 'Lead Time', 'Contact', 'Contact Method', 'Product Certification Countries', 'Product Certification Standards', 'Base Currency', 'Base Cost', 'Base Price'];
-            const data = products.map(p => [
+            const headers = ['Product ID', 'Product Name', 'Category', 'Supplier', 'Spec Model', 'Subcategory', 'Warranty Years', 'Cycle Count', 'Lead Time', 'Contact', 'Contact Method', 'Product Certification Countries', 'Product Certification Standards', 'Base Currency', 'Price Basis Unit', 'Qty per PCS', 'Base Cost', 'Base Price'];
+            const data = products.map(p => {
+                const pricingMeta = getProductPricingMeta(p);
+                return [
                 p.id || '',
                 p.name || '',
                 p.category || '',
@@ -11761,13 +11915,16 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 (getProductCertificationRequirements(p).countries || []).join(', '),
                 (getProductCertificationRequirements(p).standards || []).join('; '),
                 getProductCurrency(p, 'cost'),
+                pricingMeta.priceBasisUnit,
+                pricingMeta.unitQtyPerPcs,
                 p.cost || 0,
                 p.price || 0
-            ]);
+            ];
+            });
 
             // 如果没数据，加一行示例
             if (data.length === 0) {
-                data.push(['PVM001', 'Sample Product', 'PV Module', 'Generic Supplier', '550W', 'Bifacial', '10', '0', '15 days', 'Sales Manager', 'sales@example.com', 'MY, US, EU', 'IEC 61215; IEC 61730', 'CNY', 500, 650]);
+                data.push(['PVM001', 'Sample Product', 'PV Module', 'Generic Supplier', '550W', 'Bifacial', '10', '0', '15 days', 'Sales Manager', 'sales@example.com', 'MY, US, EU', 'IEC 61215; IEC 61730', 'CNY', 'W', 550, 500, 650]);
             }
 
             const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
@@ -11861,9 +12018,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         function getPickerInventoryPcsPricing(item, product, priceType = getPickerSelectedPriceType()) {
             const p = product || {};
             const r = computeInventoryPricing({ item, product: p });
-            const unit = getMarketCategoryUnitMeta(p.category || '').unit || 'pcs';
-            const multiplierRaw = getProductSpecMultiplierForUnit(p, item?.spec, unit);
-            const pcsMultiplier = multiplierRaw > 0 ? multiplierRaw : 1;
+            const pricingMeta = getProductPricingMeta(p, item);
+            const unit = pricingMeta.priceBasisUnit || 'pcs';
+            const pcsMultiplier = pricingMeta.unitQtyPerPcs > 0 ? pricingMeta.unitQtyPerPcs : 1;
             const selectedUnitPrice = getPickerSelectedPriceValue({
                 clearanceHomePrice: (item?.clearanceHomePrice ?? r.clearanceHomePrice) || 0,
                 clearanceBizPrice: (item?.clearanceBizPrice ?? r.clearanceBizPrice) || 0,
@@ -11874,40 +12031,35 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const fallbackCost = Number.isFinite(parseFloat(item?.purchasePrice)) ? parseFloat(item.purchasePrice) : 0;
             return {
                 ...r,
-                costUnit: normalizeUnitLabel(unit),
+                costUnit: normalizePricingUnit(unit),
                 pcsMultiplier,
+                pricingMeta,
                 pcsPrice: selectedUnitPrice * pcsMultiplier,
                 pcsCost: (avgCost > 0 ? avgCost : fallbackCost) * pcsMultiplier
             };
         }
         function formatPickerInventorySpec(item, product) {
-            const unit = normalizeUnitLabel(getMarketCategoryUnitMeta(product?.category || '').unit || 'pcs');
-            const spec = Number.isFinite(parseFloat(item?.spec)) ? parseFloat(item.spec) : 0;
-            if (spec > 0) return `${formatNumberAuto(spec, 4)} ${unit}`;
-            const fallback = String(product?.spec || '').trim();
-            return fallback || `1 ${unit}`;
+            return getProductPricingMeta(product || {}, item).label;
         }
         function getPriceListProductPcsPricing(product, priceType = getPickerSelectedPriceType()) {
             const p = product || {};
+            const pricingMeta = getProductPricingMeta(p);
             const pricing = priceListProductPricing(p);
             const multiplierRaw = Number.isFinite(parseFloat(pricing.pcsMultiplier)) ? parseFloat(pricing.pcsMultiplier) : 1;
             const pcsMultiplier = multiplierRaw > 0 ? multiplierRaw : 1;
             const selectedUnitPrice = getPickerSelectedPriceValue(pricing, priceType);
             return {
                 ...pricing,
-                costUnit: normalizeUnitLabel(pricing.costUnit || getMarketCategoryUnitMeta(p.category || '').unit || 'pcs'),
+                costUnit: normalizePricingUnit(pricing.costUnit || pricingMeta.priceBasisUnit || 'pcs'),
                 pcsMultiplier,
+                pricingMeta: pricing.pricingMeta || pricingMeta,
                 pcsPrice: selectedUnitPrice * pcsMultiplier,
                 pcsCost: pricing.pcsCost || ((pricing.avgCost || 0) * pcsMultiplier),
                 priceType
             };
         }
         function formatPriceListProductSpec(product) {
-            const unit = normalizeUnitLabel(getMarketCategoryUnitMeta(product?.category || '').unit || 'pcs');
-            const multiplierRaw = getProductSpecMultiplierForUnit(product || {}, null, unit);
-            if (multiplierRaw > 0) return `${formatNumberAuto(multiplierRaw, 4)} ${unit}`;
-            const fallback = String(product?.spec || '').trim();
-            return fallback || `1 ${unit}`;
+            return getProductPricingMeta(product || {}).label;
         }
         function getProductDeliveryTime(product) {
             return String(product?.leadTime || product?.deliveryTime || '').trim() || '-';

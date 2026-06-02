@@ -1871,21 +1871,23 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             <th class="py-4 px-4">Unit</th>
                             <th class="py-4 px-4 text-right">Base Cost</th>
                             <th class="py-4 px-4 text-right">Purchase Price</th>
+                            <th class="py-4 px-4 text-right">Qty/PCS</th>
+                            <th class="py-4 px-4 text-right">PCS Purchase Price</th>
                             <th class="py-4 px-4 text-right">Freight %</th>
                             <th class="py-4 px-4 text-right">Domestic Tax %</th>
                             <th class="py-4 px-4 text-right">Expected Avg Cost</th>
-                            <th class="py-4 px-4 text-right">CN Parent Profit</th>
-                            <th class="py-4 px-4 text-right">Malaysia Profit</th>
                             <th class="py-4 px-4 text-right">Duty %</th>
                             <th class="py-4 px-4 text-right">SST %</th>
                             <th class="py-4 px-4 text-right">Grey %</th>
+                            <th class="py-4 px-4 text-right">CN Parent Profit</th>
+                            <th class="py-4 px-4 text-right">Malaysia Profit</th>
                             <th class="py-4 px-4 text-right">Clearance PCS</th>
                             <th class="py-4 px-4 text-right">Grey PCS</th>
                             <th class="py-4 px-4 text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="non-stock-pricing-list" class="divide-y divide-slate-50">
-                        <tr><td colspan="17" class="py-12 text-center text-slate-400 text-sm">Loading non-stock pricing...</td></tr>
+                        <tr><td colspan="19" class="py-12 text-center text-slate-400 text-sm">Loading non-stock pricing...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -8443,7 +8445,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const targetLabel = getNonStockProfitTarget() === 'biz' ? 'C&I' : 'RESI';
             if (summary) summary.textContent = `${rows.length} products | ${targetLabel} | ${getNonStockDisplayCurrency()} | 1 MYR = ${getSalesOutRateCnyPerMyr().toFixed(4)} CNY`;
             if (!rows.length) {
-                list.innerHTML = `<tr><td colspan="17" class="py-12 text-center text-slate-400 text-sm">No non-stock products need fallback pricing.</td></tr>`;
+                list.innerHTML = `<tr><td colspan="19" class="py-12 text-center text-slate-400 text-sm">No non-stock products need fallback pricing.</td></tr>`;
                 return;
             }
             list.innerHTML = rows.map(p => {
@@ -8461,6 +8463,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 const grayValue = Number.isFinite(parseFloat(strategy.grayPct)) ? parseFloat(strategy.grayPct) : def.grayPct;
                 const selectedClearancePcs = (getNonStockProfitTarget() === 'biz' ? pricing.clearanceBizPrice : pricing.clearanceHomePrice) * (pricing.pcsMultiplier || 1);
                 const selectedGrayPcs = (getNonStockProfitTarget() === 'biz' ? pricing.grayBizPrice : pricing.grayHomePrice) * (pricing.pcsMultiplier || 1);
+                const pcsPurchasePrice = (pricing.basePurchaseCost || 0) * (pricing.pcsMultiplier || 1);
                 return `
                     <tr class="hover:bg-slate-50 transition-colors">
                         <td class="py-4 px-4 text-xs font-mono text-slate-500">${htmlSafe(p.id)}</td>
@@ -8471,6 +8474,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <td class="py-3 px-3 text-right">
                             <input id="non-stock-purchase-${sid}" type="number" step="0.0001" min="0" value="${purchaseValue}" placeholder="${(getProductCostCny(p) || 0).toFixed(4)}" class="w-28 px-3 py-2 rounded-lg border border-slate-200 text-right text-xs font-mono focus:outline-none focus:ring-2 focus:ring-purple-100">
                         </td>
+                        <td class="py-4 px-4 text-right text-xs font-bold text-slate-500">${htmlSafe(pricing.pricingMeta?.label || `${formatNumberAuto(pricing.pcsMultiplier, 4)} ${unit}/pcs`)}</td>
+                        <td class="py-4 px-4 text-right text-xs font-mono text-slate-600">${formatNonStockAmount(pcsPurchasePrice, 2, 'pcs')}</td>
                         <td class="py-3 px-3 text-right">
                             <input id="non-stock-shipping-${sid}" type="number" step="0.01" min="0" value="${shippingValue}" class="w-20 px-3 py-2 rounded-lg border border-slate-200 text-right text-xs font-mono focus:outline-none focus:ring-2 focus:ring-purple-100">
                         </td>
@@ -8478,8 +8483,6 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             <input id="non-stock-domestic-${sid}" type="number" step="0.01" min="0" value="${domesticValue}" class="w-20 px-3 py-2 rounded-lg border border-slate-200 text-right text-xs font-mono focus:outline-none focus:ring-2 focus:ring-purple-100">
                         </td>
                         <td class="py-4 px-4 text-right text-xs font-black text-slate-700">${formatNonStockAmount(pricing.avgCost || 0, 4, unit)}</td>
-                        <td class="py-4 px-4 text-right text-xs">${renderNonStockProfitSplitCell(pricing, 'cn')}</td>
-                        <td class="py-4 px-4 text-right text-xs">${renderNonStockProfitSplitCell(pricing, 'my')}</td>
                         <td class="py-3 px-3 text-right">
                             <input id="non-stock-duty-${sid}" type="number" step="0.01" min="0" value="${dutyValue}" class="w-20 px-3 py-2 rounded-lg border border-slate-200 text-right text-xs font-mono focus:outline-none focus:ring-2 focus:ring-purple-100">
                         </td>
@@ -8489,6 +8492,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <td class="py-3 px-3 text-right">
                             <input id="non-stock-gray-${sid}" type="number" step="0.01" min="0" value="${grayValue}" class="w-20 px-3 py-2 rounded-lg border border-slate-200 text-right text-xs font-mono focus:outline-none focus:ring-2 focus:ring-purple-100">
                         </td>
+                        <td class="py-4 px-4 text-right text-xs">${renderNonStockProfitSplitCell(pricing, 'cn')}</td>
+                        <td class="py-4 px-4 text-right text-xs">${renderNonStockProfitSplitCell(pricing, 'my')}</td>
                         <td class="py-4 px-4 text-right text-xs font-black text-purple-700">${formatNonStockAmount(selectedClearancePcs || 0, 2, 'pcs')}</td>
                         <td class="py-4 px-4 text-right text-xs font-black text-slate-700">${formatNonStockAmount(selectedGrayPcs || 0, 2, 'pcs')}</td>
                         <td class="py-3 px-4 text-center">

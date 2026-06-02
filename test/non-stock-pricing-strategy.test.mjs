@@ -38,6 +38,33 @@ test('non-stock strategy shows RESI and C&I profit split by company', () => {
   assert.match(html, /pricing\.myBizPct : pricing\.myHomePct/, 'Malaysia profit split follows selected RESI or C&I margin');
 });
 
+test('non-stock strategy columns follow formula calculation order', () => {
+  const section = html.match(/Non-Stock Product Pricing Strategy[\s\S]*?<tbody id="non-stock-pricing-list"/);
+  assert.ok(section, 'non-stock table section is present');
+  const ordered = [
+    'Base Cost',
+    'Purchase Price',
+    'Qty/PCS',
+    'PCS Purchase Price',
+    'Freight %',
+    'Domestic Tax %',
+    'Expected Avg Cost',
+    'Duty %',
+    'SST %',
+    'Grey %',
+    'CN Parent Profit',
+    'Malaysia Profit',
+    'Clearance PCS',
+    'Grey PCS'
+  ];
+  let pos = -1;
+  for (const label of ordered) {
+    const next = section[0].indexOf(label);
+    assert.ok(next > pos, `${label} should appear after the previous formula column`);
+    pos = next;
+  }
+});
+
 test('non-stock pricing strategy persists in app state and sync merge', () => {
   [
     'let nonStockPricingStrategies = {}',

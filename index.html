@@ -3240,7 +3240,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     </div>
                     <div class="col-span-1">
                         <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Category</label>
-                        <input type="text" id="m-category" list="cat-suggestions" oninput="updateSubcatSuggestions(); updateProductPriceUnitNote(); maybeFillProductCertificationDefaults()" onchange="updateSubcatSuggestions(); updateProductPriceUnitNote(); maybeFillProductCertificationDefaults()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50">
+                        <input type="text" id="m-category" list="cat-suggestions" oninput="updateSubcatSuggestions(); updateHybridSpecControls(); updateProductPriceUnitNote(); maybeFillProductCertificationDefaults()" onchange="updateSubcatSuggestions(); updateHybridSpecControls(); updateProductPriceUnitNote(); maybeFillProductCertificationDefaults()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50">
                         <datalist id="cat-suggestions"><option value="PV Module"></option><option value="Inverter"></option><option value="Battery"></option><option value="Accessory"></option><option value="All-in-One System"></option><option value="C&amp;I Storage"></option></datalist>
                     </div>
                     <div class="col-span-1">
@@ -3250,13 +3250,23 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
                     <!-- Add字段区段 -->
                     <div class="col-span-1">
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Specification</label>
+                        <label id="m-spec-label" class="block text-[10px] font-black text-slate-400 uppercase mb-1">Specification</label>
                         <input type="text" id="m-spec" placeholder="e.g. 550W/48V" oninput="updateProductPriceUnitNote()" onchange="updateProductPriceUnitNote()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
                     </div>
                     <div class="col-span-1">
                         <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Subcategory</label>
                         <input type="text" id="m-scenario" list="subcat-suggestions" placeholder="e.g. Rooftop / C&I Storage" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
                         <datalist id="subcat-suggestions"><option value="Energy Storage Cabinet"></option><option value="Single-Phase All-in-One"></option><option value="Stackable Product Accessory"></option><option value="Stackable Single-Phase Inverter"></option><option value="Stackable Home Storage"></option><option value="Three-Phase"></option><option value="Bifacial"></option></datalist>
+                    </div>
+                    <div id="m-hybrid-spec-container" class="col-span-2 hidden grid grid-cols-1 md:grid-cols-2 gap-4 rounded-2xl border border-purple-100 bg-purple-50/40 p-3">
+                        <div>
+                            <label class="block text-[10px] font-black text-purple-500 uppercase mb-1">Inverter Capacity (kW)</label>
+                            <input type="number" id="m-inverter-kw" step="0.01" min="0" placeholder="e.g. 5.5" oninput="syncHybridSpecFromInputs()" onchange="syncHybridSpecFromInputs()" class="w-full border border-purple-100 rounded-xl p-3 text-sm outline-none focus:border-purple-500 bg-white">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-purple-500 uppercase mb-1">Battery Capacity (kWh)</label>
+                            <input type="number" id="m-battery-kwh" step="0.01" min="0" placeholder="e.g. 10" oninput="syncHybridSpecFromInputs()" onchange="syncHybridSpecFromInputs()" class="w-full border border-purple-100 rounded-xl p-3 text-sm outline-none focus:border-purple-500 bg-white">
+                        </div>
                     </div>
 
                     <div class="col-span-1 grid grid-cols-2 gap-2">
@@ -4988,6 +4998,44 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 label: qtyLabel + ' ' + unit + '/pcs'
             };
         }
+        function isHybridStorageCategory(category) {
+            const cat = normalizeProductCategory(category);
+            return cat === 'All-in-One System' || cat === 'C&I Storage';
+        }
+        function formatCapacityValue(value) {
+            const n = parseFloat(value);
+            if (!Number.isFinite(n) || n <= 0) return '';
+            const rounded = Math.round(n * 10000) / 10000;
+            return Number.isInteger(rounded) ? String(rounded) : String(rounded).replace(/0+$/, '').replace(/\.$/, '');
+        }
+        function parseHybridStorageSpec(productOrSpec) {
+            const p = productOrSpec && typeof productOrSpec === 'object' ? productOrSpec : {};
+            const text = String(typeof productOrSpec === 'string' ? productOrSpec : `${p.inverterKw || ''}kW ${p.batteryKwh || ''}kWh ${p.spec || ''} ${p.name || ''}`);
+            const invDirect = parseFloat(p.inverterKw);
+            const batDirect = parseFloat(p.batteryKwh);
+            const invMatch = text.match(/(\d+(?:\.\d+)?)\s*kW(?!h)/i);
+            const batMatch = text.match(/(\d+(?:\.\d+)?)\s*kWh\b/i);
+            return {
+                inverterKw: Number.isFinite(invDirect) && invDirect > 0 ? invDirect : (invMatch ? parseFloat(invMatch[1]) : 0),
+                batteryKwh: Number.isFinite(batDirect) && batDirect > 0 ? batDirect : (batMatch ? parseFloat(batMatch[1]) : 0)
+            };
+        }
+        function formatHybridStorageSpec(input) {
+            const parsed = parseHybridStorageSpec(input);
+            const inv = formatCapacityValue(parsed.inverterKw);
+            const bat = formatCapacityValue(parsed.batteryKwh);
+            if (inv && bat) return inv + ' kW / ' + bat + ' kWh';
+            if (inv) return inv + ' kW';
+            if (bat) return bat + ' kWh';
+            return '';
+        }
+        function getProductDisplaySpec(product) {
+            const p = product || {};
+            if (isHybridStorageCategory(p.category)) {
+                return formatHybridStorageSpec(p) || String(p.spec || '').trim();
+            }
+            return String(p.spec || '').trim();
+        }
         function normalizeMarketPrices(data) {
             const raw = data && typeof data === 'object' ? data : {};
             const unitSource = raw.categoryUnits && typeof raw.categoryUnits === 'object' ? raw.categoryUnits : {};
@@ -5052,6 +5100,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         const qty = parseFloat(next.unitQtyPerPcs);
                         if (Number.isFinite(qty) && qty > 0) next.unitQtyPerPcs = qty;
                         else delete next.unitQtyPerPcs;
+                    }
+                    if (isHybridStorageCategory(next.category)) {
+                        const hybridSpec = parseHybridStorageSpec(next);
+                        if (hybridSpec.inverterKw > 0) next.inverterKw = hybridSpec.inverterKw;
+                        if (hybridSpec.batteryKwh > 0) next.batteryKwh = hybridSpec.batteryKwh;
+                        const formattedSpec = formatHybridStorageSpec(next);
+                        if (formattedSpec) next.spec = formattedSpec;
                     }
                     return next;
                 });
@@ -5536,6 +5591,36 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const meta = getProductPricingMeta(draft);
             note.textContent = `Base cost/price: /${meta.priceBasisUnit} · Quote price: ${meta.label}`;
         }
+        function syncHybridSpecFromInputs() {
+            const category = document.getElementById('m-category')?.value || '';
+            if (!isHybridStorageCategory(category)) return;
+            const inv = parseFloat(document.getElementById('m-inverter-kw')?.value);
+            const bat = parseFloat(document.getElementById('m-battery-kwh')?.value);
+            const specEl = document.getElementById('m-spec');
+            if (specEl) specEl.value = formatHybridStorageSpec({ inverterKw: inv, batteryKwh: bat });
+            updateProductPriceUnitNote();
+        }
+        function updateHybridSpecControls() {
+            const category = document.getElementById('m-category')?.value || '';
+            const isHybrid = isHybridStorageCategory(category);
+            const container = document.getElementById('m-hybrid-spec-container');
+            const specEl = document.getElementById('m-spec');
+            const specLabel = document.getElementById('m-spec-label');
+            if (container) container.classList.toggle('hidden', !isHybrid);
+            if (specLabel) specLabel.textContent = isHybrid ? 'Specification (Auto)' : 'Specification';
+            if (specEl) {
+                specEl.readOnly = isHybrid;
+                specEl.classList.toggle('bg-slate-50', isHybrid);
+                if (isHybrid) {
+                    const parsed = parseHybridStorageSpec(specEl.value);
+                    const invEl = document.getElementById('m-inverter-kw');
+                    const batEl = document.getElementById('m-battery-kwh');
+                    if (invEl && !invEl.value && parsed.inverterKw) invEl.value = formatCapacityValue(parsed.inverterKw);
+                    if (batEl && !batEl.value && parsed.batteryKwh) batEl.value = formatCapacityValue(parsed.batteryKwh);
+                    syncHybridSpecFromInputs();
+                }
+            }
+        }
         function updateProductPriceCurrencyUi() {
             const currency = normalizeProductPriceCurrency(document.getElementById('m-price-currency')?.value || 'CNY');
             const symbol = getProductCurrencySymbol(currency);
@@ -5554,6 +5639,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             updateProductPriceCurrencyUi();
         }
         window.updateProductPriceUnitNote = updateProductPriceUnitNote;
+        window.updateHybridSpecControls = updateHybridSpecControls;
+        window.syncHybridSpecFromInputs = syncHybridSpecFromInputs;
         window.updateProductPriceCurrencyUi = updateProductPriceCurrencyUi;
         window.updateProductCurrencyFromSupplier = updateProductCurrencyFromSupplier;
         function getProductSupplierBrandForLang(product, lang = currentLang) {
@@ -8300,7 +8387,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <td class="py-4 px-4">${productImgHtml}</td>
                         <td class="py-4 px-4 font-bold text-slate-700 text-sm max-w-[200px] truncate" title="${htmlSafe(productListDisplayText(p.name))}">${htmlSafe(productListDisplayText(p.name))}</td>
                         <td class="py-4 px-4 text-xs text-slate-600">
-                            <div>${p.spec || '-'}</div>
+                            <div>${htmlSafe(getProductDisplaySpec(p) || '-')}</div>
                             <div class="text-[10px] text-slate-400 font-bold">${htmlSafe(pricingMeta.label)}</div>
                         </td>
                         <td class="py-4 px-4 text-xs text-slate-500 uppercase tracking-tighter">${htmlSafe(productListDisplayText(p.category))}</td>
@@ -10913,7 +11000,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <td class="py-4 px-4 text-center"><input type="checkbox" class="price-list-row-check h-4 w-4 accent-purple-700" value="${htmlSafe(p.id)}" ${checked} onchange="togglePriceListProduct('${htmlSafe(p.id)}', this.checked)"></td>
                         <td class="py-4 px-4">
                             <div class="font-black text-slate-800 text-sm">${htmlSafe(p.name || '-')}</div>
-                            <div class="text-[10px] font-mono text-slate-400">${htmlSafe(p.id || '-')} | ${htmlSafe(p.spec || '-')} | ${htmlSafe(pricing.pricingMeta?.label || '')} | Stock ${formatNumberAuto(pricing.stockQty, 4)}</div>
+                            <div class="text-[10px] font-mono text-slate-400">${htmlSafe(p.id || '-')} | ${htmlSafe(getProductDisplaySpec(p) || '-')} | ${htmlSafe(pricing.pricingMeta?.label || '')} | Stock ${formatNumberAuto(pricing.stockQty, 4)}</div>
                         </td>
                         <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(p.category || '-')}<div class="text-[10px] text-slate-400">${htmlSafe(p.scenario || '-')}</div></td>
                         <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(getProductSupplierDisplay(p))}</td>
@@ -11019,7 +11106,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     'Category': p.category || '',
                     'Subcategory': p.scenario || '',
                     'Brand': getProductSupplierDisplay(p),
-                    'Spec': p.spec || '',
+                    'Spec': getProductDisplaySpec(p) || '',
                     'Stock Qty': r.stockQty || 0,
                     'Selected PCS Price Type': selectedPriceLabel,
                     'PCS Price CNY': selectedPcsPrice || 0,
@@ -11495,10 +11582,11 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         window.closeModal = () => {
             document.getElementById('modal').classList.add('hidden');
             window.editId = null;
-            ['m-name', 'm-category', 'm-supplier-code', 'm-spec', 'm-scenario', 'm-warranty-years', 'm-warranty-cycles', 'm-lead-time', 'm-contact', 'm-contact-info', 'm-price-basis-unit', 'm-unit-qty-per-pcs', 'm-cost', 'm-price', 'm-cert-requirements'].forEach(id => {
+            ['m-name', 'm-category', 'm-supplier-code', 'm-spec', 'm-inverter-kw', 'm-battery-kwh', 'm-scenario', 'm-warranty-years', 'm-warranty-cycles', 'm-lead-time', 'm-contact', 'm-contact-info', 'm-price-basis-unit', 'm-unit-qty-per-pcs', 'm-cost', 'm-price', 'm-cert-requirements'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.value = '';
             });
+            updateHybridSpecControls();
             const currencyEl = document.getElementById('m-price-currency');
             if (currencyEl) currencyEl.value = 'CNY';
             updateProductPriceCurrencyUi();
@@ -11515,9 +11603,14 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const supplier = getSupplierByCode(supplierCode);
             if (!supplier) return alert('Please select a supplier from Supplier Master Data.');
             const productCurrency = normalizeProductPriceCurrency(document.getElementById('m-price-currency')?.value || inferSupplierPriceCurrency(supplier));
+            const hybrid = isHybridStorageCategory(category);
+            const hybridSpec = hybrid ? formatHybridStorageSpec({
+                inverterKw: document.getElementById('m-inverter-kw')?.value,
+                batteryKwh: document.getElementById('m-battery-kwh')?.value
+            }) : '';
             const pricingDraft = getProductPricingMeta({
                 category,
-                spec: document.getElementById('m-spec').value,
+                spec: hybridSpec || document.getElementById('m-spec').value,
                 priceBasisUnit: document.getElementById('m-price-basis-unit')?.value || '',
                 unitQtyPerPcs: document.getElementById('m-unit-qty-per-pcs')?.value || ''
             });
@@ -11527,7 +11620,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 category: category,
                 supplierCode: supplier.code,
                 vendor: getSupplierDisplayName(supplier),
-                spec: document.getElementById('m-spec').value,
+                spec: hybridSpec || document.getElementById('m-spec').value,
+                inverterKw: hybrid ? (parseFloat(document.getElementById('m-inverter-kw')?.value) || 0) : undefined,
+                batteryKwh: hybrid ? (parseFloat(document.getElementById('m-battery-kwh')?.value) || 0) : undefined,
                 priceBasisUnit: normalizePricingUnit(document.getElementById('m-price-basis-unit')?.value || pricingDraft.priceBasisUnit),
                 unitQtyPerPcs: parseFloat(document.getElementById('m-unit-qty-per-pcs')?.value) || pricingDraft.unitQtyPerPcs,
                 scenario: normalizeProductSubcategory(document.getElementById('m-scenario').value),
@@ -11576,7 +11671,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             document.getElementById('m-category').value = p.category || '';
             updateSupplierSelects(p.supplierCode || getProductSupplier(p)?.code || '');
             document.getElementById('m-spec').value = p.spec || '';
+            const hybridSpec = parseHybridStorageSpec(p);
+            const invEl = document.getElementById('m-inverter-kw');
+            const batEl = document.getElementById('m-battery-kwh');
+            if (invEl) invEl.value = hybridSpec.inverterKw ? formatCapacityValue(hybridSpec.inverterKw) : '';
+            if (batEl) batEl.value = hybridSpec.batteryKwh ? formatCapacityValue(hybridSpec.batteryKwh) : '';
             updateSubcatSuggestions();
+            updateHybridSpecControls();
             document.getElementById('m-scenario').value = p.scenario || '';
             document.getElementById('m-warranty-years').value = p.warrantyYears || '';
             document.getElementById('m-warranty-cycles').value = p.warrantyCycles || '';
@@ -11618,6 +11719,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             category: '类目',
             vendor: '供应商',
             spec: '规格型号',
+            inverterKw: '逆变器kW',
+            batteryKwh: '电池kWh',
             scenario: '应用场景',
             warrantyYears: '质保年限',
             warrantyCycles: '循环次数',
@@ -11638,6 +11741,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             category: 'Category',
             vendor: 'Supplier',
             spec: 'Specification',
+            inverterKw: 'Inverter kW',
+            batteryKwh: 'Battery kWh',
             scenario: 'Subcategory',
             warrantyYears: 'Warranty Years',
             warrantyCycles: 'Cycle Count',
@@ -11776,6 +11881,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const container = document.getElementById('field-mapping-container');
             const aliases = {
                 category: ['类目', 'Category', 'Product Category'],
+                inverterKw: ['逆变器kW', 'Inverter kW', 'Inverter Capacity', 'Inverter Capacity kW'],
+                batteryKwh: ['电池kWh', 'Battery kWh', 'Battery Capacity', 'Battery Capacity kWh'],
                 scenario: ['应用场景', 'Subcategory', 'Application Scenario'],
                 certificationCountries: ['产品认证国家', '认证国家', 'Certification Countries'],
                 certificationStandards: ['产品认证标准', '产品认证', 'Certification Standards', 'Product Certification'],
@@ -11835,6 +11942,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 // Generate a product ID when the import row does not provide one.
                 newProduct.category = normalizeProductCategory(newProduct.category, 'Uncategorized');
                 newProduct.scenario = normalizeProductSubcategory(newProduct.scenario);
+                if (isHybridStorageCategory(newProduct.category)) {
+                    const parsedHybrid = parseHybridStorageSpec(newProduct);
+                    if (parsedHybrid.inverterKw > 0) newProduct.inverterKw = parsedHybrid.inverterKw;
+                    if (parsedHybrid.batteryKwh > 0) newProduct.batteryKwh = parsedHybrid.batteryKwh;
+                    const formattedHybridSpec = formatHybridStorageSpec(newProduct);
+                    if (formattedHybridSpec) newProduct.spec = formattedHybridSpec;
+                }
                 if (!newProduct.id) {
                     newProduct.id = generateNextId(newProduct.category || 'Generic');
                 } else {
@@ -11897,15 +12011,18 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
 
         window.downloadTemplate = () => {
-            const headers = ['Product ID', 'Product Name', 'Category', 'Supplier', 'Spec Model', 'Subcategory', 'Warranty Years', 'Cycle Count', 'Lead Time', 'Contact', 'Contact Method', 'Product Certification Countries', 'Product Certification Standards', 'Base Currency', 'Price Basis Unit', 'Qty per PCS', 'Base Cost', 'Base Price'];
+            const headers = ['Product ID', 'Product Name', 'Category', 'Supplier', 'Spec Model', 'Inverter kW', 'Battery kWh', 'Subcategory', 'Warranty Years', 'Cycle Count', 'Lead Time', 'Contact', 'Contact Method', 'Product Certification Countries', 'Product Certification Standards', 'Base Currency', 'Price Basis Unit', 'Qty per PCS', 'Base Cost', 'Base Price'];
             const data = products.map(p => {
                 const pricingMeta = getProductPricingMeta(p);
+                const hybridSpec = isHybridStorageCategory(p.category) ? parseHybridStorageSpec(p) : { inverterKw: '', batteryKwh: '' };
                 return [
                 p.id || '',
                 p.name || '',
                 p.category || '',
                 getProductSupplierDisplay(p),
-                p.spec || '',
+                getProductDisplaySpec(p) || '',
+                hybridSpec.inverterKw || '',
+                hybridSpec.batteryKwh || '',
                 p.scenario || '',
                 p.warrantyYears || '',
                 p.warrantyCycles || '',
@@ -11924,7 +12041,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
             // 如果没数据，加一行示例
             if (data.length === 0) {
-                data.push(['PVM001', 'Sample Product', 'PV Module', 'Generic Supplier', '550W', 'Bifacial', '10', '0', '15 days', 'Sales Manager', 'sales@example.com', 'MY, US, EU', 'IEC 61215; IEC 61730', 'CNY', 'W', 550, 500, 650]);
+                data.push(['PROD001', 'Sample All-in-One', 'All-in-One System', 'Generic Supplier', '5.5 kW / 10 kWh', 5.5, 10, 'Single-Phase All-in-One', '10', '0', '15 days', 'Sales Manager', 'sales@example.com', 'MY, US, EU', 'IEC 62619; IEC 62109-1/2', 'CNY', 'set', 1, 5000, 6500]);
             }
 
             const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
@@ -12158,7 +12275,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 const supplierCountry = String(supplier?.country || supplier?.region || '').trim();
                 const delivery = getProductDeliveryTime(p);
                 const hay = [
-                    p.id, p.name, p.category, p.scenario, p.spec,
+                    p.id, p.name, p.category, p.scenario, getProductDisplaySpec(p),
                     supplierName, supplierCountry, delivery
                 ].join(' ').toLowerCase();
                 return (!vendor || supplierName === vendor) &&
@@ -12221,14 +12338,14 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 candidate.vendor = brand;
                 candidate.vendorManualOverride = false;
                 candidate.supplierCode = supplierCode;
-                candidate.spec = p.spec || '';
+                candidate.spec = getProductDisplaySpec(p) || '';
                 candidate.batchNo = item.batchNo;
                 candidate.price = price;
                 candidate.cost = cost;
                 candidate.productId = item.productId || '';
                 candidate.inventoryId = item.id || '';
             } else {
-                quoteRows.splice(insertIdx, 0, { id: Date.now(), description: p.name, vendor: brand, vendorManualOverride: false, supplierCode, spec: p.spec || '', batchNo: item.batchNo, quantity: 1, price: price, cost: cost, productId: item.productId || '', inventoryId: item.id || '' });
+                quoteRows.splice(insertIdx, 0, { id: Date.now(), description: p.name, vendor: brand, vendorManualOverride: false, supplierCode, spec: getProductDisplaySpec(p) || '', batchNo: item.batchNo, quantity: 1, price: price, cost: cost, productId: item.productId || '', inventoryId: item.id || '' });
             }
             renderQuote();
         }
@@ -12253,14 +12370,14 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 candidate.vendor = brand;
                 candidate.vendorManualOverride = false;
                 candidate.supplierCode = supplierCode;
-                candidate.spec = p.spec || '';
+                candidate.spec = getProductDisplaySpec(p) || '';
                 candidate.batchNo = '';
                 candidate.price = price;
                 candidate.cost = cost;
                 candidate.productId = p.id || '';
                 candidate.inventoryId = '';
             } else {
-                quoteRows.splice(insertIdx, 0, { id: Date.now(), description: p.name, vendor: brand, vendorManualOverride: false, supplierCode, spec: p.spec || '', batchNo: '', quantity: 1, price: price, cost: cost, productId: p.id || '', inventoryId: '' });
+                quoteRows.splice(insertIdx, 0, { id: Date.now(), description: p.name, vendor: brand, vendorManualOverride: false, supplierCode, spec: getProductDisplaySpec(p) || '', batchNo: '', quantity: 1, price: price, cost: cost, productId: p.id || '', inventoryId: '' });
             }
             renderQuote();
         }

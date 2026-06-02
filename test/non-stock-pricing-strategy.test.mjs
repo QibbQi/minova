@@ -49,9 +49,11 @@ test('non-stock strategy columns follow formula calculation order', () => {
     'Freight %',
     'Domestic Tax %',
     'Expected Avg Cost',
+    'Expected PCS Cost',
     'Duty %',
     'SST %',
     'Grey %',
+    'Tariff Fee',
     'CN Parent Profit',
     'Malaysia Profit',
     'Clearance PCS',
@@ -63,6 +65,15 @@ test('non-stock strategy columns follow formula calculation order', () => {
     assert.ok(next > pos, `${label} should appear after the previous formula column`);
     pos = next;
   }
+});
+
+test('non-stock strategy exposes per-pcs expected cost and tariff fee formulas', () => {
+  assert.match(html, /const expectedPcsCost = \(pricing\.avgCost \|\| 0\) \* \(pricing\.pcsMultiplier \|\| 1\)/, 'expected pcs cost multiplies expected average cost by pcs multiplier');
+  assert.match(html, /const clearanceTariffFee = expectedPcsCost \* \(\(pricing\.dutyPct \|\| 0\) \+ \(pricing\.sstPct \|\| 0\)\) \/ 100/, 'clearance tariff fee uses duty plus SST');
+  assert.match(html, /const greyTariffFee = expectedPcsCost \* \(\(pricing\.grayPct \|\| 0\) \/ 100\)/, 'grey tariff fee uses grey percentage');
+  assert.match(html, /formatNonStockAmount\(expectedPcsCost, 2, 'pcs'\)/, 'expected pcs cost is displayed per pcs');
+  assert.match(html, /formatNonStockAmount\(clearanceTariffFee, 2, 'pcs'\)/, 'clearance tariff fee is displayed per pcs');
+  assert.match(html, /formatNonStockAmount\(greyTariffFee, 2, 'pcs'\)/, 'grey tariff fee is displayed per pcs');
 });
 
 test('non-stock pricing strategy persists in app state and sync merge', () => {

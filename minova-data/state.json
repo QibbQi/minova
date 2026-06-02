@@ -1,6 +1,6 @@
 {
   "v": 1,
-  "updatedAt": "2026-06-01T04:00:00.898Z",
+  "updatedAt": "2026-06-02T05:16:50.591Z",
   "data": {
     "products": [
       {
@@ -45,56 +45,166 @@
         "id": "NBQ001",
         "name": "25kW 三相逆变器",
         "category": "Inverter",
+        "supplierCode": "SUP1186",
         "vendor": "明匠 / SunC",
         "spec": "25kW",
+        "priceBasisUnit": "kW",
+        "unitQtyPerPcs": 25,
         "scenario": "Three-Phase",
         "warrantyYears": "",
         "warrantyCycles": "",
         "leadTime": "30 天",
         "contact": "",
         "contactInfo": "",
-        "cost": 0.6056,
-        "price": 1.23,
-        "ts": 1775705274152,
-        "supplierCode": "SUP1186"
+        "cost": 605.6,
+        "costCurrency": "CNY",
+        "price": 1230,
+        "priceCurrency": "CNY",
+        "certificationRequirements": {
+          "countries": [
+            "MY",
+            "US",
+            "EU",
+            "UK",
+            "AU"
+          ],
+          "standards": [
+            "IEC 62109-1",
+            "IEC 62109-2",
+            "IEC 62477 (when applicable)",
+            "IEC 62109-1/2",
+            "SIRIM / local utility requirements where applicable",
+            "UL 1741",
+            "IEEE 1547 / 1547.1",
+            "UL 1699B where applicable",
+            "CE declaration",
+            "Low Voltage Directive 2014/35/EU",
+            "EMC Directive 2014/30/EU",
+            "EN IEC 62109-1/2",
+            "UKCA declaration",
+            "Electrical Equipment (Safety) Regulations 2016",
+            "EMC Regulations 2016",
+            "ENA G98/G99 where grid-tied",
+            "CEC Approved Inverters/PCE list",
+            "AS/NZS 4777.2"
+          ],
+          "source": "embedded-defaults",
+          "updatedAt": "2026-05-15"
+        },
+        "productImageDataUrl": "",
+        "ts": 1780377352457,
+        "certifications": {
+          "tuvCerts": [],
+          "specSheets": []
+        }
       },
       {
         "id": "DC001",
         "name": "5kW Battery",
         "category": "Battery",
+        "supplierCode": "SUP1186",
         "vendor": "明匠 / SunC",
         "spec": "5kWh",
+        "priceBasisUnit": "kWh",
+        "unitQtyPerPcs": 5,
         "scenario": "Stackable Home Storage",
         "warrantyYears": "",
         "warrantyCycles": "",
         "leadTime": "30 天",
         "contact": "",
         "contactInfo": "",
-        "cost": 0.66,
-        "price": 1.848,
-        "ts": 1780276318666,
+        "cost": 660,
+        "costCurrency": "CNY",
+        "price": 1848,
+        "priceCurrency": "CNY",
+        "certificationRequirements": {
+          "countries": [
+            "MY",
+            "US",
+            "EU",
+            "UK",
+            "AU"
+          ],
+          "standards": [
+            "IEC 62619",
+            "UN 38.3",
+            "MSDS",
+            "SIRIM / local battery requirements where applicable",
+            "UL 1973",
+            "UL 9540",
+            "UL 9540A",
+            "CE declaration",
+            "EN IEC 62619",
+            "RoHS",
+            "UKCA declaration",
+            "CEC Approved Batteries list"
+          ],
+          "source": "embedded-defaults",
+          "updatedAt": "2026-05-15"
+        },
+        "productImageDataUrl": "",
+        "ts": 1780377396157,
         "certifications": {
           "tuvCerts": [],
           "specSheets": []
-        },
-        "supplierCode": "SUP1186"
+        }
       },
       {
         "id": "NBQ002",
         "name": "5.5kW Inverter",
         "category": "Inverter",
+        "supplierCode": "SUP1186",
         "vendor": "明匠 / SunC",
         "spec": "5.5kW",
+        "priceBasisUnit": "kW",
+        "unitQtyPerPcs": 5.5,
         "scenario": "Stackable Single-Phase Inverter",
         "warrantyYears": "",
         "warrantyCycles": "",
         "leadTime": "30 天",
         "contact": "",
         "contactInfo": "",
-        "cost": 0.35,
-        "price": 0.7105,
-        "ts": 1780276331867,
-        "supplierCode": "SUP1186"
+        "cost": 350,
+        "costCurrency": "CNY",
+        "price": 710.5,
+        "priceCurrency": "CNY",
+        "certificationRequirements": {
+          "countries": [
+            "MY",
+            "US",
+            "EU",
+            "UK",
+            "AU"
+          ],
+          "standards": [
+            "IEC 62109-1",
+            "IEC 62109-2",
+            "IEC 62477 (when applicable)",
+            "IEC 62109-1/2",
+            "SIRIM / local utility requirements where applicable",
+            "UL 1741",
+            "IEEE 1547 / 1547.1",
+            "UL 1699B where applicable",
+            "CE declaration",
+            "Low Voltage Directive 2014/35/EU",
+            "EMC Directive 2014/30/EU",
+            "EN IEC 62109-1/2",
+            "UKCA declaration",
+            "Electrical Equipment (Safety) Regulations 2016",
+            "EMC Regulations 2016",
+            "ENA G98/G99 where grid-tied",
+            "CEC Approved Inverters/PCE list",
+            "AS/NZS 4777.2"
+          ],
+          "source": "embedded-defaults",
+          "updatedAt": "2026-05-15"
+        },
+        "productImageDataUrl": "",
+        "ts": 1780377337689,
+        "certifications": {
+          "tuvCerts": [],
+          "specSheets": []
+        }
       },
       {
         "id": "J001",
@@ -118,7 +228,7 @@
         "name": "5.5kW-5kWh 一体机",
         "category": "All-in-One System",
         "vendor": "明匠 / SunC",
-        "spec": "5.5kW-5kWh",
+        "spec": "5.5 kW / 5 kWh",
         "scenario": "Single-Phase All-in-One",
         "warrantyYears": "",
         "warrantyCycles": "",
@@ -128,14 +238,16 @@
         "cost": 4900,
         "price": 12000,
         "ts": 1775705274152,
-        "supplierCode": "SUP1186"
+        "supplierCode": "SUP1186",
+        "inverterKw": 5.5,
+        "batteryKwh": 5
       },
       {
         "id": "PROD002",
         "name": "5.5kW-10kWh All-in-One System",
         "category": "All-in-One System",
         "vendor": "明匠 / SunC",
-        "spec": "5.5kW-10kWh",
+        "spec": "5.5 kW / 10 kWh",
         "scenario": "Single-Phase All-in-One",
         "warrantyYears": "",
         "warrantyCycles": "",
@@ -145,14 +257,16 @@
         "cost": 7300,
         "price": 18000,
         "ts": 1780276364600,
-        "supplierCode": "SUP1186"
+        "supplierCode": "SUP1186",
+        "inverterKw": 5.5,
+        "batteryKwh": 10
       },
       {
         "id": "PROD003",
         "name": "11kW-15kWh 一体机",
         "category": "All-in-One System",
         "vendor": "明匠 / SunC",
-        "spec": "11kW-15kWh",
+        "spec": "11 kW / 15 kWh",
         "scenario": "Single-Phase All-in-One",
         "warrantyYears": "",
         "warrantyCycles": "",
@@ -162,24 +276,62 @@
         "cost": 9800,
         "price": 24000,
         "ts": 1775705274152,
-        "supplierCode": "SUP1186"
+        "supplierCode": "SUP1186",
+        "inverterKw": 11,
+        "batteryKwh": 15
       },
       {
         "id": "C001",
         "name": "125kW-261kWh 户外柜",
         "category": "C&I Storage",
+        "supplierCode": "SUP2790",
         "vendor": "埃克森",
-        "spec": "125kW-261kWh",
+        "spec": "125 kW / 261 kWh",
+        "inverterKw": 125,
+        "batteryKwh": 261,
+        "priceBasisUnit": "kWh",
+        "unitQtyPerPcs": 261,
         "scenario": "Energy Storage Cabinet",
         "warrantyYears": "",
         "warrantyCycles": "",
         "leadTime": "30",
         "contact": "",
         "contactInfo": "",
-        "cost": 0.65,
-        "price": 1.82,
-        "ts": 1775705274152,
-        "supplierCode": "SUP2790"
+        "cost": 650,
+        "costCurrency": "CNY",
+        "price": 1820,
+        "priceCurrency": "CNY",
+        "certificationRequirements": {
+          "countries": [
+            "MY",
+            "US",
+            "EU",
+            "UK",
+            "AU"
+          ],
+          "standards": [
+            "IEC 62619",
+            "UN 38.3",
+            "MSDS",
+            "SIRIM / local battery requirements where applicable",
+            "UL 1973",
+            "UL 9540",
+            "UL 9540A",
+            "CE declaration",
+            "EN IEC 62619",
+            "RoHS",
+            "UKCA declaration",
+            "CEC Approved Batteries list"
+          ],
+          "source": "embedded-defaults",
+          "updatedAt": "2026-05-15"
+        },
+        "productImageDataUrl": "",
+        "ts": 1780377371007,
+        "certifications": {
+          "tuvCerts": [],
+          "specSheets": []
+        }
       },
       {
         "id": "INVERTER001",
@@ -875,6 +1027,7 @@
         "wireman": 800,
         "chargeman": 0
       }
-    }
+    },
+    "nonStockPricingStrategies": {}
   }
 }

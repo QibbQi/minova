@@ -67,9 +67,20 @@ test('non-stock strategy shows RESI and C&I profit split by company', () => {
   assert.match(html, /window\.setNonStockProfitTarget/, 'non-stock strategy can switch RESI and C&I display target');
   assert.match(html, /window\.renderNonStockProfitSplitCell = renderNonStockProfitSplitCell/, 'non-stock profit split helper is exposed for module-safe rendering checks');
   assert.match(html, /renderNonStockProfitSplitCell\(pricing, 'cn'\)/, 'non-stock strategy renders CN parent profit split');
-  assert.match(html, /renderNonStockProfitSplitCell\(pricing, 'my'\)/, 'non-stock strategy renders Malaysia subsidiary profit split');
+  assert.match(html, /renderNonStockProfitSplitCell\(pricing, 'my'\)/, 'non-stock strategy renders subsidiary profit split');
   assert.match(html, /pricing\.cnBizPct : pricing\.cnHomePct/, 'CN profit split follows selected RESI or C&I margin');
-  assert.match(html, /pricing\.myBizPct : pricing\.myHomePct/, 'Malaysia profit split follows selected RESI or C&I margin');
+  assert.match(html, /pricing\.subsidiaryBizPct/, 'subsidiary profit split follows selected C&I margin');
+  assert.match(html, /pricing\.subsidiaryHomePct/, 'subsidiary profit split follows selected RESI margin');
+});
+
+test('company margin formulas include every current subsidiary', () => {
+  assert.match(html, /if \(!seenCompanyIds\.has\('cn_parent'\)\)/, 'CN Parent Company is restored when missing from saved settings');
+  assert.match(html, /locked: id === 'cn_parent'/, 'CN Parent Company is mandatory and locked');
+  assert.match(html, /const homeProfitBreakdown = getProfitPctBreakdown\('home', cat, sub\)/, 'inventory pricing reads all RESI company margins');
+  assert.match(html, /const bizProfitBreakdown = getProfitPctBreakdown\('biz', cat, sub\)/, 'inventory pricing reads all C&I company margins');
+  assert.match(html, /const homeMul = 1 \+ homeProfitPct \/ 100/, 'RESI price multiplier uses the dynamic company total');
+  assert.match(html, /const bizMul = 1 \+ bizProfitPct \/ 100/, 'C&I price multiplier uses the dynamic company total');
+  assert.match(html, /filter\(row => row\.id !== 'cn_parent'\)/, 'subsidiary display totals every non-CN company');
 });
 
 test('non-stock strategy columns follow formula calculation order', () => {
@@ -90,7 +101,7 @@ test('non-stock strategy columns follow formula calculation order', () => {
     'Grey %',
     'Tariff Fee',
     'CN Parent Profit',
-    'Malaysia Profit',
+    'Subsidiary Profit',
     'Clearance PCS',
     'Grey PCS'
   ];

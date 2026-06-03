@@ -990,6 +990,7 @@
         let profitTarget = 'home';
         let installerProfitSettings = { cnPct: 0, myPct: 0 };
         let installerQuoteSettings = null;
+        let installerQuoteRegion = 'peninsular';
         let nonStockPricingStrategies = {};
         function safeJsonParseLoose(raw, fallback) {
             try { return raw ? JSON.parse(raw) : fallback; } catch { return fallback; }
@@ -1879,11 +1880,18 @@
             return { cnPct, myPct };
         }
         // INSTALLER_QUOTE_MODEL_START
-        const DEFAULT_INSTALLER_QUOTE_SETTINGS = {
-            v: 1,
+        const DEFAULT_INSTALLER_REGION_FEES = {
             installationRmPerKwp: 250,
             frameMountingRmPerKwp: 240,
-            cableRmPerKwp: 60,
+            cableRmPerKwp: 60
+        };
+        const DEFAULT_INSTALLER_QUOTE_SETTINGS = {
+            v: 2,
+            ...DEFAULT_INSTALLER_REGION_FEES,
+            regions: {
+                peninsular: { ...DEFAULT_INSTALLER_REGION_FEES },
+                sabahSarawak: { ...DEFAULT_INSTALLER_REGION_FEES }
+            },
             home: {
                 peEndorsement: 1200,
                 powerStudyThresholdKwp: 15,
@@ -1914,19 +1922,43 @@
             const n = installerNum(value, fallback);
             return n > 0 && n < 10 ? n * 1000 : n;
         }
+        function normalizeInstallerRegionKey(region) {
+            const key = String(region || '').trim();
+            return key === 'sabahSarawak' || key === 'sabah_sarawak' || key === 'eastMalaysia' ? 'sabahSarawak' : 'peninsular';
+        }
+        function normalizeInstallerRegionFees(next, fallback = DEFAULT_INSTALLER_REGION_FEES) {
+            const base = next && typeof next === 'object' ? next : {};
+            return {
+                installationRmPerKwp: migrateInstallerRate(base.labor ?? base.installationRmPerKwp, fallback.installationRmPerKwp),
+                frameMountingRmPerKwp: migrateInstallerRate(base.bracket ?? base.frameMountingRmPerKwp, fallback.frameMountingRmPerKwp),
+                cableRmPerKwp: migrateInstallerRate(base.cable ?? base.cableRmPerKwp, fallback.cableRmPerKwp)
+            };
+        }
         function normalizeInstallerQuoteSettings(next) {
             const base = next && typeof next === 'object' ? next : {};
             const oldLabor = base.labor ?? base.installationRmPerKwp;
             const oldBracket = base.bracket ?? base.frameMountingRmPerKwp;
             const oldCable = base.cable ?? base.cableRmPerKwp;
             const d = DEFAULT_INSTALLER_QUOTE_SETTINGS;
+            const oldTopLevel = {
+                installationRmPerKwp: oldLabor,
+                frameMountingRmPerKwp: oldBracket,
+                cableRmPerKwp: oldCable
+            };
+            const baseRegions = base.regions && typeof base.regions === 'object' ? base.regions : {};
+            const peninsular = normalizeInstallerRegionFees(baseRegions.peninsular || oldTopLevel, d.regions.peninsular);
+            const sabahSarawak = normalizeInstallerRegionFees(baseRegions.sabahSarawak || baseRegions.sabah_sarawak || oldTopLevel, d.regions.sabahSarawak);
             const home = base.home && typeof base.home === 'object' ? base.home : {};
             const biz = base.biz && typeof base.biz === 'object' ? base.biz : {};
             return {
-                v: 1,
-                installationRmPerKwp: migrateInstallerRate(oldLabor, d.installationRmPerKwp),
-                frameMountingRmPerKwp: migrateInstallerRate(oldBracket, d.frameMountingRmPerKwp),
-                cableRmPerKwp: migrateInstallerRate(oldCable, d.cableRmPerKwp),
+                v: 2,
+                installationRmPerKwp: peninsular.installationRmPerKwp,
+                frameMountingRmPerKwp: peninsular.frameMountingRmPerKwp,
+                cableRmPerKwp: peninsular.cableRmPerKwp,
+                regions: {
+                    peninsular,
+                    sabahSarawak
+                },
                 home: {
                     peEndorsement: installerNum(home.peEndorsement, d.home.peEndorsement),
                     powerStudyThresholdKwp: installerNum(home.powerStudyThresholdKwp, d.home.powerStudyThresholdKwp),
@@ -1950,15 +1982,22 @@
                 }
             };
         }
-        function computeInstallerCost(sizeKwp, scenario, settings, profit = {}, rateMyrCny = 1.53) {
+        function getInstallerRegionFees(settings, region = 'peninsular') {
+            const s = normalizeInstallerQuoteSettings(settings);
+            const key = normalizeInstallerRegionKey(region);
+            return s.regions?.[key] || s.regions?.peninsular || normalizeInstallerRegionFees(s, DEFAULT_INSTALLER_REGION_FEES);
+        }
+        function computeInstallerCost(sizeKwp, scenario, settings, profit = {}, rateMyrCny = 1.53, region = 'peninsular') {
             const s = normalizeInstallerQuoteSettings(settings);
             const target = scenario === 'biz' ? 'biz' : 'home';
+            const regionKey = normalizeInstallerRegionKey(region);
+            const fees = getInstallerRegionFees(s, regionKey);
             const size = Math.max(0, installerNum(sizeKwp, 0));
             const rate = Math.max(0.0001, installerNum(rateMyrCny, 1.53));
             const detail = [
-                { key: 'installation', label: 'Installation', amount: s.installationRmPerKwp * size, formula: `${s.installationRmPerKwp}/kWp × ${size.toFixed(2)}` },
-                { key: 'frameMounting', label: 'Frame/Mounting', amount: s.frameMountingRmPerKwp * size, formula: `${s.frameMountingRmPerKwp}/kWp × ${size.toFixed(2)}` },
-                { key: 'cable', label: 'DC and AC Cable', amount: s.cableRmPerKwp * size, formula: `${s.cableRmPerKwp}/kWp × ${size.toFixed(2)}` }
+                { key: 'installation', label: 'Installation', amount: fees.installationRmPerKwp * size, formula: `${fees.installationRmPerKwp}/kWp × ${size.toFixed(2)}` },
+                { key: 'frameMounting', label: 'Frame/Mounting', amount: fees.frameMountingRmPerKwp * size, formula: `${fees.frameMountingRmPerKwp}/kWp × ${size.toFixed(2)}` },
+                { key: 'cable', label: 'DC and AC Cable', amount: fees.cableRmPerKwp * size, formula: `${fees.cableRmPerKwp}/kWp × ${size.toFixed(2)}` }
             ];
             detail.forEach(item => { item.amount = Math.round((installerNum(item.amount, 0) + Number.EPSILON) * 10000) / 10000; });
             const baseMyr = Math.round((detail.reduce((sum, item) => sum + item.amount, 0) + Number.EPSILON) * 10000) / 10000;
@@ -1967,6 +2006,7 @@
             const finalMyr = Math.round((baseMyr * (1 + (cnPct + myPct) / 100) + Number.EPSILON) * 10000) / 10000;
             return {
                 scenario: target,
+                region: regionKey,
                 sizeKwp: size,
                 baseMyr,
                 baseCny: Math.round((baseMyr * rate + Number.EPSILON) * 10000) / 10000,
@@ -1987,9 +2027,26 @@
                 { id: 'cn_parent', name: 'CN Parent Company', locked: true },
                 { id: 'my_sub', name: 'Malaysia Subsidiary' }
             ];
+            const normalizedCompanies = [];
+            const seenCompanyIds = new Set();
+            const pushCompany = (company) => {
+                const id = String(company?.id || '').trim();
+                if (!id || seenCompanyIds.has(id)) return;
+                seenCompanyIds.add(id);
+                normalizedCompanies.push({
+                    id,
+                    name: id === 'cn_parent' ? 'CN Parent Company' : String(company?.name || '').trim(),
+                    locked: id === 'cn_parent' || !!company?.locked
+                });
+            };
+            seeded.forEach(pushCompany);
+            if (!seenCompanyIds.has('cn_parent')) {
+                normalizedCompanies.unshift({ id: 'cn_parent', name: 'CN Parent Company', locked: true });
+                seenCompanyIds.add('cn_parent');
+            }
             const settings = {
                 v: 1,
-                companies: seeded.map(c => ({ id: String(c.id), name: String(c.name), locked: !!c.locked })),
+                companies: normalizedCompanies,
                 enabled: (base.enabled && typeof base.enabled === 'object') ? base.enabled : {},
                 categoryProfitPct: (base.categoryProfitPct && typeof base.categoryProfitPct === 'object') ? base.categoryProfitPct : {},
                 subcatProfitPct: (base.subcatProfitPct && typeof base.subcatProfitPct === 'object') ? base.subcatProfitPct : {}
@@ -2038,6 +2095,17 @@
             const def = profitSettings?.categoryProfitPct?.[cid]?.[t]?.[cat];
             const dv = Number.isFinite(parseFloat(def)) ? parseFloat(def) : null;
             return dv !== null ? dv : 0;
+        }
+        function getProfitPctBreakdown(target, category, subcategory) {
+            profitSettings = normalizeProfitSettings(profitSettings || safeJsonParseLoose(localStorage.getItem('minova_profit_settings_v1'), null));
+            return profitSettings.companies.map(company => ({
+                id: company.id,
+                name: company.name,
+                pct: getProfitPct(company.id, target, category, subcategory)
+            }));
+        }
+        function getTotalProfitPct(target, category, subcategory) {
+            return getProfitPctBreakdown(target, category, subcategory).reduce((sum, company) => sum + (Number.isFinite(parseFloat(company.pct)) ? parseFloat(company.pct) : 0), 0);
         }
         function persistProfitSettings(reason = 'profit settings update') {
             try { localStorage.setItem('minova_profit_settings_v1', JSON.stringify(profitSettings)); } catch (e) {}
@@ -5239,15 +5307,29 @@
             const cat = String(product?.category || '').trim();
             const sub = String(product?.scenario || '').trim();
             profitSettings = normalizeProfitSettings(profitSettings || safeJsonParseLoose(localStorage.getItem('minova_profit_settings_v1'), null));
-            const cnHomePct = getProfitPct('cn_parent', 'home', cat, sub);
-            const myHomePct = getProfitPct('my_sub', 'home', cat, sub);
-            const cnBizPct = getProfitPct('cn_parent', 'biz', cat, sub);
-            const myBizPct = getProfitPct('my_sub', 'biz', cat, sub);
+            const homeProfitBreakdown = getProfitPctBreakdown('home', cat, sub);
+            const bizProfitBreakdown = getProfitPctBreakdown('biz', cat, sub);
+            const findPct = (list, id) => {
+                const row = list.find(item => item.id === id);
+                return Number.isFinite(parseFloat(row?.pct)) ? parseFloat(row.pct) : 0;
+            };
+            const cnHomePct = findPct(homeProfitBreakdown, 'cn_parent');
+            const myHomePct = findPct(homeProfitBreakdown, 'my_sub');
+            const cnBizPct = findPct(bizProfitBreakdown, 'cn_parent');
+            const myBizPct = findPct(bizProfitBreakdown, 'my_sub');
+            const homeProfitPct = homeProfitBreakdown.reduce((sum, row) => sum + (Number.isFinite(parseFloat(row.pct)) ? parseFloat(row.pct) : 0), 0);
+            const bizProfitPct = bizProfitBreakdown.reduce((sum, row) => sum + (Number.isFinite(parseFloat(row.pct)) ? parseFloat(row.pct) : 0), 0);
+            const subsidiaryHomePct = homeProfitBreakdown
+                .filter(row => row.id !== 'cn_parent')
+                .reduce((sum, row) => sum + (Number.isFinite(parseFloat(row.pct)) ? parseFloat(row.pct) : 0), 0);
+            const subsidiaryBizPct = bizProfitBreakdown
+                .filter(row => row.id !== 'cn_parent')
+                .reduce((sum, row) => sum + (Number.isFinite(parseFloat(row.pct)) ? parseFloat(row.pct) : 0), 0);
 
             const clearanceCost = avgCost * (1 + dutyPct / 100 + sstPct / 100);
             const grayCost = avgCost * (1 + grayPct / 100);
-            const homeMul = 1 + (cnHomePct + myHomePct) / 100;
-            const bizMul = 1 + (cnBizPct + myBizPct) / 100;
+            const homeMul = 1 + homeProfitPct / 100;
+            const bizMul = 1 + bizProfitPct / 100;
 
             return {
                 spec,
@@ -5261,6 +5343,14 @@
                 myHomePct,
                 cnBizPct,
                 myBizPct,
+                homeProfitPct,
+                bizProfitPct,
+                subsidiaryHomePct,
+                subsidiaryBizPct,
+                profitBreakdown: {
+                    home: homeProfitBreakdown,
+                    biz: bizProfitBreakdown
+                },
                 clearanceHomePrice: clearanceCost * homeMul,
                 clearanceBizPrice: clearanceCost * bizMul,
                 grayHomePrice: grayCost * homeMul,
@@ -5294,9 +5384,9 @@
             set('edit-inv-clearance-cost', r.clearanceCost, 4);
             set('edit-inv-gray-cost', r.grayCost, 4);
             set('edit-profit-cn-home', r.cnHomePct);
-            set('edit-profit-my-home', r.myHomePct);
+            set('edit-profit-my-home', r.subsidiaryHomePct);
             set('edit-profit-cn-biz', r.cnBizPct);
-            set('edit-profit-my-biz', r.myBizPct);
+            set('edit-profit-my-biz', r.subsidiaryBizPct);
             set('edit-price-clearance-home', r.clearanceHomePrice, 4);
             set('edit-price-clearance-biz', r.clearanceBizPrice, 4);
             set('edit-price-gray-home', r.grayHomePrice, 4);
@@ -5482,6 +5572,24 @@
         function getInstallerScenario() {
             return 'home';
         }
+        function getInstallerRegionLabel(region = installerQuoteRegion) {
+            return normalizeInstallerRegionKey(region) === 'sabahSarawak' ? 'Sabah / Sarawak' : 'Peninsular Malaysia';
+        }
+        function updateInstallerRegionButtons() {
+            const activeClass = 'px-3 py-2 rounded-xl text-xs font-black border border-purple-200 bg-purple-700 text-white';
+            const idleClass = 'px-3 py-2 rounded-xl text-xs font-black border border-slate-200 bg-white text-slate-700 hover:bg-slate-50';
+            const region = normalizeInstallerRegionKey(installerQuoteRegion);
+            const penBtn = document.getElementById('btn-installer-region-peninsular');
+            const eastBtn = document.getElementById('btn-installer-region-sabahSarawak');
+            if (penBtn) penBtn.className = region === 'peninsular' ? activeClass : idleClass;
+            if (eastBtn) eastBtn.className = region === 'sabahSarawak' ? activeClass : idleClass;
+        }
+        window.setInstallerQuoteRegion = (region) => {
+            installerQuoteRegion = normalizeInstallerRegionKey(region);
+            updateInstallerRegionButtons();
+            applyInstallerQuoteSettingsToUi();
+            recalcInstallerQuote();
+        };
         function getProposedSystemSizeKwp() {
             const direct = parseFloat(String(document.getElementById('input-proposed-size')?.value || '').replace(/,/g, ''));
             if (Number.isFinite(direct) && direct > 0) return direct;
@@ -5494,19 +5602,21 @@
         }
         function applyInstallerQuoteSettingsToUi() {
             installerQuoteSettings = normalizeInstallerQuoteSettings(installerQuoteSettings);
+            const fees = getInstallerRegionFees(installerQuoteSettings, installerQuoteRegion);
             const set = (id, value) => {
                 const el = document.getElementById(id);
                 if (el) el.value = String(value);
             };
-            set('installer-labor', installerQuoteSettings.installationRmPerKwp);
-            set('installer-bracket', installerQuoteSettings.frameMountingRmPerKwp);
-            set('installer-cable', installerQuoteSettings.cableRmPerKwp);
+            set('installer-labor', fees.installationRmPerKwp);
+            set('installer-bracket', fees.frameMountingRmPerKwp);
+            set('installer-cable', fees.cableRmPerKwp);
+            updateInstallerRegionButtons();
         }
         function renderInstallerCostDetail(result) {
             const scenarioEl = document.getElementById('installer-scenario-label');
             const sizeEl = document.getElementById('installer-size-label');
             const detailEl = document.getElementById('installer-cost-detail');
-            if (scenarioEl) scenarioEl.textContent = result.scenario === 'biz' ? 'C&I' : 'RESI';
+            if (scenarioEl) scenarioEl.textContent = `${getInstallerRegionLabel(result.region)} · ${result.scenario === 'biz' ? 'C&I' : 'RESI'}`;
             if (sizeEl) sizeEl.textContent = `${result.sizeKwp.toFixed(2)} kWp`;
             if (!detailEl) return;
             detailEl.innerHTML = result.detail.map(item => `
@@ -5525,15 +5635,20 @@
             const cable = parseFloat(document.getElementById('installer-cable')?.value) || 0;
             installerQuoteSettings = normalizeInstallerQuoteSettings({
                 ...(installerQuoteSettings || {}),
-                installationRmPerKwp: labor,
-                frameMountingRmPerKwp: bracket,
-                cableRmPerKwp: cable
+                regions: {
+                    ...(installerQuoteSettings?.regions || {}),
+                    [normalizeInstallerRegionKey(installerQuoteRegion)]: {
+                        installationRmPerKwp: labor,
+                        frameMountingRmPerKwp: bracket,
+                        cableRmPerKwp: cable
+                    }
+                }
             });
             const rate = parseFloat(document.getElementById('rate-myr-cny')?.value) || 1.53;
             const cnPct = parseFloat(document.getElementById('installer-profit-cn')?.value) || 0;
             const myPct = parseFloat(document.getElementById('installer-profit-my')?.value) || 0;
             installerProfitSettings = normalizeInstallerProfitSettings({ cnPct, myPct });
-            const result = computeInstallerCost(getProposedSystemSizeKwp(), getInstallerScenario(), installerQuoteSettings, installerProfitSettings, rate);
+            const result = computeInstallerCost(getProposedSystemSizeKwp(), getInstallerScenario(), installerQuoteSettings, installerProfitSettings, rate, installerQuoteRegion);
 
             const myrEl = document.getElementById('installer-total-myr');
             const cnyEl = document.getElementById('installer-total-cny');
@@ -5617,7 +5732,8 @@
         };
 
         window.openInstallModal = (mode) => {
-            window.installMode = mode === 'domestic' ? 'domestic' : 'overseas';
+            const region = mode === 'domestic' ? 'sabahSarawak' : normalizeInstallerRegionKey(mode);
+            window.installMode = region;
             const modal = document.getElementById('install-modal');
             if (!modal) return;
             modal.classList.remove('hidden');
@@ -5629,28 +5745,26 @@
             const qtyUnitEl = document.getElementById('install-qty-unit');
             const itemsEl = document.getElementById('install-overseas-items');
 
-            const isDomestic = window.installMode === 'domestic';
-            if (titleEl) titleEl.textContent = isDomestic ? 'Installation Work · Domestic' : 'Installation Work · Overseas';
-            if (descEl) descEl.value = isDomestic ? 'Domestic Installation Work' : 'Overseas Installation Work';
-            if (qtyUnitEl) qtyUnitEl.textContent = isDomestic ? 'item' : 'kWp';
-            if (itemsEl) itemsEl.classList.toggle('hidden', isDomestic);
-            if (!isDomestic) resetInstallOptionItems();
+            const regionLabel = getInstallerRegionLabel(region);
+            if (titleEl) titleEl.textContent = `Installation Work · ${regionLabel}`;
+            if (descEl) descEl.value = `${regionLabel} Installation Work`;
+            if (qtyUnitEl) qtyUnitEl.textContent = 'kWp';
+            if (itemsEl) itemsEl.classList.remove('hidden');
+            resetInstallOptionItems();
 
             let overseasUnit = parseFloat(document.getElementById('installer-install-fee-cny')?.value) || 0;
             let overseasQty = getProposedSystemSizeKwp();
-            if (!isDomestic) {
-                installerQuoteSettings = normalizeInstallerQuoteSettings(installerQuoteSettings);
-                const rate = parseFloat(document.getElementById('rate-myr-cny')?.value) || 1.53;
-                const result = computeInstallerCost(overseasQty, getInstallerScenario(), installerQuoteSettings, installerProfitSettings, rate);
-                overseasUnit = result.unitFinalCnyPerKwp;
-                overseasQty = result.sizeKwp;
-            }
+            installerQuoteSettings = normalizeInstallerQuoteSettings(installerQuoteSettings);
+            const rate = parseFloat(document.getElementById('rate-myr-cny')?.value) || 1.53;
+            const result = computeInstallerCost(overseasQty, getInstallerScenario(), installerQuoteSettings, installerProfitSettings, rate, region);
+            overseasUnit = result.unitFinalCnyPerKwp;
+            overseasQty = result.sizeKwp;
             if (unitEl) {
-                unitEl.value = isDomestic ? '0' : String(overseasUnit.toFixed(4));
-                unitEl.readOnly = !isDomestic;
-                unitEl.classList.toggle('bg-slate-50', !isDomestic);
+                unitEl.value = String(overseasUnit.toFixed(4));
+                unitEl.readOnly = true;
+                unitEl.classList.add('bg-slate-50');
             }
-            if (qtyEl) qtyEl.value = String(isDomestic ? 1 : (overseasQty > 0 ? overseasQty.toFixed(2) : 0));
+            if (qtyEl) qtyEl.value = String(overseasQty > 0 ? overseasQty.toFixed(2) : 0);
             recalcInstallModal();
         };
         window.closeInstallModal = () => {
@@ -5679,29 +5793,24 @@
 
             const firstBlankIdx = quoteRows.findIndex(r => r.isBlank);
             const insertIdx = firstBlankIdx === -1 ? quoteRows.length : firstBlankIdx;
-            if (window.installMode === 'overseas') {
-                const items = (window.__installOptionItems || [])
-                    .filter(item => item.locked || item.checked)
-                    .map(item => String(item.text || '').trim())
-                    .filter(Boolean);
-                if (!items.length) return alert('Select at least one installation item.');
-                const rows = items.map((text, idx) => ({
-                    id: Date.now() + idx,
-                    description: text,
-                    vendor: '--',
-                    spec: '--',
-                    batchNo: '',
-                    quantity: idx === 0 ? qty : 1,
-                    price: idx === 0 ? unit : 0,
-                    cost: 0,
-                    included: idx !== 0,
-                    isInstallItem: true
-                }));
-                quoteRows.splice(insertIdx, 0, ...rows);
-            } else {
-                const row = { id: Date.now(), description: desc, spec: '', batchNo: '', quantity: qty, price: unit, cost: 0, isInstallItem: true };
-                quoteRows.splice(insertIdx, 0, row);
-            }
+            const items = (window.__installOptionItems || [])
+                .filter(item => item.locked || item.checked)
+                .map((item, idx) => String(item.text || '').trim() || (idx === 0 ? desc : 'Installation Item'))
+                .filter(Boolean);
+            if (!items.length) return alert('Select at least one installation item.');
+            const rows = items.map((text, idx) => ({
+                id: Date.now() + idx,
+                description: idx === 0 ? desc : text,
+                vendor: '--',
+                spec: '--',
+                batchNo: '',
+                quantity: idx === 0 ? qty : 1,
+                price: idx === 0 ? unit : 0,
+                cost: 0,
+                included: idx !== 0,
+                isInstallItem: true
+            }));
+            quoteRows.splice(insertIdx, 0, ...rows);
             closeInstallModal();
             renderQuote();
         };
@@ -6955,8 +7064,8 @@
             body.innerHTML = rows.map(p => {
                 const req = getProductCertificationRequirements(p);
                 const pricing = priceListProductPricing(p);
-                const homeProfit = (pricing.cnHomePct || 0) + (pricing.myHomePct || 0);
-                const bizProfit = (pricing.cnBizPct || 0) + (pricing.myBizPct || 0);
+                const homeProfit = Number.isFinite(parseFloat(pricing.homeProfitPct)) ? parseFloat(pricing.homeProfitPct) : ((pricing.cnHomePct || 0) + (pricing.myHomePct || 0));
+                const bizProfit = Number.isFinite(parseFloat(pricing.bizProfitPct)) ? parseFloat(pricing.bizProfitPct) : ((pricing.cnBizPct || 0) + (pricing.myBizPct || 0));
                 const countries = (req.countries || []).map(priceListCountryLabel).join(', ');
                 const certBrief = (req.standards || []).slice(0, 3).join(', ');
                 const certTitle = `${countries}\n${(req.standards || []).join('\n')}`;
@@ -7027,8 +7136,8 @@
             const r = priceListProductPricing(p);
             const req = getProductCertificationRequirements(p);
             const market = getMarketPriceSummary(p.category || '', { days: 30 });
-            const homeProfit = (r.cnHomePct || 0) + (r.myHomePct || 0);
-            const bizProfit = (r.cnBizPct || 0) + (r.myBizPct || 0);
+            const homeProfit = Number.isFinite(parseFloat(r.homeProfitPct)) ? parseFloat(r.homeProfitPct) : ((r.cnHomePct || 0) + (r.myHomePct || 0));
+            const bizProfit = Number.isFinite(parseFloat(r.bizProfitPct)) ? parseFloat(r.bizProfitPct) : ((r.cnBizPct || 0) + (r.myBizPct || 0));
             const selectedPriceLabel = getPriceListSelectedPriceLabel();
             const selectedPcsPrice = getPriceListSelectedPcsPrice(r);
             tooltip.innerHTML = `
@@ -7040,8 +7149,8 @@
                     <p>Avg Cost: <span class="font-black text-white">${formatCurrencyFromCny(r.avgCost, getPriceListCurrencyPriority(), 4)}/${r.costUnit}</span> (${formatCurrencyFromCny(r.avgCost, getPriceListCurrencyPriority() === 'MYR' ? 'CNY' : 'MYR', 4)}/${r.costUnit}; ${r.usedInventoryCost ? 'inventory average' : 'base cost'})</p>
                     <p>Clearance Cost: ${formatCny(r.avgCost, 4)} × (1 + ${r.dutyPct}% duty + ${r.sstPct}% SST) = <span class="font-black text-blue-200">${formatCny(r.clearanceCost, 4)}</span></p>
                     <p>Grey Cost: ${formatCny(r.avgCost, 4)} × (1 + ${r.grayPct}% grey tax) = <span class="font-black text-indigo-200">${formatCny(r.grayCost, 4)}</span></p>
-                    <p>RESI Price: cost × (1 + ${r.cnHomePct}% CN + ${r.myHomePct}% MY) = +${homeProfit.toFixed(2)}%</p>
-                    <p>C&I Price: cost × (1 + ${r.cnBizPct}% CN + ${r.myBizPct}% MY) = +${bizProfit.toFixed(2)}%</p>
+                    <p>RESI Price: cost × (1 + ${homeProfit.toFixed(2)}% total company margin) = +${homeProfit.toFixed(2)}%</p>
+                    <p>C&I Price: cost × (1 + ${bizProfit.toFixed(2)}% total company margin) = +${bizProfit.toFixed(2)}%</p>
                     <p>Market 30D: <span class="font-black text-amber-200">${market.records.length ? formatMarketPrice(market.avgCny, market.unit, 'CNY') : 'No 30-day market price'}</span></p>
                     <p>FX: 1 MYR = ${getSalesOutRateCnyPerMyr().toFixed(4)} CNY</p>
                     <p class="pt-1 text-slate-300">Certifications: ${(req.standards || []).slice(0, 5).map(htmlSafe).join(', ') || '-'}</p>
@@ -7063,8 +7172,8 @@
                 const r = priceListProductPricing(p);
                 const req = getProductCertificationRequirements(p);
                 const market = getMarketPriceSummary(p.category || '', { days: 30 });
-                const homeProfit = (r.cnHomePct || 0) + (r.myHomePct || 0);
-                const bizProfit = (r.cnBizPct || 0) + (r.myBizPct || 0);
+                const homeProfit = Number.isFinite(parseFloat(r.homeProfitPct)) ? parseFloat(r.homeProfitPct) : ((r.cnHomePct || 0) + (r.myHomePct || 0));
+                const bizProfit = Number.isFinite(parseFloat(r.bizProfitPct)) ? parseFloat(r.bizProfitPct) : ((r.cnBizPct || 0) + (r.myBizPct || 0));
                 const selectedPriceLabel = getPriceListSelectedPriceLabel();
                 const selectedPcsPrice = getPriceListSelectedPcsPrice(r);
                 const out = {
@@ -7098,7 +7207,7 @@
                     'Grey RESI MYR': (r.grayHomePrice || 0) / getSalesOutRateCnyPerMyr(),
                     'Grey C&I CNY': r.grayBizPrice || 0,
                     'Grey C&I MYR': (r.grayBizPrice || 0) / getSalesOutRateCnyPerMyr(),
-                    'Formula Note': `Clearance cost = Avg Cost * (1 + duty ${r.dutyPct}% + SST ${r.sstPct}%); Grey cost = Avg Cost * (1 + grey tax ${r.grayPct}%); RESI profit = CN ${r.cnHomePct}% + MY ${r.myHomePct}%; C&I profit = CN ${r.cnBizPct}% + MY ${r.myBizPct}%; FX 1 MYR = ${getSalesOutRateCnyPerMyr().toFixed(4)} CNY`,
+                    'Formula Note': `Clearance cost = Avg Cost * (1 + duty ${r.dutyPct}% + SST ${r.sstPct}%); Grey cost = Avg Cost * (1 + grey tax ${r.grayPct}%); RESI profit = ${(r.homeProfitPct || 0).toFixed(2)}%; C&I profit = ${(r.bizProfitPct || 0).toFixed(2)}%; FX 1 MYR = ${getSalesOutRateCnyPerMyr().toFixed(4)} CNY`,
                     'Certification Countries': (req.countries || []).map(priceListCountryLabel).join(', '),
                     'Certification Standards': (req.standards || []).join('; ')
                 };
@@ -7284,8 +7393,8 @@
             const grayPct = parseFloat(document.getElementById('sales-out-gray-tax')?.value) || getDefaultGrayTaxPercent();
             const r = computeSalesPricingForProduct({ productId, dutyPct, sstPct, grayPct });
             if (avgEl) avgEl.value = (r.avgCost || 0).toFixed(4);
-            if (homeProfitEl) homeProfitEl.value = ((r.cnHomePct || 0) + (r.myHomePct || 0)).toFixed(2);
-            if (bizProfitEl) bizProfitEl.value = ((r.cnBizPct || 0) + (r.myBizPct || 0)).toFixed(2);
+            if (homeProfitEl) homeProfitEl.value = (Number.isFinite(parseFloat(r.homeProfitPct)) ? parseFloat(r.homeProfitPct) : ((r.cnHomePct || 0) + (r.myHomePct || 0))).toFixed(2);
+            if (bizProfitEl) bizProfitEl.value = (Number.isFinite(parseFloat(r.bizProfitPct)) ? parseFloat(r.bizProfitPct) : ((r.cnBizPct || 0) + (r.myBizPct || 0))).toFixed(2);
             if (chEl) chEl.value = (r.clearanceHomePrice || 0).toFixed(4);
             if (cbEl) cbEl.value = (r.clearanceBizPrice || 0).toFixed(4);
             if (ghEl) ghEl.value = (r.grayHomePrice || 0).toFixed(4);

@@ -1040,8 +1040,8 @@
                                 <div class="text-[10px] font-black text-slate-400 uppercase">Add to Quotation</div>
                             </div>
                             <div class="p-3 grid grid-cols-2 gap-2">
-                                <button onclick="openInstallModal('overseas')" class="px-3 py-2 rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-xs font-black">Overseas Work</button>
-                                <button onclick="openInstallModal('domestic')" class="px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black border border-slate-200">Domestic Work</button>
+                                <button onclick="openInstallModal('peninsular')" class="px-3 py-2 rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-xs font-black">Peninsular Malaysia</button>
+                                <button onclick="openInstallModal('sabahSarawak')" class="px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black border border-slate-200">Sabah / Sarawak</button>
                             </div>
                         </div>
                     </div>
@@ -1933,7 +1933,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             <th class="py-4 px-4 text-right">Grey %</th>
                             <th class="py-4 px-4 text-right">Tariff Fee</th>
                             <th class="py-4 px-4 text-right">CN Parent Profit</th>
-                            <th class="py-4 px-4 text-right">Malaysia Profit</th>
+                            <th class="py-4 px-4 text-right">Subsidiary Profit</th>
                             <th class="py-4 px-4 text-right">Clearance PCS</th>
                             <th class="py-4 px-4 text-right">Grey PCS</th>
                             <th class="py-4 px-4 text-center">Actions</th>
@@ -2988,9 +2988,15 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     </div>
                 </div>
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div class="p-6 border-b border-slate-100">
-                        <h3 class="text-lg font-bold text-slate-800">Overseas Installer Quote</h3>
-                        <p class="text-xs text-slate-400 mt-1">Calculated from the Excel labor sheet: base installation cost (RM) = variable items × Proposed System Size.</p>
+                    <div class="p-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div>
+                            <h3 class="text-lg font-bold text-slate-800">Overseas Installer Quote</h3>
+                            <p class="text-xs text-slate-400 mt-1">Calculated from the Excel labor sheet: base installation cost (RM) = variable items × Proposed System Size.</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button id="btn-installer-region-peninsular" onclick="setInstallerQuoteRegion('peninsular')" class="px-3 py-2 rounded-xl text-xs font-black border border-purple-200 bg-purple-700 text-white">Peninsular Malaysia</button>
+                            <button id="btn-installer-region-sabahSarawak" onclick="setInstallerQuoteRegion('sabahSarawak')" class="px-3 py-2 rounded-xl text-xs font-black border border-slate-200 bg-white text-slate-700 hover:bg-slate-50">Sabah / Sarawak</button>
+                        </div>
                     </div>
                     <div class="p-6 grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
                         <div>
@@ -3079,7 +3085,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 <div id="install-overseas-items" class="hidden rounded-2xl border border-purple-100 bg-purple-50/40 p-4">
                     <div class="flex items-start justify-between gap-3 mb-3">
                         <div>
-                            <p class="text-[10px] font-black text-purple-900/70 uppercase tracking-widest">Overseas Installation Items</p>
+                            <p class="text-[10px] font-black text-purple-900/70 uppercase tracking-widest">Installation Items</p>
                             <p class="text-xs text-slate-500 mt-1">Selected by default; text is editable, and all except the first item show INCLUDED.</p>
                         </div>
                         <button type="button" onclick="addInstallOptionItem()" class="text-[10px] font-black text-purple-700 bg-white border border-purple-100 px-3 py-1.5 rounded-lg hover:bg-purple-50">+Others</button>
@@ -3641,11 +3647,11 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
                     <div class="md:col-span-2">
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">RESI Margin Total% (CN+MY)</label>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">RESI Margin Total% (All Companies)</label>
                         <input type="text" id="sales-out-profit-home" readonly="" class="w-full border border-slate-200 rounded-xl p-2 text-xs outline-none bg-slate-50 text-slate-700 font-bold text-right">
                     </div>
                     <div class="md:col-span-2">
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">C&I Margin Total% (CN+MY)</label>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">C&I Margin Total% (All Companies)</label>
                         <input type="text" id="sales-out-profit-biz" readonly="" class="w-full border border-slate-200 rounded-xl p-2 text-xs outline-none bg-slate-50 text-slate-700 font-bold text-right">
                     </div>
                     <div>
@@ -3767,8 +3773,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     <p>Avg Cost: <span class="font-black text-white">RM 0.3521/kW</span> (¥0.6056/kW; base cost)</p>
                     <p>Clearance Cost: ¥0.6056 × (1 + 20% duty + 10% SST) = <span class="font-black text-blue-200">¥0.7873</span></p>
                     <p>Grey Cost: ¥0.6056 × (1 + 5% grey tax) = <span class="font-black text-indigo-200">¥0.6359</span></p>
-                    <p>RESI Price: cost × (1 + 30% CN + 15% MY) = +45.00%</p>
-                    <p>C&amp;I Price: cost × (1 + 30% CN + 15% MY) = +45.00%</p>
+                    <p>RESI Price: cost × (1 + 45% total company margin) = +45.00%</p>
+                    <p>C&amp;I Price: cost × (1 + 45% total company margin) = +45.00%</p>
                     <p>Market 30D: <span class="font-black text-amber-200">No 30-day market price</span></p>
                     <p>FX: 1 MYR = 1.7200 CNY</p>
                     <p class="pt-1 text-slate-300">Certifications: IEC 62109-1, IEC 62109-2, IEC 62477 (when applicable), IEC 62109-1/2, SIRIM / local utility requirements where applicable</p>
@@ -3816,7 +3822,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             <input type="number" id="edit-profit-cn-home" readonly="" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-slate-50 text-slate-600 text-right">
                         </div>
                         <div>
-                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Malaysia Subsidiary Subcategory Margin (RESI)%</label>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Subsidiary Subcategory Margin (RESI)%</label>
                             <input type="number" id="edit-profit-my-home" readonly="" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-slate-50 text-slate-600 text-right">
                         </div>
                         <div>
@@ -3824,7 +3830,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             <input type="number" id="edit-profit-cn-biz" readonly="" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-slate-50 text-slate-600 text-right">
                         </div>
                         <div>
-                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Malaysia Subsidiary Subcategory Margin (C&I)%</label>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Subsidiary Subcategory Margin (C&I)%</label>
                             <input type="number" id="edit-profit-my-biz" readonly="" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none bg-slate-50 text-slate-600 text-right">
                         </div>
                     </div>
@@ -4911,6 +4917,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         let profitTarget = 'home';
         let installerProfitSettings = { cnPct: 0, myPct: 0 };
         let installerQuoteSettings = null;
+        let installerQuoteRegion = 'peninsular';
         let nonStockPricingStrategies = {};
         function safeJsonParseLoose(raw, fallback) {
             try { return raw ? JSON.parse(raw) : fallback; } catch { return fallback; }
@@ -5945,11 +5952,18 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return { cnPct, myPct };
         }
         // INSTALLER_QUOTE_MODEL_START
-        const DEFAULT_INSTALLER_QUOTE_SETTINGS = {
-            v: 1,
+        const DEFAULT_INSTALLER_REGION_FEES = {
             installationRmPerKwp: 250,
             frameMountingRmPerKwp: 240,
-            cableRmPerKwp: 60,
+            cableRmPerKwp: 60
+        };
+        const DEFAULT_INSTALLER_QUOTE_SETTINGS = {
+            v: 2,
+            ...DEFAULT_INSTALLER_REGION_FEES,
+            regions: {
+                peninsular: { ...DEFAULT_INSTALLER_REGION_FEES },
+                sabahSarawak: { ...DEFAULT_INSTALLER_REGION_FEES }
+            },
             home: {
                 peEndorsement: 1200,
                 powerStudyThresholdKwp: 15,
@@ -5980,19 +5994,43 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const n = installerNum(value, fallback);
             return n > 0 && n < 10 ? n * 1000 : n;
         }
+        function normalizeInstallerRegionKey(region) {
+            const key = String(region || '').trim();
+            return key === 'sabahSarawak' || key === 'sabah_sarawak' || key === 'eastMalaysia' ? 'sabahSarawak' : 'peninsular';
+        }
+        function normalizeInstallerRegionFees(next, fallback = DEFAULT_INSTALLER_REGION_FEES) {
+            const base = next && typeof next === 'object' ? next : {};
+            return {
+                installationRmPerKwp: migrateInstallerRate(base.labor ?? base.installationRmPerKwp, fallback.installationRmPerKwp),
+                frameMountingRmPerKwp: migrateInstallerRate(base.bracket ?? base.frameMountingRmPerKwp, fallback.frameMountingRmPerKwp),
+                cableRmPerKwp: migrateInstallerRate(base.cable ?? base.cableRmPerKwp, fallback.cableRmPerKwp)
+            };
+        }
         function normalizeInstallerQuoteSettings(next) {
             const base = next && typeof next === 'object' ? next : {};
             const oldLabor = base.labor ?? base.installationRmPerKwp;
             const oldBracket = base.bracket ?? base.frameMountingRmPerKwp;
             const oldCable = base.cable ?? base.cableRmPerKwp;
             const d = DEFAULT_INSTALLER_QUOTE_SETTINGS;
+            const oldTopLevel = {
+                installationRmPerKwp: oldLabor,
+                frameMountingRmPerKwp: oldBracket,
+                cableRmPerKwp: oldCable
+            };
+            const baseRegions = base.regions && typeof base.regions === 'object' ? base.regions : {};
+            const peninsular = normalizeInstallerRegionFees(baseRegions.peninsular || oldTopLevel, d.regions.peninsular);
+            const sabahSarawak = normalizeInstallerRegionFees(baseRegions.sabahSarawak || baseRegions.sabah_sarawak || oldTopLevel, d.regions.sabahSarawak);
             const home = base.home && typeof base.home === 'object' ? base.home : {};
             const biz = base.biz && typeof base.biz === 'object' ? base.biz : {};
             return {
-                v: 1,
-                installationRmPerKwp: migrateInstallerRate(oldLabor, d.installationRmPerKwp),
-                frameMountingRmPerKwp: migrateInstallerRate(oldBracket, d.frameMountingRmPerKwp),
-                cableRmPerKwp: migrateInstallerRate(oldCable, d.cableRmPerKwp),
+                v: 2,
+                installationRmPerKwp: peninsular.installationRmPerKwp,
+                frameMountingRmPerKwp: peninsular.frameMountingRmPerKwp,
+                cableRmPerKwp: peninsular.cableRmPerKwp,
+                regions: {
+                    peninsular,
+                    sabahSarawak
+                },
                 home: {
                     peEndorsement: installerNum(home.peEndorsement, d.home.peEndorsement),
                     powerStudyThresholdKwp: installerNum(home.powerStudyThresholdKwp, d.home.powerStudyThresholdKwp),
@@ -6016,15 +6054,22 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 }
             };
         }
-        function computeInstallerCost(sizeKwp, scenario, settings, profit = {}, rateMyrCny = 1.53) {
+        function getInstallerRegionFees(settings, region = 'peninsular') {
+            const s = normalizeInstallerQuoteSettings(settings);
+            const key = normalizeInstallerRegionKey(region);
+            return s.regions?.[key] || s.regions?.peninsular || normalizeInstallerRegionFees(s, DEFAULT_INSTALLER_REGION_FEES);
+        }
+        function computeInstallerCost(sizeKwp, scenario, settings, profit = {}, rateMyrCny = 1.53, region = 'peninsular') {
             const s = normalizeInstallerQuoteSettings(settings);
             const target = scenario === 'biz' ? 'biz' : 'home';
+            const regionKey = normalizeInstallerRegionKey(region);
+            const fees = getInstallerRegionFees(s, regionKey);
             const size = Math.max(0, installerNum(sizeKwp, 0));
             const rate = Math.max(0.0001, installerNum(rateMyrCny, 1.53));
             const detail = [
-                { key: 'installation', label: 'Installation', amount: s.installationRmPerKwp * size, formula: `${s.installationRmPerKwp}/kWp × ${size.toFixed(2)}` },
-                { key: 'frameMounting', label: 'Frame/Mounting', amount: s.frameMountingRmPerKwp * size, formula: `${s.frameMountingRmPerKwp}/kWp × ${size.toFixed(2)}` },
-                { key: 'cable', label: 'DC and AC Cable', amount: s.cableRmPerKwp * size, formula: `${s.cableRmPerKwp}/kWp × ${size.toFixed(2)}` }
+                { key: 'installation', label: 'Installation', amount: fees.installationRmPerKwp * size, formula: `${fees.installationRmPerKwp}/kWp × ${size.toFixed(2)}` },
+                { key: 'frameMounting', label: 'Frame/Mounting', amount: fees.frameMountingRmPerKwp * size, formula: `${fees.frameMountingRmPerKwp}/kWp × ${size.toFixed(2)}` },
+                { key: 'cable', label: 'DC and AC Cable', amount: fees.cableRmPerKwp * size, formula: `${fees.cableRmPerKwp}/kWp × ${size.toFixed(2)}` }
             ];
             detail.forEach(item => { item.amount = Math.round((installerNum(item.amount, 0) + Number.EPSILON) * 10000) / 10000; });
             const baseMyr = Math.round((detail.reduce((sum, item) => sum + item.amount, 0) + Number.EPSILON) * 10000) / 10000;
@@ -6033,6 +6078,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const finalMyr = Math.round((baseMyr * (1 + (cnPct + myPct) / 100) + Number.EPSILON) * 10000) / 10000;
             return {
                 scenario: target,
+                region: regionKey,
                 sizeKwp: size,
                 baseMyr,
                 baseCny: Math.round((baseMyr * rate + Number.EPSILON) * 10000) / 10000,
@@ -6053,9 +6099,26 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 { id: 'cn_parent', name: 'CN Parent Company', locked: true },
                 { id: 'my_sub', name: 'Malaysia Subsidiary' }
             ];
+            const normalizedCompanies = [];
+            const seenCompanyIds = new Set();
+            const pushCompany = (company) => {
+                const id = String(company?.id || '').trim();
+                if (!id || seenCompanyIds.has(id)) return;
+                seenCompanyIds.add(id);
+                normalizedCompanies.push({
+                    id,
+                    name: id === 'cn_parent' ? 'CN Parent Company' : String(company?.name || '').trim(),
+                    locked: id === 'cn_parent' || !!company?.locked
+                });
+            };
+            seeded.forEach(pushCompany);
+            if (!seenCompanyIds.has('cn_parent')) {
+                normalizedCompanies.unshift({ id: 'cn_parent', name: 'CN Parent Company', locked: true });
+                seenCompanyIds.add('cn_parent');
+            }
             const settings = {
                 v: 1,
-                companies: seeded.map(c => ({ id: String(c.id), name: String(c.name), locked: !!c.locked })),
+                companies: normalizedCompanies,
                 enabled: (base.enabled && typeof base.enabled === 'object') ? base.enabled : {},
                 categoryProfitPct: (base.categoryProfitPct && typeof base.categoryProfitPct === 'object') ? base.categoryProfitPct : {},
                 subcatProfitPct: (base.subcatProfitPct && typeof base.subcatProfitPct === 'object') ? base.subcatProfitPct : {}
@@ -6104,6 +6167,17 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const def = profitSettings?.categoryProfitPct?.[cid]?.[t]?.[cat];
             const dv = Number.isFinite(parseFloat(def)) ? parseFloat(def) : null;
             return dv !== null ? dv : 0;
+        }
+        function getProfitPctBreakdown(target, category, subcategory) {
+            profitSettings = normalizeProfitSettings(profitSettings || safeJsonParseLoose(localStorage.getItem('minova_profit_settings_v1'), null));
+            return profitSettings.companies.map(company => ({
+                id: company.id,
+                name: company.name,
+                pct: getProfitPct(company.id, target, category, subcategory)
+            }));
+        }
+        function getTotalProfitPct(target, category, subcategory) {
+            return getProfitPctBreakdown(target, category, subcategory).reduce((sum, company) => sum + (Number.isFinite(parseFloat(company.pct)) ? parseFloat(company.pct) : 0), 0);
         }
         function persistProfitSettings(reason = 'profit settings update') {
             try { localStorage.setItem('minova_profit_settings_v1', JSON.stringify(profitSettings)); } catch (e) {}
@@ -9458,15 +9532,29 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const cat = String(product?.category || '').trim();
             const sub = String(product?.scenario || '').trim();
             profitSettings = normalizeProfitSettings(profitSettings || safeJsonParseLoose(localStorage.getItem('minova_profit_settings_v1'), null));
-            const cnHomePct = getProfitPct('cn_parent', 'home', cat, sub);
-            const myHomePct = getProfitPct('my_sub', 'home', cat, sub);
-            const cnBizPct = getProfitPct('cn_parent', 'biz', cat, sub);
-            const myBizPct = getProfitPct('my_sub', 'biz', cat, sub);
+            const homeProfitBreakdown = getProfitPctBreakdown('home', cat, sub);
+            const bizProfitBreakdown = getProfitPctBreakdown('biz', cat, sub);
+            const findPct = (list, id) => {
+                const row = list.find(item => item.id === id);
+                return Number.isFinite(parseFloat(row?.pct)) ? parseFloat(row.pct) : 0;
+            };
+            const cnHomePct = findPct(homeProfitBreakdown, 'cn_parent');
+            const myHomePct = findPct(homeProfitBreakdown, 'my_sub');
+            const cnBizPct = findPct(bizProfitBreakdown, 'cn_parent');
+            const myBizPct = findPct(bizProfitBreakdown, 'my_sub');
+            const homeProfitPct = homeProfitBreakdown.reduce((sum, row) => sum + (Number.isFinite(parseFloat(row.pct)) ? parseFloat(row.pct) : 0), 0);
+            const bizProfitPct = bizProfitBreakdown.reduce((sum, row) => sum + (Number.isFinite(parseFloat(row.pct)) ? parseFloat(row.pct) : 0), 0);
+            const subsidiaryHomePct = homeProfitBreakdown
+                .filter(row => row.id !== 'cn_parent')
+                .reduce((sum, row) => sum + (Number.isFinite(parseFloat(row.pct)) ? parseFloat(row.pct) : 0), 0);
+            const subsidiaryBizPct = bizProfitBreakdown
+                .filter(row => row.id !== 'cn_parent')
+                .reduce((sum, row) => sum + (Number.isFinite(parseFloat(row.pct)) ? parseFloat(row.pct) : 0), 0);
 
             const clearanceCost = avgCost * (1 + dutyPct / 100 + sstPct / 100);
             const grayCost = avgCost * (1 + grayPct / 100);
-            const homeMul = 1 + (cnHomePct + myHomePct) / 100;
-            const bizMul = 1 + (cnBizPct + myBizPct) / 100;
+            const homeMul = 1 + homeProfitPct / 100;
+            const bizMul = 1 + bizProfitPct / 100;
 
             return {
                 spec,
@@ -9480,6 +9568,14 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 myHomePct,
                 cnBizPct,
                 myBizPct,
+                homeProfitPct,
+                bizProfitPct,
+                subsidiaryHomePct,
+                subsidiaryBizPct,
+                profitBreakdown: {
+                    home: homeProfitBreakdown,
+                    biz: bizProfitBreakdown
+                },
                 clearanceHomePrice: clearanceCost * homeMul,
                 clearanceBizPrice: clearanceCost * bizMul,
                 grayHomePrice: grayCost * homeMul,
@@ -9513,9 +9609,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             set('edit-inv-clearance-cost', r.clearanceCost, 4);
             set('edit-inv-gray-cost', r.grayCost, 4);
             set('edit-profit-cn-home', r.cnHomePct);
-            set('edit-profit-my-home', r.myHomePct);
+            set('edit-profit-my-home', r.subsidiaryHomePct);
             set('edit-profit-cn-biz', r.cnBizPct);
-            set('edit-profit-my-biz', r.myBizPct);
+            set('edit-profit-my-biz', r.subsidiaryBizPct);
             set('edit-price-clearance-home', r.clearanceHomePrice, 4);
             set('edit-price-clearance-biz', r.clearanceBizPrice, 4);
             set('edit-price-gray-home', r.grayHomePrice, 4);
@@ -9720,6 +9816,24 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         function getInstallerScenario() {
             return 'home';
         }
+        function getInstallerRegionLabel(region = installerQuoteRegion) {
+            return normalizeInstallerRegionKey(region) === 'sabahSarawak' ? 'Sabah / Sarawak' : 'Peninsular Malaysia';
+        }
+        function updateInstallerRegionButtons() {
+            const activeClass = 'px-3 py-2 rounded-xl text-xs font-black border border-purple-200 bg-purple-700 text-white';
+            const idleClass = 'px-3 py-2 rounded-xl text-xs font-black border border-slate-200 bg-white text-slate-700 hover:bg-slate-50';
+            const region = normalizeInstallerRegionKey(installerQuoteRegion);
+            const penBtn = document.getElementById('btn-installer-region-peninsular');
+            const eastBtn = document.getElementById('btn-installer-region-sabahSarawak');
+            if (penBtn) penBtn.className = region === 'peninsular' ? activeClass : idleClass;
+            if (eastBtn) eastBtn.className = region === 'sabahSarawak' ? activeClass : idleClass;
+        }
+        window.setInstallerQuoteRegion = (region) => {
+            installerQuoteRegion = normalizeInstallerRegionKey(region);
+            updateInstallerRegionButtons();
+            applyInstallerQuoteSettingsToUi();
+            recalcInstallerQuote();
+        };
         function getProposedSystemSizeKwp() {
             const direct = parseFloat(String(document.getElementById('input-proposed-size')?.value || '').replace(/,/g, ''));
             if (Number.isFinite(direct) && direct > 0) return direct;
@@ -9732,19 +9846,21 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
         function applyInstallerQuoteSettingsToUi() {
             installerQuoteSettings = normalizeInstallerQuoteSettings(installerQuoteSettings);
+            const fees = getInstallerRegionFees(installerQuoteSettings, installerQuoteRegion);
             const set = (id, value) => {
                 const el = document.getElementById(id);
                 if (el) el.value = String(value);
             };
-            set('installer-labor', installerQuoteSettings.installationRmPerKwp);
-            set('installer-bracket', installerQuoteSettings.frameMountingRmPerKwp);
-            set('installer-cable', installerQuoteSettings.cableRmPerKwp);
+            set('installer-labor', fees.installationRmPerKwp);
+            set('installer-bracket', fees.frameMountingRmPerKwp);
+            set('installer-cable', fees.cableRmPerKwp);
+            updateInstallerRegionButtons();
         }
         function renderInstallerCostDetail(result) {
             const scenarioEl = document.getElementById('installer-scenario-label');
             const sizeEl = document.getElementById('installer-size-label');
             const detailEl = document.getElementById('installer-cost-detail');
-            if (scenarioEl) scenarioEl.textContent = result.scenario === 'biz' ? 'C&I' : 'RESI';
+            if (scenarioEl) scenarioEl.textContent = `${getInstallerRegionLabel(result.region)} · ${result.scenario === 'biz' ? 'C&I' : 'RESI'}`;
             if (sizeEl) sizeEl.textContent = `${result.sizeKwp.toFixed(2)} kWp`;
             if (!detailEl) return;
             detailEl.innerHTML = result.detail.map(item => `
@@ -9763,15 +9879,20 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const cable = parseFloat(document.getElementById('installer-cable')?.value) || 0;
             installerQuoteSettings = normalizeInstallerQuoteSettings({
                 ...(installerQuoteSettings || {}),
-                installationRmPerKwp: labor,
-                frameMountingRmPerKwp: bracket,
-                cableRmPerKwp: cable
+                regions: {
+                    ...(installerQuoteSettings?.regions || {}),
+                    [normalizeInstallerRegionKey(installerQuoteRegion)]: {
+                        installationRmPerKwp: labor,
+                        frameMountingRmPerKwp: bracket,
+                        cableRmPerKwp: cable
+                    }
+                }
             });
             const rate = parseFloat(document.getElementById('rate-myr-cny')?.value) || 1.53;
             const cnPct = parseFloat(document.getElementById('installer-profit-cn')?.value) || 0;
             const myPct = parseFloat(document.getElementById('installer-profit-my')?.value) || 0;
             installerProfitSettings = normalizeInstallerProfitSettings({ cnPct, myPct });
-            const result = computeInstallerCost(getProposedSystemSizeKwp(), getInstallerScenario(), installerQuoteSettings, installerProfitSettings, rate);
+            const result = computeInstallerCost(getProposedSystemSizeKwp(), getInstallerScenario(), installerQuoteSettings, installerProfitSettings, rate, installerQuoteRegion);
 
             const myrEl = document.getElementById('installer-total-myr');
             const cnyEl = document.getElementById('installer-total-cny');
@@ -9855,7 +9976,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         };
 
         window.openInstallModal = (mode) => {
-            window.installMode = mode === 'domestic' ? 'domestic' : 'overseas';
+            const region = mode === 'domestic' ? 'sabahSarawak' : normalizeInstallerRegionKey(mode);
+            window.installMode = region;
             const modal = document.getElementById('install-modal');
             if (!modal) return;
             modal.classList.remove('hidden');
@@ -9867,28 +9989,26 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const qtyUnitEl = document.getElementById('install-qty-unit');
             const itemsEl = document.getElementById('install-overseas-items');
 
-            const isDomestic = window.installMode === 'domestic';
-            if (titleEl) titleEl.textContent = isDomestic ? 'Installation Work · Domestic' : 'Installation Work · Overseas';
-            if (descEl) descEl.value = isDomestic ? 'Domestic Installation Work' : 'Overseas Installation Work';
-            if (qtyUnitEl) qtyUnitEl.textContent = isDomestic ? 'item' : 'kWp';
-            if (itemsEl) itemsEl.classList.toggle('hidden', isDomestic);
-            if (!isDomestic) resetInstallOptionItems();
+            const regionLabel = getInstallerRegionLabel(region);
+            if (titleEl) titleEl.textContent = `Installation Work · ${regionLabel}`;
+            if (descEl) descEl.value = `${regionLabel} Installation Work`;
+            if (qtyUnitEl) qtyUnitEl.textContent = 'kWp';
+            if (itemsEl) itemsEl.classList.remove('hidden');
+            resetInstallOptionItems();
 
             let overseasUnit = parseFloat(document.getElementById('installer-install-fee-cny')?.value) || 0;
             let overseasQty = getProposedSystemSizeKwp();
-            if (!isDomestic) {
-                installerQuoteSettings = normalizeInstallerQuoteSettings(installerQuoteSettings);
-                const rate = parseFloat(document.getElementById('rate-myr-cny')?.value) || 1.53;
-                const result = computeInstallerCost(overseasQty, getInstallerScenario(), installerQuoteSettings, installerProfitSettings, rate);
-                overseasUnit = result.unitFinalCnyPerKwp;
-                overseasQty = result.sizeKwp;
-            }
+            installerQuoteSettings = normalizeInstallerQuoteSettings(installerQuoteSettings);
+            const rate = parseFloat(document.getElementById('rate-myr-cny')?.value) || 1.53;
+            const result = computeInstallerCost(overseasQty, getInstallerScenario(), installerQuoteSettings, installerProfitSettings, rate, region);
+            overseasUnit = result.unitFinalCnyPerKwp;
+            overseasQty = result.sizeKwp;
             if (unitEl) {
-                unitEl.value = isDomestic ? '0' : String(overseasUnit.toFixed(4));
-                unitEl.readOnly = !isDomestic;
-                unitEl.classList.toggle('bg-slate-50', !isDomestic);
+                unitEl.value = String(overseasUnit.toFixed(4));
+                unitEl.readOnly = true;
+                unitEl.classList.add('bg-slate-50');
             }
-            if (qtyEl) qtyEl.value = String(isDomestic ? 1 : (overseasQty > 0 ? overseasQty.toFixed(2) : 0));
+            if (qtyEl) qtyEl.value = String(overseasQty > 0 ? overseasQty.toFixed(2) : 0);
             recalcInstallModal();
         };
         window.closeInstallModal = () => {
@@ -9917,29 +10037,24 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
             const firstBlankIdx = quoteRows.findIndex(r => r.isBlank);
             const insertIdx = firstBlankIdx === -1 ? quoteRows.length : firstBlankIdx;
-            if (window.installMode === 'overseas') {
-                const items = (window.__installOptionItems || [])
-                    .filter(item => item.locked || item.checked)
-                    .map(item => String(item.text || '').trim())
-                    .filter(Boolean);
-                if (!items.length) return alert('Select at least one installation item.');
-                const rows = items.map((text, idx) => ({
-                    id: Date.now() + idx,
-                    description: text,
-                    vendor: '--',
-                    spec: '--',
-                    batchNo: '',
-                    quantity: idx === 0 ? qty : 1,
-                    price: idx === 0 ? unit : 0,
-                    cost: 0,
-                    included: idx !== 0,
-                    isInstallItem: true
-                }));
-                quoteRows.splice(insertIdx, 0, ...rows);
-            } else {
-                const row = { id: Date.now(), description: desc, spec: '', batchNo: '', quantity: qty, price: unit, cost: 0, isInstallItem: true };
-                quoteRows.splice(insertIdx, 0, row);
-            }
+            const items = (window.__installOptionItems || [])
+                .filter(item => item.locked || item.checked)
+                .map((item, idx) => String(item.text || '').trim() || (idx === 0 ? desc : 'Installation Item'))
+                .filter(Boolean);
+            if (!items.length) return alert('Select at least one installation item.');
+            const rows = items.map((text, idx) => ({
+                id: Date.now() + idx,
+                description: idx === 0 ? desc : text,
+                vendor: '--',
+                spec: '--',
+                batchNo: '',
+                quantity: idx === 0 ? qty : 1,
+                price: idx === 0 ? unit : 0,
+                cost: 0,
+                included: idx !== 0,
+                isInstallItem: true
+            }));
+            quoteRows.splice(insertIdx, 0, ...rows);
             closeInstallModal();
             renderQuote();
         };
@@ -10789,9 +10904,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
         function renderNonStockProfitSplitCell(pricing, companyKey) {
             const target = getNonStockProfitTarget();
+            const subsidiaryPct = target === 'biz'
+                ? (Number.isFinite(parseFloat(pricing.subsidiaryBizPct)) ? pricing.subsidiaryBizPct : pricing.myBizPct)
+                : (Number.isFinite(parseFloat(pricing.subsidiaryHomePct)) ? pricing.subsidiaryHomePct : pricing.myHomePct);
             const pct = companyKey === 'cn'
                 ? (target === 'biz' ? pricing.cnBizPct : pricing.cnHomePct)
-                : (target === 'biz' ? pricing.myBizPct : pricing.myHomePct);
+                : subsidiaryPct;
             const p = Number.isFinite(parseFloat(pct)) ? parseFloat(pct) : 0;
             const multiplier = Number.isFinite(parseFloat(pricing.pcsMultiplier)) ? parseFloat(pricing.pcsMultiplier) : 1;
             const clearance = (Number.isFinite(parseFloat(pricing.clearanceCost)) ? parseFloat(pricing.clearanceCost) : 0) * multiplier * (p / 100);
@@ -11378,8 +11496,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             body.innerHTML = rows.map(p => {
                 const req = getProductCertificationRequirements(p);
                 const pricing = priceListProductPricing(p);
-                const homeProfit = (pricing.cnHomePct || 0) + (pricing.myHomePct || 0);
-                const bizProfit = (pricing.cnBizPct || 0) + (pricing.myBizPct || 0);
+                const homeProfit = Number.isFinite(parseFloat(pricing.homeProfitPct)) ? parseFloat(pricing.homeProfitPct) : ((pricing.cnHomePct || 0) + (pricing.myHomePct || 0));
+                const bizProfit = Number.isFinite(parseFloat(pricing.bizProfitPct)) ? parseFloat(pricing.bizProfitPct) : ((pricing.cnBizPct || 0) + (pricing.myBizPct || 0));
                 const countries = (req.countries || []).map(priceListCountryLabel).join(', ');
                 const certBrief = (req.standards || []).slice(0, 3).join(', ');
                 const certTitle = `${countries}\n${(req.standards || []).join('\n')}`;
@@ -11543,8 +11661,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 const r = priceListProductPricing(p);
                 const req = getProductCertificationRequirements(p);
                 const market = getMarketPriceSummary(p.category || '', { days: 30 });
-                const homeProfit = (r.cnHomePct || 0) + (r.myHomePct || 0);
-                const bizProfit = (r.cnBizPct || 0) + (r.myBizPct || 0);
+                const homeProfit = Number.isFinite(parseFloat(r.homeProfitPct)) ? parseFloat(r.homeProfitPct) : ((r.cnHomePct || 0) + (r.myHomePct || 0));
+                const bizProfit = Number.isFinite(parseFloat(r.bizProfitPct)) ? parseFloat(r.bizProfitPct) : ((r.cnBizPct || 0) + (r.myBizPct || 0));
                 const selectedPriceLabel = getPriceListSelectedPriceLabel();
                 const selectedPcsPrice = getPriceListSelectedPcsPrice(r);
                 const out = {
@@ -11578,7 +11696,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     'Grey RESI MYR': (r.grayHomePrice || 0) / getSalesOutRateCnyPerMyr(),
                     'Grey C&I CNY': r.grayBizPrice || 0,
                     'Grey C&I MYR': (r.grayBizPrice || 0) / getSalesOutRateCnyPerMyr(),
-                    'Formula Note': `Clearance cost = Avg Cost * (1 + duty ${r.dutyPct}% + SST ${r.sstPct}%); Grey cost = Avg Cost * (1 + grey tax ${r.grayPct}%); RESI profit = CN ${r.cnHomePct}% + MY ${r.myHomePct}%; C&I profit = CN ${r.cnBizPct}% + MY ${r.myBizPct}%; FX 1 MYR = ${getSalesOutRateCnyPerMyr().toFixed(4)} CNY`,
+                    'Formula Note': `Clearance cost = Avg Cost * (1 + duty ${r.dutyPct}% + SST ${r.sstPct}%); Grey cost = Avg Cost * (1 + grey tax ${r.grayPct}%); RESI profit = ${(r.homeProfitPct || 0).toFixed(2)}%; C&I profit = ${(r.bizProfitPct || 0).toFixed(2)}%; FX 1 MYR = ${getSalesOutRateCnyPerMyr().toFixed(4)} CNY`,
                     'Certification Countries': (req.countries || []).map(priceListCountryLabel).join(', '),
                     'Certification Standards': (req.standards || []).join('; ')
                 };
@@ -11764,8 +11882,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const grayPct = parseFloat(document.getElementById('sales-out-gray-tax')?.value) || getDefaultGrayTaxPercent();
             const r = computeSalesPricingForProduct({ productId, dutyPct, sstPct, grayPct });
             if (avgEl) avgEl.value = (r.avgCost || 0).toFixed(4);
-            if (homeProfitEl) homeProfitEl.value = ((r.cnHomePct || 0) + (r.myHomePct || 0)).toFixed(2);
-            if (bizProfitEl) bizProfitEl.value = ((r.cnBizPct || 0) + (r.myBizPct || 0)).toFixed(2);
+            if (homeProfitEl) homeProfitEl.value = (Number.isFinite(parseFloat(r.homeProfitPct)) ? parseFloat(r.homeProfitPct) : ((r.cnHomePct || 0) + (r.myHomePct || 0))).toFixed(2);
+            if (bizProfitEl) bizProfitEl.value = (Number.isFinite(parseFloat(r.bizProfitPct)) ? parseFloat(r.bizProfitPct) : ((r.cnBizPct || 0) + (r.myBizPct || 0))).toFixed(2);
             if (chEl) chEl.value = (r.clearanceHomePrice || 0).toFixed(4);
             if (cbEl) cbEl.value = (r.clearanceBizPrice || 0).toFixed(4);
             if (ghEl) ghEl.value = (r.grayHomePrice || 0).toFixed(4);

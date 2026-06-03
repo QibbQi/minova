@@ -548,7 +548,6 @@ async function quoteApprovals(request, env) {
       detail
     };
   });
-  await writeAudit(env, gate.user.id, gate.user.username, 'quote_approvals_viewed', 'quote_approval', status, { limit });
   return json(request, env, { ok: true, approvals });
 }
 

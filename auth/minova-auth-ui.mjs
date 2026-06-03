@@ -18,12 +18,16 @@ import {
 } from './permission-core.mjs';
 
 const AUTH_API_BASE_KEY = 'minova_auth_api_base_v1';
+const AUTH_SESSION_KEY = 'minova_auth_session_v1';
+const AUTH_SESSION_EXPIRES_KEY = 'minova_auth_session_expires_v1';
 const normalizeApiBase = (value) => {
   const base = String(value || '').trim().replace(/\/+$/, '');
   return /^https?:\/\/[^/\s]+/i.test(base) ? base : '';
 };
 const state = {
   apiBase: normalizeApiBase(window.MINOVA_AUTH_API_BASE) || normalizeApiBase(localStorage.getItem(AUTH_API_BASE_KEY)) || DEFAULT_API_BASE_URL,
+  sessionToken: localStorage.getItem(AUTH_SESSION_KEY) || '',
+  sessionExpiresAt: localStorage.getItem(AUTH_SESSION_EXPIRES_KEY) || '',
   user: null,
   permission: null,
   ready: false,
@@ -161,15 +165,17 @@ const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, ch => ({
 }[ch]));
 
 const authFetch = async (path, options = {}) => {
+  const headers = {
+    'content-type': 'application/json',
+    ...(state.sessionToken ? { authorization: `Bearer ${state.sessionToken}` } : {}),
+    ...(options.headers || {})
+  };
   let res;
   try {
     res = await fetch(`${state.apiBase}${path}`, {
       ...options,
       credentials: 'include',
-      headers: {
-        'content-type': 'application/json',
-        ...(options.headers || {})
-      }
+      headers
     });
   } catch (error) {
     const defaultBase = normalizeApiBase(DEFAULT_API_BASE_URL);
@@ -180,10 +186,7 @@ const authFetch = async (path, options = {}) => {
       res = await fetch(`${state.apiBase}${path}`, {
         ...options,
         credentials: 'include',
-        headers: {
-          'content-type': 'application/json',
-          ...(options.headers || {})
-        }
+        headers
       });
     } else {
       throw error;
@@ -514,7 +517,7 @@ async function onLoginSubmit(event) {
       method: 'POST',
       body: JSON.stringify({ username, password })
     });
-    setSession(data.user, data.permission);
+    setSession(data.user, data.permission, data.sessionToken, data.sessionExpiresAt);
     if (data.user?.forcePasswordChange) showPasswordChangeModal();
     else unlockApp();
   } catch (error) {
@@ -579,9 +582,15 @@ async function onForgotPasswordSubmit(event) {
   }
 }
 
-function setSession(user, permission) {
+function setSession(user, permission, sessionToken = state.sessionToken, sessionExpiresAt = state.sessionExpiresAt) {
   state.user = user || null;
   state.permission = mergePermissionSnapshot(user || {}, permission || getDefaultPermissionSnapshot(user?.role || 'read_only'));
+  state.sessionToken = String(sessionToken || '');
+  state.sessionExpiresAt = String(sessionExpiresAt || '');
+  try {
+    if (state.sessionToken) localStorage.setItem(AUTH_SESSION_KEY, state.sessionToken);
+    if (state.sessionExpiresAt) localStorage.setItem(AUTH_SESSION_EXPIRES_KEY, state.sessionExpiresAt);
+  } catch {}
   state.ready = true;
   state.locked = false;
   syncAuthDomState();
@@ -662,6 +671,8 @@ async function logout() {
   try { await authFetch('/auth/logout', { method: 'POST', body: '{}' }); } catch {}
   state.user = null;
   state.permission = null;
+  state.sessionToken = '';
+  state.sessionExpiresAt = '';
   state.ready = false;
   Object.assign(businessState, {
     loaded: false,
@@ -672,6 +683,10 @@ async function logout() {
   });
   syncAuthDomState();
   publishBusinessApi();
+  try {
+    localStorage.removeItem(AUTH_SESSION_KEY);
+    localStorage.removeItem(AUTH_SESSION_EXPIRES_KEY);
+  } catch {}
   resetLoginFormState();
   lockApp();
 }

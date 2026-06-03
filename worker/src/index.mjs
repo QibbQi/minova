@@ -95,7 +95,7 @@ function withCors(request, env, headers = {}) {
     'access-control-allow-origin': allowedOrigin(request, env),
     'access-control-allow-credentials': 'true',
     'access-control-allow-methods': 'GET,POST,OPTIONS',
-    'access-control-allow-headers': 'content-type'
+    'access-control-allow-headers': 'content-type, authorization'
   };
 }
 
@@ -224,7 +224,13 @@ async function login(request, env) {
   const headers = {
     'set-cookie': `${COOKIE_NAME}=${token}; Path=/; HttpOnly; Secure; SameSite=None; Max-Age=${ttl}`
   };
-  return json(request, env, { ok: true, user: publicUser(user), permission: await permissionForUser(env, user) }, 200, headers);
+  return json(request, env, {
+    ok: true,
+    user: publicUser(user),
+    permission: await permissionForUser(env, user),
+    sessionToken: token,
+    sessionExpiresAt: expiresAt
+  }, 200, headers);
 }
 
 async function forgotPassword(request, env) {
@@ -803,7 +809,7 @@ function publicUser(user) {
 }
 
 async function currentSession(request, env) {
-  const token = cookieValue(request.headers.get('cookie') || '', COOKIE_NAME);
+  const token = sessionTokenFromRequest(request);
   if (!token) return null;
   const tokenHash = await sha256Hex(token + String(env.MINOVA_SESSION_SECRET || 'minova-dev-secret'));
   const row = await env.minova_auth_db.prepare(`
@@ -828,6 +834,13 @@ async function currentSession(request, env) {
       password_hash: row.password_hash
     }
   };
+}
+
+export function sessionTokenFromRequest(request) {
+  const auth = String(request.headers.get('authorization') || '').trim();
+  const bearer = auth.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
+  if (bearer) return bearer;
+  return cookieValue(request.headers.get('cookie') || '', COOKIE_NAME);
 }
 
 async function ensureUsersEmailColumn(db) {

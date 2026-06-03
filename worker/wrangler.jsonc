@@ -11,7 +11,7 @@
     }
   ],
   "vars": {
-    "MINOVA_ALLOWED_ORIGINS": "https://minovamy.com,http://localhost:8080,http://127.0.0.1:8080",
+    "MINOVA_ALLOWED_ORIGINS": "https://minovamy.com,https://qibbqi.github.io,http://localhost:8080,http://127.0.0.1:8080,http://127.0.0.1:8082",
     "MINOVA_SESSION_TTL_SECONDS": "28800",
     "MINOVA_INITIAL_ADMIN_EMAIL": "qibbqi00@google.com"
   }

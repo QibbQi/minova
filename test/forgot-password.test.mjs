@@ -21,15 +21,19 @@ test('generates a readable temporary password for email reset', () => {
 });
 
 test('cors origin resolver allows local file pages', () => {
-  const env = { MINOVA_ALLOWED_ORIGINS: 'https://minovamy.com,http://localhost:8080' };
+  const env = { MINOVA_ALLOWED_ORIGINS: 'https://minovamy.com,https://qibbqi.github.io,http://localhost:8080' };
   const fileRequest = new Request('https://minova-backend.qibbqi00.workers.dev/auth/login', {
     headers: { origin: 'null' }
   });
   const localRequest = new Request('https://minova-backend.qibbqi00.workers.dev/auth/login', {
-    headers: { origin: 'http://localhost:8080' }
+    headers: { origin: 'http://127.0.0.1:8082' }
+  });
+  const pagesRequest = new Request('https://minova-backend.qibbqi00.workers.dev/auth/login', {
+    headers: { origin: 'https://qibbqi.github.io' }
   });
   assert.equal(allowedOrigin(fileRequest, env), 'null');
-  assert.equal(allowedOrigin(localRequest, env), 'http://localhost:8080');
+  assert.equal(allowedOrigin(localRequest, env), 'http://127.0.0.1:8082');
+  assert.equal(allowedOrigin(pagesRequest, env), 'https://qibbqi.github.io');
 });
 
 test('session token can be read from bearer header or cookie', () => {

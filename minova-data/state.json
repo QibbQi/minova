@@ -1,6 +1,6 @@
 {
   "v": 1,
-  "updatedAt": "2026-06-02T05:16:50.591Z",
+  "updatedAt": "2026-06-03T00:58:50.260Z",
   "data": {
     "products": [
       {
@@ -43,7 +43,7 @@
       },
       {
         "id": "NBQ001",
-        "name": "25kW 三相逆变器",
+        "name": "25kW Three-Phase Inverter",
         "category": "Inverter",
         "supplierCode": "SUP1186",
         "vendor": "明匠 / SunC",
@@ -88,11 +88,11 @@
             "CEC Approved Inverters/PCE list",
             "AS/NZS 4777.2"
           ],
-          "source": "embedded-defaults",
+          "source": "manual",
           "updatedAt": "2026-05-15"
         },
         "productImageDataUrl": "",
-        "ts": 1780377352457,
+        "ts": 1780448324792,
         "certifications": {
           "tuvCerts": [],
           "specSheets": []
@@ -225,10 +225,15 @@
       },
       {
         "id": "PROD001",
-        "name": "5.5kW-5kWh 一体机",
+        "name": "5.5kW-5kWh All-in-One System",
         "category": "All-in-One System",
+        "supplierCode": "SUP1186",
         "vendor": "明匠 / SunC",
         "spec": "5.5 kW / 5 kWh",
+        "inverterKw": 5.5,
+        "batteryKwh": 5,
+        "priceBasisUnit": "set",
+        "unitQtyPerPcs": 1,
         "scenario": "Single-Phase All-in-One",
         "warrantyYears": "",
         "warrantyCycles": "",
@@ -236,11 +241,34 @@
         "contact": "",
         "contactInfo": "",
         "cost": 4900,
+        "costCurrency": "CNY",
         "price": 12000,
-        "ts": 1775705274152,
-        "supplierCode": "SUP1186",
-        "inverterKw": 5.5,
-        "batteryKwh": 5
+        "priceCurrency": "CNY",
+        "certificationRequirements": {
+          "countries": [
+            "MY",
+            "US",
+            "EU",
+            "UK",
+            "AU"
+          ],
+          "standards": [
+            "Project-specific electrical/import compliance review",
+            "SIRIM / local import compliance where applicable",
+            "NRTL listing where applicable",
+            "CE/RoHS where applicable",
+            "UKCA where applicable",
+            "AS/NZS compliance where applicable"
+          ],
+          "source": "embedded-defaults",
+          "updatedAt": "2026-05-15"
+        },
+        "productImageDataUrl": "",
+        "ts": 1780448047469,
+        "certifications": {
+          "tuvCerts": [],
+          "specSheets": []
+        }
       },
       {
         "id": "PROD002",
@@ -263,10 +291,15 @@
       },
       {
         "id": "PROD003",
-        "name": "11kW-15kWh 一体机",
+        "name": "11kW-15kWh All-in-One System",
         "category": "All-in-One System",
+        "supplierCode": "SUP1186",
         "vendor": "明匠 / SunC",
         "spec": "11 kW / 15 kWh",
+        "inverterKw": 11,
+        "batteryKwh": 15,
+        "priceBasisUnit": "set",
+        "unitQtyPerPcs": 1,
         "scenario": "Single-Phase All-in-One",
         "warrantyYears": "",
         "warrantyCycles": "",
@@ -274,15 +307,38 @@
         "contact": "",
         "contactInfo": "",
         "cost": 9800,
+        "costCurrency": "CNY",
         "price": 24000,
-        "ts": 1775705274152,
-        "supplierCode": "SUP1186",
-        "inverterKw": 11,
-        "batteryKwh": 15
+        "priceCurrency": "CNY",
+        "certificationRequirements": {
+          "countries": [
+            "MY",
+            "US",
+            "EU",
+            "UK",
+            "AU"
+          ],
+          "standards": [
+            "Project-specific electrical/import compliance review",
+            "SIRIM / local import compliance where applicable",
+            "NRTL listing where applicable",
+            "CE/RoHS where applicable",
+            "UKCA where applicable",
+            "AS/NZS compliance where applicable"
+          ],
+          "source": "embedded-defaults",
+          "updatedAt": "2026-05-15"
+        },
+        "productImageDataUrl": "",
+        "ts": 1780448088337,
+        "certifications": {
+          "tuvCerts": [],
+          "specSheets": []
+        }
       },
       {
         "id": "C001",
-        "name": "125kW-261kWh 户外柜",
+        "name": "125kW-261kWh Outdoor Storage",
         "category": "C&I Storage",
         "supplierCode": "SUP2790",
         "vendor": "埃克森",
@@ -323,11 +379,11 @@
             "UKCA declaration",
             "CEC Approved Batteries list"
           ],
-          "source": "embedded-defaults",
+          "source": "manual",
           "updatedAt": "2026-05-15"
         },
         "productImageDataUrl": "",
-        "ts": 1780377371007,
+        "ts": 1780448292276,
         "certifications": {
           "tuvCerts": [],
           "specSheets": []

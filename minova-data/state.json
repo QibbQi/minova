@@ -1,6 +1,6 @@
 {
   "v": 1,
-  "updatedAt": "2026-06-03T00:58:50.260Z",
+  "updatedAt": "2026-06-03T01:04:29.187Z",
   "data": {
     "products": [
       {
@@ -26,10 +26,13 @@
       },
       {
         "id": "GFZJ002",
-        "name": "211R N-type 组件",
+        "name": "211R N-type Component",
         "category": "PV Module",
+        "supplierCode": "SUP9590",
         "vendor": "汉伏",
         "spec": "620W",
+        "priceBasisUnit": "W",
+        "unitQtyPerPcs": 620,
         "scenario": "Bifacial",
         "warrantyYears": "",
         "warrantyCycles": "",
@@ -37,9 +40,45 @@
         "contact": "",
         "contactInfo": "",
         "cost": 0.85,
+        "costCurrency": "CNY",
         "price": 1.54,
-        "ts": 1775705274152,
-        "supplierCode": "SUP9590"
+        "priceCurrency": "CNY",
+        "certificationRequirements": {
+          "countries": [
+            "MY",
+            "US",
+            "EU",
+            "UK",
+            "AU"
+          ],
+          "standards": [
+            "IEC 61215",
+            "IEC 61730",
+            "SIRIM / MS IEC 61215",
+            "SIRIM / MS IEC 61730",
+            "IEC TS 62804-1 (PID",
+            "when applicable)",
+            "UL 61730-1",
+            "UL 61730-2",
+            "IEC/UL 61215 series",
+            "CE declaration",
+            "EN IEC 61215",
+            "EN IEC 61730",
+            "RoHS",
+            "UKCA declaration",
+            "BS EN IEC 61215",
+            "BS EN IEC 61730",
+            "CEC Approved PV Modules list"
+          ],
+          "source": "embedded-defaults",
+          "updatedAt": "2026-05-15"
+        },
+        "productImageDataUrl": "",
+        "ts": 1780448665220,
+        "certifications": {
+          "tuvCerts": [],
+          "specSheets": []
+        }
       },
       {
         "id": "NBQ001",

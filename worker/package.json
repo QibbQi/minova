@@ -1,0 +1,14 @@
+{
+  "name": "minova-backend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "migrate:remote": "wrangler d1 migrations apply minova-auth-db --remote",
+    "migrate:local": "wrangler d1 migrations apply minova-auth-db --local",
+    "seed:remote": "wrangler d1 execute minova-auth-db --remote --file=./sql/seed-roles.sql"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

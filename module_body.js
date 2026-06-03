@@ -563,18 +563,24 @@
                 const refresh = () => {
                     const s = state();
                     const localFileMode = window.location.protocol === 'file:';
+                    const authMode = !!window.__minovaAuth?.state?.user || document.body.classList.contains('minova-authenticated');
+                    const syncAuthorized = document.body.classList.contains('minova-sync-authorized');
+                    const dataUnlocked = s.connected || localFileMode || authMode;
+                    btn.style.display = syncAuthorized ? '' : 'none';
                     btn.textContent = s.connected
                         ? `GH 已连(${s.queueSize})`
-                        : 'GH 未连';
-                    btn.className = `${btnBaseClass} ${s.connected ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700' : 'bg-red-600 hover:bg-red-700 text-white border-red-700'}`;
+                        : syncAuthorized
+                            ? 'Data Sync'
+                            : 'GH 未连';
+                    btn.className = `${btnBaseClass} ${s.connected ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700' : syncAuthorized ? 'bg-purple-700 hover:bg-purple-800 text-white border-purple-800' : 'bg-red-600 hover:bg-red-700 text-white border-red-700'}`;
                     const restrictedTabs = ['quotation', 'costcalc', 'database', 'pricelist', 'inventory', 'transport'];
                     for (const t of restrictedTabs) {
                         const tabBtn = document.getElementById(`tab-${t}`);
-                        if (tabBtn) tabBtn.style.display = (s.connected || localFileMode) ? '' : 'none';
+                        if (tabBtn) tabBtn.style.display = dataUnlocked ? '' : 'none';
                     }
                     const pdfBtn = document.getElementById('btn-generate-pdf');
-                    if (pdfBtn) pdfBtn.style.display = (s.connected || localFileMode) ? '' : 'none';
-                    if (!s.connected && !localFileMode) {
+                    if (pdfBtn) pdfBtn.style.display = dataUnlocked ? '' : 'none';
+                    if (!dataUnlocked) {
                         const activeRestricted = restrictedTabs.some(t => {
                             const view = document.getElementById(`view-${t}`);
                             return view && !view.classList.contains('hidden') && view.style.display !== 'none';
@@ -591,6 +597,13 @@
                 };
 
                 btn.onclick = () => {
+                    if (!document.body.classList.contains('minova-sync-authorized')) {
+                        alert('No permission to access data sync.');
+                        return;
+                    }
+                    window.__minovaAuth?.auditEvent?.('data_sync_opened', 'sync', 'github', {
+                        connected: !!state().connected
+                    });
                     modal.classList.remove('hidden');
                     modal.classList.add('flex');
                     refresh();
@@ -849,6 +862,7 @@
 
                 ensureConfig();
                 refresh();
+                document.addEventListener('minova-auth-changed', refresh);
             }
 
             return function initGitHubSync({ getLocalState, applyRemoteState }) {
@@ -2408,7 +2422,7 @@
         normalizeProductClassificationData();
         saveSubcategoryIndex();
 
-        const TOP_LEVEL_TABS = ['quotation', 'database', 'pricelist', 'pvcalc', 'costcalc', 'inventory', 'transport'];
+        const TOP_LEVEL_TABS = ['quotation', 'database', 'pricelist', 'pvcalc', 'costcalc', 'inventory', 'transport', 'admin'];
 
         function getActiveTopLevelTab() {
             for (const tab of TOP_LEVEL_TABS) {
@@ -2905,8 +2919,9 @@
         window.switchTab = (tab) => {
             const localFileMode = window.location.protocol === 'file:';
             const connected = !!window.__minovaSync?.getStatus?.()?.connected;
+            const authMode = !!window.__minovaAuth?.state?.user || document.body.classList.contains('minova-authenticated');
             const restrictedTabs = ['quotation', 'costcalc', 'database', 'pricelist', 'inventory', 'transport'];
-            if (restrictedTabs.includes(tab) && !connected && !localFileMode) {
+            if (restrictedTabs.includes(tab) && !connected && !localFileMode && !authMode) {
                 tab = 'pvcalc';
             }
             const tabs = TOP_LEVEL_TABS;

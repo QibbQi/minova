@@ -4,6 +4,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/png" href="./minova-favicon.png">
     <link rel="apple-touch-icon" href="./minova-favicon.png">
+    <link rel="stylesheet" href="./auth/minova-auth.css">
     <title>AI 智能Quote管理系统</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -4490,18 +4491,24 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 const refresh = () => {
                     const s = state();
                     const localFileMode = window.location.protocol === 'file:';
+                    const authMode = !!window.__minovaAuth?.state?.user || document.body.classList.contains('minova-authenticated');
+                    const syncAuthorized = document.body.classList.contains('minova-sync-authorized');
+                    const dataUnlocked = s.connected || localFileMode || authMode;
+                    btn.style.display = syncAuthorized ? '' : 'none';
                     btn.textContent = s.connected
                         ? `GH 已连(${s.queueSize})`
-                        : 'GH 未连';
-                    btn.className = `${btnBaseClass} ${s.connected ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700' : 'bg-red-600 hover:bg-red-700 text-white border-red-700'}`;
+                        : syncAuthorized
+                            ? 'Data Sync'
+                            : 'GH 未连';
+                    btn.className = `${btnBaseClass} ${s.connected ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700' : syncAuthorized ? 'bg-purple-700 hover:bg-purple-800 text-white border-purple-800' : 'bg-red-600 hover:bg-red-700 text-white border-red-700'}`;
                     const restrictedTabs = ['quotation', 'costcalc', 'database', 'pricelist', 'inventory', 'transport'];
                     for (const t of restrictedTabs) {
                         const tabBtn = document.getElementById(`tab-${t}`);
-                        if (tabBtn) tabBtn.style.display = (s.connected || localFileMode) ? '' : 'none';
+                        if (tabBtn) tabBtn.style.display = dataUnlocked ? '' : 'none';
                     }
                     const pdfBtn = document.getElementById('btn-generate-pdf');
-                    if (pdfBtn) pdfBtn.style.display = (s.connected || localFileMode) ? '' : 'none';
-                    if (!s.connected && !localFileMode) {
+                    if (pdfBtn) pdfBtn.style.display = dataUnlocked ? '' : 'none';
+                    if (!dataUnlocked) {
                         const activeRestricted = restrictedTabs.some(t => {
                             const view = document.getElementById(`view-${t}`);
                             return view && !view.classList.contains('hidden') && view.style.display !== 'none';
@@ -4518,6 +4525,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 };
 
                 btn.onclick = () => {
+                    if (!document.body.classList.contains('minova-sync-authorized')) {
+                        alert('No permission to access data sync.');
+                        return;
+                    }
+                    window.__minovaAuth?.auditEvent?.('data_sync_opened', 'sync', 'github', {
+                        connected: !!state().connected
+                    });
                     modal.classList.remove('hidden');
                     modal.classList.add('flex');
                     refresh();
@@ -4776,6 +4790,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
                 ensureConfig();
                 refresh();
+                document.addEventListener('minova-auth-changed', refresh);
             }
 
             return function initGitHubSync({ getLocalState, applyRemoteState }) {
@@ -6480,7 +6495,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         normalizeProductClassificationData();
         saveSubcategoryIndex();
 
-        const TOP_LEVEL_TABS = ['quotation', 'database', 'pricelist', 'pvcalc', 'costcalc', 'inventory', 'transport'];
+        const TOP_LEVEL_TABS = ['quotation', 'database', 'pricelist', 'pvcalc', 'costcalc', 'inventory', 'transport', 'admin'];
 
         function getActiveTopLevelTab() {
             for (const tab of TOP_LEVEL_TABS) {
@@ -6680,8 +6695,43 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             try { localStorage.setItem('minova_installer_profit_v1', JSON.stringify(normalizeInstallerProfitSettings(installerProfitSettings))); } catch (e) {}
             try { localStorage.setItem('minova_non_stock_pricing_v1', JSON.stringify(nonStockPricingStrategies)); } catch (e) {}
             refreshAfterDataChange();
+            try {
+                if (!suppressGitHubSync) window.__minovaBusiness?.persistStateSnapshot?.(window.getMinovaBusinessStateSnapshot?.());
+            } catch (e) {}
             try { if (!suppressGitHubSync) window.__minovaSync?.enqueueSnapshot('state update'); } catch (e) {}
         }
+
+        window.getMinovaBusinessStateSnapshot = () => ({
+            v: 1,
+            updatedAt: new Date().toISOString(),
+            data: {
+                products,
+                inventory,
+                inventoryHistory,
+                marketPrices,
+                salesRecords,
+                historicalInventory,
+                transportRecords,
+                subcategoriesByCategory,
+                profitSettings,
+                installerProfitSettings,
+                installerQuoteSettings,
+                nonStockPricingStrategies
+            }
+        });
+
+        window.applyBusinessDataFromD1 = (data = {}, quoteIndex = null) => {
+            const merged = {
+                ...data,
+                suppliers,
+                companyCerts,
+                fileDeleteLogs
+            };
+            applyStateFromData(merged, Date.now());
+            if (quoteIndex && typeof window.applyD1QuoteIndex === 'function') {
+                window.applyD1QuoteIndex(quoteIndex);
+            }
+        };
 
         let quoteRows = [{ id: Date.now(), description: '', vendor: '', spec: '', batchNo: '', quantity: 1, price: 0, cost: 0, productId: '', inventoryId: '' }];
         let dbGroupMode = 'category';
@@ -6977,8 +7027,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         window.switchTab = (tab) => {
             const localFileMode = window.location.protocol === 'file:';
             const connected = !!window.__minovaSync?.getStatus?.()?.connected;
+            const authMode = !!window.__minovaAuth?.state?.user || document.body.classList.contains('minova-authenticated');
             const restrictedTabs = ['quotation', 'costcalc', 'database', 'pricelist', 'inventory', 'transport'];
-            if (restrictedTabs.includes(tab) && !connected && !localFileMode) {
+            if (restrictedTabs.includes(tab) && !connected && !localFileMode && !authMode) {
                 tab = 'pvcalc';
             }
             const tabs = TOP_LEVEL_TABS;
@@ -20597,6 +20648,28 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             });
             window.__savedQuotesCache = { list: Array.isArray(list) ? list : [], byId };
         };
+        window.applyD1QuoteIndex = (quoteIndex = {}) => {
+            const sorted = sortQuotes(Array.isArray(quoteIndex.quotes) ? quoteIndex.quotes : []);
+            setSavedQuotesCache(sorted);
+            const select = document.getElementById('saved-quotes-select');
+            const selectedId = String(select?.value || window.currentSavedQuoteId || '').trim();
+            const dirtyId = window.__quoteDirty ? String(window.currentSavedQuoteId || '').trim() : '';
+            renderSavedQuotesSelect(sorted, { selectedId, dirtyId });
+        };
+        window.getSavedQuoteDocumentsForD1 = () => {
+            const list = window.__savedQuotesCache?.list || [];
+            return list.map(meta => ({
+                v: 1,
+                id: String(meta?.id || '').trim(),
+                name: meta?.name || meta?.customerName || meta?.id || '',
+                customerName: meta?.customerName || '',
+                quoteNo: meta?.quoteNo || '',
+                createdAt: meta?.createdAt || meta?.updatedAt || '',
+                updatedAt: meta?.updatedAt || '',
+                timestamp: Number(meta?.timestamp || 0),
+                snapshot: meta?.snapshot || null
+            })).filter(doc => doc.id);
+        };
         const stripDirtySuffix = (s) => String(s || '').replace(/（有Edit）$/, '');
         const getQuoteDisplayName = (q) => stripDirtySuffix(q?.name || q?.customerName || q?.id || '');
 
@@ -20738,6 +20811,59 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const quoteNo = String(document.getElementById('quote-no')?.value || '');
             const snapshot = window.captureQuoteSnapshot ? window.captureQuoteSnapshot() : null;
 
+            const saveQuoteBackupToGitHub = async (nextEntry, quoteDoc) => {
+                const ctx = getGitHubCtx();
+                if (!ctx) return;
+                const idxJson = await readJsonFromGitHub(QUOTE_INDEX_PATH) || { v: 1, updatedAt: nowIso, quotes: [] };
+                const list = Array.isArray(idxJson.quotes) ? idxJson.quotes : [];
+                const sorted = sortQuotes([nextEntry, ...list.filter(q => String(q?.id) !== targetId)]);
+                await commitQuoteFiles({
+                    message: `minova: backup quote ${cleanName}`.trim(),
+                    files: [
+                        { path: QUOTE_INDEX_PATH, content: JSON.stringify({ v: 1, updatedAt: nowIso, quotes: sorted }, null, 2) },
+                        { path: quotePath(targetId), content: JSON.stringify(quoteDoc, null, 2) }
+                    ]
+                });
+            };
+
+            if (window.__minovaBusiness?.saveQuote) {
+                try {
+                    const existing = window.__savedQuotesCache?.byId?.[targetId] || null;
+                    const createdAt = existing?.createdAt || nowIso;
+                    const remote = await window.__minovaBusiness.saveQuote({
+                        id: targetId,
+                        name: cleanName,
+                        customerName,
+                        quoteNo,
+                        createdAt,
+                        snapshot
+                    });
+                    const quoteDoc = remote.quote || { v: 1, id: targetId, name: cleanName, customerName, quoteNo, createdAt, updatedAt: nowIso, timestamp: nowMs, snapshot };
+                    const nextEntry = {
+                        id: quoteDoc.id || targetId,
+                        name: quoteDoc.name || cleanName,
+                        customerName: quoteDoc.customerName || customerName,
+                        quoteNo: quoteDoc.quoteNo || quoteNo,
+                        createdAt: quoteDoc.createdAt || createdAt,
+                        updatedAt: quoteDoc.updatedAt || nowIso,
+                        timestamp: Number(quoteDoc.timestamp || nowMs)
+                    };
+                    const currentList = Array.isArray(window.__savedQuotesCache?.list) ? window.__savedQuotesCache.list : [];
+                    const sorted = sortQuotes([nextEntry, ...currentList.filter(q => String(q?.id) !== String(nextEntry.id))]);
+                    setSavedQuotesCache(sorted);
+                    renderSavedQuotesSelect(sorted, { selectedId: selectAfterSave ? targetId : curSelected, dirtyId: '' });
+                    window.currentSavedQuoteId = targetId;
+                    window.currentSavedQuoteName = cleanName;
+                    window.setQuoteDirty(false);
+                    try { await saveQuoteBackupToGitHub(nextEntry, quoteDoc); } catch (backupError) { console.warn('GitHub quote backup failed after D1 save.', backupError); }
+                    if (!silent) showToast('保存成功！', 'success');
+                    return { id: targetId, name: cleanName, list: sorted };
+                } catch (error) {
+                    if (error?.status === 401 || error?.status === 403) throw error;
+                    console.warn('D1 quote save failed; falling back to GitHub/IndexedDB.', error);
+                }
+            }
+
             const ctx = getGitHubCtx();
             if (ctx) {
                 const idxJson = await readJsonFromGitHub(QUOTE_INDEX_PATH) || { v: 1, updatedAt: nowIso, quotes: [] };
@@ -20812,6 +20938,18 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
         window.refreshSavedQuotesList = async () => {
             try {
+                if (window.__minovaBusiness?.bootstrap) {
+                    try {
+                        const remote = await window.__minovaBusiness.bootstrap({ apply: false });
+                        if (remote?.hasD1Data && remote?.quoteIndex) {
+                            window.applyD1QuoteIndex(remote.quoteIndex);
+                            return;
+                        }
+                    } catch (error) {
+                        if (error?.status === 401 || error?.status === 403) throw error;
+                        console.warn('D1 quote index unavailable; falling back to GitHub/IndexedDB.', error);
+                    }
+                }
                 const ctx = getGitHubCtx();
                 if (ctx) {
                     const idxJson = await readJsonFromGitHub(QUOTE_INDEX_PATH) || { v: 1, quotes: [] };
@@ -20979,6 +21117,26 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 }
 
                 busy = window.startBusyToast?.('正在加载');
+                if (window.__minovaBusiness?.getQuote) {
+                    try {
+                        const remote = await window.__minovaBusiness.getQuote(id);
+                        const q = remote?.quote || null;
+                        const snap = q?.snapshot || null;
+                        if (!snap) throw new Error('D1 quote snapshot is empty');
+                        if (snap && window.applyQuoteSnapshot) {
+                            window.applyQuoteSnapshot(snap);
+                        }
+                        window.currentSavedQuoteId = id;
+                        window.currentSavedQuoteName = String(q?.name || window.__savedQuotesCache?.byId?.[id]?.name || '');
+                        window.setQuoteDirty(false);
+                        window.__lastSavedQuoteSelectValue = id;
+                        showToast('加载成功！', 'success');
+                        return;
+                    } catch (error) {
+                        if (error?.status === 401 || error?.status === 403) throw error;
+                        console.warn('D1 quote load failed; falling back to GitHub/IndexedDB.', error);
+                    }
+                }
                 const ctx = getGitHubCtx();
                 if (ctx) {
                     const q = await readJsonFromGitHub(quotePath(id));
@@ -21067,6 +21225,39 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if(!quoteToDeleteId) return;
             const busy = window.startBusyToast?.('正在Delete');
             try {
+                if (window.__minovaBusiness?.deleteQuote) {
+                    try {
+                        await window.__minovaBusiness.deleteQuote(quoteToDeleteId);
+                        const nextList = (window.__savedQuotesCache?.list || []).filter(q => String(q?.id) !== String(quoteToDeleteId));
+                        const sorted = sortQuotes(nextList);
+                        setSavedQuotesCache(sorted);
+                        renderSavedQuotesSelect(sorted, { selectedId: '', dirtyId: '' });
+                        const ctx = getGitHubCtx();
+                        if (ctx) {
+                            try {
+                                const nowIso = new Date().toISOString();
+                                await commitQuoteFiles({
+                                    message: `minova: backup delete quote ${quoteToDeleteId}`.trim(),
+                                    files: [
+                                        { path: QUOTE_INDEX_PATH, content: JSON.stringify({ v: 1, updatedAt: nowIso, quotes: sorted }, null, 2) },
+                                        { path: quotePath(quoteToDeleteId), delete: true }
+                                    ]
+                                });
+                            } catch (backupError) {
+                                console.warn('GitHub quote delete backup failed after D1 delete.', backupError);
+                            }
+                        }
+                        showToast('Delete成功！', 'success');
+                        window.currentSavedQuoteId = null;
+                        window.currentSavedQuoteName = '';
+                        window.setQuoteDirty(false);
+                        closeDeleteQuoteModal();
+                        return;
+                    } catch (error) {
+                        if (error?.status === 401 || error?.status === 403) throw error;
+                        console.warn('D1 quote delete failed; falling back to GitHub/IndexedDB.', error);
+                    }
+                }
                 const ctx = getGitHubCtx();
                 if (ctx) {
                     const idxJson = await readJsonFromGitHub(QUOTE_INDEX_PATH) || { v: 1, quotes: [] };
@@ -21236,4 +21427,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         </div>
     </div>
 </div>
-</div></body></html>
+</div>
+<script>
+  window.__minovaAuth = window.__minovaAuth || { state: { user: null, ready: false, locked: true } };
+</script>
+<script type="module" src="./auth/minova-auth-ui.mjs"></script>
+</body></html>

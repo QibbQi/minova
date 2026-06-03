@@ -1,0 +1,58 @@
+.minova-auth-watermark {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(260px, 1fr));
+    gap: 160px 120px;
+    align-content: center;
+    justify-items: center;
+    padding: 96px;
+    opacity: 0.09;
+}
+
+.minova-auth-watermark span {
+    color: #111827;
+    font-size: 14px;
+    font-weight: 900;
+    line-height: 1.3;
+    text-align: center;
+    text-transform: uppercase;
+    transform: rotate(-28deg);
+    user-select: none;
+    max-width: 260px;
+}
+
+body.minova-auth-locked {
+    overflow: hidden;
+}
+
+body.minova-hide-cost [id*="cost" i],
+body.minova-hide-cost [class*="cost" i],
+body.minova-hide-cost [data-sensitive="cost"] {
+    filter: blur(5px);
+    user-select: none;
+}
+
+body.minova-hide-margin [id*="margin" i],
+body.minova-hide-margin [class*="margin" i],
+body.minova-hide-margin [id*="profit" i],
+body.minova-hide-margin [class*="profit" i],
+body.minova-hide-margin [data-sensitive="margin"] {
+    filter: blur(5px);
+    user-select: none;
+}
+
+body.minova-hide-supplier-contact [id*="contact" i],
+body.minova-hide-supplier-contact [class*="contact" i],
+body.minova-hide-supplier-contact [data-sensitive="supplierContact"] {
+    filter: blur(5px);
+    user-select: none;
+}
+
+@media print {
+    #minova-auth-watermark,
+    #minova-auth-overlay,
+    #minova-password-change-modal,
+    #minova-auth-badge,
+    #minova-quote-guard {
+        display: none !important;
+    }
+}

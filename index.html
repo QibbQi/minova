@@ -28,6 +28,29 @@
 
         .tab-active { border-bottom: 2px solid #582C83; color: #582C83; font-weight: bold; }
 
+        .table-freeze-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: fit-content;
+            min-width: 3.25rem;
+            border-radius: 9999px;
+            border: 1px solid #e2e8f0;
+            background: #fff;
+            color: #64748b;
+            padding: 0.2rem 0.42rem;
+            font-size: 0.58rem;
+            font-weight: 900;
+            line-height: 1;
+            text-transform: none;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+        }
+
+        .table-freeze-btn:hover {
+            border-color: #c4b5fd;
+            color: #6d28d9;
+        }
+
         .app-shell-header {
             gap: 0.75rem;
             overflow: hidden;
@@ -1761,10 +1784,15 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 <button onclick="clearPriceListFilters()" class="text-xs font-black text-purple-700 hover:underline">Clear Filters</button>
             </div>
             <div class="overflow-x-auto">
-                <table class="w-full text-left whitespace-nowrap">
+                <table data-freeze-table="price-list" class="w-full text-left whitespace-nowrap">
                     <thead class="bg-slate-50/80">
                         <tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
-                            <th class="py-4 px-4 text-center"><input id="price-list-select-visible" type="checkbox" onchange="togglePriceListVisibleSelection(this.checked)" class="h-4 w-4 accent-purple-700"></th>
+                            <th class="py-4 px-4 text-center">
+                                <div class="flex flex-col items-center gap-1">
+                                    <input id="price-list-select-visible" type="checkbox" onchange="togglePriceListVisibleSelection(this.checked)" class="h-4 w-4 accent-purple-700">
+                                    <button id="freeze-price-list-btn" type="button" class="table-freeze-btn" onclick="window.cycleFrozenColumns('price-list', 3)" title="Cycle frozen columns">Freeze 0</button>
+                                </div>
+                            </th>
                             <th class="py-4 px-4">Product</th>
                             <th class="py-4 px-4">Category</th>
                             <th class="py-4 px-4">Brand</th>
@@ -1827,10 +1855,15 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 </div>
             </div>
             <div class="overflow-x-auto">
-                <table class="w-full text-left whitespace-nowrap">
+                <table data-freeze-table="inventory" class="w-full text-left whitespace-nowrap">
                     <thead class="bg-slate-50/50">
                         <tr id="inventory-head-row" class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
-                            <th class="py-4 px-4 no-print">Select</th>
+                            <th class="py-4 px-4 no-print">
+                                <div class="flex flex-col items-start gap-1">
+                                    <span>Select</span>
+                                    <button id="freeze-inventory-btn" type="button" class="table-freeze-btn" onclick="window.cycleFrozenColumns('inventory', 3)" title="Cycle frozen columns">Freeze 0</button>
+                                </div>
+                            </th>
                             <th class="py-4 px-4">Product ID</th>
                             <th class="py-4 px-4">Product Name</th>
                             <th class="py-4 px-4">Category</th>
@@ -1874,10 +1907,15 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 </div>
             </div>
             <div class="overflow-x-auto max-h-[440px]">
-                <table class="w-full text-left whitespace-nowrap">
+                <table data-freeze-table="non-stock-pricing" class="w-full text-left whitespace-nowrap">
                     <thead class="bg-slate-50/50">
                         <tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
-                            <th class="py-4 px-4">Product ID</th>
+                            <th class="py-4 px-4">
+                                <div class="flex flex-col items-start gap-1">
+                                    <span>Product ID</span>
+                                    <button id="freeze-non-stock-pricing-btn" type="button" class="table-freeze-btn" onclick="window.cycleFrozenColumns('non-stock-pricing', 3)" title="Cycle frozen columns">Freeze 0</button>
+                                </div>
+                            </th>
                             <th class="py-4 px-4">Product Name</th>
                             <th class="py-4 px-4">Category</th>
                             <th class="py-4 px-4">Unit</th>
@@ -2199,10 +2237,15 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 </div>
             </div>
             <div class="overflow-x-auto">
-                <table class="w-full text-left whitespace-nowrap">
+                <table data-freeze-table="product-list" class="w-full text-left whitespace-nowrap">
                     <thead class="bg-slate-50/50">
                         <tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
-                            <th class="py-4 px-4">Product ID</th>
+                            <th class="py-4 px-4">
+                                <div class="flex flex-col items-start gap-1">
+                                    <span>Product ID</span>
+                                    <button id="freeze-product-list-btn" type="button" class="table-freeze-btn" onclick="window.cycleFrozenColumns('product-list', 3)" title="Cycle frozen columns">Freeze 0</button>
+                                </div>
+                            </th>
                             <th class="py-4 px-4">Image</th>
                             <th class="py-4 px-4">Product Name</th>
                             <th class="py-4 px-4">Specification</th>
@@ -8387,11 +8430,85 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             });
             return text.replace(/\s+days\b/g, ' days').replace(/\s+weeks\b/g, ' weeks');
         }
+        const FROZEN_TABLE_STORAGE_KEY = 'minova_frozen_table_columns_v1';
+        function getFrozenTableState() {
+            try {
+                const raw = JSON.parse(localStorage.getItem(FROZEN_TABLE_STORAGE_KEY) || '{}');
+                return raw && typeof raw === 'object' ? raw : {};
+            } catch (e) {
+                return {};
+            }
+        }
+        function getFrozenColumnCount(tableKey) {
+            const state = getFrozenTableState();
+            const n = parseInt(state[tableKey], 10);
+            return Number.isFinite(n) && n > 0 ? n : 0;
+        }
+        function setFrozenColumnCount(tableKey, count) {
+            const state = getFrozenTableState();
+            state[tableKey] = Math.max(0, parseInt(count, 10) || 0);
+            try { localStorage.setItem('minova_frozen_table_columns_v1', JSON.stringify(state)); } catch (e) {}
+        }
+        function renderFreezeColumnButton(tableKey, maxColumns = 3) {
+            const count = getFrozenColumnCount(tableKey);
+            return `<button id="freeze-${htmlSafe(tableKey)}-btn" type="button" class="table-freeze-btn" onclick="window.cycleFrozenColumns('${htmlSafe(tableKey)}', ${maxColumns})" title="Cycle frozen columns">Freeze ${count}</button>`;
+        }
+        function updateFreezeColumnButton(tableKey) {
+            const btn = document.getElementById(`freeze-${tableKey}-btn`);
+            if (!btn) return;
+            const count = getFrozenColumnCount(tableKey);
+            btn.textContent = `Freeze ${count}`;
+            btn.classList.toggle('bg-purple-50', count > 0);
+            btn.classList.toggle('text-purple-700', count > 0);
+            btn.classList.toggle('border-purple-200', count > 0);
+        }
+        window.cycleFrozenColumns = (tableKey, maxColumns = 3) => {
+            const next = (getFrozenColumnCount(tableKey) + 1) % (maxColumns + 1);
+            setFrozenColumnCount(tableKey, next);
+            window.applyFrozenColumns(tableKey);
+        };
+        window.applyFrozenColumns = (tableKey) => {
+            const table = document.querySelector(`[data-freeze-table="${tableKey}"]`);
+            updateFreezeColumnButton(tableKey);
+            if (!table) return;
+            table.querySelectorAll('[data-frozen-cell="true"]').forEach(cell => {
+                cell.dataset.frozenCell = '';
+                cell.style.position = '';
+                cell.style.left = '';
+                cell.style.zIndex = '';
+                cell.style.background = '';
+                cell.style.boxShadow = '';
+            });
+            const count = getFrozenColumnCount(tableKey);
+            if (!count) return;
+            const headRow = table.tHead?.rows?.[0];
+            if (!headRow) return;
+            let left = 0;
+            const offsets = [];
+            for (let i = 0; i < Math.min(count, headRow.cells.length); i += 1) {
+                const width = headRow.cells[i].getBoundingClientRect?.().width || headRow.cells[i].offsetWidth || 120;
+                offsets.push(left);
+                left += width;
+            }
+            Array.from(table.rows || []).forEach(row => {
+                offsets.forEach((offset, index) => {
+                    const cell = row.cells[index];
+                    if (!cell || cell.colSpan > 1) return;
+                    cell.dataset.frozenCell = 'true';
+                    cell.style.position = 'sticky';
+                    cell.style.left = `${offset}px`;
+                    cell.style.zIndex = cell.tagName === 'TH' ? '30' : '20';
+                    cell.style.background = cell.tagName === 'TH' ? '#f8fafc' : '#fff';
+                    cell.style.boxShadow = '1px 0 0 rgba(226, 232, 240, 0.9)';
+                });
+            });
+        };
         window.renderDb = () => {
             const list = document.getElementById('db-list');
             ensureSupplierData();
             if(products.length === 0) {
                 list.innerHTML = `<tr><td colspan="15" class="py-20 text-center text-slate-400 text-sm">No product records yet.</td></tr>`;
+                window.applyFrozenColumns('product-list');
                 return;
             }
             const sorted = [...products].sort((a,b) => (a[dbGroupMode] || '').localeCompare(b[dbGroupMode] || ''));
@@ -8445,6 +8562,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         </td>
                     </tr>`;
             }).join('');
+            window.applyFrozenColumns('product-list');
         };
 
         function getNonStockProductsForPricing() {
@@ -8468,6 +8586,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 list.innerHTML = `<tr><td colspan="22" class="py-12 text-center text-slate-400 text-sm">No non-stock products need fallback pricing.</td></tr>`;
                 window.__nonStockRenderedCurrency = getNonStockDisplayCurrency();
                 window.__nonStockRenderedRateCnyPerMyr = getInventoryFxRateCnyPerMyr();
+                window.applyFrozenColumns('non-stock-pricing');
                 return;
             }
             const draftStrategies = window.__nonStockPricingDrafts && typeof window.__nonStockPricingDrafts === 'object' ? window.__nonStockPricingDrafts : {};
@@ -8543,6 +8662,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             }).join('');
             window.__nonStockRenderedCurrency = getNonStockDisplayCurrency();
             window.__nonStockRenderedRateCnyPerMyr = getInventoryFxRateCnyPerMyr();
+            window.applyFrozenColumns('non-stock-pricing');
         };
         window.saveNonStockPricingStrategy = (productId) => {
             const id = String(productId || '').trim();
@@ -8596,7 +8716,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (currencyBtn) currencyBtn.textContent = getInventoryDisplayCurrency() === 'MYR' ? 'RM / ¥' : '¥ / RM';
             if (inventorySummaryMode && headRow) {
                 headRow.innerHTML = `
-                    <th class="py-4 px-4">Product ID</th>
+                    <th class="py-4 px-4"><div class="flex flex-col items-start gap-1"><span>Product ID</span>${renderFreezeColumnButton('inventory', 3)}</div></th>
                     <th class="py-4 px-4">Product Name</th>
                     <th class="py-4 px-4">Category</th>
                     <th class="py-4 px-4">Subcategory</th>
@@ -8612,6 +8732,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (inventorySummaryMode) {
                 if (inventory.length === 0) {
                     list.innerHTML = `<tr><td colspan="8" class="py-20 text-center text-slate-400 text-sm">No inventory records yet...</td></tr>`;
+                    window.applyFrozenColumns('inventory');
                     return;
                 }
                 const grouped = new Map();
@@ -8648,11 +8769,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         </tr>
                     `;
                 }).join('');
+                window.applyFrozenColumns('inventory');
                 return;
             }
 
             if(inventory.length === 0) {
                 list.innerHTML = `<tr><td colspan="21" class="py-20 text-center text-slate-400 text-sm">No inventory records yet...</td></tr>`;
+                window.applyFrozenColumns('inventory');
                 return;
             }
             list.innerHTML = inventory.map(item => {
@@ -8717,6 +8840,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         </td>
                     </tr>`;
             }).join('');
+            window.applyFrozenColumns('inventory');
         };
 
         window.toggleInventorySummary = () => {
@@ -11248,6 +11372,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (!rows.length) {
                 body.innerHTML = `<tr><td colspan="15" class="py-12 text-center text-slate-400 text-sm">No products match the current filters.</td></tr>`;
                 updatePriceListSelectionUi();
+                window.applyFrozenColumns('price-list');
                 return;
             }
             body.innerHTML = rows.map(p => {
@@ -11284,6 +11409,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 `;
             }).join('');
             updatePriceListSelectionUi();
+            window.applyFrozenColumns('price-list');
         };
         window.togglePriceListCurrency = () => {
             window.priceListDisplayCurrency = getPriceListCurrencyPriority() === 'MYR' ? 'CNY' : 'MYR';
@@ -11318,38 +11444,94 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             });
             renderPriceList();
         };
+        function priceVarianceClass(value, benchmark) {
+            const v = parseFloat(value);
+            const b = parseFloat(benchmark);
+            if (!Number.isFinite(v) || !Number.isFinite(b) || b <= 0) return 'text-slate-200';
+            const diff = (v - b) / b;
+            if (diff >= 0.3) return 'text-green-300 font-black';
+            if (diff >= 0.15) return 'text-green-400 font-black';
+            if (diff >= 0.05) return 'text-green-500 font-bold';
+            if (diff > -0.05) return 'text-slate-100 font-bold';
+            if (diff > -0.15) return 'text-red-300 font-bold';
+            if (diff > -0.3) return 'text-red-400 font-black';
+            return 'text-red-500 font-black';
+        }
+        function renderPriceListTooltipPrice(value, unit, benchmark, digits = 2) {
+            const n = parseFloat(value);
+            if (!Number.isFinite(n)) return '<span class="text-slate-500">-</span>';
+            return `<span class="${priceVarianceClass(n, benchmark)}">${formatCurrencyFromCny(n, getPriceListCurrencyPriority(), digits)}/${htmlSafe(unit)}</span>`;
+        }
+        function renderPriceListTooltipComparison(product, pricing, market) {
+            const marketUnit = normalizeUnitLabel(market?.unit || pricing.costUnit || 'pcs');
+            const marketUnitPrice = market?.records?.length ? parseFloat(market.avgCny) : NaN;
+            const marketPcsMultiplier = getProductSpecMultiplierForUnit(product, pricing.pcsMultiplier, marketUnit);
+            const marketPcsPrice = Number.isFinite(marketUnitPrice) ? marketUnitPrice * marketPcsMultiplier : NaN;
+            const quoteUnit = normalizeUnitLabel(pricing.costUnit || marketUnit);
+            const quotePcsMultiplier = Number.isFinite(parseFloat(pricing.pcsMultiplier)) ? parseFloat(pricing.pcsMultiplier) : 1;
+            const quoteRows = [
+                ['Clearance RESI', pricing.clearanceHomePrice],
+                ['Clearance C&I', pricing.clearanceBizPrice],
+                ['Grey RESI', pricing.grayHomePrice],
+                ['Grey C&I', pricing.grayBizPrice]
+            ];
+            const marketUnitHtml = Number.isFinite(marketUnitPrice)
+                ? `${formatCurrencyFromCny(marketUnitPrice, getPriceListCurrencyPriority(), 4)}/${htmlSafe(marketUnit)}`
+                : 'No 30-day market price';
+            const marketPcsHtml = Number.isFinite(marketPcsPrice)
+                ? `${formatCurrencyFromCny(marketPcsPrice, getPriceListCurrencyPriority(), 2)}/pcs`
+                : '-';
+            return `
+                <div class="mt-2 rounded-lg overflow-hidden border border-slate-700">
+                    <div class="grid grid-cols-3 bg-slate-900/80 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        <div class="px-2 py-1.5">Item</div>
+                        <div class="px-2 py-1.5 text-right">Unit Price</div>
+                        <div class="px-2 py-1.5 text-right">PCS Price</div>
+                    </div>
+                    <div class="grid grid-cols-3 border-t border-slate-700 text-[11px]">
+                        <div class="px-2 py-1.5 text-amber-200 font-black">30D Market</div>
+                        <div class="px-2 py-1.5 text-right text-amber-100">${marketUnitHtml}</div>
+                        <div class="px-2 py-1.5 text-right text-amber-100">${marketPcsHtml}</div>
+                    </div>
+                    ${quoteRows.map(([label, unitPrice]) => {
+                        const unit = parseFloat(unitPrice);
+                        const pcs = Number.isFinite(unit) ? unit * quotePcsMultiplier : NaN;
+                        return `
+                            <div class="grid grid-cols-3 border-t border-slate-700 text-[11px]">
+                                <div class="px-2 py-1.5 text-slate-200 font-bold">${htmlSafe(label)}</div>
+                                <div class="px-2 py-1.5 text-right">${renderPriceListTooltipPrice(unit, quoteUnit, marketUnitPrice, 4)}</div>
+                                <div class="px-2 py-1.5 text-right">${renderPriceListTooltipPrice(pcs, 'pcs', marketPcsPrice, 2)}</div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
         window.showPriceListTooltip = (event, productId) => {
             const tooltip = document.getElementById('global-tooltip');
             const p = products.find(x => String(x.id) === String(productId));
             if (!tooltip || !p) return;
             const r = priceListProductPricing(p);
-            const req = getProductCertificationRequirements(p);
             const market = getMarketPriceSummary(p.category || '', { days: 30 });
-            const homeProfit = (r.cnHomePct || 0) + (r.myHomePct || 0);
-            const bizProfit = (r.cnBizPct || 0) + (r.myBizPct || 0);
-            const selectedPriceLabel = getPriceListSelectedPriceLabel();
-            const selectedPcsPrice = getPriceListSelectedPcsPrice(r);
             tooltip.innerHTML = `
                 <p class="font-black text-sm mb-2 border-b border-slate-600 pb-1">${htmlSafe(p.name || '-')}</p>
-                <div class="space-y-1">
-                    <p>PCS Price (${htmlSafe(selectedPriceLabel)}): <span class="font-black text-white">${formatCurrencyFromCny(selectedPcsPrice, getPriceListCurrencyPriority(), 2)}/pcs</span> (${formatCurrencyFromCny(selectedPcsPrice, getPriceListCurrencyPriority() === 'MYR' ? 'CNY' : 'MYR', 2)}/pcs)</p>
-                    <p class="text-slate-300">Formula: ${htmlSafe(selectedPriceLabel)} per ${htmlSafe(r.costUnit)} × ${formatNumberAuto(r.pcsMultiplier, 4)} ${htmlSafe(r.costUnit)}/pcs</p>
-                    <p>PCS Cost: <span class="font-black text-white">${formatCurrencyFromCny(r.pcsCost, getPriceListCurrencyPriority(), 4)}/pcs</span> (${formatCurrencyFromCny(r.pcsCost, getPriceListCurrencyPriority() === 'MYR' ? 'CNY' : 'MYR', 4)}/pcs)</p>
-                    <p>Avg Cost: <span class="font-black text-white">${formatCurrencyFromCny(r.avgCost, getPriceListCurrencyPriority(), 4)}/${r.costUnit}</span> (${formatCurrencyFromCny(r.avgCost, getPriceListCurrencyPriority() === 'MYR' ? 'CNY' : 'MYR', 4)}/${r.costUnit}; ${r.usedInventoryCost ? 'inventory average' : 'base cost'})</p>
-                    <p>Clearance Cost: ${formatCny(r.avgCost, 4)} × (1 + ${r.dutyPct}% duty + ${r.sstPct}% SST) = <span class="font-black text-blue-200">${formatCny(r.clearanceCost, 4)}</span></p>
-                    <p>Grey Cost: ${formatCny(r.avgCost, 4)} × (1 + ${r.grayPct}% grey tax) = <span class="font-black text-indigo-200">${formatCny(r.grayCost, 4)}</span></p>
-                    <p>RESI Price: cost × (1 + ${r.cnHomePct}% CN + ${r.myHomePct}% MY) = +${homeProfit.toFixed(2)}%</p>
-                    <p>C&I Price: cost × (1 + ${r.cnBizPct}% CN + ${r.myBizPct}% MY) = +${bizProfit.toFixed(2)}%</p>
-                    <p>Market 30D: <span class="font-black text-amber-200">${market.records.length ? formatMarketPrice(market.avgCny, market.unit, 'CNY') : 'No 30-day market price'}</span></p>
-                    <p>FX: 1 MYR = ${getSalesOutRateCnyPerMyr().toFixed(4)} CNY</p>
-                    <p class="pt-1 text-slate-300">Certifications: ${(req.standards || []).slice(0, 5).map(htmlSafe).join(', ') || '-'}</p>
-                </div>
+                ${renderPriceListTooltipComparison(p, r, market)}
             `;
+            tooltip.style.width = 'auto';
+            tooltip.style.maxWidth = `${Math.max(320, Math.min(560, window.innerWidth - 24))}px`;
             tooltip.classList.remove('hidden');
-            const x = event.clientX + 16;
-            const y = event.clientY + 16;
-            tooltip.style.left = `${Math.min(x, window.innerWidth - 280)}px`;
-            tooltip.style.top = `${Math.min(y, window.innerHeight - 260)}px`;
+            const tooltipWidth = tooltip.offsetWidth || Math.min(560, window.innerWidth - 24);
+            const tooltipHeight = tooltip.offsetHeight || 220;
+            const gap = 14;
+            const rightSpace = window.innerWidth - event.clientX;
+            const belowSpace = window.innerHeight - event.clientY;
+            const aboveSpace = event.clientY;
+            const shouldOpenLeft = rightSpace < tooltipWidth + gap && event.clientX > tooltipWidth + gap;
+            const shouldOpenUp = belowSpace < tooltipHeight + 18 && aboveSpace > belowSpace;
+            const rawLeft = shouldOpenLeft ? event.clientX - tooltipWidth - gap : event.clientX + gap;
+            const rawTop = shouldOpenUp ? event.clientY - tooltipHeight - gap : event.clientY + gap;
+            tooltip.style.left = `${Math.max(12, Math.min(rawLeft, window.innerWidth - tooltipWidth - 12))}px`;
+            tooltip.style.top = `${Math.max(12, Math.min(rawTop, window.innerHeight - tooltipHeight - 12))}px`;
         };
         window.hidePriceListTooltip = () => {
             document.getElementById('global-tooltip')?.classList.add('hidden');

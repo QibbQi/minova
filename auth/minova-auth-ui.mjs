@@ -20,9 +20,11 @@ import {
 const AUTH_API_BASE_KEY = 'minova_auth_api_base_v1';
 const AUTH_SESSION_KEY = 'minova_auth_session_v1';
 const AUTH_SESSION_EXPIRES_KEY = 'minova_auth_session_expires_v1';
+const D1_WRITE_QUEUE_KEY = 'minova_d1_write_queue_v1';
 const AUTH_FETCH_TIMEOUT_MS = 12000;
 const AUTH_FETCH_RETRY_DELAYS_MS = [300, 900];
 const ADMIN_REFRESH_MIN_INTERVAL_MS = 15000;
+const D1_WRITE_RETRY_DELAYS_MS = [2000, 5000, 15000, 30000];
 const normalizeApiBase = (value) => {
   const base = String(value || '').trim().replace(/\/+$/, '');
   return /^https?:\/\/[^/\s]+/i.test(base) ? base : '';
@@ -77,10 +79,12 @@ const businessState = {
   lastPersistAt: '',
   lastMigrationAt: '',
   pendingWrites: 0,
+  queuedWrites: 0,
   failedWrites: 0,
   entityCount: 0,
   quoteCount: 0,
-  lastError: ''
+  lastError: '',
+  retryScheduled: false
 };
 
 const TAB_LABELS = {
@@ -153,10 +157,24 @@ function publishBusinessApi() {
   Object.assign(api, {
     state: businessState,
     bootstrap: bootstrapBusinessData,
-    upsertEntity: (domain, recordId, payload) => businessWrite('/business/entity/upsert', { domain, recordId, payload }),
-    upsertEntities: (items) => businessWrite('/business/entity/upsert', { items }),
-    deleteEntity: (domain, recordId) => businessWrite('/business/entity/delete', { domain, recordId }),
-    saveSettings: (settings) => businessWrite('/business/settings', { settings }),
+    upsertEntity: (domain, recordId, payload) => {
+      if (!canWriteBusinessDomain(domain)) return Promise.resolve({ skipped: true, forbidden: true });
+      return queueBusinessWrite('/business/entity/upsert', { domain, recordId, payload }, `Save ${domain}`);
+    },
+    upsertEntities: (items) => {
+      const allowedItems = (Array.isArray(items) ? items : []).filter(item => canWriteBusinessDomain(item?.domain));
+      if (!allowedItems.length) return Promise.resolve({ skipped: true, forbidden: true });
+      return queueBusinessWrite('/business/entity/upsert', { items: allowedItems }, 'Save business records');
+    },
+    deleteEntity: (domain, recordId) => {
+      if (!canDeleteBusinessDomain(domain)) return Promise.resolve({ skipped: true, forbidden: true });
+      return queueBusinessWrite('/business/entity/delete', { domain, recordId }, `Delete ${domain}`);
+    },
+    saveSettings: (settings) => {
+      const allowedSettings = filterBusinessSettingsForWrite(settings);
+      if (!Object.keys(allowedSettings).length) return Promise.resolve({ skipped: true, forbidden: true });
+      return queueBusinessWrite('/business/settings', { settings: allowedSettings }, 'Save business settings');
+    },
     saveQuote: (quote) => businessWrite('/quotes', quote),
     getQuote: (id) => authFetch(`/quotes/${encodeURIComponent(id)}`),
     deleteQuote: (id) => businessWrite('/quotes/delete', { id }),
@@ -277,6 +295,7 @@ const businessRecordIdFor = (record, index = 0) => {
 };
 
 const BUSINESS_RESOURCE_BY_DOMAIN = {
+  supplier: 'suppliers',
   product: 'products',
   inventory: 'inventory',
   inventory_history: 'inventory',
@@ -292,10 +311,31 @@ function canWriteBusinessDomain(domain) {
   return !!resource && canPerformAction(state.permission, resource, 'edit');
 }
 
+function canDeleteBusinessDomain(domain) {
+  const resource = BUSINESS_RESOURCE_BY_DOMAIN[domain];
+  return !!resource && canPerformAction(state.permission, resource, 'delete');
+}
+
+function businessSettingWriteResource(key) {
+  if (['market_price_settings', 'subcategories_by_category', 'non_stock_pricing_strategies'].includes(key)) return 'priceList';
+  if (['profit_settings', 'installer_profit_settings', 'installer_quote_settings'].includes(key)) return 'quoteSettings';
+  return '';
+}
+
+function filterBusinessSettingsForWrite(settings = {}) {
+  const allowed = {};
+  for (const [key, value] of Object.entries(settings || {})) {
+    const resource = businessSettingWriteResource(key);
+    if (resource && canPerformAction(state.permission, resource, 'edit')) allowed[key] = value;
+  }
+  return allowed;
+}
+
 function businessSnapshotToPayload(snapshot = {}) {
   const data = snapshot?.data && typeof snapshot.data === 'object' ? snapshot.data : snapshot;
   const arr = value => Array.isArray(value) ? value : [];
   const items = [
+    ...arr(data.suppliers).map((record, index) => ({ domain: 'supplier', recordId: businessRecordIdFor(record, index), payload: record })),
     ...arr(data.products).map((record, index) => ({ domain: 'product', recordId: businessRecordIdFor(record, index), payload: record })),
     ...arr(data.inventory).map((record, index) => ({ domain: 'inventory', recordId: businessRecordIdFor(record, index), payload: record })),
     ...arr(data.inventoryHistory).map((record, index) => ({ domain: 'inventory_history', recordId: businessRecordIdFor(record, index), payload: record })),
@@ -335,8 +375,117 @@ async function businessWrite(path, body) {
     throw error;
   } finally {
     businessState.pendingWrites = Math.max(0, businessState.pendingWrites - 1);
+    renderAuthBadge();
     renderAdminDashboard();
     publishBusinessApi();
+  }
+}
+
+function readD1WriteQueue() {
+  try {
+    const rows = JSON.parse(localStorage.getItem(D1_WRITE_QUEUE_KEY) || '[]');
+    return Array.isArray(rows) ? rows.filter(item => item && item.path && item.body) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeD1WriteQueue(rows) {
+  const queue = Array.isArray(rows) ? rows : [];
+  try { localStorage.setItem(D1_WRITE_QUEUE_KEY, JSON.stringify(queue)); } catch {}
+  businessState.queuedWrites = queue.length;
+  publishBusinessApi();
+  renderAuthBadge();
+  renderAdminDashboard();
+}
+
+function enqueueD1Write(path, body, label = 'Business write', attempts = 0) {
+  const queue = readD1WriteQueue();
+  const key = JSON.stringify([path, body]);
+  const existing = queue.find(item => item.key === key);
+  const now = Date.now();
+  if (existing) {
+    existing.body = body;
+    existing.label = label;
+    existing.updatedAt = new Date(now).toISOString();
+    existing.attempts = Math.max(existing.attempts || 0, attempts);
+  } else {
+    queue.push({
+      id: `d1_${now}_${Math.random().toString(36).slice(2)}`,
+      key,
+      path,
+      body,
+      label,
+      attempts,
+      createdAt: new Date(now).toISOString(),
+      updatedAt: new Date(now).toISOString()
+    });
+  }
+  businessState.lastError = `${label} queued for D1 retry.`;
+  writeD1WriteQueue(queue);
+  scheduleD1WriteRetry();
+}
+
+function scheduleD1WriteRetry(delayMs = 0) {
+  if (businessState.retryScheduled) return;
+  const queue = readD1WriteQueue();
+  businessState.queuedWrites = queue.length;
+  if (!queue.length || !state.user) {
+    publishBusinessApi();
+    renderAuthBadge();
+    renderAdminDashboard();
+    return;
+  }
+  businessState.retryScheduled = true;
+  setTimeout(() => {
+    businessState.retryScheduled = false;
+    flushD1WriteQueue();
+  }, delayMs);
+}
+
+async function queueBusinessWrite(path, body, label = 'Business write') {
+  if (!state.user) return { skipped: true, localOnly: true };
+  try {
+    const data = await businessWrite(path, body);
+    const queue = readD1WriteQueue().filter(item => item.key !== JSON.stringify([path, body]));
+    writeD1WriteQueue(queue);
+    businessState.source = 'd1';
+    businessState.hasD1Data = true;
+    return { ...data, queued: false };
+  } catch (error) {
+    enqueueD1Write(path, body, label, 1);
+    return { ok: false, queued: true, error: error.message || String(error) };
+  }
+}
+
+async function flushD1WriteQueue() {
+  if (!state.user) return;
+  let queue = readD1WriteQueue();
+  if (!queue.length) {
+    businessState.queuedWrites = 0;
+    publishBusinessApi();
+    renderAuthBadge();
+    renderAdminDashboard();
+    return;
+  }
+  const [item, ...rest] = queue;
+  try {
+    await businessWrite(item.path, item.body);
+    queue = rest;
+    writeD1WriteQueue(queue);
+    businessState.source = 'd1';
+    businessState.hasD1Data = true;
+    if (queue.length) scheduleD1WriteRetry(500);
+  } catch (error) {
+    item.attempts = Number(item.attempts || 0) + 1;
+    item.lastError = error.message || String(error);
+    item.updatedAt = new Date().toISOString();
+    queue = [item, ...rest];
+    writeD1WriteQueue(queue);
+    businessState.failedWrites += 1;
+    businessState.lastError = `${item.label || 'D1 write'} failed; queued for retry.`;
+    const delay = D1_WRITE_RETRY_DELAYS_MS[Math.min(item.attempts - 1, D1_WRITE_RETRY_DELAYS_MS.length - 1)] || 30000;
+    scheduleD1WriteRetry(delay);
   }
 }
 
@@ -665,6 +814,8 @@ function setSession(user, permission, sessionToken = state.sessionToken, session
   syncAuthDomState();
   publishAuthApi();
   publishBusinessApi();
+  businessState.queuedWrites = readD1WriteQueue().length;
+  scheduleD1WriteRetry(1000);
 }
 
 function lockApp() {
@@ -801,8 +952,8 @@ function ensureAdminTab() {
                 <h3 class="text-sm font-black text-slate-700 mb-2">Storage Map</h3>
                 <div class="text-xs text-slate-500 leading-relaxed space-y-2">
                   <p><b>Backend data:</b> users, roles, permissions, approvals and audit logs are stored in Cloudflare D1.</p>
-                  <p><b>Business data:</b> products, inventory, transport, Price List, quote settings and saved quotes now write to D1 first.</p>
-                  <p><b>Backup:</b> GitHub <code>minova-data/state.json</code>, <code>minova-data/quotes/</code>, localStorage and IndexedDB remain as transition backups.</p>
+                  <p><b>Business data:</b> suppliers, products, inventory, transport, Price List, quote settings and saved quotes now write to D1 first.</p>
+                  <p><b>Backup:</b> GitHub Sync is optional for static backup / publish / attachment files. PAT is not required for D1 master data maintenance.</p>
                 </div>
               </div>
               <div class="border border-slate-200 rounded-xl p-4">
@@ -980,10 +1131,28 @@ function renderAuthBadge() {
     badge.className = 'flex items-center gap-2';
     document.querySelector('.app-shell-actions')?.prepend(badge);
   }
+  const queueCount = Number(businessState.queuedWrites || 0);
+  const pendingCount = Number(businessState.pendingWrites || 0);
+  const failedCount = Number(businessState.failedWrites || 0);
+  const d1Label = queueCount
+    ? `${queueCount} queued`
+    : pendingCount
+      ? `${pendingCount} saving`
+      : failedCount
+        ? `${failedCount} failed`
+        : businessState.lastPersistAt
+          ? 'Saved to D1'
+          : 'D1 ready';
+  const d1Class = queueCount || failedCount
+    ? 'bg-amber-50 text-amber-700 border-amber-100'
+    : pendingCount
+      ? 'bg-blue-50 text-blue-700 border-blue-100'
+      : 'bg-emerald-50 text-emerald-700 border-emerald-100';
   badge.innerHTML = `
     <span class="hidden lg:inline-flex px-3 py-2 rounded-xl bg-purple-50 text-purple-800 border border-purple-100 text-[11px] font-black">
       ${escapeHtml(state.user?.name || '-')}: ${escapeHtml(state.permission?.roleName || '-')}
     </span>
+    <span class="hidden xl:inline-flex px-3 py-2 rounded-xl border text-[11px] font-black ${d1Class}" title="${escapeHtml(businessState.lastError || businessState.lastPersistAt || 'D1 business storage')}">${escapeHtml(d1Label)}</span>
     <button type="button" id="minova-auth-logout" class="px-3 py-2 rounded-xl bg-slate-100 text-slate-600 border border-slate-200 text-[11px] font-black hover:bg-slate-200">Logout</button>
   `;
   badge.querySelector('#minova-auth-logout')?.addEventListener('click', logout);
@@ -1312,7 +1481,7 @@ function renderAdminDashboard() {
       dashboardMetric('Session', state.ready && !state.locked ? 'Active' : 'Locked', 'Cloudflare session cookie'),
       dashboardMetric('Pending Approvals', pendingApprovals, canManageQuoteApprovals(state.permission) ? 'Visible to approvers' : 'No approval access'),
       dashboardMetric('D1 Business DB', businessState.hasD1Data ? 'Primary' : businessState.source === 'fallback' ? 'Fallback' : 'Ready', businessState.lastError || `${businessState.quoteCount || 0} saved quotes indexed`),
-      dashboardMetric('Write Queue', `${businessState.pendingWrites} pending`, `${businessState.failedWrites} failed writes`)
+      dashboardMetric('D1 Write Queue', `${businessState.pendingWrites} saving / ${businessState.queuedWrites} queued`, `${businessState.failedWrites} failed attempts`)
     ].join('');
   }
   const risk = document.getElementById('minova-admin-risk-summary');
@@ -1325,7 +1494,8 @@ function renderAdminDashboard() {
       <div>D1 source: <b>${escapeHtml(businessState.source || 'static')}</b></div>
       <div>D1 last bootstrap: <b>${escapeHtml(businessState.lastBootstrapAt || '-')}</b></div>
       <div>D1 last write: <b>${escapeHtml(businessState.lastPersistAt || '-')}</b></div>
-      <div>GitHub Sync button: <b>${canAccessDataSync(state.permission) ? 'visible' : 'hidden'}</b></div>
+      <div>D1 queued writes: <b>${escapeHtml(businessState.queuedWrites || 0)}</b></div>
+      <div>GitHub Backup / Static Publish: <b>${canAccessDataSync(state.permission) ? 'available' : 'hidden'}</b></div>
     `;
   }
 }

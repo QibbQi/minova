@@ -16,6 +16,7 @@ const ROLE_NAME_TO_KEY = Object.fromEntries(
   Object.entries(ROLE_DEFINITIONS).map(([key, role]) => [role.displayName, key])
 );
 const BUSINESS_DOMAIN_PERMISSIONS = {
+  supplier: 'suppliers',
   product: 'products',
   inventory: 'inventory',
   inventory_history: 'inventory',
@@ -985,6 +986,7 @@ function businessSettingPermission(key) {
 export function businessSnapshotToItems(data = {}, quotes = []) {
   const arr = (value) => Array.isArray(value) ? value : [];
   const items = [
+    ...arr(data.suppliers).map(record => ({ domain: 'supplier', recordId: recordIdFor(record), payload: record })),
     ...arr(data.products).map(record => ({ domain: 'product', recordId: recordIdFor(record), payload: record })),
     ...arr(data.inventory).map(record => ({ domain: 'inventory', recordId: recordIdFor(record), payload: record })),
     ...arr(data.inventoryHistory).map((record, index) => ({ domain: 'inventory_history', recordId: recordIdFor(record, index), payload: record })),
@@ -1010,6 +1012,7 @@ export function businessSnapshotToItems(data = {}, quotes = []) {
 
 export function buildBusinessBootstrapPayload(rows = [], settings = {}) {
   const bucket = {
+    supplier: [],
     product: [],
     inventory: [],
     inventory_history: [],
@@ -1048,6 +1051,7 @@ export function buildBusinessBootstrapPayload(rows = [], settings = {}) {
   return {
     data: {
       products: bucket.product,
+      suppliers: bucket.supplier,
       inventory: bucket.inventory,
       inventoryHistory: bucket.inventory_history,
       salesRecords: bucket.sales_record,

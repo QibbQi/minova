@@ -729,7 +729,7 @@
                 <button onclick="switchTab('transport')" id="tab-transport" class="app-shell-tab px-6 py-2 hover:text-purple-700 transition-all text-sm leading-tight text-center text-slate-500 hover:text-blue-600" style=""><span class="block">Transport</span><span class="block">Mgmt</span></button>
             </nav>
             <div class="app-shell-actions flex gap-3">
-                <div id="github-sync-root" class="flex items-center"><div class="flex items-center"><button title="GitHub 数据同步" class="whitespace-nowrap text-[11px] px-2 py-1.5 rounded-lg font-bold border transition-colors bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700">GH 已连(0)</button></div></div>
+                <div id="github-sync-root" class="flex items-center"><div class="flex items-center"><button title="GitHub Backup / Static Publish" class="whitespace-nowrap text-[11px] px-2 py-1.5 rounded-lg font-bold border transition-colors bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700">Backup(0)</button></div></div>
                 <button onclick="toggleLanguage()" id="btn-lang" class="text-sm bg-slate-100 text-slate-700 px-4 py-2 rounded-xl hover:bg-slate-200 transition-colors font-bold border border-slate-200">EN / 中</button>
                 <button onclick="toggleCurrency()" id="btn-currency" class="text-sm bg-slate-100 text-slate-700 px-4 py-2 rounded-xl hover:bg-slate-200 transition-colors font-bold border border-slate-200">RM / ¥</button>
                 <button onclick="generateQuotationPDF()" id="btn-generate-pdf" class="text-sm bg-slate-900 text-white px-5 py-2 rounded-xl hover:bg-black transition-all shadow-lg shadow-slate-200 leading-tight text-center" style="">
@@ -4430,7 +4430,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 const state = () => sync.getStatus();
 
                 const btnBaseClass = 'whitespace-nowrap text-[11px] px-2 py-1.5 rounded-lg font-bold border transition-colors';
-                const btn = el('button', { title: 'GitHub 数据同步', class: `${btnBaseClass} bg-red-600 hover:bg-red-700 text-white border-red-700`, text: 'GH 未连' });
+                const btn = el('button', { title: 'GitHub Backup / Static Publish', class: `${btnBaseClass} bg-red-600 hover:bg-red-700 text-white border-red-700`, text: 'Backup' });
 
                 root.innerHTML = '';
                 const existing = document.getElementById('github-sync-modal');
@@ -4440,8 +4440,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 const card = el('div', { class: 'bg-white rounded-2xl p-6 w-full max-w-xl shadow-2xl max-h-[90vh] overflow-y-auto' });
                 modal.append(card);
 
-                const title = el('div', { class: 'text-lg font-black text-slate-800', text: 'GitHub 数据同步' });
-                const tip = el('div', { class: 'text-xs text-slate-500 mt-1', text: '默认使用 Sync Data：只同步 minova-data/state.json，不覆盖 index.html，也不等待 GitHub Pages 部署。只有代码或页面布局更新后才使用 Publish Page。' });
+                const title = el('div', { class: 'text-lg font-black text-slate-800', text: 'GitHub Backup / Static Publish' });
+                const tip = el('div', { class: 'text-xs text-slate-500 mt-1', text: '业务主数据优先保存到 Cloudflare D1。这里的 PAT 只用于静态备份、GitHub Pages 发布和附件文件维护，不是维护 Supplier/Product/Inventory/Price List 的必要条件。' });
 
                 const form = el('div', { class: 'mt-5 grid grid-cols-1 gap-4' });
                 const repoHint = el('div', { class: 'rounded-xl border border-slate-200 p-4 bg-slate-50 text-xs text-slate-600' });
@@ -4470,12 +4470,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 const btnClose = el('button', { class: 'px-4 py-2 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50', text: 'Close' });
                 const btnCheck = el('button', { class: 'px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 border border-slate-200', text: '连接自检' });
                 const btnConnectPat = el('button', { class: 'px-4 py-2 rounded-xl bg-slate-900 text-white font-bold hover:bg-black', text: '使用 PAT 连接' });
-                const btnSyncData = el('button', { class: 'px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700', text: 'Sync Data' });
+                const btnSyncData = el('button', { class: 'px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700', text: 'Backup Data' });
                 const btnPublish = el('button', { class: 'px-4 py-2 rounded-xl bg-purple-700 text-white font-bold hover:bg-purple-800', text: 'Publish Page' });
                 const btnDisconnect = el('button', { class: 'px-4 py-2 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700', text: '断开' });
 
                 footer.append(btnConnectPat, btnSyncData, btnPublish, btnCheck, btnDisconnect, btnClose);
-                const actionGuide = el('div', { class: 'mt-4 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-xs leading-relaxed text-emerald-800', text: 'Recommended: Sync Data writes only the data file and is much faster. Publish Page writes index.html plus the data file, and should be used only after code/layout changes.' });
+                const actionGuide = el('div', { class: 'mt-4 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-xs leading-relaxed text-emerald-800', text: 'Recommended: maintain master data after backend login. Use Backup Data only when you want to export a static GitHub copy; use Publish Page only after code/layout changes.' });
                 card.append(title, tip, form, actionGuide, msg, footer);
 
                 function formatErr(e) {
@@ -4496,10 +4496,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     const dataUnlocked = s.connected || localFileMode || authMode;
                     btn.style.display = syncAuthorized ? '' : 'none';
                     btn.textContent = s.connected
-                        ? `GH 已连(${s.queueSize})`
+                        ? `Backup(${s.queueSize})`
                         : syncAuthorized
-                            ? 'Data Sync'
-                            : 'GH 未连';
+                            ? 'Backup'
+                            : 'Hidden';
                     btn.className = `${btnBaseClass} ${s.connected ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700' : syncAuthorized ? 'bg-purple-700 hover:bg-purple-800 text-white border-purple-800' : 'bg-red-600 hover:bg-red-700 text-white border-red-700'}`;
                     const restrictedTabs = ['quotation', 'costcalc', 'database', 'pricelist', 'inventory', 'transport'];
                     for (const t of restrictedTabs) {
@@ -4521,7 +4521,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     btnSyncData.style.display = s.connected ? '' : 'none';
                     btnPublish.style.display = s.connected ? '' : 'none';
                     const cfg = s.config || {};
-                    repoHint.textContent = `目标Warehouse：${cfg.owner || defaults.owner}/${cfg.repo || defaults.repo}（分支：${cfg.branch || defaults.branch}）`;
+                    repoHint.textContent = `Static backup repository: ${cfg.owner || defaults.owner}/${cfg.repo || defaults.repo} (branch: ${cfg.branch || defaults.branch})`;
                 };
 
                 btn.onclick = () => {
@@ -6196,6 +6196,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
         function persistProfitSettings(reason = 'profit settings update') {
             try { localStorage.setItem('minova_profit_settings_v1', JSON.stringify(profitSettings)); } catch (e) {}
+            persistQuoteSettingsToD1();
             try { if (!suppressGitHubSync) window.__minovaSync?.enqueueSnapshot(reason); } catch (e) {}
         }
         window.setProfitTarget = (target) => {
@@ -6637,6 +6638,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 if (window.location.protocol === 'file:') return false;
                 const isConnected = !!window.__minovaSync?.getStatus?.()?.connected;
                 if (isConnected && !allowWhenConnected) return false;
+                if (window.__minovaD1BusinessPrimary && !allowWhenConnected) return false;
                 const url = new URL('minova-data/state.json', window.location.href);
                 url.searchParams.set('v', String(Date.now()));
                 const res = await fetch(url.toString(), { cache: 'no-store' });
@@ -6695,9 +6697,6 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             try { localStorage.setItem('minova_installer_profit_v1', JSON.stringify(normalizeInstallerProfitSettings(installerProfitSettings))); } catch (e) {}
             try { localStorage.setItem('minova_non_stock_pricing_v1', JSON.stringify(nonStockPricingStrategies)); } catch (e) {}
             refreshAfterDataChange();
-            try {
-                if (!suppressGitHubSync) window.__minovaBusiness?.persistStateSnapshot?.(window.getMinovaBusinessStateSnapshot?.());
-            } catch (e) {}
             try { if (!suppressGitHubSync) window.__minovaSync?.enqueueSnapshot('state update'); } catch (e) {}
         }
 
@@ -6706,6 +6705,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             updatedAt: new Date().toISOString(),
             data: {
                 products,
+                suppliers,
                 inventory,
                 inventoryHistory,
                 marketPrices,
@@ -6721,9 +6721,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         });
 
         window.applyBusinessDataFromD1 = (data = {}, quoteIndex = null) => {
+            window.__minovaD1BusinessPrimary = true;
             const merged = {
                 ...data,
-                suppliers,
                 companyCerts,
                 fileDeleteLogs
             };
@@ -6732,6 +6732,84 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 window.applyD1QuoteIndex(quoteIndex);
             }
         };
+
+        function cloneForD1(value) {
+            try { return JSON.parse(JSON.stringify(value || {})); } catch (e) { return value || {}; }
+        }
+
+        function persistEntityToD1(domain, recordId, payload) {
+            try {
+                if (!domain || !recordId || !payload || !window.__minovaBusiness?.upsertEntity) return;
+                window.__minovaBusiness.upsertEntity(domain, String(recordId), cloneForD1(payload));
+            } catch (e) {
+                console.warn('D1 entity save queued/failed:', domain, recordId, e);
+            }
+        }
+
+        function deleteEntityFromD1(domain, recordId) {
+            try {
+                if (!domain || !recordId || !window.__minovaBusiness?.deleteEntity) return;
+                window.__minovaBusiness.deleteEntity(domain, String(recordId));
+            } catch (e) {
+                console.warn('D1 entity delete queued/failed:', domain, recordId, e);
+            }
+        }
+
+        function persistSettingsToD1(settings) {
+            try {
+                if (!settings || !window.__minovaBusiness?.saveSettings) return;
+                window.__minovaBusiness.saveSettings(cloneForD1(settings));
+            } catch (e) {
+                console.warn('D1 settings save queued/failed:', e);
+            }
+        }
+
+        function persistQuoteSettingsToD1() {
+            try {
+                profitSettings = normalizeProfitSettings(profitSettings || null);
+                installerProfitSettings = normalizeInstallerProfitSettings(installerProfitSettings || null);
+                installerQuoteSettings = normalizeInstallerQuoteSettings(installerQuoteSettings || null);
+                persistSettingsToD1({
+                    profit_settings: profitSettings,
+                    installer_profit_settings: installerProfitSettings,
+                    installer_quote_settings: installerQuoteSettings
+                });
+            } catch (e) {
+                console.warn('D1 quote settings save queued/failed:', e);
+            }
+        }
+
+        function persistInventoryStateToD1() {
+            try {
+                if (!window.__minovaBusiness?.upsertEntities) return;
+                const items = [
+                    ...(Array.isArray(inventory) ? inventory : []).map(record => ({ domain: 'inventory', recordId: record.id, payload: record })),
+                    ...(Array.isArray(inventoryHistory) ? inventoryHistory : []).map((record, index) => ({ domain: 'inventory_history', recordId: String(record.id || [record.ts, record.type, record.productId, record.batchNo, index].filter(Boolean).join(':')), payload: record })),
+                    ...(Array.isArray(salesRecords) ? salesRecords : []).map(record => ({ domain: 'sales_record', recordId: record.id, payload: record })),
+                    ...(Array.isArray(historicalInventory) ? historicalInventory : []).map((record, index) => ({ domain: 'historical_inventory', recordId: String(record.id || [record.ts, record.productId, record.batchNo, index].filter(Boolean).join(':')), payload: record }))
+                ].filter(item => item.recordId);
+                if (items.length) window.__minovaBusiness.upsertEntities(items);
+            } catch (e) {
+                console.warn('D1 inventory save queued/failed:', e);
+            }
+        }
+
+        function persistMarketPricesToD1() {
+            try {
+                if (window.__minovaBusiness?.upsertEntities) {
+                    const items = (marketPrices?.records || []).map(record => ({ domain: 'market_price', recordId: record.id, payload: record })).filter(item => item.recordId);
+                    if (items.length) window.__minovaBusiness.upsertEntities(items);
+                }
+                persistSettingsToD1({
+                    market_price_settings: {
+                        categoryUnits: marketPrices?.categoryUnits || {},
+                        deletedRecordIds: marketPrices?.deletedRecordIds || []
+                    }
+                });
+            } catch (e) {
+                console.warn('D1 market price save queued/failed:', e);
+            }
+        }
 
         let quoteRows = [{ id: Date.now(), description: '', vendor: '', spec: '', batchNo: '', quantity: 1, price: 0, cost: 0, productId: '', inventoryId: '' }];
         let dbGroupMode = 'category';
@@ -8469,6 +8547,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             });
             closeSupplierModal();
             saveToLocal();
+            persistEntityToD1('supplier', next.id || next.code, next);
             try { renderCompanyCertUploadSelectors(); renderCompanyCertList(); } catch (e) {}
         };
 
@@ -8484,6 +8563,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (!confirm(`Delete supplier: ${getSupplierDisplayName(supplier)}?`)) return;
             suppliers = suppliers.filter(s => normalizeSupplierCode(s.code) !== c);
             saveToLocal();
+            deleteEntityFromD1('supplier', supplier.id || supplier.code);
         };
 
         window.uploadProductImage = async (input) => {
@@ -8815,6 +8895,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             else delete nonStockPricingStrategies[id];
             if (window.__nonStockPricingDrafts && typeof window.__nonStockPricingDrafts === 'object') delete window.__nonStockPricingDrafts[id];
             saveToLocal();
+            persistSettingsToD1({ non_stock_pricing_strategies: nonStockPricingStrategies });
             renderNonStockPricingStrategies();
             renderPriceList();
             renderPriceListPicker();
@@ -8826,6 +8907,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             delete nonStockPricingStrategies[id];
             if (window.__nonStockPricingDrafts && typeof window.__nonStockPricingDrafts === 'object') delete window.__nonStockPricingDrafts[id];
             saveToLocal();
+            persistSettingsToD1({ non_stock_pricing_strategies: nonStockPricingStrategies });
             renderNonStockPricingStrategies();
             renderPriceList();
             renderPriceListPicker();
@@ -9103,6 +9185,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             }
             selectedTransportRecords = new Set();
             saveToLocal();
+            ids.forEach(id => deleteEntityFromD1('transport', id));
+            persistInventoryStateToD1();
             renderTransport();
             renderInventory();
             try { renderCompanyCertUploadSelectors(); } catch (e) {}
@@ -9114,6 +9198,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (!rec) return;
             rec.status = String(status || 'draft');
             saveToLocal();
+            persistEntityToD1('transport', rec.id, rec);
             renderTransport();
         };
 
@@ -9130,6 +9215,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 if (Array.isArray(item.transportIds)) item.transportIds = item.transportIds.filter(t => t !== id);
             }
             saveToLocal();
+            deleteEntityFromD1('transport', id);
+            persistInventoryStateToD1();
             renderTransport();
             renderInventory();
             try { renderCompanyCertUploadSelectors(); } catch (e) {}
@@ -9517,6 +9604,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             }
             selectedInventoryForTransport = new Set();
             saveToLocal();
+            if (editId) persistEntityToD1('transport', editId, transportRecords.find(r => r.id === editId));
+            else persistEntityToD1('transport', transportRecords[transportRecords.length - 1]?.id, transportRecords[transportRecords.length - 1]);
+            persistInventoryStateToD1();
             renderTransport();
             renderInventory();
             try { renderCompanyCertUploadSelectors(); } catch (e) {}
@@ -9726,6 +9816,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             });
 
             saveToLocal();
+            persistInventoryStateToD1();
             closeInventoryEditModal();
         };
 
@@ -9956,6 +10047,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             renderInstallerCostDetail(result);
             try { localStorage.setItem('minova_installer_profit_v1', JSON.stringify(installerProfitSettings)); } catch (e) {}
             try { localStorage.setItem('minova_installer_quote_settings_v1', JSON.stringify(installerQuoteSettings)); } catch (e) {}
+            persistQuoteSettingsToD1();
         };
 
         function getDefaultPvModuleQuantity() {
@@ -10357,6 +10449,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 note: `Deleted sales-out record and rolled inventory back | Contract: ${r.contractNo || '-'}`
             });
             saveToLocal();
+            deleteEntityFromD1('sales_record', id);
+            persistInventoryStateToD1();
         };
 
         function getInventorySummary(productId) {
@@ -10713,6 +10807,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     });
                     archiveZeroQtyInventoryItems(`Transfer Out | ${fromLoc} -> ${toLoc}`);
                     saveToLocal();
+                    persistInventoryStateToD1();
                     closeInventoryModal();
                     return;
                 }
@@ -10733,6 +10828,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             }
 
             saveToLocal();
+            persistInventoryStateToD1();
             closeInventoryModal();
         };
 
@@ -11257,6 +11353,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (cat && unit) {
                 upsertMarketCategoryUnit(cat, unit);
                 try { localStorage.setItem('minova_market_prices_v1', JSON.stringify(marketPrices)); } catch (e) {}
+                persistMarketPricesToD1();
                 renderMarketPriceFormHint();
                 renderPriceList();
             }
@@ -11275,6 +11372,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 if (priceEl) priceEl.value = '';
                 if (noteEl) noteEl.value = '';
                 saveToLocal();
+                persistMarketPricesToD1();
                 renderMarketPriceForm();
                 renderPriceList();
                 showToast('Market price saved', 'success');
@@ -11500,6 +11598,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     rateCnyPerMyr: getSalesOutRateCnyPerMyr()
                 });
                 saveToLocal();
+                persistMarketPricesToD1();
                 renderPriceList();
                 const modal = document.getElementById('market-trend-modal');
                 renderMarketTrendBody(modal?.dataset?.category || '', modal?.dataset?.range || 'day');
@@ -11513,6 +11612,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (!recordId || !confirm('Delete this market price record?')) return;
             deleteMarketPriceRecord(recordId);
             saveToLocal();
+            deleteEntityFromD1('market_price', recordId);
+            persistMarketPricesToD1();
             renderPriceList();
             const modal = document.getElementById('market-trend-modal');
             renderMarketTrendBody(modal?.dataset?.category || '', modal?.dataset?.range || 'day');
@@ -12041,6 +12142,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     updatedAt: Date.now()
                 };
                 saveToLocal();
+                persistInventoryStateToD1();
                 closeSalesOutModal();
                 return;
             }
@@ -12147,6 +12249,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 }
             }
             saveToLocal();
+            persistInventoryStateToD1();
             closeSalesOutModal();
         };
 
@@ -12166,6 +12269,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 });
                 inventory = inventory.filter(i => i.id !== id);
                 saveToLocal();
+                deleteEntityFromD1('inventory', id);
+                persistInventoryStateToD1();
             }
         };
         window.openModal = () => {
@@ -12277,6 +12382,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const idx = products.findIndex(p => p.id === data.id);
             if(idx !== -1) products[idx] = data; else products.push(data);
             saveToLocal(); closeModal();
+            persistEntityToD1('product', data.id, data);
         };
         window.editProduct = (id) => {
             const p = products.find(prod => prod.id === id);
@@ -12322,7 +12428,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             renderProductCertsInModal();
         };
         window.deleteProduct = (id) => {
-            if(confirm('Delete this product record?')) { products = products.filter(p => p.id !== id); saveToLocal(); }
+            if(confirm('Delete this product record?')) { products = products.filter(p => p.id !== id); saveToLocal(); deleteEntityFromD1('product', id); }
         };
 
         // --- 批量导入逻辑 ---
@@ -12613,6 +12719,14 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             });
 
             saveToLocal();
+            try {
+                window.__minovaBusiness?.upsertEntities?.([
+                    ...products.map(record => ({ domain: 'product', recordId: record.id, payload: cloneForD1(record) })),
+                    ...suppliers.map(record => ({ domain: 'supplier', recordId: record.id || record.code, payload: cloneForD1(record) }))
+                ]);
+            } catch (e) {
+                console.warn('D1 product import save queued/failed:', e);
+            }
             renderImportLog(successCount, failCount, log);
             goToStep(3);
         }
@@ -14364,6 +14478,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     p.certifications.specSheets.push(certEntry);
                 }
                 saveToLocal();
+                persistEntityToD1('product', p.id, p);
                 renderProductCertsInModal();
             } catch (err) {
                 alert('上传失败: ' + err.message);
@@ -14435,6 +14550,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     message: `minova: delete product cert ${pid} ${removed?.name || removed?.path || ''}`.trim()
                 });
                 saveToLocal();
+                persistEntityToD1('product', p.id, p);
                 renderProductCertsInModal();
                 try { if (document.getElementById('cert-attachment-modal')) renderProductCertCheckboxes(); } catch (e) {}
                 try { if (document.getElementById('cert-attachment-modal')) updateCertSelectedSummary(); } catch (e) {}

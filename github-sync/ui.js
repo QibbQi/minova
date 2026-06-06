@@ -33,7 +33,7 @@ export function mountGitHubSyncUi({ sync }) {
   }
 
   const statusText = el('div', { class: 'text-[10px] text-slate-500 font-bold', text: '' })
-  const btn = el('button', { class: 'text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl font-bold border border-slate-200', text: 'GitHub 同步' })
+  const btn = el('button', { class: 'text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl font-bold border border-slate-200', text: 'GitHub Backup' })
 
   root.innerHTML = ''
   const existing = document.getElementById('github-sync-modal')
@@ -43,8 +43,8 @@ export function mountGitHubSyncUi({ sync }) {
   const card = el('div', { class: 'bg-white rounded-2xl p-6 w-full max-w-xl shadow-2xl max-h-[90vh] overflow-y-auto' })
   modal.append(card)
 
-  const title = el('div', { class: 'text-lg font-black text-slate-800', text: 'GitHub 数据同步' })
-  const tip = el('div', { class: 'text-xs text-slate-500 mt-1', text: '使用 PAT + 加密本地存储，将当前页面打包发布到 GitHub Pages（覆盖 index.html）。' })
+  const title = el('div', { class: 'text-lg font-black text-slate-800', text: 'GitHub Backup / Static Publish' })
+  const tip = el('div', { class: 'text-xs text-slate-500 mt-1', text: '业务主数据优先保存到 Cloudflare D1。这里的 PAT 只用于静态备份、GitHub Pages 发布和附件文件维护。' })
 
   const form = el('div', { class: 'mt-5 grid grid-cols-1 gap-4' })
   const repoHint = el('div', { class: 'rounded-xl border border-slate-200 p-4 bg-slate-50 text-xs text-slate-600' })
@@ -70,7 +70,7 @@ export function mountGitHubSyncUi({ sync }) {
   const btnClose = el('button', { class: 'px-4 py-2 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50', text: '关闭' })
   const btnCheck = el('button', { class: 'px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 border border-slate-200', text: '连接自检' })
   const btnConnectPat = el('button', { class: 'px-4 py-2 rounded-xl bg-slate-900 text-white font-bold hover:bg-black', text: '使用 PAT 连接' })
-  const btnPublish = el('button', { class: 'px-4 py-2 rounded-xl bg-purple-700 text-white font-bold hover:bg-purple-800', text: '发布到 Pages' })
+  const btnPublish = el('button', { class: 'px-4 py-2 rounded-xl bg-purple-700 text-white font-bold hover:bg-purple-800', text: 'Publish Page' })
   const btnDisconnect = el('button', { class: 'px-4 py-2 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700', text: '断开' })
 
   footer.append(btnConnectPat, btnPublish, btnCheck, btnDisconnect, btnClose)
@@ -81,7 +81,7 @@ export function mountGitHubSyncUi({ sync }) {
 
   const refresh = () => {
     const s = state()
-    statusText.textContent = s.connected ? `GitHub 已连接 | 队列 ${s.queueSize}` : `GitHub 未连接${s.hasTokenStored ? '（有已保存 token）' : ''}`
+    statusText.textContent = s.connected ? `GitHub backup connected | queue ${s.queueSize}` : `GitHub backup disconnected${s.hasTokenStored ? ' (stored token exists)' : ''}`
     btnCheck.style.display = s.connected ? '' : 'none'
     btnPublish.style.display = s.connected ? '' : 'none'
     const cfg = s.config || {}

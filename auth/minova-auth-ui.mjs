@@ -20,14 +20,36 @@ import {
 const AUTH_API_BASE_KEY = 'minova_auth_api_base_v1';
 const AUTH_SESSION_KEY = 'minova_auth_session_v1';
 const AUTH_SESSION_EXPIRES_KEY = 'minova_auth_session_expires_v1';
+const AUTH_FETCH_TIMEOUT_MS = 12000;
+const AUTH_FETCH_RETRY_DELAYS_MS = [300, 900];
+const ADMIN_REFRESH_MIN_INTERVAL_MS = 15000;
 const normalizeApiBase = (value) => {
   const base = String(value || '').trim().replace(/\/+$/, '');
   return /^https?:\/\/[^/\s]+/i.test(base) ? base : '';
 };
+const uniqueValues = (values) => Array.from(new Set(values.filter(Boolean)));
+const safeStorageGet = (key) => {
+  try { return localStorage.getItem(key); } catch { return ''; }
+};
+const safeStorageSet = (key, value) => {
+  try { localStorage.setItem(key, value); } catch {}
+};
+const isMinovaDomainPage = () => {
+  try { return /(^|\.)minovamy\.com$/i.test(window.location.hostname || ''); } catch { return false; }
+};
+const configuredApiBase = () => normalizeApiBase(window.MINOVA_AUTH_API_BASE);
+const storedApiBase = () => normalizeApiBase(safeStorageGet(AUTH_API_BASE_KEY));
+function initialApiBase() {
+  const configured = configuredApiBase();
+  const stored = storedApiBase();
+  if (configured) return configured;
+  if (isMinovaDomainPage() && stored) return stored;
+  return DEFAULT_API_BASE_URL;
+}
 const state = {
-  apiBase: normalizeApiBase(window.MINOVA_AUTH_API_BASE) || normalizeApiBase(localStorage.getItem(AUTH_API_BASE_KEY)) || DEFAULT_API_BASE_URL,
-  sessionToken: localStorage.getItem(AUTH_SESSION_KEY) || '',
-  sessionExpiresAt: localStorage.getItem(AUTH_SESSION_EXPIRES_KEY) || '',
+  apiBase: initialApiBase(),
+  sessionToken: safeStorageGet(AUTH_SESSION_KEY) || '',
+  sessionExpiresAt: safeStorageGet(AUTH_SESSION_EXPIRES_KEY) || '',
   user: null,
   permission: null,
   ready: false,
@@ -43,7 +65,9 @@ const adminState = {
   selectedRole: 'admin',
   activePanel: 'dashboard',
   showInactiveUsers: false,
-  resetUserId: null
+  resetUserId: null,
+  lastLoadedAt: 0,
+  loadingPromise: null
 };
 const businessState = {
   loaded: false,
@@ -164,33 +188,78 @@ const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, ch => ({
   "'": '&#39;'
 }[ch]));
 
+const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+function authApiBaseCandidates() {
+  const configured = configuredApiBase();
+  const stored = storedApiBase();
+  if (configured) return uniqueValues([configured, DEFAULT_API_BASE_URL, stored]);
+  if (isMinovaDomainPage()) return uniqueValues([normalizeApiBase(state.apiBase), stored, DEFAULT_API_BASE_URL]);
+  return uniqueValues([
+    normalizeApiBase(state.apiBase),
+    DEFAULT_API_BASE_URL,
+    stored
+  ]);
+}
+
+function isRetryableAuthRequest(path, options = {}) {
+  const method = String(options.method || 'GET').toUpperCase();
+  if (method === 'GET') return true;
+  return method === 'POST' && /^\/auth\/(login|forgot-password)$/i.test(String(path || ''));
+}
+
+function describeAuthNetworkError(error, base) {
+  const message = String(error?.message || error || 'network_error');
+  const host = (() => {
+    try { return new URL(base).host; } catch { return base || 'backend'; }
+  })();
+  if (/abort|timeout/i.test(error?.name || message)) return `Connection timeout to ${host}. Please retry.`;
+  if (/failed to fetch|load failed|network/i.test(message)) return `Connection failed to ${host}. Please check network or retry.`;
+  return message;
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = AUTH_FETCH_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 const authFetch = async (path, options = {}) => {
   const headers = {
     'content-type': 'application/json',
     ...(state.sessionToken ? { authorization: `Bearer ${state.sessionToken}` } : {}),
     ...(options.headers || {})
   };
+  const candidates = authApiBaseCandidates();
+  const retryable = isRetryableAuthRequest(path, options);
+  let lastError;
   let res;
-  try {
-    res = await fetch(`${state.apiBase}${path}`, {
-      ...options,
-      credentials: 'include',
-      headers
-    });
-  } catch (error) {
-    const defaultBase = normalizeApiBase(DEFAULT_API_BASE_URL);
-    const currentBase = normalizeApiBase(state.apiBase);
-    if (defaultBase && currentBase && currentBase !== defaultBase) {
-      state.apiBase = defaultBase;
-      try { localStorage.setItem(AUTH_API_BASE_KEY, defaultBase); } catch {}
-      res = await fetch(`${state.apiBase}${path}`, {
-        ...options,
-        credentials: 'include',
-        headers
-      });
-    } else {
-      throw error;
+  for (const base of candidates) {
+    const attempts = retryable ? AUTH_FETCH_RETRY_DELAYS_MS.length + 1 : 1;
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      if (attempt > 0) await wait(AUTH_FETCH_RETRY_DELAYS_MS[attempt - 1] || 300);
+      try {
+        res = await fetchWithTimeout(`${base}${path}`, {
+          ...options,
+          credentials: 'include',
+          headers
+        });
+        state.apiBase = base;
+        safeStorageSet(AUTH_API_BASE_KEY, base);
+        break;
+      } catch (error) {
+        lastError = new Error(describeAuthNetworkError(error, base));
+        lastError.cause = error;
+      }
     }
+    if (res) break;
+  }
+  if (!res) {
+    throw lastError || new Error('Backend connection unavailable.');
   }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -811,7 +880,7 @@ function ensureAdminTab() {
       </section>
     `;
     document.body.insertBefore(main, document.getElementById('cert-attachment-modal') || null);
-    main.querySelector('#minova-admin-refresh')?.addEventListener('click', loadAdminPanel);
+    main.querySelector('#minova-admin-refresh')?.addEventListener('click', () => loadAdminPanel({ force: true }));
     main.querySelector('#minova-admin-create-user-form')?.addEventListener('submit', onAdminCreateUser);
     main.querySelector('#minova-admin-show-inactive')?.addEventListener('change', event => {
       adminState.showInactiveUsers = !!event.target.checked;
@@ -963,7 +1032,7 @@ function applyPermissions() {
   lockResourceView('view-transport', 'transport');
   lockResourceView('view-costcalc', 'quoteSettings');
   applySensitiveFieldMasks();
-  loadAdminPanel();
+  if (isAdminViewVisible()) loadAdminPanel();
 }
 
 function lockResourceView(viewId, resource) {
@@ -1124,36 +1193,64 @@ function patchGlobals() {
   }
 }
 
-async function loadAdminPanel() {
+function isAdminViewVisible() {
+  const view = document.getElementById('view-admin');
+  return !!view && !view.classList.contains('hidden') && view.style.display !== 'none';
+}
+
+async function loadAdminPanel({ force = false, silent = false } = {}) {
   if (!state.permission || !canAccessTab(state.permission, 'admin')) return;
+  if (adminState.loadingPromise) return adminState.loadingPromise;
+  if (!force && adminState.lastLoadedAt && Date.now() - adminState.lastLoadedAt < ADMIN_REFRESH_MIN_INTERVAL_MS) {
+    renderAdminPanels();
+    renderAdminDashboard();
+    return;
+  }
+  adminState.loadingPromise = loadAdminPanelNow({ silent }).finally(() => {
+    adminState.loadingPromise = null;
+  });
+  return adminState.loadingPromise;
+}
+
+async function loadAdminPanelNow({ silent = false } = {}) {
   renderAdminPanels();
   renderAdminDashboard();
+  const errors = [];
   try {
     if (canAccessDataSync(state.permission)) {
-      const [roles, users, permissions] = await Promise.all([
+      const [roles, users, permissions] = await Promise.allSettled([
         authFetch('/admin/roles'),
         authFetch('/admin/users'),
         authFetch('/admin/permissions')
       ]);
-      adminState.roles = roles.roles || [];
-      adminState.users = users.users || [];
-      adminState.permissions = permissions.permissions || [];
+      if (roles.status === 'fulfilled') adminState.roles = roles.value.roles || [];
+      else errors.push(`roles: ${roles.reason?.message || roles.reason}`);
+      if (users.status === 'fulfilled') adminState.users = users.value.users || [];
+      else errors.push(`users: ${users.reason?.message || users.reason}`);
+      if (permissions.status === 'fulfilled') adminState.permissions = permissions.value.permissions || [];
+      else errors.push(`permissions: ${permissions.reason?.message || permissions.reason}`);
       if (!adminState.roles.some(role => role.role_key === adminState.selectedRole)) {
         adminState.selectedRole = state.permission?.role || adminState.roles[0]?.role_key || 'admin';
       }
     }
-    await Promise.all([
+    const [approvals, logs] = await Promise.allSettled([
       loadAdminApprovals({ silent: true }),
       loadAdminLogs({ silent: true })
     ]);
+    if (approvals.status === 'rejected') errors.push(`approvals: ${approvals.reason?.message || approvals.reason}`);
+    if (logs.status === 'rejected') errors.push(`logs: ${logs.reason?.message || logs.reason}`);
+    adminState.lastLoadedAt = Date.now();
     renderAdminPanels();
     renderAdminDashboard();
     renderAdminRoleOptions();
     renderAdminUsers();
     renderPermissionEditor();
-    showAdminMessage('Admin backend refreshed.');
+    if (!silent) {
+      if (errors.length) showAdminMessage(`Admin backend partially loaded. ${errors.slice(0, 2).join(' | ')}`, 'error');
+      else showAdminMessage('Admin backend refreshed.');
+    }
   } catch (error) {
-    showAdminMessage(`Admin data unavailable: ${error.message}`, 'error');
+    if (!silent) showAdminMessage(`Admin data unavailable: ${error.message}`, 'error');
   }
 }
 
@@ -1477,7 +1574,7 @@ async function onAdminCreateUser(event) {
     });
     event.target.reset();
     showAdminMessage('User created.');
-    await loadAdminPanel();
+    await loadAdminPanel({ force: true });
   } catch (error) {
     showAdminMessage(`Create user failed: ${formatAuthError(error)}`, 'error');
   }
@@ -1498,7 +1595,7 @@ async function onAdminSaveUser(row) {
       })
     });
     showAdminMessage('User updated.');
-    await loadAdminPanel();
+    await loadAdminPanel({ force: true });
   } catch (error) {
     showAdminMessage(`Save user failed: ${formatAuthError(error)}`, 'error');
   }
@@ -1517,7 +1614,7 @@ async function onAdminDeleteUser(row) {
       body: JSON.stringify({ id })
     });
     showAdminMessage('User disabled and hidden from active list.');
-    await loadAdminPanel();
+    await loadAdminPanel({ force: true });
   } catch (error) {
     showAdminMessage(`Delete user failed: ${formatAuthError(error)}`, 'error');
   }
@@ -1571,7 +1668,7 @@ async function onAdminSavePermission() {
       setSession(state.user, data.permission);
       applyPermissions();
     }
-    await loadAdminPanel();
+    await loadAdminPanel({ force: true });
   } catch (error) {
     showAdminMessage(`Save permission failed: ${error.message}`, 'error');
   }

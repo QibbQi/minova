@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import {
   canAccessDataSync,
@@ -24,6 +25,8 @@ import {
   normalizeUserUpdatePayload,
   validatePasswordChangeRequest
 } from '../worker/src/index.mjs';
+
+const authUiSource = readFileSync(new URL('../auth/minova-auth-ui.mjs', import.meta.url), 'utf8');
 
 test('permission sanitization filters unknown tabs resources and actions', () => {
   const permission = sanitizePermissionSnapshot('sales', {
@@ -168,6 +171,21 @@ test('audit log filters are normalized for admin log view', () => {
     action: 'admin_update_user',
     limit: 200
   });
+});
+
+test('auth UI prefers the stable Worker API on non-Minova domains', () => {
+  assert.match(authUiSource, /function initialApiBase\(\)/);
+  assert.match(authUiSource, /if \(isMinovaDomainPage\(\) && stored\) return stored;/);
+  assert.match(authUiSource, /return DEFAULT_API_BASE_URL;/);
+  assert.match(authUiSource, /if \(configured\) return uniqueValues\(\[configured, DEFAULT_API_BASE_URL, stored\]\);/);
+});
+
+test('auth UI retries transient backend reads and throttles admin auto-refresh', () => {
+  assert.match(authUiSource, /AUTH_FETCH_TIMEOUT_MS = 12000/);
+  assert.match(authUiSource, /AUTH_FETCH_RETRY_DELAYS_MS = \[300, 900\]/);
+  assert.match(authUiSource, /ADMIN_REFRESH_MIN_INTERVAL_MS = 15000/);
+  assert.match(authUiSource, /if \(adminState\.loadingPromise\) return adminState\.loadingPromise;/);
+  assert.match(authUiSource, /if \(isAdminViewVisible\(\)\) loadAdminPanel\(\);/);
 });
 
 test('business domain permission maps D1 domains to RBAC resources', () => {

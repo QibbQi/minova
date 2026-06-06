@@ -13,8 +13,12 @@ import {
 import {
   buildBusinessBootstrapPayload,
   businessSnapshotToItems,
+  buildHealthPayload,
   canSoftDeleteUser,
   domainPermission,
+  normalizeAdminBusinessEntitiesQuery,
+  normalizeAdminBusinessEntityMutation,
+  normalizeAdminBusinessSettingsPayload,
   normalizeBusinessEntityDeletePayload,
   normalizeBusinessEntityUpsertPayload,
   normalizeBusinessSettingsPayload,
@@ -195,6 +199,21 @@ test('auth UI retries transient backend reads and throttles admin auto-refresh',
   assert.match(authUiSource, /if \(isAdminViewVisible\(\)\) loadAdminPanel\(\);/);
 });
 
+test('D1 write queue only retries transient business failures', () => {
+  assert.match(authUiSource, /function isRetryableBusinessWriteError\(error\)/);
+  assert.match(authUiSource, /if \(!isRetryableBusinessWriteError\(error\)\) return \{ ok: false, queued: false, error: error\.message \|\| String\(error\) \};/);
+  assert.match(authUiSource, /nextRetryAt/);
+  assert.match(authUiSource, /forceFlushD1WriteQueue/);
+  assert.doesNotMatch(authUiSource, /enqueueD1Write\(path, body, label, 1\);\s*return \{ ok: false, queued: true/s);
+});
+
+test('admin endpoint diagnostics do not report cached transient reads as active queue failures', () => {
+  assert.match(authUiSource, /function unresolvedAdminEndpointFailures\(\)/);
+  assert.match(authUiSource, /\.filter\(\(\[, meta\]\) => !meta\.ok && !meta\.cached\)/);
+  assert.match(authUiSource, /const failedEndpoints = unresolvedAdminEndpointFailures\(\);/);
+  assert.match(authUiSource, /Endpoint diagnostics/);
+});
+
 test('business domain permission maps D1 domains to RBAC resources', () => {
   assert.deepEqual(domainPermission('supplier'), { resource: 'suppliers', read: 'read', write: 'edit', delete: 'delete' });
   assert.deepEqual(domainPermission('product'), { resource: 'products', read: 'read', write: 'edit', delete: 'delete' });
@@ -252,6 +271,49 @@ test('business settings and quote CRUD payloads normalize expected shapes', () =
   });
 });
 
+test('admin business data payloads normalize list and edit operations', () => {
+  assert.deepEqual(normalizeAdminBusinessEntitiesQuery(new URL('https://api.example/admin/business/entities?domain=supplier&status=deleted&q= lesso &limit=500')), {
+    domain: 'supplier',
+    status: 'deleted',
+    q: 'lesso',
+    limit: 200
+  });
+  assert.deepEqual(normalizeAdminBusinessEntitiesQuery(new URL('https://api.example/admin/business/entities?domain=ghost&status=weird&limit=0')), {
+    domain: '',
+    status: 'active',
+    q: '',
+    limit: 100
+  });
+  assert.deepEqual(normalizeAdminBusinessEntityMutation({
+    domain: 'supplier',
+    recordId: 'SUP1',
+    payload: { id: 'SUP1', code: 'SUP1' }
+  }), {
+    ok: true,
+    domain: 'supplier',
+    recordId: 'SUP1',
+    payload: { id: 'SUP1', code: 'SUP1' }
+  });
+  assert.equal(normalizeAdminBusinessEntityMutation({ domain: 'ghost', recordId: 'x', payload: {} }).error, 'invalid_business_domain');
+  assert.deepEqual(normalizeAdminBusinessSettingsPayload({
+    settings: { profit_settings: { rows: [] }, ignored: {} }
+  }), {
+    ok: true,
+    settings: { profit_settings: { rows: [] } }
+  });
+});
+
+test('health payload exposes Worker and D1 deep status', () => {
+  assert.deepEqual(buildHealthPayload({ d1Ok: true, latencyMs: 27, now: '2026-06-06T00:00:00.000Z' }), {
+    ok: true,
+    service: 'minova-backend',
+    worker: { ok: true },
+    d1: { ok: true, latencyMs: 27 },
+    timestamp: '2026-06-06T00:00:00.000Z'
+  });
+  assert.equal(buildHealthPayload({ d1Ok: false, latencyMs: 12 }).ok, false);
+});
+
 test('business bootstrap payload reshapes entity rows into app state', () => {
   const payload = buildBusinessBootstrapPayload([
     { domain: 'supplier', record_id: 'SUP1', payload_json: '{"id":"SUP1","code":"SUP1","nameEn":"Supplier"}', updated_at: '2026-06-03 00:59:00' },
@@ -298,4 +360,14 @@ test('quote-setting save paths persist D1 settings directly', () => {
   assert.match(indexHtmlSource, /function persistQuoteSettingsToD1\(\)/);
   assert.match(indexHtmlSource, /function persistProfitSettings[\s\S]*persistQuoteSettingsToD1\(\)/);
   assert.match(indexHtmlSource, /window\.recalcInstallerQuote = \(\) => \{[\s\S]*persistQuoteSettingsToD1\(\)/);
+});
+
+test('top navigation tabs use compact SVG icon buttons with hover labels', () => {
+  for (const tab of ['quotation', 'pvcalc', 'costcalc', 'database', 'pricelist', 'inventory', 'transport']) {
+    assert.match(indexHtmlSource, new RegExp(`id="tab-${tab}"[^>]*aria-label=`));
+    assert.match(indexHtmlSource, new RegExp(`id="tab-${tab}"[\\s\\S]*?<svg`));
+    assert.match(indexHtmlSource, new RegExp(`id="tab-${tab}"[\\s\\S]*?data-tab-label`));
+  }
+  assert.match(authUiSource, /renderTabIcon\('admin'\)/);
+  assert.match(authUiSource, /button\.setAttribute\('aria-label', TAB_LABELS\.admin\)/);
 });

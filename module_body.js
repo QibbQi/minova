@@ -2984,7 +2984,7 @@
         };
 
         window.toggleLanguage = () => {
-            currentLang = currentLang === 'zh' ? 'en' : 'zh';
+            currentLang = 'en';
             updateLanguageLabels();
         };
 
@@ -3346,7 +3346,8 @@
 
             document.querySelectorAll('.unit-days').forEach(el => el.textContent = t.daysUnit);
 
-            document.getElementById('btn-lang').textContent = currentLang === 'zh' ? '中 / EN' : 'EN / 中';
+            const langButton = document.getElementById('btn-lang');
+            if (langButton) langButton.textContent = 'English';
             renderQuote();
 
             const p2 = document.getElementById('lbl-page2-title');

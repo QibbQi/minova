@@ -38,11 +38,11 @@ const BUSINESS_SETTINGS_KEYS = new Set([
 export default {
   async fetch(request, env) {
     try {
-      await ensureBootstrap(env);
       if (request.method === 'OPTIONS') return corsResponse(request, env);
 
       const url = new URL(request.url);
-      if (url.pathname === '/health') return json(request, env, { ok: true, service: 'minova-backend' });
+      if (url.pathname === '/health') return health(request, env);
+      await ensureBootstrap(env);
       if (url.pathname === '/auth/login' && request.method === 'POST') return login(request, env);
       if (url.pathname === '/auth/logout' && request.method === 'POST') return logout(request, env);
       if (url.pathname === '/auth/change-password' && request.method === 'POST') return changePassword(request, env);
@@ -57,6 +57,12 @@ export default {
       if (url.pathname === '/admin/permissions' && request.method === 'GET') return adminPermissions(request, env);
       if (url.pathname === '/admin/permissions' && request.method === 'POST') return adminSavePermission(request, env);
       if (url.pathname === '/admin/audit-logs' && request.method === 'GET') return adminAuditLogs(request, env);
+      if (url.pathname === '/admin/business/entities' && request.method === 'GET') return adminBusinessEntities(request, env, url);
+      if (url.pathname === '/admin/business/entity/upsert' && request.method === 'POST') return adminBusinessEntityUpsert(request, env);
+      if (url.pathname === '/admin/business/entity/delete' && request.method === 'POST') return adminBusinessEntityDelete(request, env);
+      if (url.pathname === '/admin/business/entity/restore' && request.method === 'POST') return adminBusinessEntityRestore(request, env);
+      if (url.pathname === '/admin/business/settings' && request.method === 'GET') return adminBusinessSettings(request, env);
+      if (url.pathname === '/admin/business/settings' && request.method === 'POST') return adminBusinessSettingsSave(request, env);
       if (url.pathname === '/business/bootstrap' && request.method === 'GET') return businessBootstrap(request, env);
       if (url.pathname === '/business/entity/upsert' && request.method === 'POST') return businessEntityUpsert(request, env);
       if (url.pathname === '/business/entity/delete' && request.method === 'POST') return businessEntityDelete(request, env);
@@ -109,6 +115,34 @@ function json(request, env, body, status = 200, headers = {}) {
     status,
     headers: withCors(request, env, { ...JSON_HEADERS, ...headers })
   });
+}
+
+export function buildHealthPayload({ d1Ok = false, latencyMs = 0, now = new Date().toISOString(), error = '' } = {}) {
+  return {
+    ok: !!d1Ok,
+    service: 'minova-backend',
+    worker: { ok: true },
+    d1: {
+      ok: !!d1Ok,
+      latencyMs: Math.max(0, Math.round(Number(latencyMs) || 0)),
+      ...(error ? { error } : {})
+    },
+    timestamp: now
+  };
+}
+
+async function health(request, env) {
+  const start = Date.now();
+  try {
+    await env.minova_auth_db.prepare('SELECT 1 AS ok').first();
+    return json(request, env, buildHealthPayload({ d1Ok: true, latencyMs: Date.now() - start }));
+  } catch (error) {
+    return json(request, env, buildHealthPayload({
+      d1Ok: false,
+      latencyMs: Date.now() - start,
+      error: String(error?.message || error)
+    }), 503);
+  }
 }
 
 async function readJson(request) {
@@ -628,6 +662,117 @@ async function adminAuditLogs(request, env) {
   });
 }
 
+async function adminBusinessEntities(request, env, url) {
+  const gate = await requireAdmin(request, env);
+  if (gate.response) return gate.response;
+  const filters = normalizeAdminBusinessEntitiesQuery(url);
+  const clauses = [];
+  const binds = [];
+  if (filters.domain) {
+    clauses.push('domain = ?');
+    binds.push(filters.domain);
+  }
+  if (filters.status !== 'all') {
+    clauses.push('status = ?');
+    binds.push(filters.status);
+  }
+  if (filters.q) {
+    clauses.push('(domain LIKE ? OR record_id LIKE ? OR payload_json LIKE ?)');
+    const like = `%${filters.q}%`;
+    binds.push(like, like, like);
+  }
+  const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+  const rows = await env.minova_auth_db.prepare(`
+    SELECT domain, record_id, payload_json, status, created_at, updated_at, updated_by
+    FROM business_entities
+    ${where}
+    ORDER BY updated_at DESC
+    LIMIT ?
+  `).bind(...binds, filters.limit).all();
+  return json(request, env, {
+    ok: true,
+    filters,
+    entities: (rows.results || []).map(row => ({
+      domain: row.domain || '',
+      recordId: row.record_id || '',
+      payload: safeParse(row.payload_json, {}),
+      status: row.status || 'active',
+      createdAt: row.created_at || '',
+      updatedAt: row.updated_at || '',
+      updatedBy: row.updated_by || null
+    }))
+  });
+}
+
+async function adminBusinessEntityUpsert(request, env) {
+  const gate = await requireAdmin(request, env);
+  if (gate.response) return gate.response;
+  const payload = normalizeAdminBusinessEntityMutation(await readJson(request));
+  if (!payload.ok) return json(request, env, { error: payload.error }, 400);
+  await upsertBusinessEntities(env, [payload], gate.user.id);
+  await writeAudit(env, gate.user.id, gate.user.username, 'admin_business_entity_upsert', payload.domain, payload.recordId, {});
+  return json(request, env, { ok: true });
+}
+
+async function adminBusinessEntityDelete(request, env) {
+  const gate = await requireAdmin(request, env);
+  if (gate.response) return gate.response;
+  const payload = normalizeAdminBusinessEntityMutation(await readJson(request), { payloadRequired: false });
+  if (!payload.ok) return json(request, env, { error: payload.error }, 400);
+  await env.minova_auth_db.prepare(`
+    UPDATE business_entities
+    SET status = 'deleted', updated_at = CURRENT_TIMESTAMP, updated_by = ?
+    WHERE domain = ? AND record_id = ?
+  `).bind(gate.user.id, payload.domain, payload.recordId).run();
+  await writeAudit(env, gate.user.id, gate.user.username, 'admin_business_entity_delete', payload.domain, payload.recordId, {});
+  return json(request, env, { ok: true });
+}
+
+async function adminBusinessEntityRestore(request, env) {
+  const gate = await requireAdmin(request, env);
+  if (gate.response) return gate.response;
+  const payload = normalizeAdminBusinessEntityMutation(await readJson(request), { payloadRequired: false });
+  if (!payload.ok) return json(request, env, { error: payload.error }, 400);
+  await env.minova_auth_db.prepare(`
+    UPDATE business_entities
+    SET status = 'active', updated_at = CURRENT_TIMESTAMP, updated_by = ?
+    WHERE domain = ? AND record_id = ?
+  `).bind(gate.user.id, payload.domain, payload.recordId).run();
+  await writeAudit(env, gate.user.id, gate.user.username, 'admin_business_entity_restore', payload.domain, payload.recordId, {});
+  return json(request, env, { ok: true });
+}
+
+async function adminBusinessSettings(request, env) {
+  const gate = await requireAdmin(request, env);
+  if (gate.response) return gate.response;
+  const rows = await env.minova_auth_db.prepare(`
+    SELECT setting_key, payload_json, updated_at, updated_by
+    FROM business_settings
+    ORDER BY setting_key ASC
+  `).all();
+  return json(request, env, {
+    ok: true,
+    settings: (rows.results || []).map(row => ({
+      key: row.setting_key || '',
+      payload: safeParse(row.payload_json, {}),
+      updatedAt: row.updated_at || '',
+      updatedBy: row.updated_by || null
+    }))
+  });
+}
+
+async function adminBusinessSettingsSave(request, env) {
+  const gate = await requireAdmin(request, env);
+  if (gate.response) return gate.response;
+  const payload = normalizeAdminBusinessSettingsPayload(await readJson(request));
+  if (!payload.ok) return json(request, env, { error: payload.error }, 400);
+  await upsertBusinessSettings(env, payload.settings, gate.user.id);
+  await writeAudit(env, gate.user.id, gate.user.username, 'admin_business_settings_upsert', 'business_settings', String(Object.keys(payload.settings).length), {
+    keys: Object.keys(payload.settings)
+  });
+  return json(request, env, { ok: true, count: Object.keys(payload.settings).length });
+}
+
 async function businessBootstrap(request, env) {
   const gate = await requireSession(request, env);
   if (gate.response) return gate.response;
@@ -925,6 +1070,32 @@ export function normalizeAuditLogFilters(raw = {}) {
 export function domainPermission(domain) {
   const resource = BUSINESS_DOMAIN_PERMISSIONS[String(domain || '').trim()];
   return resource ? { resource, read: 'read', write: 'edit', delete: 'delete' } : null;
+}
+
+export function normalizeAdminBusinessEntitiesQuery(url) {
+  const params = url instanceof URL ? url.searchParams : new URL(String(url || 'https://example.invalid')).searchParams;
+  const rawDomain = String(params.get('domain') || '').trim();
+  const rawStatus = String(params.get('status') || 'active').trim().toLowerCase();
+  return {
+    domain: domainPermission(rawDomain) ? rawDomain : '',
+    status: ['active', 'deleted', 'all'].includes(rawStatus) ? rawStatus : 'active',
+    q: String(params.get('q') || '').trim().slice(0, 120),
+    limit: boundedLimit(params.get('limit'), 100, 200)
+  };
+}
+
+export function normalizeAdminBusinessEntityMutation(body = {}, { payloadRequired = true } = {}) {
+  const domain = String(body.domain || '').trim();
+  const recordId = String(body.recordId || body.record_id || body.id || body.payload?.id || '').trim();
+  if (!domainPermission(domain)) return { ok: false, error: 'invalid_business_domain' };
+  if (!recordId) return { ok: false, error: 'missing_record_id' };
+  const payload = body.payload && typeof body.payload === 'object' ? body.payload : {};
+  if (payloadRequired && (!payload || typeof payload !== 'object')) return { ok: false, error: 'missing_payload' };
+  return { ok: true, domain, recordId, payload };
+}
+
+export function normalizeAdminBusinessSettingsPayload(body = {}) {
+  return normalizeBusinessSettingsPayload(body);
 }
 
 export function normalizeBusinessEntityUpsertPayload(body = {}) {

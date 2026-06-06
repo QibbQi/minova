@@ -25,6 +25,7 @@ const AUTH_FETCH_TIMEOUT_MS = 12000;
 const AUTH_FETCH_RETRY_DELAYS_MS = [300, 900];
 const ADMIN_REFRESH_MIN_INTERVAL_MS = 15000;
 const D1_WRITE_RETRY_DELAYS_MS = [2000, 5000, 15000, 30000];
+const ADMIN_CACHE_KEY = 'minova_admin_backend_cache_v1';
 const normalizeApiBase = (value) => {
   const base = String(value || '').trim().replace(/\/+$/, '');
   return /^https?:\/\/[^/\s]+/i.test(base) ? base : '';
@@ -64,6 +65,13 @@ const adminState = {
   permissions: [],
   approvals: [],
   auditLogs: [],
+  businessEntities: [],
+  businessSettings: [],
+  health: null,
+  endpointStatus: {},
+  businessDataDomain: 'supplier',
+  businessDataStatus: 'active',
+  businessDataSearch: '',
   selectedRole: 'admin',
   activePanel: 'dashboard',
   showInactiveUsers: false,
@@ -127,11 +135,25 @@ const SENSITIVE_LABELS = {
 
 const ADMIN_PANELS = [
   ['dashboard', 'Dashboard'],
+  ['businessData', 'Business Data'],
+  ['d1Queue', 'D1 Queue'],
   ['users', 'Users'],
   ['permissions', 'Role Permissions'],
   ['approvals', 'Approvals'],
   ['logs', 'Operation Logs']
 ];
+
+const BUSINESS_DOMAIN_LABELS = {
+  supplier: 'Suppliers',
+  product: 'Products',
+  market_price: 'Price List',
+  inventory: 'Inventory',
+  inventory_history: 'Inventory History',
+  sales_record: 'Sales Records',
+  historical_inventory: 'Historical Inventory',
+  transport: 'Transport',
+  saved_quote: 'Saved Quotes'
+};
 
 function publishAuthApi() {
   const api = window.__minovaAuth && typeof window.__minovaAuth === 'object' ? window.__minovaAuth : {};
@@ -179,7 +201,8 @@ function publishBusinessApi() {
     getQuote: (id) => authFetch(`/quotes/${encodeURIComponent(id)}`),
     deleteQuote: (id) => businessWrite('/quotes/delete', { id }),
     persistStateSnapshot,
-    migrateFromStatic
+    migrateFromStatic,
+    flushQueue: forceFlushD1WriteQueue
   });
   try {
     window.__minovaBusiness = api;
@@ -223,7 +246,17 @@ function authApiBaseCandidates() {
 function isRetryableAuthRequest(path, options = {}) {
   const method = String(options.method || 'GET').toUpperCase();
   if (method === 'GET') return true;
-  return method === 'POST' && /^\/auth\/(login|forgot-password)$/i.test(String(path || ''));
+  if (method === 'POST' && /^\/auth\/(login|forgot-password)$/i.test(String(path || ''))) return true;
+  return method === 'POST' && /^(\/business\/|\/quotes|\/admin\/business\/)/i.test(String(path || ''));
+}
+
+function isRetryableBusinessWriteError(error) {
+  const status = Number(error?.status || 0);
+  if (status === 429 || status >= 500) return true;
+  if ([400, 401, 403, 404].includes(status)) return false;
+  const message = String(error?.message || error || '');
+  if (/invalid_business_domain|missing_record_id|forbidden|unauthorized|session expired/i.test(message)) return false;
+  return /connection failed|connection timeout|failed to fetch|load failed|network|timeout|abort|backend connection unavailable/i.test(message);
 }
 
 function describeAuthNetworkError(error, base) {
@@ -272,6 +305,7 @@ const authFetch = async (path, options = {}) => {
       } catch (error) {
         lastError = new Error(describeAuthNetworkError(error, base));
         lastError.cause = error;
+        lastError.retryable = true;
       }
     }
     if (res) break;
@@ -284,6 +318,7 @@ const authFetch = async (path, options = {}) => {
     const err = new Error(data.message || data.error || `Request failed: ${res.status}`);
     err.status = res.status;
     err.data = data;
+    err.retryable = res.status === 429 || res.status >= 500;
     throw err;
   }
   return data;
@@ -399,16 +434,33 @@ function writeD1WriteQueue(rows) {
   renderAdminDashboard();
 }
 
-function enqueueD1Write(path, body, label = 'Business write', attempts = 0) {
+function nextD1RetryDelay(attempts = 0) {
+  return D1_WRITE_RETRY_DELAYS_MS[Math.min(Math.max(0, attempts - 1), D1_WRITE_RETRY_DELAYS_MS.length - 1)] || 30000;
+}
+
+function enqueueD1Write(path, body, label = 'Business write', attempts = 0, error = null) {
   const queue = readD1WriteQueue();
   const key = JSON.stringify([path, body]);
   const existing = queue.find(item => item.key === key);
   const now = Date.now();
+  const delay = nextD1RetryDelay(attempts || 1);
+  const nextRetryAt = new Date(now + delay).toISOString();
+  const lastError = error ? (error.message || String(error)) : '';
+  const meta = (() => {
+    if (body?.domain) return { domain: body.domain, recordId: body.recordId || body.record_id || '' };
+    const first = Array.isArray(body?.items) ? body.items[0] : null;
+    if (first?.domain) return { domain: first.domain, recordId: first.recordId || first.record_id || '' };
+    return { domain: '', recordId: '' };
+  })();
   if (existing) {
     existing.body = body;
     existing.label = label;
     existing.updatedAt = new Date(now).toISOString();
     existing.attempts = Math.max(existing.attempts || 0, attempts);
+    existing.lastError = lastError || existing.lastError || '';
+    existing.nextRetryAt = nextRetryAt;
+    existing.domain = existing.domain || meta.domain;
+    existing.recordId = existing.recordId || meta.recordId;
   } else {
     queue.push({
       id: `d1_${now}_${Math.random().toString(36).slice(2)}`,
@@ -416,7 +468,11 @@ function enqueueD1Write(path, body, label = 'Business write', attempts = 0) {
       path,
       body,
       label,
+      domain: meta.domain,
+      recordId: meta.recordId,
       attempts,
+      lastError,
+      nextRetryAt,
       createdAt: new Date(now).toISOString(),
       updatedAt: new Date(now).toISOString()
     });
@@ -443,6 +499,11 @@ function scheduleD1WriteRetry(delayMs = 0) {
   }, delayMs);
 }
 
+function forceFlushD1WriteQueue() {
+  businessState.retryScheduled = false;
+  return flushD1WriteQueue({ force: true });
+}
+
 async function queueBusinessWrite(path, body, label = 'Business write') {
   if (!state.user) return { skipped: true, localOnly: true };
   try {
@@ -453,12 +514,13 @@ async function queueBusinessWrite(path, body, label = 'Business write') {
     businessState.hasD1Data = true;
     return { ...data, queued: false };
   } catch (error) {
-    enqueueD1Write(path, body, label, 1);
+    if (!isRetryableBusinessWriteError(error)) return { ok: false, queued: false, error: error.message || String(error) };
+    enqueueD1Write(path, body, label, 1, error);
     return { ok: false, queued: true, error: error.message || String(error) };
   }
 }
 
-async function flushD1WriteQueue() {
+async function flushD1WriteQueue({ force = false } = {}) {
   if (!state.user) return;
   let queue = readD1WriteQueue();
   if (!queue.length) {
@@ -469,6 +531,10 @@ async function flushD1WriteQueue() {
     return;
   }
   const [item, ...rest] = queue;
+  if (!force && item.nextRetryAt && Date.parse(item.nextRetryAt) > Date.now()) {
+    scheduleD1WriteRetry(Math.max(500, Date.parse(item.nextRetryAt) - Date.now()));
+    return;
+  }
   try {
     await businessWrite(item.path, item.body);
     queue = rest;
@@ -477,14 +543,23 @@ async function flushD1WriteQueue() {
     businessState.hasD1Data = true;
     if (queue.length) scheduleD1WriteRetry(500);
   } catch (error) {
+    if (!isRetryableBusinessWriteError(error)) {
+      queue = rest;
+      writeD1WriteQueue(queue);
+      businessState.failedWrites += 1;
+      businessState.lastError = error.message || String(error);
+      if (queue.length) scheduleD1WriteRetry(500);
+      return;
+    }
     item.attempts = Number(item.attempts || 0) + 1;
     item.lastError = error.message || String(error);
     item.updatedAt = new Date().toISOString();
+    const delay = nextD1RetryDelay(item.attempts);
+    item.nextRetryAt = new Date(Date.now() + delay).toISOString();
     queue = [item, ...rest];
     writeD1WriteQueue(queue);
     businessState.failedWrites += 1;
     businessState.lastError = `${item.label || 'D1 write'} failed; queued for retry.`;
-    const delay = D1_WRITE_RETRY_DELAYS_MS[Math.min(item.attempts - 1, D1_WRITE_RETRY_DELAYS_MS.length - 1)] || 30000;
     scheduleD1WriteRetry(delay);
   }
 }
@@ -620,7 +695,7 @@ function ensureAuthShell() {
   overlay.innerHTML = `
     <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
       <div class="bg-[#582C83] text-white px-6 py-5">
-        <p class="text-xs font-black uppercase tracking-widest opacity-70">Minova Management System</p>
+        <p class="text-xs font-black uppercase tracking-widest opacity-70">MINOVA</p>
         <h2 class="text-xl font-black mt-1">Backend Login</h2>
       </div>
       <form id="minova-login-form" class="p-6 space-y-4">
@@ -911,14 +986,24 @@ async function logout() {
   lockApp();
 }
 
+function renderTabIcon(tab) {
+  const icons = {
+    admin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7z"/><path d="M9 12l2 2 4-5"/></svg>'
+  };
+  return `<span class="tab-icon-wrap">${icons[tab] || icons.admin}</span>`;
+}
+
 function ensureAdminTab() {
   if (!document.getElementById('tab-admin')) {
     const nav = document.querySelector('.app-shell-nav');
     const button = document.createElement('button');
     button.id = 'tab-admin';
     button.type = 'button';
+    button.setAttribute('aria-label', TAB_LABELS.admin);
+    button.setAttribute('title', TAB_LABELS.admin);
+    button.dataset.tabLabel = TAB_LABELS.admin;
     button.className = 'app-shell-tab px-6 py-2 hover:text-purple-700 transition-all text-sm leading-tight text-center text-slate-500 hover:text-blue-600';
-    button.innerHTML = '<span class="block">Admin</span><span class="block">Backend</span>';
+    button.innerHTML = renderTabIcon('admin');
     button.addEventListener('click', () => window.switchTab?.('admin'));
     nav?.appendChild(button);
   }
@@ -966,6 +1051,39 @@ function ensureAdminTab() {
                 <div id="minova-admin-risk-summary" class="text-xs text-slate-500 space-y-1"></div>
               </div>
             </div>
+          </section>
+          <section id="minova-admin-panel-business-data" data-admin-panel="businessData" class="hidden space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 class="text-lg font-black text-slate-800">Business Data</h3>
+                <p class="text-xs text-slate-400 mt-1">Browse and manage D1 master data by domain. Attachment files remain in GitHub/static paths.</p>
+              </div>
+              <button id="minova-admin-business-refresh" type="button" class="rounded-xl bg-slate-900 text-white text-xs font-black px-4 py-2">Refresh Data</button>
+            </div>
+            <form id="minova-admin-business-filter" class="grid grid-cols-1 sm:grid-cols-5 gap-3 bg-slate-50 border border-slate-200 rounded-xl p-3">
+              <select id="minova-admin-business-domain" class="border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold"></select>
+              <select id="minova-admin-business-status" class="border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold">
+                <option value="active">Active</option>
+                <option value="deleted">Deleted</option>
+                <option value="all">All</option>
+              </select>
+              <input id="minova-admin-business-search" class="sm:col-span-2 border border-slate-200 rounded-lg px-3 py-2 text-xs" placeholder="Search domain / record ID / JSON">
+              <button class="rounded-lg bg-purple-700 text-white text-xs font-black px-3 py-2" type="submit">Search</button>
+            </form>
+            <div id="minova-admin-business-data" class="overflow-x-auto border border-slate-200 rounded-xl">Loading...</div>
+          </section>
+          <section id="minova-admin-panel-d1-queue" data-admin-panel="d1Queue" class="hidden space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 class="text-lg font-black text-slate-800">D1 Write Queue</h3>
+                <p class="text-xs text-slate-400 mt-1">Retry, inspect, copy, or discard local D1 writes that could not be sent immediately.</p>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <button id="minova-admin-queue-retry" type="button" class="rounded-xl bg-purple-700 text-white text-xs font-black px-4 py-2">Retry Now</button>
+                <button id="minova-admin-queue-refresh" type="button" class="rounded-xl bg-slate-900 text-white text-xs font-black px-4 py-2">Refresh Queue</button>
+              </div>
+            </div>
+            <div id="minova-admin-d1-queue" class="overflow-x-auto border border-slate-200 rounded-xl">Loading...</div>
           </section>
           <section id="minova-admin-panel-users" data-admin-panel="users" class="hidden space-y-4">
             <div class="flex flex-wrap items-center justify-between gap-3">
@@ -1043,6 +1161,16 @@ function ensureAdminTab() {
     });
     main.querySelector('#minova-admin-save-permission')?.addEventListener('click', onAdminSavePermission);
     main.querySelector('#minova-admin-migrate-business')?.addEventListener('click', onAdminMigrateBusiness);
+    main.querySelector('#minova-admin-business-refresh')?.addEventListener('click', () => loadAdminBusinessData({ force: true }));
+    main.querySelector('#minova-admin-business-filter')?.addEventListener('submit', event => {
+      event.preventDefault();
+      adminState.businessDataDomain = document.getElementById('minova-admin-business-domain')?.value || 'supplier';
+      adminState.businessDataStatus = document.getElementById('minova-admin-business-status')?.value || 'active';
+      adminState.businessDataSearch = document.getElementById('minova-admin-business-search')?.value || '';
+      loadAdminBusinessData({ force: true });
+    });
+    main.querySelector('#minova-admin-queue-retry')?.addEventListener('click', () => forceFlushD1WriteQueue().finally(renderD1QueuePanel));
+    main.querySelector('#minova-admin-queue-refresh')?.addEventListener('click', renderD1QueuePanel);
     main.querySelector('#minova-admin-refresh-approvals')?.addEventListener('click', loadAdminApprovals);
     main.querySelector('#minova-admin-refresh-logs')?.addEventListener('click', loadAdminLogs);
     main.querySelector('#minova-admin-log-filter')?.addEventListener('submit', event => {
@@ -1367,6 +1495,67 @@ function isAdminViewVisible() {
   return !!view && !view.classList.contains('hidden') && view.style.display !== 'none';
 }
 
+function readAdminCache() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(ADMIN_CACHE_KEY) || '{}');
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeAdminCache(key, data) {
+  try {
+    const cache = readAdminCache();
+    cache[key] = { data, updatedAt: new Date().toISOString() };
+    localStorage.setItem(ADMIN_CACHE_KEY, JSON.stringify(cache));
+  } catch {}
+}
+
+function unresolvedAdminEndpointFailures() {
+  return Object.entries(adminState.endpointStatus || {})
+    .filter(([, meta]) => !meta.ok && !meta.cached)
+    .map(([key, meta]) => `${key}: ${meta.message || 'failed'}`);
+}
+
+function cachedAdminEndpointDiagnostics() {
+  return Object.entries(adminState.endpointStatus || {})
+    .filter(([, meta]) => !meta.ok && meta.cached)
+    .map(([key, meta]) => `${key}: using cached data after ${meta.message || 'transient failure'}`);
+}
+
+async function fetchAdminEndpoint(key, path, pick) {
+  try {
+    const data = await authFetch(path);
+    adminState.endpointStatus[key] = { ok: true, cached: false, message: 'Online', updatedAt: new Date().toISOString() };
+    writeAdminCache(key, data);
+    return pick ? pick(data) : data;
+  } catch (error) {
+    const cached = readAdminCache()[key];
+    adminState.endpointStatus[key] = { ok: false, cached: !!cached, message: error.message || String(error), updatedAt: new Date().toISOString() };
+    if (cached) return pick ? pick(cached.data) : cached.data;
+    throw error;
+  }
+}
+
+async function loadAdminHealth() {
+  try {
+    const health = await authFetch('/health');
+    adminState.health = health;
+    adminState.endpointStatus.health = {
+      ok: !!health?.ok,
+      cached: false,
+      message: health?.d1?.ok ? 'Backend Online / D1 Online' : 'Backend Online / D1 Offline',
+      updatedAt: new Date().toISOString()
+    };
+    return health;
+  } catch (error) {
+    adminState.health = { ok: false, d1: { ok: false, error: error.message || String(error) } };
+    adminState.endpointStatus.health = { ok: false, cached: false, message: error.message || String(error), updatedAt: new Date().toISOString() };
+    return adminState.health;
+  }
+}
+
 async function loadAdminPanel({ force = false, silent = false } = {}) {
   if (!state.permission || !canAccessTab(state.permission, 'admin')) return;
   if (adminState.loadingPromise) return adminState.loadingPromise;
@@ -1386,22 +1575,25 @@ async function loadAdminPanelNow({ silent = false } = {}) {
   renderAdminDashboard();
   const errors = [];
   try {
+    await loadAdminHealth();
     if (canAccessDataSync(state.permission)) {
       const [roles, users, permissions] = await Promise.allSettled([
-        authFetch('/admin/roles'),
-        authFetch('/admin/users'),
-        authFetch('/admin/permissions')
+        fetchAdminEndpoint('roles', '/admin/roles', data => data.roles || []),
+        fetchAdminEndpoint('users', '/admin/users', data => data.users || []),
+        fetchAdminEndpoint('permissions', '/admin/permissions', data => data.permissions || [])
       ]);
-      if (roles.status === 'fulfilled') adminState.roles = roles.value.roles || [];
+      if (roles.status === 'fulfilled') adminState.roles = roles.value || [];
       else errors.push(`roles: ${roles.reason?.message || roles.reason}`);
-      if (users.status === 'fulfilled') adminState.users = users.value.users || [];
+      if (users.status === 'fulfilled') adminState.users = users.value || [];
       else errors.push(`users: ${users.reason?.message || users.reason}`);
-      if (permissions.status === 'fulfilled') adminState.permissions = permissions.value.permissions || [];
+      if (permissions.status === 'fulfilled') adminState.permissions = permissions.value || [];
       else errors.push(`permissions: ${permissions.reason?.message || permissions.reason}`);
       if (!adminState.roles.some(role => role.role_key === adminState.selectedRole)) {
         adminState.selectedRole = state.permission?.role || adminState.roles[0]?.role_key || 'admin';
       }
+      await loadAdminBusinessData({ silent: true });
     }
+    renderD1QueuePanel();
     const [approvals, logs] = await Promise.allSettled([
       loadAdminApprovals({ silent: true }),
       loadAdminLogs({ silent: true })
@@ -1414,8 +1606,11 @@ async function loadAdminPanelNow({ silent = false } = {}) {
     renderAdminRoleOptions();
     renderAdminUsers();
     renderPermissionEditor();
+    renderBusinessDomainOptions();
+    renderAdminBusinessData();
+    renderD1QueuePanel();
     if (!silent) {
-      if (errors.length) showAdminMessage(`Admin backend partially loaded. ${errors.slice(0, 2).join(' | ')}`, 'error');
+      if (errors.length) showAdminMessage(`Backend Online / D1 ${adminState.health?.d1?.ok ? 'Online' : 'Offline'} / Failed endpoints: ${errors.slice(0, 2).join(' | ')}`, 'error');
       else showAdminMessage('Admin backend refreshed.');
     }
   } catch (error) {
@@ -1440,6 +1635,212 @@ async function onAdminMigrateBusiness() {
   }
 }
 
+function renderBusinessDomainOptions() {
+  const select = document.getElementById('minova-admin-business-domain');
+  if (!select) return;
+  select.innerHTML = Object.entries(BUSINESS_DOMAIN_LABELS)
+    .map(([domain, label]) => `<option value="${escapeHtml(domain)}" ${domain === adminState.businessDataDomain ? 'selected' : ''}>${escapeHtml(label)}</option>`)
+    .join('');
+  const status = document.getElementById('minova-admin-business-status');
+  if (status) status.value = adminState.businessDataStatus || 'active';
+  const search = document.getElementById('minova-admin-business-search');
+  if (search) search.value = adminState.businessDataSearch || '';
+}
+
+async function loadAdminBusinessData({ force = false, silent = false } = {}) {
+  if (!canAccessDataSync(state.permission)) return;
+  if (!force && adminState.businessEntities.length && adminState.businessSettings.length) {
+    renderAdminBusinessData();
+    return;
+  }
+  try {
+    const params = new URLSearchParams({
+      domain: adminState.businessDataDomain || 'supplier',
+      status: adminState.businessDataStatus || 'active',
+      q: adminState.businessDataSearch || '',
+      limit: '200'
+    });
+    const [entities, settings] = await Promise.all([
+      fetchAdminEndpoint(`business:${params.toString()}`, `/admin/business/entities?${params.toString()}`, data => data.entities || []),
+      fetchAdminEndpoint('businessSettings', '/admin/business/settings', data => data.settings || [])
+    ]);
+    adminState.businessEntities = entities;
+    adminState.businessSettings = settings;
+    renderBusinessDomainOptions();
+    renderAdminBusinessData();
+    if (!silent) showAdminMessage('Business Data refreshed.');
+  } catch (error) {
+    if (!silent) showAdminMessage(`Business Data unavailable: ${formatAuthError(error)}`, 'error');
+    renderAdminBusinessData();
+  }
+}
+
+function summarizeBusinessPayload(payload) {
+  if (!payload || typeof payload !== 'object') return '-';
+  const keys = ['name', 'nameEn', 'nameZh', 'code', 'id', 'category', 'productId', 'batchNo', 'quoteNo'];
+  const parts = keys.map(key => payload[key]).filter(Boolean).slice(0, 3);
+  return parts.length ? parts.join(' / ') : JSON.stringify(payload).slice(0, 80);
+}
+
+function renderAdminBusinessData() {
+  const el = document.getElementById('minova-admin-business-data');
+  if (!el) return;
+  const rows = adminState.businessEntities || [];
+  const settings = adminState.businessSettings || [];
+  el.innerHTML = `
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-xs">
+        <thead class="bg-slate-50 text-slate-500 uppercase">
+          <tr>
+            <th class="text-left px-3 py-2">Domain</th>
+            <th class="text-left px-3 py-2">Record ID</th>
+            <th class="text-left px-3 py-2">Summary</th>
+            <th class="text-left px-3 py-2">Status</th>
+            <th class="text-left px-3 py-2">Updated</th>
+            <th class="text-right px-3 py-2">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          ${rows.map(row => `
+            <tr>
+              <td class="px-3 py-2 font-black">${escapeHtml(BUSINESS_DOMAIN_LABELS[row.domain] || row.domain)}</td>
+              <td class="px-3 py-2 font-mono text-slate-600">${escapeHtml(row.recordId || '')}</td>
+              <td class="px-3 py-2 max-w-md truncate" title="${escapeHtml(JSON.stringify(row.payload || {}))}">${escapeHtml(summarizeBusinessPayload(row.payload))}</td>
+              <td class="px-3 py-2">${escapeHtml(row.status || 'active')}</td>
+              <td class="px-3 py-2 text-slate-500">${escapeHtml(row.updatedAt || '-')}</td>
+              <td class="px-3 py-2 text-right whitespace-nowrap">
+                <button type="button" data-business-action="edit" data-domain="${escapeHtml(row.domain)}" data-record-id="${escapeHtml(row.recordId)}" class="text-purple-700 font-black mr-3">Edit</button>
+                ${row.status === 'deleted'
+                  ? `<button type="button" data-business-action="restore" data-domain="${escapeHtml(row.domain)}" data-record-id="${escapeHtml(row.recordId)}" class="text-emerald-700 font-black">Restore</button>`
+                  : `<button type="button" data-business-action="delete" data-domain="${escapeHtml(row.domain)}" data-record-id="${escapeHtml(row.recordId)}" class="text-red-600 font-black">Delete</button>`}
+              </td>
+            </tr>
+          `).join('') || '<tr><td class="px-3 py-5 text-slate-400 text-center" colspan="6">No D1 records match this filter.</td></tr>'}
+        </tbody>
+      </table>
+    </div>
+    <div class="border-t border-slate-100 bg-slate-50 px-3 py-3">
+      <div class="text-[10px] font-black uppercase text-slate-400 mb-2">Settings Groups</div>
+      <div class="flex flex-wrap gap-2">
+        ${settings.map(item => `
+          <button type="button" data-setting-key="${escapeHtml(item.key)}" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-black text-slate-600 hover:text-purple-700">${escapeHtml(item.key)}</button>
+        `).join('') || '<span class="text-xs text-slate-400">No D1 settings saved yet.</span>'}
+      </div>
+    </div>
+  `;
+  el.querySelectorAll('[data-business-action]').forEach(button => {
+    button.addEventListener('click', () => onAdminBusinessAction(button.dataset.businessAction, button.dataset.domain, button.dataset.recordId));
+  });
+  el.querySelectorAll('[data-setting-key]').forEach(button => {
+    button.addEventListener('click', () => onAdminBusinessSettingEdit(button.dataset.settingKey));
+  });
+}
+
+async function onAdminBusinessAction(action, domain, recordId) {
+  const row = (adminState.businessEntities || []).find(item => item.domain === domain && item.recordId === recordId);
+  if (!row) return;
+  try {
+    if (action === 'edit') {
+      const raw = window.prompt?.('Edit D1 JSON payload:', JSON.stringify(row.payload || {}, null, 2));
+      if (!raw) return;
+      const payload = JSON.parse(raw);
+      await authFetch('/admin/business/entity/upsert', {
+        method: 'POST',
+        body: JSON.stringify({ domain, recordId, payload })
+      });
+    } else if (action === 'delete') {
+      if (!window.confirm?.(`Soft delete ${domain}:${recordId}?`)) return;
+      await authFetch('/admin/business/entity/delete', {
+        method: 'POST',
+        body: JSON.stringify({ domain, recordId })
+      });
+    } else if (action === 'restore') {
+      await authFetch('/admin/business/entity/restore', {
+        method: 'POST',
+        body: JSON.stringify({ domain, recordId })
+      });
+    }
+    await loadAdminBusinessData({ force: true, silent: true });
+    showAdminMessage('Business Data updated.');
+  } catch (error) {
+    showAdminMessage(`Business Data update failed: ${formatAuthError(error)}`, 'error');
+  }
+}
+
+async function onAdminBusinessSettingEdit(key) {
+  const row = (adminState.businessSettings || []).find(item => item.key === key);
+  if (!row) return;
+  try {
+    const raw = window.prompt?.(`Edit D1 setting: ${key}`, JSON.stringify(row.payload || {}, null, 2));
+    if (!raw) return;
+    const payload = JSON.parse(raw);
+    await authFetch('/admin/business/settings', {
+      method: 'POST',
+      body: JSON.stringify({ settings: { [key]: payload } })
+    });
+    await loadAdminBusinessData({ force: true, silent: true });
+    showAdminMessage('Business setting updated.');
+  } catch (error) {
+    showAdminMessage(`Business setting update failed: ${formatAuthError(error)}`, 'error');
+  }
+}
+
+function renderD1QueuePanel() {
+  const el = document.getElementById('minova-admin-d1-queue');
+  if (!el) return;
+  const queue = readD1WriteQueue();
+  el.innerHTML = `
+    <table class="min-w-full text-xs">
+      <thead class="bg-slate-50 text-slate-500 uppercase">
+        <tr>
+          <th class="text-left px-3 py-2">Label</th>
+          <th class="text-left px-3 py-2">Target</th>
+          <th class="text-left px-3 py-2">Attempts</th>
+          <th class="text-left px-3 py-2">Next Retry</th>
+          <th class="text-left px-3 py-2">Last Error</th>
+          <th class="text-right px-3 py-2">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        ${queue.map(item => `
+          <tr>
+            <td class="px-3 py-2 font-black">${escapeHtml(item.label || 'D1 write')}</td>
+            <td class="px-3 py-2 font-mono text-slate-600">${escapeHtml([item.domain, item.recordId].filter(Boolean).join(':') || item.path || '')}</td>
+            <td class="px-3 py-2">${escapeHtml(item.attempts || 0)}</td>
+            <td class="px-3 py-2 text-slate-500">${escapeHtml(item.nextRetryAt || '-')}</td>
+            <td class="px-3 py-2 max-w-sm truncate" title="${escapeHtml(item.lastError || '')}">${escapeHtml(item.lastError || '-')}</td>
+            <td class="px-3 py-2 text-right whitespace-nowrap">
+              <button type="button" data-queue-action="copy" data-id="${escapeHtml(item.id)}" class="text-purple-700 font-black mr-3">Copy</button>
+              <button type="button" data-queue-action="discard" data-id="${escapeHtml(item.id)}" class="text-red-600 font-black">Discard</button>
+            </td>
+          </tr>
+        `).join('') || '<tr><td class="px-3 py-5 text-slate-400 text-center" colspan="6">No queued D1 writes.</td></tr>'}
+      </tbody>
+    </table>
+  `;
+  el.querySelectorAll('[data-queue-action]').forEach(button => {
+    button.addEventListener('click', () => onD1QueueAction(button.dataset.queueAction, button.dataset.id));
+  });
+}
+
+async function onD1QueueAction(action, id) {
+  const queue = readD1WriteQueue();
+  const item = queue.find(row => row.id === id);
+  if (!item) return;
+  if (action === 'copy') {
+    const text = JSON.stringify(item, null, 2);
+    try { await navigator.clipboard?.writeText(text); } catch {}
+    showAdminMessage('Queue payload copied.');
+    return;
+  }
+  if (action === 'discard') {
+    if (!window.confirm?.(`Discard queued write: ${item.label || item.path}?`)) return;
+    writeD1WriteQueue(queue.filter(row => row.id !== id));
+    renderD1QueuePanel();
+    showAdminMessage('Queued write discarded.');
+  }
+}
+
 function adminPanelAllowed(panel) {
   if (panel === 'dashboard') return true;
   if (panel === 'approvals') return canManageQuoteApprovals(state.permission);
@@ -1460,6 +1861,8 @@ function renderAdminPanels() {
     button.addEventListener('click', () => {
       adminState.activePanel = button.dataset.adminPanelTab || 'dashboard';
       renderAdminPanels();
+      if (adminState.activePanel === 'businessData') loadAdminBusinessData();
+      if (adminState.activePanel === 'd1Queue') renderD1QueuePanel();
     });
   });
   document.querySelectorAll('[data-admin-panel]').forEach(section => {
@@ -1475,18 +1878,27 @@ function renderAdminDashboard() {
   const todayLogs = adminState.auditLogs.filter(log => String(log.createdAt || '').startsWith(today)).length;
   const userEl = document.getElementById('minova-admin-current-user');
   if (userEl) {
+    const failedEndpoints = unresolvedAdminEndpointFailures();
     userEl.innerHTML = [
       dashboardMetric('Current User', state.user?.name || '-', state.user?.username || ''),
       dashboardMetric('Role', state.permission?.roleName || '-', state.permission?.role || ''),
       dashboardMetric('Session', state.ready && !state.locked ? 'Active' : 'Locked', 'Cloudflare session cookie'),
+      dashboardMetric('Backend Health', adminState.health?.ok ? 'Online' : 'Check', adminState.health?.d1?.ok ? `D1 Online (${adminState.health.d1.latencyMs || 0}ms)` : (adminState.health?.d1?.error || 'D1 not checked')),
       dashboardMetric('Pending Approvals', pendingApprovals, canManageQuoteApprovals(state.permission) ? 'Visible to approvers' : 'No approval access'),
       dashboardMetric('D1 Business DB', businessState.hasD1Data ? 'Primary' : businessState.source === 'fallback' ? 'Fallback' : 'Ready', businessState.lastError || `${businessState.quoteCount || 0} saved quotes indexed`),
-      dashboardMetric('D1 Write Queue', `${businessState.pendingWrites} saving / ${businessState.queuedWrites} queued`, `${businessState.failedWrites} failed attempts`)
+      dashboardMetric('D1 Write Queue', `${businessState.pendingWrites} saving / ${businessState.queuedWrites} queued`, failedEndpoints.length ? `Failed endpoints: ${failedEndpoints.join(', ')}` : `${businessState.failedWrites} failed attempts`)
     ].join('');
   }
   const risk = document.getElementById('minova-admin-risk-summary');
   if (risk) {
     const inactiveUsers = adminState.users.filter(user => user.status === 'inactive').length;
+    const activeEndpointFailures = unresolvedAdminEndpointFailures();
+    const cachedEndpointNotes = cachedAdminEndpointDiagnostics();
+    const endpointDiagnostics = activeEndpointFailures.length
+      ? activeEndpointFailures.join(' | ')
+      : cachedEndpointNotes.length
+        ? cachedEndpointNotes.join(' | ')
+        : 'All endpoints stable';
     risk.innerHTML = `
       <div>Active users: <b>${escapeHtml(activeUsers)}</b></div>
       <div>Inactive users hidden by default: <b>${escapeHtml(inactiveUsers)}</b></div>
@@ -1495,6 +1907,8 @@ function renderAdminDashboard() {
       <div>D1 last bootstrap: <b>${escapeHtml(businessState.lastBootstrapAt || '-')}</b></div>
       <div>D1 last write: <b>${escapeHtml(businessState.lastPersistAt || '-')}</b></div>
       <div>D1 queued writes: <b>${escapeHtml(businessState.queuedWrites || 0)}</b></div>
+      <div>Backend health: <b>${escapeHtml(adminState.health?.ok ? 'Backend Online / D1 Online' : adminState.endpointStatus?.health?.message || '-')}</b></div>
+      <div>Endpoint diagnostics: <b>${escapeHtml(endpointDiagnostics)}</b></div>
       <div>GitHub Backup / Static Publish: <b>${canAccessDataSync(state.permission) ? 'available' : 'hidden'}</b></div>
     `;
   }

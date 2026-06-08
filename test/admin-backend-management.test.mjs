@@ -218,7 +218,7 @@ test('business domain permission maps D1 domains to RBAC resources', () => {
   assert.deepEqual(domainPermission('supplier'), { resource: 'suppliers', read: 'read', write: 'edit', delete: 'delete' });
   assert.deepEqual(domainPermission('product'), { resource: 'products', read: 'read', write: 'edit', delete: 'delete' });
   assert.deepEqual(domainPermission('compatibility_rule'), { resource: 'products', read: 'read', write: 'edit', delete: 'delete' });
-  assert.deepEqual(domainPermission('channel_partner'), { resource: 'products', read: 'read', write: 'edit', delete: 'delete' });
+  assert.deepEqual(domainPermission('channel_partner'), { resource: 'suppliers', read: 'read', write: 'edit', delete: 'delete' });
   assert.deepEqual(domainPermission('market_price'), { resource: 'priceList', read: 'read', write: 'edit', delete: 'delete' });
   assert.deepEqual(domainPermission('saved_quote'), { resource: 'quotes', read: 'read', write: 'edit', delete: 'delete' });
   assert.equal(domainPermission('unknown_domain'), null);

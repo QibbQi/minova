@@ -334,7 +334,7 @@ const businessRecordIdFor = (record, index = 0) => {
 const BUSINESS_RESOURCE_BY_DOMAIN = {
   supplier: 'suppliers',
   product: 'products',
-  channel_partner: 'products',
+  channel_partner: 'suppliers',
   inventory: 'inventory',
   inventory_history: 'inventory',
   sales_record: 'inventory',

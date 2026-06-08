@@ -18,7 +18,7 @@ const ROLE_NAME_TO_KEY = Object.fromEntries(
 const BUSINESS_DOMAIN_PERMISSIONS = {
   supplier: 'suppliers',
   product: 'products',
-  channel_partner: 'products',
+  channel_partner: 'suppliers',
   inventory: 'inventory',
   inventory_history: 'inventory',
   sales_record: 'inventory',

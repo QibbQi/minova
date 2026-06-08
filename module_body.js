@@ -5150,6 +5150,9 @@
                 sourceRemark: String(src.sourceRemark || '').trim()
             };
         }
+        function getProductSourceTypeLabel(product) {
+            return getProductSourcing(product).sourceType || 'Unknown';
+        }
         function readProductSourcingFromModal(canonicalSupplierCode = '') {
             const sourceType = document.getElementById('m-source-type')?.value || 'Unknown';
             if (sourceType === 'Direct Factory') {
@@ -5950,7 +5953,7 @@
             const targetLabel = getNonStockProfitTarget() === 'biz' ? 'C&I' : 'RESI';
             if (summary) summary.textContent = `${rows.length} products | ${targetLabel} | ${getNonStockDisplayCurrency()} | 1 MYR = ${getInventoryFxRateCnyPerMyr().toFixed(4)} CNY`;
             if (!rows.length) {
-                list.innerHTML = `<tr><td colspan="22" class="py-12 text-center text-slate-400 text-sm">No non-stock products need fallback pricing.</td></tr>`;
+                list.innerHTML = `<tr><td colspan="23" class="py-12 text-center text-slate-400 text-sm">No non-stock products need fallback pricing.</td></tr>`;
                 window.__nonStockRenderedCurrency = getNonStockDisplayCurrency();
                 window.__nonStockRenderedRateCnyPerMyr = getInventoryFxRateCnyPerMyr();
                 window.applyFrozenColumns('non-stock-pricing');
@@ -5963,6 +5966,7 @@
                 const encodedId = encodeURIComponent(p.id);
                 const def = getDefaultTaxInputsForProduct(p);
                 const pricing = priceListProductPricing(p);
+                const sourceType = getProductSourceTypeLabel(p);
                 const unit = normalizeUnitLabel(pricing.costUnit || getMarketCategoryUnitMeta(p.category || '').unit || 'pcs');
                 const purchaseCnyValue = Number.isFinite(parseFloat(strategy.purchasePrice)) ? parseFloat(strategy.purchasePrice) : (Number.isFinite(parseFloat(strategy.avgCostOverride)) ? parseFloat(strategy.avgCostOverride) : NaN);
                 const purchaseValue = Number.isFinite(purchaseCnyValue) ? nonStockDisplayFromCny(purchaseCnyValue).toFixed(getNonStockDisplayCurrency() === 'MYR' ? 4 : 4) : '';
@@ -5983,6 +5987,7 @@
                         <td class="py-4 px-4 text-xs font-mono text-slate-500">${htmlSafe(p.id)}</td>
                         <td class="py-4 px-4 font-bold text-slate-700 text-sm max-w-[220px] truncate" title="${htmlSafe(productListDisplayText(p.name || ''))}">${htmlSafe(productListDisplayText(p.name || '-'))}</td>
                         <td class="py-4 px-4 text-xs text-slate-500 uppercase tracking-tighter">${htmlSafe(normalizeProductCategory(p.category || '-'))}</td>
+                        <td class="py-4 px-4 text-xs font-bold text-slate-500">${htmlSafe(sourceType)}</td>
                         <td class="py-4 px-4 text-xs font-bold text-slate-500">${htmlSafe(unit)}</td>
                         <td class="py-4 px-4 text-right text-xs font-mono text-slate-500">${formatNonStockAmount(getProductCostCny(p), 4, unit)}</td>
                         <td class="py-3 px-3 text-right">
@@ -8058,6 +8063,9 @@
         }
         function getDefaultTaxInputsForProduct(product) {
             const p = product || {};
+            if (getProductSourceTypeLabel(product) === 'Authorized Distributor') {
+                return { shippingRatePct: 0, domesticTaxRatePct: 0, dutyPct: 0, sstPct: 0, grayPct: 0 };
+            }
             return {
                 shippingRatePct: 8,
                 domesticTaxRatePct: getDefaultDomesticTaxRatePercent(p.category),

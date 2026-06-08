@@ -87,6 +87,8 @@ test('non-stock strategy columns follow formula calculation order', () => {
   const section = html.match(/Non-Stock Product Pricing Strategy[\s\S]*?<tbody id="non-stock-pricing-list"/);
   assert.ok(section, 'non-stock table section is present');
   const ordered = [
+    'Source Type',
+    'Unit',
     'Base Cost',
     'Purchase Price',
     'Price Updated',
@@ -111,6 +113,17 @@ test('non-stock strategy columns follow formula calculation order', () => {
     assert.ok(next > pos, `${label} should appear after the previous formula column`);
     pos = next;
   }
+});
+
+test('authorized distributor non-stock rows show source type and default all tax percentages to zero', () => {
+  const section = html.match(/Non-Stock Product Pricing Strategy[\s\S]*?<tbody id="non-stock-pricing-list"/);
+  assert.ok(section, 'non-stock table section is present');
+  assert.ok(section[0].indexOf('Source Type') > section[0].indexOf('Category'), 'Source Type should appear after Category');
+  assert.ok(section[0].indexOf('Unit') > section[0].indexOf('Source Type'), 'Unit should appear after Source Type');
+
+  assert.match(html, /function getProductSourceTypeLabel\(product\)/, 'non-stock table uses a product source type label helper');
+  assert.match(html, /getProductSourceTypeLabel\(p\)/, 'non-stock rows render the product source type');
+  assert.match(html, /if \(getProductSourceTypeLabel\(product\) === 'Authorized Distributor'\) \{\s*return \{ shippingRatePct: 0, domesticTaxRatePct: 0, dutyPct: 0, sstPct: 0, grayPct: 0 \};\s*\}/, 'authorized distributor defaults all non-stock tax percentages to zero');
 });
 
 test('non-stock strategy exposes per-pcs expected cost and tariff fee formulas', () => {

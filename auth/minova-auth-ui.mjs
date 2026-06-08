@@ -146,6 +146,8 @@ const ADMIN_PANELS = [
 const BUSINESS_DOMAIN_LABELS = {
   supplier: 'Suppliers',
   product: 'Products',
+  channel_partner: 'Channel Partners',
+  compatibility_rule: 'Compatibility Matrix',
   market_price: 'Price List',
   inventory: 'Inventory',
   inventory_history: 'Inventory History',
@@ -332,12 +334,14 @@ const businessRecordIdFor = (record, index = 0) => {
 const BUSINESS_RESOURCE_BY_DOMAIN = {
   supplier: 'suppliers',
   product: 'products',
+  channel_partner: 'products',
   inventory: 'inventory',
   inventory_history: 'inventory',
   sales_record: 'inventory',
   historical_inventory: 'inventory',
   transport: 'transport',
   market_price: 'priceList',
+  compatibility_rule: 'products',
   saved_quote: 'quotes'
 };
 
@@ -372,12 +376,14 @@ function businessSnapshotToPayload(snapshot = {}) {
   const items = [
     ...arr(data.suppliers).map((record, index) => ({ domain: 'supplier', recordId: businessRecordIdFor(record, index), payload: record })),
     ...arr(data.products).map((record, index) => ({ domain: 'product', recordId: businessRecordIdFor(record, index), payload: record })),
+    ...arr(data.channelPartners).map((record, index) => ({ domain: 'channel_partner', recordId: businessRecordIdFor(record, index), payload: record })),
     ...arr(data.inventory).map((record, index) => ({ domain: 'inventory', recordId: businessRecordIdFor(record, index), payload: record })),
     ...arr(data.inventoryHistory).map((record, index) => ({ domain: 'inventory_history', recordId: businessRecordIdFor(record, index), payload: record })),
     ...arr(data.salesRecords).map((record, index) => ({ domain: 'sales_record', recordId: businessRecordIdFor(record, index), payload: record })),
     ...arr(data.historicalInventory).map((record, index) => ({ domain: 'historical_inventory', recordId: businessRecordIdFor(record, index), payload: record })),
     ...arr(data.transportRecords).map((record, index) => ({ domain: 'transport', recordId: businessRecordIdFor(record, index), payload: record })),
-    ...arr(data.marketPrices?.records).map((record, index) => ({ domain: 'market_price', recordId: businessRecordIdFor(record, index), payload: record }))
+    ...arr(data.marketPrices?.records).map((record, index) => ({ domain: 'market_price', recordId: businessRecordIdFor(record, index), payload: record })),
+    ...arr(data.compatibilityRules).map((record, index) => ({ domain: 'compatibility_rule', recordId: businessRecordIdFor(record, index), payload: record }))
   ].filter(item => item.recordId && item.payload && typeof item.payload === 'object');
   const settings = {
     market_price_settings: {

@@ -196,3 +196,60 @@ test('mergeState preserves quote pricing settings in sync payload merge', () => 
   assert.deepEqual(merged.data.profitSettings, { v: 1, localOnly: true })
   assert.deepEqual(merged.data.installerProfitSettings, { cnPct: 6, myPct: 15 })
 })
+
+test('mergeState merges compatibility matrix rules and keeps local conflicts', () => {
+  const remote = {
+    data: {
+      products: [],
+      inventory: [],
+      compatibilityRules: [
+        { id: 'remote-rule', relationType: 'PV ↔ Inverter', sourceProductId: 'PV1', targetProductId: 'INV1', status: 'Approved' },
+        { id: 'shared-rule', relationType: 'Inverter ↔ Battery', sourceProductId: 'INV1', targetProductId: 'BAT1', status: 'Pending', remark: 'remote' }
+      ]
+    }
+  }
+  const local = {
+    data: {
+      products: [],
+      inventory: [],
+      compatibilityRules: [
+        { id: 'local-rule', relationType: 'System Bundle', sourceProductId: 'ESS1', targetProductId: 'BOS1', status: 'Approved' },
+        { id: 'shared-rule', relationType: 'Inverter ↔ Battery', sourceProductId: 'INV1', targetProductId: 'BAT1', status: 'Approved', remark: 'local' }
+      ]
+    }
+  }
+
+  const merged = mergeState(remote, local)
+
+  assert.deepEqual(merged.data.compatibilityRules.map((rule) => rule.id), ['remote-rule', 'shared-rule', 'local-rule'])
+  assert.equal(merged.data.compatibilityRules.find((rule) => rule.id === 'shared-rule').status, 'Approved')
+  assert.equal(merged.data.compatibilityRules.find((rule) => rule.id === 'shared-rule').remark, 'local')
+})
+
+test('mergeState merges channel partners and keeps local conflicts', () => {
+  const remote = {
+    data: {
+      products: [],
+      inventory: [],
+      channelPartners: [
+        { id: 'remote-channel', brandSupplierCode: 'BRAND1', type: 'Authorized Distributor', name: 'Remote Distributor' },
+        { id: 'shared-channel', brandSupplierCode: 'BRAND1', type: 'Dealer', name: 'Remote Dealer' }
+      ]
+    }
+  }
+  const local = {
+    data: {
+      products: [],
+      inventory: [],
+      channelPartners: [
+        { id: 'local-channel', brandSupplierCode: 'BRAND2', type: 'EPC Partner', name: 'Local EPC' },
+        { id: 'shared-channel', brandSupplierCode: 'BRAND1', type: 'Dealer', name: 'Local Dealer' }
+      ]
+    }
+  }
+
+  const merged = mergeState(remote, local)
+
+  assert.deepEqual(merged.data.channelPartners.map((partner) => partner.id), ['remote-channel', 'shared-channel', 'local-channel'])
+  assert.equal(merged.data.channelPartners.find((partner) => partner.id === 'shared-channel').name, 'Local Dealer')
+})

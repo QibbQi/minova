@@ -217,6 +217,8 @@ test('admin endpoint diagnostics do not report cached transient reads as active 
 test('business domain permission maps D1 domains to RBAC resources', () => {
   assert.deepEqual(domainPermission('supplier'), { resource: 'suppliers', read: 'read', write: 'edit', delete: 'delete' });
   assert.deepEqual(domainPermission('product'), { resource: 'products', read: 'read', write: 'edit', delete: 'delete' });
+  assert.deepEqual(domainPermission('compatibility_rule'), { resource: 'products', read: 'read', write: 'edit', delete: 'delete' });
+  assert.deepEqual(domainPermission('channel_partner'), { resource: 'products', read: 'read', write: 'edit', delete: 'delete' });
   assert.deepEqual(domainPermission('market_price'), { resource: 'priceList', read: 'read', write: 'edit', delete: 'delete' });
   assert.deepEqual(domainPermission('saved_quote'), { resource: 'quotes', read: 'read', write: 'edit', delete: 'delete' });
   assert.equal(domainPermission('unknown_domain'), null);
@@ -318,8 +320,10 @@ test('business bootstrap payload reshapes entity rows into app state', () => {
   const payload = buildBusinessBootstrapPayload([
     { domain: 'supplier', record_id: 'SUP1', payload_json: '{"id":"SUP1","code":"SUP1","nameEn":"Supplier"}', updated_at: '2026-06-03 00:59:00' },
     { domain: 'product', record_id: 'P1', payload_json: '{"id":"P1","name":"PV"}', updated_at: '2026-06-03 01:00:00' },
+    { domain: 'channel_partner', record_id: 'CP1', payload_json: '{"id":"CP1","brandSupplierCode":"SUP1","type":"Authorized Distributor","name":"MY Distributor"}', updated_at: '2026-06-03 01:00:30' },
     { domain: 'inventory', record_id: 'I1', payload_json: '{"id":"I1","productId":"P1"}', updated_at: '2026-06-03 01:01:00' },
     { domain: 'market_price', record_id: 'M1', payload_json: '{"id":"M1","category":"PV Module"}', updated_at: '2026-06-03 01:02:00' },
+    { domain: 'compatibility_rule', record_id: 'CR1', payload_json: '{"id":"CR1","sourceProductId":"P1","targetProductId":"I1"}', updated_at: '2026-06-03 01:02:30' },
     { domain: 'saved_quote', record_id: 'Q1', payload_json: '{"id":"Q1","name":"Quote 1","snapshot":{}}', updated_at: '2026-06-03 01:03:00' }
   ], {
     market_price_settings: { categoryUnits: { 'PV Module': 'W' }, deletedRecordIds: ['old'] },
@@ -328,7 +332,9 @@ test('business bootstrap payload reshapes entity rows into app state', () => {
 
   assert.deepEqual(payload.data.suppliers, [{ id: 'SUP1', code: 'SUP1', nameEn: 'Supplier' }]);
   assert.deepEqual(payload.data.products, [{ id: 'P1', name: 'PV' }]);
+  assert.deepEqual(payload.data.channelPartners, [{ id: 'CP1', brandSupplierCode: 'SUP1', type: 'Authorized Distributor', name: 'MY Distributor' }]);
   assert.deepEqual(payload.data.inventory, [{ id: 'I1', productId: 'P1' }]);
+  assert.deepEqual(payload.data.compatibilityRules, [{ id: 'CR1', sourceProductId: 'P1', targetProductId: 'I1' }]);
   assert.deepEqual(payload.data.marketPrices.records, [{ id: 'M1', category: 'PV Module' }]);
   assert.deepEqual(payload.data.marketPrices.categoryUnits, { 'PV Module': 'W' });
   assert.deepEqual(payload.data.subcategoriesByCategory, { 'PV Module': ['Bifacial'] });
@@ -346,13 +352,25 @@ test('business bootstrap payload reshapes entity rows into app state', () => {
 test('business snapshot migration maps suppliers into D1 entities', () => {
   const { items } = businessSnapshotToItems({
     suppliers: [{ id: 'supplier_SUP1', code: 'SUP1', nameEn: 'Supplier One' }],
-    products: [{ id: 'P1', name: 'PV' }]
+    products: [{ id: 'P1', name: 'PV' }],
+    channelPartners: [{ id: 'CP1', brandSupplierCode: 'SUP1', type: 'Dealer', name: 'Dealer One' }],
+    compatibilityRules: [{ id: 'CR1', sourceProductId: 'P1', targetProductId: 'INV1' }]
   });
 
   assert.deepEqual(items.filter(item => item.domain === 'supplier'), [{
     domain: 'supplier',
     recordId: 'supplier_SUP1',
     payload: { id: 'supplier_SUP1', code: 'SUP1', nameEn: 'Supplier One' }
+  }]);
+  assert.deepEqual(items.filter(item => item.domain === 'compatibility_rule'), [{
+    domain: 'compatibility_rule',
+    recordId: 'CR1',
+    payload: { id: 'CR1', sourceProductId: 'P1', targetProductId: 'INV1' }
+  }]);
+  assert.deepEqual(items.filter(item => item.domain === 'channel_partner'), [{
+    domain: 'channel_partner',
+    recordId: 'CP1',
+    payload: { id: 'CP1', brandSupplierCode: 'SUP1', type: 'Dealer', name: 'Dealer One' }
   }]);
 });
 

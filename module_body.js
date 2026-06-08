@@ -502,7 +502,7 @@
                 const state = () => sync.getStatus();
 
                 const btnBaseClass = 'whitespace-nowrap text-[11px] px-2 py-1.5 rounded-lg font-bold border transition-colors';
-                const btn = el('button', { title: 'GitHub 数据同步', class: `${btnBaseClass} bg-red-600 hover:bg-red-700 text-white border-red-700`, text: 'GH 未连' });
+                const btn = el('button', { title: 'GitHub Backup / Static Publish', class: `${btnBaseClass} bg-red-600 hover:bg-red-700 text-white border-red-700`, text: 'Backup' });
 
                 root.innerHTML = '';
                 const existing = document.getElementById('github-sync-modal');
@@ -512,8 +512,8 @@
                 const card = el('div', { class: 'bg-white rounded-2xl p-6 w-full max-w-xl shadow-2xl max-h-[90vh] overflow-y-auto' });
                 modal.append(card);
 
-                const title = el('div', { class: 'text-lg font-black text-slate-800', text: 'GitHub 数据同步' });
-                const tip = el('div', { class: 'text-xs text-slate-500 mt-1', text: '默认使用 Sync Data：只同步 minova-data/state.json，不覆盖 index.html，也不等待 GitHub Pages 部署。只有代码或页面布局更新后才使用 Publish Page。' });
+                const title = el('div', { class: 'text-lg font-black text-slate-800', text: 'GitHub Backup / Static Publish' });
+                const tip = el('div', { class: 'text-xs text-slate-500 mt-1', text: '业务主数据优先保存到 Cloudflare D1。这里的 PAT 只用于静态备份、GitHub Pages 发布和附件文件维护，不是维护 Supplier/Product/Inventory/Price List 的必要条件。' });
 
                 const form = el('div', { class: 'mt-5 grid grid-cols-1 gap-4' });
                 const repoHint = el('div', { class: 'rounded-xl border border-slate-200 p-4 bg-slate-50 text-xs text-slate-600' });
@@ -542,12 +542,12 @@
                 const btnClose = el('button', { class: 'px-4 py-2 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50', text: 'Close' });
                 const btnCheck = el('button', { class: 'px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 border border-slate-200', text: '连接自检' });
                 const btnConnectPat = el('button', { class: 'px-4 py-2 rounded-xl bg-slate-900 text-white font-bold hover:bg-black', text: '使用 PAT 连接' });
-                const btnSyncData = el('button', { class: 'px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700', text: 'Sync Data' });
+                const btnSyncData = el('button', { class: 'px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700', text: 'Backup Data' });
                 const btnPublish = el('button', { class: 'px-4 py-2 rounded-xl bg-purple-700 text-white font-bold hover:bg-purple-800', text: 'Publish Page' });
                 const btnDisconnect = el('button', { class: 'px-4 py-2 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700', text: '断开' });
 
                 footer.append(btnConnectPat, btnSyncData, btnPublish, btnCheck, btnDisconnect, btnClose);
-                const actionGuide = el('div', { class: 'mt-4 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-xs leading-relaxed text-emerald-800', text: 'Recommended: Sync Data writes only the data file and is much faster. Publish Page writes index.html plus the data file, and should be used only after code/layout changes.' });
+                const actionGuide = el('div', { class: 'mt-4 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-xs leading-relaxed text-emerald-800', text: 'Recommended: maintain master data after backend login. Use Backup Data only when you want to export a static GitHub copy; use Publish Page only after code/layout changes.' });
                 card.append(title, tip, form, actionGuide, msg, footer);
 
                 function formatErr(e) {
@@ -568,10 +568,10 @@
                     const dataUnlocked = s.connected || localFileMode || authMode;
                     btn.style.display = syncAuthorized ? '' : 'none';
                     btn.textContent = s.connected
-                        ? `GH 已连(${s.queueSize})`
+                        ? `Backup(${s.queueSize})`
                         : syncAuthorized
-                            ? 'Data Sync'
-                            : 'GH 未连';
+                            ? 'Backup'
+                            : 'Hidden';
                     btn.className = `${btnBaseClass} ${s.connected ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700' : syncAuthorized ? 'bg-purple-700 hover:bg-purple-800 text-white border-purple-800' : 'bg-red-600 hover:bg-red-700 text-white border-red-700'}`;
                     const restrictedTabs = ['quotation', 'costcalc', 'database', 'pricelist', 'inventory', 'transport'];
                     for (const t of restrictedTabs) {
@@ -593,7 +593,7 @@
                     btnSyncData.style.display = s.connected ? '' : 'none';
                     btnPublish.style.display = s.connected ? '' : 'none';
                     const cfg = s.config || {};
-                    repoHint.textContent = `目标Warehouse：${cfg.owner || defaults.owner}/${cfg.repo || defaults.repo}（分支：${cfg.branch || defaults.branch}）`;
+                    repoHint.textContent = `Static backup repository: ${cfg.owner || defaults.owner}/${cfg.repo || defaults.repo} (branch: ${cfg.branch || defaults.branch})`;
                 };
 
                 btn.onclick = () => {
@@ -990,9 +990,11 @@
         let salesRecords = [];
         let historicalInventory = [];
         let suppliers = [];
+        let channelPartners = [];
         let companyCerts = { isoCerts: [], transportCerts: [] };
         let transportRecords = [];
         let fileDeleteLogs = [];
+        let compatibilityRules = [];
         let inventorySummaryMode = false;
         let inventoryFullHeadHtml = '';
         let selectedInventoryForTransport = new Set();
@@ -1112,6 +1114,95 @@
         function normalizeMarketUnit(unit) {
             return normalizeUnitLabel(unit);
         }
+        function normalizePricingUnit(unit) {
+            const raw = String(unit || '').trim();
+            const normalized = normalizeUnitLabel(raw);
+            const lower = String(normalized || '').trim().toLowerCase();
+            if (lower === 'w') return 'W';
+            if (lower === 'kw') return 'kW';
+            if (lower === 'kwh') return 'kWh';
+            if (lower === 'pcs') return 'pcs';
+            if (lower === 'set') return 'set';
+            return normalized || 'pcs';
+        }
+        function inferProductPricingUnit(product) {
+            const p = product || {};
+            const explicit = String(p.priceBasisUnit || p.pricingUnit || p.costUnit || '').trim();
+            if (explicit) return normalizePricingUnit(explicit);
+            const categoryUnit = getMarketCategoryUnitMeta(p.category || '').unit || '';
+            return normalizePricingUnit(categoryUnit || 'pcs');
+        }
+        function inferProductUnitQtyPerPcs(product, inventoryItem, unit) {
+            const p = product || {};
+            const u = normalizePricingUnit(unit || inferProductPricingUnit(p));
+            const explicitQty = parseFloat(p.unitQtyPerPcs);
+            if (Number.isFinite(explicitQty) && explicitQty > 0) return explicitQty;
+            if (inventoryItem) {
+                const invQty = parseFloat(inventoryItem.spec);
+                if (Number.isFinite(invQty) && invQty > 0) return invQty;
+            }
+            if (u === 'pcs' || u === 'set') return 1;
+            const text = String((p.spec || '') + ' ' + (p.name || ''));
+            const unitPattern = u.replace(/[^A-Za-z]/g, '');
+            const match = text.match(new RegExp('(\\d+(?:\\.\\d+)?)\\s*' + unitPattern + '\\b', 'i'));
+            const parsed = match ? parseFloat(match[1]) : NaN;
+            if (Number.isFinite(parsed) && parsed > 0) return parsed;
+            const numericSpec = parseFloat(p.spec);
+            return Number.isFinite(numericSpec) && numericSpec > 0 ? numericSpec : 1;
+        }
+        function getProductPricingMeta(product, inventoryItem) {
+            const p = product || {};
+            const unit = inferProductPricingUnit(p);
+            const explicitQty = parseFloat(p.unitQtyPerPcs);
+            let qty = inferProductUnitQtyPerPcs(p, inventoryItem, unit);
+            const rounded = Math.round(qty * 1000000) / 1000000;
+            const qtyLabel = Number.isInteger(rounded) ? String(rounded) : String(rounded).replace(/0+$/, '').replace(/\.$/, '');
+            const hasExplicit = !!String(p.priceBasisUnit || p.pricingUnit || p.costUnit || '').trim() || (Number.isFinite(explicitQty) && explicitQty > 0);
+            return {
+                priceBasisUnit: unit,
+                unitQtyPerPcs: rounded,
+                source: hasExplicit ? 'explicit' : 'inferred',
+                label: qtyLabel + ' ' + unit + '/pcs'
+            };
+        }
+        function isHybridStorageCategory(category) {
+            const cat = normalizeProductCategory(category);
+            return cat === 'All-in-One System' || cat === 'C&I Storage';
+        }
+        function formatCapacityValue(value) {
+            const n = parseFloat(value);
+            if (!Number.isFinite(n) || n <= 0) return '';
+            const rounded = Math.round(n * 10000) / 10000;
+            return Number.isInteger(rounded) ? String(rounded) : String(rounded).replace(/0+$/, '').replace(/\.$/, '');
+        }
+        function parseHybridStorageSpec(productOrSpec) {
+            const p = productOrSpec && typeof productOrSpec === 'object' ? productOrSpec : {};
+            const text = String(typeof productOrSpec === 'string' ? productOrSpec : `${p.inverterKw || ''}kW ${p.batteryKwh || ''}kWh ${p.spec || ''} ${p.name || ''}`);
+            const invDirect = parseFloat(p.inverterKw);
+            const batDirect = parseFloat(p.batteryKwh);
+            const invMatch = text.match(/(\d+(?:\.\d+)?)\s*kW(?!h)/i);
+            const batMatch = text.match(/(\d+(?:\.\d+)?)\s*kWh\b/i);
+            return {
+                inverterKw: Number.isFinite(invDirect) && invDirect > 0 ? invDirect : (invMatch ? parseFloat(invMatch[1]) : 0),
+                batteryKwh: Number.isFinite(batDirect) && batDirect > 0 ? batDirect : (batMatch ? parseFloat(batMatch[1]) : 0)
+            };
+        }
+        function formatHybridStorageSpec(input) {
+            const parsed = parseHybridStorageSpec(input);
+            const inv = formatCapacityValue(parsed.inverterKw);
+            const bat = formatCapacityValue(parsed.batteryKwh);
+            if (inv && bat) return inv + ' kW / ' + bat + ' kWh';
+            if (inv) return inv + ' kW';
+            if (bat) return bat + ' kWh';
+            return '';
+        }
+        function getProductDisplaySpec(product) {
+            const p = product || {};
+            if (isHybridStorageCategory(p.category)) {
+                return formatHybridStorageSpec(p) || String(p.spec || '').trim();
+            }
+            return String(p.spec || '').trim();
+        }
         function normalizeMarketPrices(data) {
             const raw = data && typeof data === 'object' ? data : {};
             const unitSource = raw.categoryUnits && typeof raw.categoryUnits === 'object' ? raw.categoryUnits : {};
@@ -1169,6 +1260,21 @@
                         scenario: normalizeProductSubcategory(p.scenario)
                     };
                     if (String(next.spec || '').trim() === '个') next.spec = 'pcs';
+                    if (String(next.priceBasisUnit || next.pricingUnit || next.costUnit || '').trim()) {
+                        next.priceBasisUnit = normalizePricingUnit(next.priceBasisUnit || next.pricingUnit || next.costUnit);
+                    }
+                    if (next.unitQtyPerPcs != null) {
+                        const qty = parseFloat(next.unitQtyPerPcs);
+                        if (Number.isFinite(qty) && qty > 0) next.unitQtyPerPcs = qty;
+                        else delete next.unitQtyPerPcs;
+                    }
+                    if (isHybridStorageCategory(next.category)) {
+                        const hybridSpec = parseHybridStorageSpec(next);
+                        if (hybridSpec.inverterKw > 0) next.inverterKw = hybridSpec.inverterKw;
+                        if (hybridSpec.batteryKwh > 0) next.batteryKwh = hybridSpec.batteryKwh;
+                        const formattedSpec = formatHybridStorageSpec(next);
+                        if (formattedSpec) next.spec = formattedSpec;
+                    }
                     return next;
                 });
             }
@@ -1640,8 +1746,47 @@
             const note = document.getElementById('m-price-unit-note');
             if (!note) return;
             const category = document.getElementById('m-category')?.value || '';
-            const unit = normalizeUnitLabel(getMarketCategoryUnitMeta(category).unit || 'unit');
-            note.textContent = `Unit: /${unit}`;
+            const spec = document.getElementById('m-spec')?.value || '';
+            const unitEl = document.getElementById('m-price-basis-unit');
+            const qtyEl = document.getElementById('m-unit-qty-per-pcs');
+            const draft = {
+                category,
+                spec,
+                priceBasisUnit: unitEl?.value || '',
+                unitQtyPerPcs: qtyEl?.value || ''
+            };
+            const meta = getProductPricingMeta(draft);
+            note.textContent = `Base cost/price: /${meta.priceBasisUnit} · Quote price: ${meta.label}`;
+        }
+        function syncHybridSpecFromInputs() {
+            const category = document.getElementById('m-category')?.value || '';
+            if (!isHybridStorageCategory(category)) return;
+            const inv = parseFloat(document.getElementById('m-inverter-kw')?.value);
+            const bat = parseFloat(document.getElementById('m-battery-kwh')?.value);
+            const specEl = document.getElementById('m-spec');
+            if (specEl) specEl.value = formatHybridStorageSpec({ inverterKw: inv, batteryKwh: bat });
+            updateProductPriceUnitNote();
+        }
+        function updateHybridSpecControls() {
+            const category = document.getElementById('m-category')?.value || '';
+            const isHybrid = isHybridStorageCategory(category);
+            const container = document.getElementById('m-hybrid-spec-container');
+            const specEl = document.getElementById('m-spec');
+            const specLabel = document.getElementById('m-spec-label');
+            if (container) container.classList.toggle('hidden', !isHybrid);
+            if (specLabel) specLabel.textContent = isHybrid ? 'Specification (Auto)' : 'Specification';
+            if (specEl) {
+                specEl.readOnly = isHybrid;
+                specEl.classList.toggle('bg-slate-50', isHybrid);
+                if (isHybrid) {
+                    const parsed = parseHybridStorageSpec(specEl.value);
+                    const invEl = document.getElementById('m-inverter-kw');
+                    const batEl = document.getElementById('m-battery-kwh');
+                    if (invEl && !invEl.value && parsed.inverterKw) invEl.value = formatCapacityValue(parsed.inverterKw);
+                    if (batEl && !batEl.value && parsed.batteryKwh) batEl.value = formatCapacityValue(parsed.batteryKwh);
+                    syncHybridSpecFromInputs();
+                }
+            }
         }
         function updateProductPriceCurrencyUi() {
             const currency = normalizeProductPriceCurrency(document.getElementById('m-price-currency')?.value || 'CNY');
@@ -1661,6 +1806,8 @@
             updateProductPriceCurrencyUi();
         }
         window.updateProductPriceUnitNote = updateProductPriceUnitNote;
+        window.updateHybridSpecControls = updateHybridSpecControls;
+        window.syncHybridSpecFromInputs = syncHybridSpecFromInputs;
         window.updateProductPriceCurrencyUi = updateProductPriceCurrencyUi;
         window.updateProductCurrencyFromSupplier = updateProductCurrencyFromSupplier;
         function getProductSupplierBrandForLang(product, lang = currentLang) {
@@ -1872,6 +2019,8 @@
                 const cur = selectedCode || productSel.value || '';
                 productSel.innerHTML = renderSupplierOptions(cur);
                 if (cur && getSupplierByCode(cur)) productSel.value = normalizeSupplierCode(cur);
+                try { setSupplyRouteSelectOptions(getProductSourcing({ supplierCode: cur }), cur); } catch (e) {}
+                try { updateProductChannelPartnerOptions(); updateSupplyRouteVisibility(); } catch (e) {}
             }
         }
         window.__minovaGetProducts = () => products;
@@ -2123,6 +2272,7 @@
         }
         function persistProfitSettings(reason = 'profit settings update') {
             try { localStorage.setItem('minova_profit_settings_v1', JSON.stringify(profitSettings)); } catch (e) {}
+            persistQuoteSettingsToD1();
             try { if (!suppressGitHubSync) window.__minovaSync?.enqueueSnapshot(reason); } catch (e) {}
         }
         window.setProfitTarget = (target) => {
@@ -2325,6 +2475,7 @@
                     salesRecords = Array.isArray(embedded.data.salesRecords) ? embedded.data.salesRecords : [];
                     historicalInventory = Array.isArray(embedded.data.historicalInventory) ? embedded.data.historicalInventory : [];
                     suppliers = Array.isArray(embedded.data.suppliers) ? embedded.data.suppliers : [];
+                    channelPartners = Array.isArray(embedded.data.channelPartners) ? embedded.data.channelPartners : [];
                     subcategoriesByCategory = embedded.data.subcategoriesByCategory && typeof embedded.data.subcategoriesByCategory === 'object' ? embedded.data.subcategoriesByCategory : {};
                     profitSettings = normalizeProfitSettings(embedded.data.profitSettings || null);
                     installerProfitSettings = normalizeInstallerProfitSettings(embedded.data.installerProfitSettings || installerProfitSettings || null);
@@ -2340,6 +2491,7 @@
                         localStorage.setItem('minova_sales_records_v1', JSON.stringify(salesRecords));
                         localStorage.setItem('minova_historical_inventory_v1', JSON.stringify(historicalInventory));
                         localStorage.setItem('minova_suppliers_v1', JSON.stringify(suppliers));
+                        localStorage.setItem('minova_channel_partners_v1', JSON.stringify(channelPartners));
                         localStorage.setItem('minova_subcategories_v1', JSON.stringify(subcategoriesByCategory));
                         localStorage.setItem('minova_profit_settings_v1', JSON.stringify(profitSettings));
                         localStorage.setItem('minova_installer_profit_v1', JSON.stringify(installerProfitSettings));
@@ -2349,6 +2501,8 @@
                     companyCerts = embedded.data.companyCerts && typeof embedded.data.companyCerts === 'object' ? embedded.data.companyCerts : companyCerts;
                     transportRecords = Array.isArray(embedded.data.transportRecords) ? embedded.data.transportRecords : [];
                     fileDeleteLogs = Array.isArray(embedded.data.fileDeleteLogs) ? embedded.data.fileDeleteLogs : [];
+                    compatibilityRules = Array.isArray(embedded.data.compatibilityRules) ? embedded.data.compatibilityRules : [];
+                    try { localStorage.setItem('minova_compatibility_rules_v1', JSON.stringify(compatibilityRules)); } catch (e) {}
                 }
             }
         } catch (e) {}
@@ -2366,6 +2520,14 @@
         try {
             const raw = localStorage.getItem('minova_file_delete_logs_v1');
             if (raw) fileDeleteLogs = Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : fileDeleteLogs;
+        } catch (e) {}
+        try {
+            const raw = localStorage.getItem('minova_compatibility_rules_v1');
+            if (raw) compatibilityRules = Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : compatibilityRules;
+        } catch (e) {}
+        try {
+            const raw = localStorage.getItem('minova_channel_partners_v1');
+            if (raw) channelPartners = Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : channelPartners;
         } catch (e) {}
         try {
             const raw = localStorage.getItem('minova_market_prices_v1');
@@ -2439,6 +2601,7 @@
             try {
                 if (key === 'database') {
                     renderSuppliers();
+                    renderChannelPartners();
                     renderDb();
                     updateDatalists();
                 } else if (key === 'inventory') {
@@ -2518,6 +2681,8 @@
             historicalInventory = Array.isArray(data?.historicalInventory) ? data.historicalInventory : [];
             suppliers = Array.isArray(data?.suppliers) ? data.suppliers : [];
             ensureSupplierData();
+            channelPartners = normalizeChannelPartners(data?.channelPartners);
+            compatibilityRules = normalizeCompatibilityRules(data?.compatibilityRules);
             subcategoriesByCategory = data?.subcategoriesByCategory && typeof data.subcategoriesByCategory === 'object' ? data.subcategoriesByCategory : {};
             profitSettings = normalizeProfitSettings(data?.profitSettings || profitSettings || null);
             installerProfitSettings = normalizeInstallerProfitSettings(data?.installerProfitSettings || installerProfitSettings || null);
@@ -2533,6 +2698,8 @@
                 localStorage.setItem('minova_sales_records_v1', JSON.stringify(salesRecords));
                 localStorage.setItem('minova_historical_inventory_v1', JSON.stringify(historicalInventory));
                 localStorage.setItem('minova_suppliers_v1', JSON.stringify(suppliers));
+                localStorage.setItem('minova_channel_partners_v1', JSON.stringify(channelPartners));
+                localStorage.setItem('minova_compatibility_rules_v1', JSON.stringify(compatibilityRules));
                 localStorage.setItem('minova_subcategories_v1', JSON.stringify(subcategoriesByCategory));
                 localStorage.setItem('minova_profit_settings_v1', JSON.stringify(profitSettings));
                 localStorage.setItem('minova_installer_profit_v1', JSON.stringify(installerProfitSettings));
@@ -2564,6 +2731,7 @@
                 if (window.location.protocol === 'file:') return false;
                 const isConnected = !!window.__minovaSync?.getStatus?.()?.connected;
                 if (isConnected && !allowWhenConnected) return false;
+                if (window.__minovaD1BusinessPrimary && !allowWhenConnected) return false;
                 const url = new URL('minova-data/state.json', window.location.href);
                 url.searchParams.set('v', String(Date.now()));
                 const res = await fetch(url.toString(), { cache: 'no-store' });
@@ -2610,7 +2778,11 @@
             localStorage.setItem('minova_sales_records_v1', JSON.stringify(salesRecords));
             localStorage.setItem('minova_historical_inventory_v1', JSON.stringify(historicalInventory));
             localStorage.setItem('minova_suppliers_v1', JSON.stringify(suppliers));
+            channelPartners = normalizeChannelPartners(channelPartners);
+            localStorage.setItem('minova_channel_partners_v1', JSON.stringify(channelPartners));
             localStorage.setItem('minova_company_certs', JSON.stringify(companyCerts));
+            compatibilityRules = normalizeCompatibilityRules(compatibilityRules);
+            try { localStorage.setItem('minova_compatibility_rules_v1', JSON.stringify(compatibilityRules)); } catch (e) {}
             try { localStorage.setItem('minova_transport_records_v1', JSON.stringify(transportRecords)); } catch (e) {}
             try { localStorage.setItem('minova_file_delete_logs_v1', JSON.stringify(fileDeleteLogs)); } catch (e) {}
             rebuildSubcategoryIndexFromProducts();
@@ -2623,6 +2795,119 @@
             try { localStorage.setItem('minova_non_stock_pricing_v1', JSON.stringify(nonStockPricingStrategies)); } catch (e) {}
             refreshAfterDataChange();
             try { if (!suppressGitHubSync) window.__minovaSync?.enqueueSnapshot('state update'); } catch (e) {}
+        }
+
+        window.getMinovaBusinessStateSnapshot = () => ({
+            v: 1,
+            updatedAt: new Date().toISOString(),
+            data: {
+                products,
+                suppliers,
+                channelPartners,
+                inventory,
+                inventoryHistory,
+                marketPrices,
+                salesRecords,
+                historicalInventory,
+                transportRecords,
+                compatibilityRules,
+                subcategoriesByCategory,
+                profitSettings,
+                installerProfitSettings,
+                installerQuoteSettings,
+                nonStockPricingStrategies
+            }
+        });
+
+        window.applyBusinessDataFromD1 = (data = {}, quoteIndex = null) => {
+            window.__minovaD1BusinessPrimary = true;
+            const merged = {
+                ...data,
+                companyCerts,
+                fileDeleteLogs
+            };
+            applyStateFromData(merged, Date.now());
+            if (quoteIndex && typeof window.applyD1QuoteIndex === 'function') {
+                window.applyD1QuoteIndex(quoteIndex);
+            }
+        };
+
+        function cloneForD1(value) {
+            try { return JSON.parse(JSON.stringify(value || {})); } catch (e) { return value || {}; }
+        }
+
+        function persistEntityToD1(domain, recordId, payload) {
+            try {
+                if (!domain || !recordId || !payload || !window.__minovaBusiness?.upsertEntity) return;
+                window.__minovaBusiness.upsertEntity(domain, String(recordId), cloneForD1(payload));
+            } catch (e) {
+                console.warn('D1 entity save queued/failed:', domain, recordId, e);
+            }
+        }
+
+        function deleteEntityFromD1(domain, recordId) {
+            try {
+                if (!domain || !recordId || !window.__minovaBusiness?.deleteEntity) return;
+                window.__minovaBusiness.deleteEntity(domain, String(recordId));
+            } catch (e) {
+                console.warn('D1 entity delete queued/failed:', domain, recordId, e);
+            }
+        }
+
+        function persistSettingsToD1(settings) {
+            try {
+                if (!settings || !window.__minovaBusiness?.saveSettings) return;
+                window.__minovaBusiness.saveSettings(cloneForD1(settings));
+            } catch (e) {
+                console.warn('D1 settings save queued/failed:', e);
+            }
+        }
+
+        function persistQuoteSettingsToD1() {
+            try {
+                profitSettings = normalizeProfitSettings(profitSettings || null);
+                installerProfitSettings = normalizeInstallerProfitSettings(installerProfitSettings || null);
+                installerQuoteSettings = normalizeInstallerQuoteSettings(installerQuoteSettings || null);
+                persistSettingsToD1({
+                    profit_settings: profitSettings,
+                    installer_profit_settings: installerProfitSettings,
+                    installer_quote_settings: installerQuoteSettings
+                });
+            } catch (e) {
+                console.warn('D1 quote settings save queued/failed:', e);
+            }
+        }
+
+        function persistInventoryStateToD1() {
+            try {
+                if (!window.__minovaBusiness?.upsertEntities) return;
+                const items = [
+                    ...(Array.isArray(inventory) ? inventory : []).map(record => ({ domain: 'inventory', recordId: record.id, payload: record })),
+                    ...(Array.isArray(inventoryHistory) ? inventoryHistory : []).map((record, index) => ({ domain: 'inventory_history', recordId: String(record.id || [record.ts, record.type, record.productId, record.batchNo, index].filter(Boolean).join(':')), payload: record })),
+                    ...(Array.isArray(salesRecords) ? salesRecords : []).map(record => ({ domain: 'sales_record', recordId: record.id, payload: record })),
+                    ...(Array.isArray(historicalInventory) ? historicalInventory : []).map((record, index) => ({ domain: 'historical_inventory', recordId: String(record.id || [record.ts, record.productId, record.batchNo, index].filter(Boolean).join(':')), payload: record }))
+                ].filter(item => item.recordId);
+                if (items.length) window.__minovaBusiness.upsertEntities(items);
+            } catch (e) {
+                console.warn('D1 inventory save queued/failed:', e);
+            }
+        }
+
+        function persistMarketPricesToD1() {
+            try {
+                if (window.__minovaBusiness?.upsertEntities) {
+                    const items = (marketPrices?.records || []).map(record => ({ domain: 'market_price', recordId: record.id, payload: record })).filter(item => item.recordId);
+                    if (items.length) window.__minovaBusiness.upsertEntities(items);
+                }
+                persistSettingsToD1({
+                    market_price_settings: {
+                        categoryUnits: marketPrices?.categoryUnits || {},
+                        deletedRecordIds: marketPrices?.deletedRecordIds || []
+                    }
+                });
+            } catch (e) {
+                console.warn('D1 market price save queued/failed:', e);
+            }
         }
 
         let quoteRows = [{ id: Date.now(), description: '', vendor: '', spec: '', batchNo: '', quantity: 1, price: 0, cost: 0, productId: '', inventoryId: '' }];
@@ -2959,6 +3244,9 @@
                         if (getActiveTopLevelTab() === 'pricelist') renderPriceList();
                     });
                 }
+            }
+            if (tab === 'inventory') {
+                window.refreshInventoryLiveFx?.({ render: true });
             }
             if (tab === 'quotation') {
                 const page = document.getElementById('quote-page-select')?.value || '1';
@@ -4082,7 +4370,7 @@
             ensureSupplierData();
             renderSupplierFunnelSummary(suppliers);
             if (!suppliers.length) {
-                list.innerHTML = `<tr><td colspan="13" class="py-12 text-center text-slate-400 text-sm">No suppliers yet. Add a supplier before maintaining product records.</td></tr>`;
+                list.innerHTML = `<tr><td colspan="14" class="py-12 text-center text-slate-400 text-sm">No suppliers yet. Add a supplier before maintaining product records.</td></tr>`;
                 updateSupplierSelects();
                 return;
             }
@@ -4093,11 +4381,12 @@
             const rows = suppliers.map(s => {
                 const details = getSupplierEvaluationDetails(s);
                 const linked = products.filter(p => normalizeSupplierCode(p.supplierCode) === normalizeSupplierCode(s.code)).length;
+                const channelCount = getChannelPartnersForBrand(s.code).length;
                 const hay = [
                     s.code, s.nameZh, s.nameEn, s.country, s.contact, s.contactInfo, s.website, s.address, s.notes,
                     getSupplierStageDef(details.stage).label, getSupplierStageDef(details.suggestedStage).label
                 ].filter(Boolean).map(v => String(v).toLowerCase()).join(' | ');
-                return { supplier: s, details, linked, hay };
+                return { supplier: s, details, linked, channelCount, hay };
             }).filter(row => {
                 if (supplierStageFilter !== 'all' && row.details.stage !== supplierStageFilter) return false;
                 return !query || row.hay.includes(query);
@@ -4112,7 +4401,7 @@
                 return (b.details.totalScore - a.details.totalScore) || supplierStageIndex(b.details.stage) - supplierStageIndex(a.details.stage);
             });
             if (!rows.length) {
-                list.innerHTML = `<tr><td colspan="13" class="py-12 text-center text-slate-400 text-sm">No suppliers match the current filters.</td></tr>`;
+                list.innerHTML = `<tr><td colspan="14" class="py-12 text-center text-slate-400 text-sm">No suppliers match the current filters.</td></tr>`;
                 updateSupplierSelects();
                 return;
             }
@@ -4120,6 +4409,7 @@
                 const s = row.supplier;
                 const details = row.details;
                 const linked = row.linked;
+                const channelCount = row.channelCount;
                 const logo = getSupplierLogo(s)
                     ? `<img src="${htmlSafe(getSupplierLogo(s))}" class="h-10 w-20 object-contain rounded-lg bg-white border border-slate-100" alt="${htmlSafe(getSupplierDisplayName(s))} logo">`
                     : `<div class="h-10 w-20 rounded-lg bg-slate-50 border border-dashed border-slate-200 flex items-center justify-center text-[10px] text-slate-300">No Logo</div>`;
@@ -4142,6 +4432,7 @@
                         <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(s.contact || '-')}</td>
                         <td class="py-4 px-4 text-xs text-slate-500">${htmlSafe(s.contactInfo || '-')}</td>
                         <td class="py-4 px-4 text-xs max-w-[180px] truncate">${website}</td>
+                        <td class="py-4 px-4 text-center"><span class="text-[10px] font-black px-2 py-1 rounded-full bg-amber-50 text-amber-700">${channelCount}</span></td>
                         <td class="py-4 px-4 text-center"><span class="text-[10px] font-black px-2 py-1 rounded-full bg-purple-50 text-purple-700">${linked}</span></td>
                         <td class="py-4 px-4 text-center">
                             <div class="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
@@ -4286,6 +4577,8 @@
             setVal('supplier-website', supplier?.website || '');
             setVal('supplier-address', supplier?.address || '');
             setVal('supplier-notes', supplier?.notes || '');
+            window.__supplierChannelPartnerDrafts = getSupplierChannelPartnerDraftsForCode(supplier?.code || code || '');
+            renderSupplierChannelPartnerDrafts();
             setSupplierEvaluationToModal(supplier || {});
             window.__supplierLogoDraft = supplier ? getSupplierLogo(supplier) : '';
             const fileEl = document.getElementById('supplier-logo-file');
@@ -4300,6 +4593,7 @@
             window.__editingSupplierCode = '';
             window.__supplierLogoDraft = '';
             window.__supplierLastReviewedAt = '';
+            window.__supplierChannelPartnerDrafts = [];
         };
 
         window.uploadSupplierLogo = async (input) => {
@@ -4348,6 +4642,16 @@
             const idx = oldCode ? suppliers.findIndex(s => normalizeSupplierCode(s.code) === oldCode) : -1;
             if (idx >= 0) suppliers[idx] = next;
             else suppliers.push(next);
+            if (oldCode && oldCode !== code) {
+                channelPartners.forEach(partner => {
+                    if (normalizeSupplierCode(partner.brandSupplierCode) === oldCode) partner.brandSupplierCode = code;
+                });
+            }
+            const nextChannelPartners = readSupplierChannelPartnerDrafts(code);
+            channelPartners = [
+                ...channelPartners.filter(partner => normalizeSupplierCode(partner.brandSupplierCode) !== code),
+                ...nextChannelPartners
+            ];
             products.forEach(p => {
                 if (oldCode && (normalizeSupplierCode(p.supplierCode) === oldCode || (!p.supplierCode && prevDisplay && p.vendor === prevDisplay))) {
                     p.supplierCode = next.code;
@@ -4359,6 +4663,8 @@
             });
             closeSupplierModal();
             saveToLocal();
+            persistEntityToD1('supplier', next.id || next.code, next);
+            nextChannelPartners.forEach(partner => persistEntityToD1('channel_partner', partner.id, partner));
             try { renderCompanyCertUploadSelectors(); renderCompanyCertList(); } catch (e) {}
         };
 
@@ -4371,9 +4677,12 @@
             if (!supplier) return;
             const used = products.filter(p => normalizeSupplierCode(p.supplierCode) === c);
             if (used.length) return alert(`This supplier is linked to ${used.length} products and cannot be deleted. Adjust product records first.`);
+            const channels = getChannelPartnersForBrand(c);
+            if (channels.length) return alert(`This supplier is linked to ${channels.length} channel partners and cannot be deleted. Delete or reassign channel partners first.`);
             if (!confirm(`Delete supplier: ${getSupplierDisplayName(supplier)}?`)) return;
             suppliers = suppliers.filter(s => normalizeSupplierCode(s.code) !== c);
             saveToLocal();
+            deleteEntityFromD1('supplier', supplier.id || supplier.code);
         };
 
         window.uploadProductImage = async (input) => {
@@ -4389,10 +4698,717 @@
             renderProductImagePreview();
         };
 
+        const CHANNEL_PARTNER_TYPES = ['Authorized Distributor', 'Dealer', 'EPC Partner'];
+        function normalizeChannelPartner(partner = {}) {
+            const id = String(partner.id || `channel_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`).trim();
+            const type = CHANNEL_PARTNER_TYPES.includes(partner.type) ? partner.type : 'Authorized Distributor';
+            return {
+                id,
+                type,
+                brandSupplierCode: normalizeSupplierCode(partner.brandSupplierCode || partner.supplierCode || ''),
+                name: String(partner.name || partner.nameEn || partner.nameZh || '').trim(),
+                country: String(partner.country || partner.countryRegion || '').trim(),
+                contact: String(partner.contact || '').trim(),
+                contactInfo: String(partner.contactInfo || '').trim(),
+                authorizationStatus: PRODUCT_AUTHORIZATION_STATUS.includes(partner.authorizationStatus) ? partner.authorizationStatus : '',
+                authorizationExpiry: String(partner.authorizationExpiry || '').trim(),
+                remark: String(partner.remark || partner.notes || '').trim(),
+                ts: partner.ts || Date.now()
+            };
+        }
+        function normalizeChannelPartners(partners = []) {
+            return (Array.isArray(partners) ? partners : [])
+                .map(normalizeChannelPartner)
+                .filter(partner => partner.brandSupplierCode && partner.name);
+        }
+        function getChannelPartnerById(id) {
+            const key = String(id || '').trim();
+            return channelPartners.find(partner => partner.id === key) || null;
+        }
+        function getChannelPartnersForBrand(brandSupplierCode = '', type = '') {
+            const brand = normalizeSupplierCode(brandSupplierCode);
+            return channelPartners.filter(partner => {
+                if (brand && partner.brandSupplierCode !== brand) return false;
+                if (type && CHANNEL_PARTNER_TYPES.includes(type) && partner.type !== type) return false;
+                return true;
+            });
+        }
+        function channelPartnerLabel(partner) {
+            if (!partner) return '-';
+            return [partner.name, partner.country, partner.type].filter(Boolean).join(' · ');
+        }
+        function channelPartnerOptions(selectedId = '', brandSupplierCode = '', sourceType = '') {
+            const selected = String(selectedId || '').trim();
+            const partners = getChannelPartnersForBrand(brandSupplierCode, sourceType);
+            return '<option value="">- Select Channel Partner -</option>' + partners.map(partner => `<option value="${htmlSafe(partner.id)}" ${partner.id === selected ? 'selected' : ''}>${htmlSafe(channelPartnerLabel(partner))}</option>`).join('');
+        }
+        function updateChannelPartnerBrandFilter(selectedCode = '') {
+            const filter = document.getElementById('channel-partner-brand-filter');
+            if (!filter) return;
+            const current = selectedCode || filter.value || 'all';
+            filter.innerHTML = '<option value="all">All Brands</option>' + suppliers.map(s => {
+                const code = normalizeSupplierCode(s.code);
+                return `<option value="${htmlSafe(code)}" ${current === code ? 'selected' : ''}>${htmlSafe(code)} · ${htmlSafe(getSupplierDisplayName(s))}</option>`;
+            }).join('');
+        }
+        function renderChannelPartners() {
+            const list = document.getElementById('channel-partner-list');
+            if (!list) return;
+            ensureSupplierData();
+            channelPartners = normalizeChannelPartners(channelPartners);
+            updateChannelPartnerBrandFilter();
+            const query = String(document.getElementById('channel-partner-search')?.value || '').trim().toLowerCase();
+            const type = document.getElementById('channel-partner-type-filter')?.value || 'all';
+            const brand = normalizeSupplierCode(document.getElementById('channel-partner-brand-filter')?.value || '');
+            const rows = channelPartners.filter(partner => {
+                if (type !== 'all' && partner.type !== type) return false;
+                if (brand && brand !== 'ALL' && partner.brandSupplierCode !== brand) return false;
+                if (!query) return true;
+                const hay = [partner.name, partner.type, partner.brandSupplierCode, supplierNameByCode(partner.brandSupplierCode), partner.country, partner.contact, partner.contactInfo, partner.authorizationStatus, partner.remark].map(v => String(v || '').toLowerCase()).join(' ');
+                return query.split(/\s+/).filter(Boolean).every(term => hay.includes(term));
+            });
+            const summary = document.getElementById('channel-partner-summary');
+            if (summary) summary.textContent = `${rows.length} visible / ${channelPartners.length} partners`;
+            if (!rows.length) {
+                list.innerHTML = `<tr><td colspan="9" class="py-12 text-center text-slate-400 text-sm">No channel partners match the current filters.</td></tr>`;
+                return;
+            }
+            list.innerHTML = rows.map(partner => {
+                const linked = products.filter(p => String(p?.sourcing?.channelPartnerId || '') === partner.id).length;
+                return `<tr class="hover:bg-slate-50 transition-colors group">
+                    <td class="py-4 px-4 text-sm font-bold text-slate-700">${htmlSafe(partner.name)}</td>
+                    <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(partner.type)}</td>
+                    <td class="py-4 px-4 text-xs text-slate-500">${htmlSafe(supplierNameByCode(partner.brandSupplierCode))}</td>
+                    <td class="py-4 px-4 text-xs text-slate-500">${htmlSafe(partner.country || '-')}</td>
+                    <td class="py-4 px-4">${productMasterStatusPill(partner.authorizationStatus || 'Unknown', partner.authorizationStatus === 'Authorized' ? 'green' : (partner.authorizationStatus === 'Expired' ? 'red' : 'slate'))}<div class="text-[10px] text-slate-400 mt-1">${htmlSafe(partner.authorizationExpiry || '-')}</div></td>
+                    <td class="py-4 px-4 text-xs text-slate-500">${htmlSafe([partner.contact, partner.contactInfo].filter(Boolean).join(' / ') || '-')}</td>
+                    <td class="py-4 px-4 text-xs text-slate-500 max-w-[220px] truncate" title="${htmlSafe(partner.remark || '')}">${htmlSafe(partner.remark || '-')}</td>
+                    <td class="py-4 px-4 text-center"><span class="text-[10px] font-black px-2 py-1 rounded-full bg-purple-50 text-purple-700">${linked}</span></td>
+                    <td class="py-4 px-4 text-center">
+                        <button onclick="openChannelPartnerModal('${htmlSafe(partner.id)}')" class="text-purple-700 hover:bg-purple-50 p-1 rounded">✎</button>
+                        <button onclick="deleteChannelPartner('${htmlSafe(partner.id)}')" class="text-red-300 hover:text-red-500 p-1 rounded">🗑</button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+        window.renderChannelPartners = renderChannelPartners;
+        function readChannelPartnerModal() {
+            return normalizeChannelPartner({
+                id: document.getElementById('channel-partner-id')?.value || '',
+                brandSupplierCode: document.getElementById('channel-partner-brand-code')?.value || '',
+                type: document.getElementById('channel-partner-type')?.value || '',
+                name: document.getElementById('channel-partner-name')?.value || '',
+                country: document.getElementById('channel-partner-country')?.value || '',
+                authorizationStatus: document.getElementById('channel-partner-auth-status')?.value || '',
+                authorizationExpiry: document.getElementById('channel-partner-auth-expiry')?.value || '',
+                contact: document.getElementById('channel-partner-contact')?.value || '',
+                contactInfo: document.getElementById('channel-partner-contact-info')?.value || '',
+                remark: document.getElementById('channel-partner-remark')?.value || ''
+            });
+        }
+        window.openChannelPartnerModal = (partnerId = '', brandSupplierCode = '') => {
+            ensureSupplierData();
+            const partner = getChannelPartnerById(partnerId);
+            const setVal = (id, value) => { const el = document.getElementById(id); if (el) el.value = value || ''; };
+            const brandSelect = document.getElementById('channel-partner-brand-code');
+            if (brandSelect) brandSelect.innerHTML = supplierSelectOptions(partner?.brandSupplierCode || brandSupplierCode, false);
+            setVal('channel-partner-id', partner?.id || '');
+            setVal('channel-partner-brand-code', partner?.brandSupplierCode || brandSupplierCode || suppliers[0]?.code || '');
+            setVal('channel-partner-type', partner?.type || 'Authorized Distributor');
+            setVal('channel-partner-name', partner?.name || '');
+            setVal('channel-partner-country', partner?.country || '');
+            setVal('channel-partner-auth-status', partner?.authorizationStatus || '');
+            setVal('channel-partner-auth-expiry', partner?.authorizationExpiry || '');
+            setVal('channel-partner-contact', partner?.contact || '');
+            setVal('channel-partner-contact-info', partner?.contactInfo || '');
+            setVal('channel-partner-remark', partner?.remark || '');
+            document.getElementById('channel-partner-modal')?.classList.remove('hidden');
+        };
+        window.closeChannelPartnerModal = () => {
+            document.getElementById('channel-partner-modal')?.classList.add('hidden');
+        };
+        window.saveChannelPartner = () => {
+            const partner = readChannelPartnerModal();
+            if (!partner.brandSupplierCode) return alert('Please select a brand supplier.');
+            if (!partner.name) return alert('Please enter the channel partner name.');
+            const idx = channelPartners.findIndex(p => p.id === partner.id);
+            if (idx >= 0) channelPartners[idx] = partner;
+            else channelPartners.push(partner);
+            saveToLocal();
+            persistEntityToD1('channel_partner', partner.id, partner);
+            closeChannelPartnerModal();
+            renderChannelPartners();
+            renderSuppliers();
+            updateProductChannelPartnerOptions();
+        };
+        window.deleteChannelPartner = (partnerId) => {
+            const id = String(partnerId || '').trim();
+            if (!id || !confirm('Delete this channel partner?')) return;
+            channelPartners = channelPartners.filter(partner => partner.id !== id);
+            products.forEach(p => {
+                if (p?.sourcing?.channelPartnerId === id) {
+                    p.sourcing = { ...p.sourcing, channelPartnerId: '', sourceRemark: [p.sourcing.sourceRemark, 'Channel partner removed'].filter(Boolean).join(' | ') };
+                }
+            });
+            saveToLocal();
+            deleteEntityFromD1('channel_partner', id);
+            renderChannelPartners();
+            renderSuppliers();
+            renderDb();
+        };
+        function getSupplierChannelPartnerDraftsForCode(code = '') {
+            const brand = normalizeSupplierCode(code);
+            const drafts = getChannelPartnersForBrand(brand).map(p => ({ ...p }));
+            return drafts.length ? drafts : [{ id: '', type: 'Authorized Distributor', brandSupplierCode: brand, name: '', country: '', contact: '', contactInfo: '', authorizationStatus: '', authorizationExpiry: '', remark: '' }];
+        }
+        function renderSupplierChannelPartnerDrafts() {
+            const box = document.getElementById('supplier-channel-partner-editor');
+            if (!box) return;
+            const drafts = Array.isArray(window.__supplierChannelPartnerDrafts) ? window.__supplierChannelPartnerDrafts : [];
+            box.innerHTML = drafts.map((draft, index) => `<div class="grid grid-cols-1 md:grid-cols-7 gap-2 rounded-xl border border-slate-200 bg-white p-2">
+                <select id="supplier-channel-${index}-type" class="border border-slate-200 rounded-lg px-2 py-2 text-xs bg-white">
+                    ${CHANNEL_PARTNER_TYPES.map(type => `<option value="${htmlSafe(type)}" ${draft.type === type ? 'selected' : ''}>${htmlSafe(type)}</option>`).join('')}
+                </select>
+                <input id="supplier-channel-${index}-name" value="${htmlSafe(draft.name || '')}" placeholder="Partner name" class="md:col-span-2 border border-slate-200 rounded-lg px-2 py-2 text-xs">
+                <input id="supplier-channel-${index}-country" value="${htmlSafe(draft.country || '')}" placeholder="Country" class="border border-slate-200 rounded-lg px-2 py-2 text-xs">
+                <input id="supplier-channel-${index}-contact" value="${htmlSafe(draft.contact || '')}" placeholder="Contact" class="border border-slate-200 rounded-lg px-2 py-2 text-xs">
+                <select id="supplier-channel-${index}-auth" class="border border-slate-200 rounded-lg px-2 py-2 text-xs bg-white">
+                    ${PRODUCT_AUTHORIZATION_STATUS.map(status => `<option value="${htmlSafe(status)}" ${draft.authorizationStatus === status ? 'selected' : ''}>${htmlSafe(status || '-')}</option>`).join('')}
+                </select>
+                <button type="button" onclick="removeSupplierChannelPartnerDraft(${index})" class="text-red-400 hover:text-red-600 text-xs font-black">Delete</button>
+                <input id="supplier-channel-${index}-contact-info" value="${htmlSafe(draft.contactInfo || '')}" placeholder="Phone / Email" class="md:col-span-2 border border-slate-200 rounded-lg px-2 py-2 text-xs">
+                <input id="supplier-channel-${index}-expiry" value="${htmlSafe(draft.authorizationExpiry || '')}" type="date" class="border border-slate-200 rounded-lg px-2 py-2 text-xs">
+                <input id="supplier-channel-${index}-remark" value="${htmlSafe(draft.remark || '')}" placeholder="Remark" class="md:col-span-4 border border-slate-200 rounded-lg px-2 py-2 text-xs">
+            </div>`).join('');
+        }
+        function readSupplierChannelPartnerDrafts(brandSupplierCode = '') {
+            const brand = normalizeSupplierCode(brandSupplierCode);
+            const drafts = Array.isArray(window.__supplierChannelPartnerDrafts) ? window.__supplierChannelPartnerDrafts : [];
+            return drafts.map((draft, index) => normalizeChannelPartner({
+                ...draft,
+                brandSupplierCode: brand,
+                type: document.getElementById(`supplier-channel-${index}-type`)?.value || draft.type,
+                name: document.getElementById(`supplier-channel-${index}-name`)?.value || '',
+                country: document.getElementById(`supplier-channel-${index}-country`)?.value || '',
+                contact: document.getElementById(`supplier-channel-${index}-contact`)?.value || '',
+                contactInfo: document.getElementById(`supplier-channel-${index}-contact-info`)?.value || '',
+                authorizationStatus: document.getElementById(`supplier-channel-${index}-auth`)?.value || '',
+                authorizationExpiry: document.getElementById(`supplier-channel-${index}-expiry`)?.value || '',
+                remark: document.getElementById(`supplier-channel-${index}-remark`)?.value || ''
+            })).filter(partner => partner.name);
+        }
+        window.addSupplierChannelPartnerDraft = () => {
+            if (!Array.isArray(window.__supplierChannelPartnerDrafts)) window.__supplierChannelPartnerDrafts = [];
+            window.__supplierChannelPartnerDrafts.push({ id: '', type: 'Authorized Distributor', name: '', country: '', contact: '', contactInfo: '', authorizationStatus: '', authorizationExpiry: '', remark: '' });
+            renderSupplierChannelPartnerDrafts();
+        };
+        window.removeSupplierChannelPartnerDraft = (index) => {
+            if (!Array.isArray(window.__supplierChannelPartnerDrafts)) return;
+            window.__supplierChannelPartnerDrafts.splice(index, 1);
+            if (!window.__supplierChannelPartnerDrafts.length) window.__supplierChannelPartnerDrafts.push({ id: '', type: 'Authorized Distributor', name: '', country: '', contact: '', contactInfo: '', authorizationStatus: '', authorizationExpiry: '', remark: '' });
+            renderSupplierChannelPartnerDrafts();
+        };
+
         window.setDbGroup = (mode) => {
             dbGroupMode = mode;
             document.getElementById('btn-group-category').className = mode === 'category' ? 'px-4 py-1.5 text-xs font-bold rounded-lg transition-all bg-white shadow-sm text-purple-700' : 'px-4 py-1.5 text-xs font-bold rounded-lg transition-all text-slate-500';
             document.getElementById('btn-group-vendor').className = mode === 'vendor' ? 'px-4 py-1.5 text-xs font-bold rounded-lg transition-all bg-white shadow-sm text-purple-700' : 'px-4 py-1.5 text-xs font-bold rounded-lg transition-all text-slate-500';
+            renderDb();
+        };
+        const PRODUCT_MASTER_TYPE_STORAGE_KEY = 'minova_product_master_type_view_v1';
+        const PRODUCT_MASTER_ROLE_STORAGE_KEY = 'minova_product_master_role_view_v1';
+        const PRODUCT_MASTER_SEARCH_STORAGE_KEY = 'minova_product_master_search_v1';
+        const PRODUCT_TYPE_GROUPS = [
+            { id: 'all', label: 'All', categories: [] },
+            { id: 'pv', label: 'PV Module', categories: ['PV Module'] },
+            { id: 'inverter', label: 'Inverter', categories: ['Inverter'] },
+            { id: 'battery', label: 'Battery', categories: ['Battery'] },
+            { id: 'ess', label: 'ESS / Hybrid Storage', categories: ['All-in-One System', 'C&I Storage'] },
+            { id: 'bos', label: 'BOS / Accessories', categories: ['Accessory'] }
+        ];
+        const PRODUCT_ROLE_VIEWS = [
+            { id: 'sales', label: 'Sales', columns: ['id', 'name', 'quoteReadiness', 'supplyRoute', 'certificationReadiness', 'application', 'warranty', 'leadTime', 'quotePrice', 'actions'] },
+            { id: 'engineering', label: 'Engineering / Technical', columns: ['id', 'name', 'category', 'technicalSummary', 'compatibilityStatus', 'technicalFit', 'efficiencyCapacity', 'dimensions', 'weight', 'attachedSpecs', 'certificationRequirements', 'actions'] },
+            { id: 'procurement', label: 'Procurement', columns: ['id', 'name', 'category', 'sourceType', 'commercialSupplier', 'factoryBrandOwner', 'authorizationStatus', 'moq', 'leadTime', 'cost', 'priceBasis', 'contact', 'actions'] },
+            { id: 'commercial', label: 'Commercial / Audit', columns: ['id', 'name', 'category', 'supplier', 'cost', 'price', 'margin', 'priceBasis', 'marketAlignment', 'sourceRisk', 'certificationGap', 'actions'] },
+            { id: 'full', label: 'Full', columns: ['id', 'image', 'name', 'model', 'brand', 'series', 'category', 'subcategory', 'application', 'status', 'quoteReadiness', 'supplyRoute', 'sourceType', 'commercialSupplier', 'factoryBrandOwner', 'authorizationStatus', 'technicalSummary', 'compatibilityStatus', 'efficiencyCapacity', 'dimensions', 'weight', 'warranty', 'leadTime', 'datasheet', 'certificationRequirements', 'externalCertificateLink', 'attachedCerts', 'attachedSpecs', 'cost', 'price', 'margin', 'marketAlignment', 'remark', 'actions'] }
+        ];
+        const PRODUCT_SOURCE_TYPES = ['Unknown', 'Direct Factory', 'Authorized Distributor', 'Dealer', 'EPC Partner'];
+        const PRODUCT_AUTHORIZATION_STATUS = ['', 'Authorized', 'Pending', 'Expired', 'Not Required', 'Unknown'];
+        const COMPATIBILITY_RELATION_TYPES = ['PV ↔ Inverter', 'Inverter ↔ Battery', 'ESS ↔ Battery/PCS', 'BOS Required', 'System Bundle'];
+        const COMPATIBILITY_STATUS_TYPES = ['Approved', 'Pending', 'Conditional', 'Blocked', 'Unknown'];
+        const PRODUCT_ROLE_TO_DEFAULT_VIEW = {
+            sales: 'sales',
+            sales_management: 'sales',
+            supply_chain: 'procurement',
+            operation_management: 'engineering',
+            price_auditor: 'commercial',
+            admin: 'full',
+            read_only: 'sales'
+        };
+        const PRODUCT_MASTER_COMMON_FIELD_KEYS = ['model', 'brand', 'series', 'application', 'voltageClass', 'phase', 'status', 'countryAvailable', 'datasheetLink', 'certificateLink', 'remark'];
+        const PRODUCT_TECHNICAL_SPEC_GROUPS = {
+            pv: [
+                { id: 'powerW', label: 'Power_W', type: 'number' },
+                { id: 'cellType', label: 'Cell_Type' },
+                { id: 'moduleType', label: 'Module_Type' },
+                { id: 'moduleEfficiencyPct', label: 'Module_Efficiency_%', type: 'number' },
+                { id: 'vocV', label: 'Voc_V', type: 'number' },
+                { id: 'vmpV', label: 'Vmp_V', type: 'number' },
+                { id: 'iscA', label: 'Isc_A', type: 'number' },
+                { id: 'impA', label: 'Imp_A', type: 'number' },
+                { id: 'maxSystemVoltageV', label: 'Max_System_Voltage_V' },
+                { id: 'tempCoeffPmax', label: 'Temp_Coeff_Pmax' },
+                { id: 'dimensionsMm', label: 'Dimensions_mm' },
+                { id: 'weightKg', label: 'Weight_kg', type: 'number' },
+                { id: 'performanceWarrantyYears', label: 'Performance_Warranty_Years', type: 'number' },
+                { id: 'certification', label: 'Certification' }
+            ],
+            inverter: [
+                { id: 'inverterType', label: 'Inverter_Type' },
+                { id: 'ratedAcPowerKw', label: 'Rated_AC_Power_kW', type: 'number' },
+                { id: 'maxAcOutputPowerKw', label: 'Max_AC_Output_Power_kW', type: 'number' },
+                { id: 'gridVoltageV', label: 'Grid_Voltage_V' },
+                { id: 'frequencyHz', label: 'Frequency_Hz' },
+                { id: 'ipRating', label: 'IP_Rating' },
+                { id: 'coolingType', label: 'Cooling_Type' },
+                { id: 'dimensionsMm', label: 'Dimensions_mm' },
+                { id: 'weightKg', label: 'Weight_kg', type: 'number' },
+                { id: 'maxPvInputPowerKw', label: 'Max_PV_Input_Power_kW', type: 'number' },
+                { id: 'maxDcVoltageV', label: 'Max_DC_Voltage_V' },
+                { id: 'startUpVoltageV', label: 'Start_Up_Voltage_V' },
+                { id: 'mpptVoltageRangeV', label: 'MPPT_Voltage_Range_V' },
+                { id: 'mpptQty', label: 'MPPT_Qty', type: 'number' },
+                { id: 'stringPerMppt', label: 'String_Per_MPPT', type: 'number' },
+                { id: 'batteryVoltageRangeV', label: 'Battery_Voltage_Range_V' },
+                { id: 'batteryType', label: 'Battery_Type' },
+                { id: 'batteryCommunication', label: 'Battery_Communication' },
+                { id: 'compatibleBatterySeries', label: 'Compatible_Battery_Series' },
+                { id: 'epsFunction', label: 'EPS_Function' },
+                { id: 'epsRatedPowerKw', label: 'EPS_Rated_Power_kW', type: 'number' },
+                { id: 'parallelQty', label: 'Parallel_Qty', type: 'number' },
+                { id: 'generatorCompatible', label: 'Generator_Compatible' },
+                { id: 'acCouplingSupport', label: 'AC_Coupling_Support' }
+            ],
+            battery: [
+                { id: 'batteryType', label: 'Battery_Type' },
+                { id: 'voltageClass', label: 'Voltage_Class' },
+                { id: 'installationType', label: 'Installation_Type' },
+                { id: 'indoorOutdoor', label: 'Indoor_Outdoor' },
+                { id: 'ipRating', label: 'IP_Rating' },
+                { id: 'nominalEnergyKwh', label: 'Nominal_Energy_kWh', type: 'number' },
+                { id: 'usableEnergyKwh', label: 'Usable_Energy_kWh', type: 'number' },
+                { id: 'nominalVoltageV', label: 'Nominal_Voltage_V' },
+                { id: 'operatingVoltageRangeV', label: 'Operating_Voltage_Range_V' },
+                { id: 'capacityAh', label: 'Capacity_Ah', type: 'number' },
+                { id: 'dodPct', label: 'DOD_%', type: 'number' },
+                { id: 'cycleLife', label: 'Cycle_Life' },
+                { id: 'communication', label: 'Communication' },
+                { id: 'bms', label: 'BMS' },
+                { id: 'expansionQty', label: 'Expansion_Qty', type: 'number' },
+                { id: 'dimensionsMm', label: 'Dimensions_mm' },
+                { id: 'weightKg', label: 'Weight_kg', type: 'number' },
+                { id: 'mountingMethod', label: 'Mounting_Method' },
+                { id: 'operatingTemperature', label: 'Operating_Temperature' },
+                { id: 'storageTemperature', label: 'Storage_Temperature' },
+                { id: 'certification', label: 'Certification' }
+            ],
+            ess: [
+                { id: 'essType', label: 'ESS_Type' },
+                { id: 'coolingType', label: 'Cooling_Type' },
+                { id: 'acDcCoupled', label: 'AC_Coupled_or_DC_Coupled' },
+                { id: 'indoorOutdoor', label: 'Indoor_Outdoor' },
+                { id: 'ipRating', label: 'IP_Rating' },
+                { id: 'batteryChemistry', label: 'Battery_Chemistry' },
+                { id: 'cellCapacityAh', label: 'Cell_Capacity_Ah', type: 'number' },
+                { id: 'nominalEnergyKwh', label: 'Nominal_Energy_kWh', type: 'number' },
+                { id: 'usableEnergyKwh', label: 'Usable_Energy_kWh', type: 'number' },
+                { id: 'ratedDcVoltageV', label: 'Rated_DC_Voltage_V' },
+                { id: 'dcVoltageRangeV', label: 'DC_Voltage_Range_V' },
+                { id: 'batteryModuleQty', label: 'Battery_Module_Qty', type: 'number' },
+                { id: 'packConfiguration', label: 'Pack_Configuration' },
+                { id: 'dodPct', label: 'DOD_%', type: 'number' },
+                { id: 'cycleLife', label: 'Cycle_Life' },
+                { id: 'pcsRatedPowerKw', label: 'PCS_Rated_Power_kW', type: 'number' },
+                { id: 'maxOutputPowerKw', label: 'Max_Output_Power_kW', type: 'number' },
+                { id: 'acVoltageV', label: 'AC_Voltage_V' },
+                { id: 'gridType', label: 'Grid_Type' },
+                { id: 'pvInputSupport', label: 'PV_Input_Support' },
+                { id: 'maxPvInputPowerKw', label: 'Max_PV_Input_Power_kW', type: 'number' },
+                { id: 'mpptQty', label: 'MPPT_Qty', type: 'number' },
+                { id: 'roundTripEfficiencyPct', label: 'Round_Trip_Efficiency_%', type: 'number' },
+                { id: 'communication', label: 'Communication' },
+                { id: 'emsIncluded', label: 'EMS_Included' },
+                { id: 'fireSuppressionSystem', label: 'Fire_Suppression_System' },
+                { id: 'safetyStandard', label: 'Safety_Standard' },
+                { id: 'gridCode', label: 'Grid_Code' },
+                { id: 'dimensionsMm', label: 'Dimensions_mm' },
+                { id: 'weightKg', label: 'Weight_kg', type: 'number' },
+                { id: 'footprintM2', label: 'Footprint_m2', type: 'number' },
+                { id: 'installationMethod', label: 'Installation_Method' }
+            ]
+        };
+        const PRODUCT_MASTER_TECHNICAL_IMPORT_KEYS = Array.from(new Set(Object.values(PRODUCT_TECHNICAL_SPEC_GROUPS).flat().map(field => field.id)));
+        const PRODUCT_MASTER_TECHNICAL_LABEL_BY_KEY = Object.values(PRODUCT_TECHNICAL_SPEC_GROUPS).flat().reduce((acc, field) => {
+            acc[field.id] = field.label;
+            return acc;
+        }, {});
+        function getProductMasterTypeView() {
+            let stored = '';
+            try { stored = localStorage.getItem(PRODUCT_MASTER_TYPE_STORAGE_KEY) || ''; } catch (e) {}
+            return PRODUCT_TYPE_GROUPS.some(group => group.id === stored) ? stored : 'all';
+        }
+        function getProductTypeGroup(product) {
+            const category = normalizeProductCategory(product?.category || '');
+            return PRODUCT_TYPE_GROUPS.find(group => group.id !== 'all' && group.categories.includes(category)) || PRODUCT_TYPE_GROUPS[0];
+        }
+        window.getProductTypeGroup = getProductTypeGroup;
+        function getDefaultProductRoleView() {
+            const auth = window.__minovaAuth || {};
+            if (window.location?.protocol === 'file:' && !auth.state?.user) return 'full';
+            const role = String(auth.state?.permission?.role || auth.state?.user?.role || 'read_only').trim().toLowerCase().replace(/[\s-]+/g, '_');
+            const roleDefaults = PRODUCT_ROLE_TO_DEFAULT_VIEW;
+            return roleDefaults[role] || 'sales';
+        }
+        function getProductMasterRoleView() {
+            let stored = '';
+            try { stored = localStorage.getItem(PRODUCT_MASTER_ROLE_STORAGE_KEY) || ''; } catch (e) {}
+            return PRODUCT_ROLE_VIEWS.some(view => view.id === stored) ? stored : getDefaultProductRoleView();
+        }
+        function canViewProductMasterSensitiveField(field) {
+            if (!field) return true;
+            const auth = window.__minovaAuth || {};
+            if (!auth.state?.user && window.location?.protocol === 'file:') return true;
+            if (typeof auth.canViewSensitiveField === 'function') return !!auth.canViewSensitiveField(field);
+            if (!auth.state?.user) return false;
+            return false;
+        }
+        function getProductMasterVisibleColumns() {
+            const roleView = PRODUCT_ROLE_VIEWS.find(view => view.id === getProductMasterRoleView()) || PRODUCT_ROLE_VIEWS.find(view => view.id === 'full');
+            return roleView.columns
+                .map(key => PRODUCT_MASTER_COLUMNS[key])
+                .filter(Boolean)
+                .filter(column => !column.sensitiveField || canViewProductMasterSensitiveField(column.sensitiveField));
+        }
+        function getProductMasterSearchQuery() {
+            let stored = '';
+            try { stored = localStorage.getItem(PRODUCT_MASTER_SEARCH_STORAGE_KEY) || ''; } catch (e) {}
+            return String(stored || '').trim();
+        }
+        function getProductTechnicalSpecFieldsForCategory(category) {
+            const group = getProductTypeGroup({ category });
+            return PRODUCT_TECHNICAL_SPEC_GROUPS[group.id] || [];
+        }
+        function coerceProductMasterFieldValue(value, type = 'text') {
+            const raw = String(value ?? '').trim();
+            if (!raw) return '';
+            if (type === 'number') {
+                const n = parseFloat(raw);
+                return Number.isFinite(n) ? n : raw;
+            }
+            return raw;
+        }
+        function compactProductMasterObject(obj) {
+            const out = {};
+            Object.entries(obj || {}).forEach(([key, value]) => {
+                if (value === undefined || value === null || value === '') return;
+                out[key] = value;
+            });
+            return out;
+        }
+        function getProductMasterData(product = {}) {
+            const md = product?.masterData && typeof product.masterData === 'object' ? product.masterData : {};
+            return {
+                model: md.model || product.model || product.sku || '',
+                brand: md.brand || product.brand || '',
+                series: md.series || product.series || '',
+                application: md.application || product.application || product.scenario || '',
+                voltageClass: md.voltageClass || product.voltageClass || '',
+                phase: md.phase || product.phase || '',
+                status: md.status || product.status || '',
+                countryAvailable: md.countryAvailable || product.countryAvailable || '',
+                datasheetLink: md.datasheetLink || product.datasheetLink || '',
+                certificateLink: md.certificateLink || product.certificateLink || '',
+                remark: md.remark || product.remark || ''
+            };
+        }
+        function getProductTechnicalSpecs(product = {}) {
+            return product?.technicalSpecs && typeof product.technicalSpecs === 'object' ? product.technicalSpecs : {};
+        }
+        function getProductSourcing(product = {}) {
+            const src = product?.sourcing && typeof product.sourcing === 'object' ? product.sourcing : {};
+            const canonicalSupplierCode = normalizeSupplierCode(product?.supplierCode || '');
+            return {
+                sourceType: PRODUCT_SOURCE_TYPES.includes(src.sourceType) ? src.sourceType : 'Unknown',
+                channelPartnerId: String(src.channelPartnerId || '').trim(),
+                brandSupplierCode: normalizeSupplierCode(src.brandSupplierCode || product?.supplierCode || ''),
+                commercialSupplierCode: normalizeSupplierCode(src.commercialSupplierCode || canonicalSupplierCode),
+                factorySupplierCode: normalizeSupplierCode(src.factorySupplierCode || ''),
+                brandOwnerSupplierCode: normalizeSupplierCode(src.brandOwnerSupplierCode || ''),
+                authorizationStatus: PRODUCT_AUTHORIZATION_STATUS.includes(src.authorizationStatus) ? src.authorizationStatus : '',
+                authorizationExpiry: String(src.authorizationExpiry || '').trim(),
+                sourceRemark: String(src.sourceRemark || '').trim()
+            };
+        }
+        function readProductSourcingFromModal(canonicalSupplierCode = '') {
+            const sourceType = document.getElementById('m-source-type')?.value || 'Unknown';
+            if (sourceType === 'Direct Factory') {
+                return compactProductMasterObject({
+                    sourceType,
+                    channelPartnerId: '',
+                    brandSupplierCode: normalizeSupplierCode(canonicalSupplierCode),
+                    commercialSupplierCode: normalizeSupplierCode(canonicalSupplierCode),
+                    factorySupplierCode: normalizeSupplierCode(canonicalSupplierCode),
+                    brandOwnerSupplierCode: normalizeSupplierCode(canonicalSupplierCode),
+                    authorizationStatus: 'Not Required',
+                    authorizationExpiry: '',
+                    sourceRemark: String(document.getElementById('m-source-remark')?.value || '').trim()
+                });
+            }
+            const partnerId = String(document.getElementById('m-channel-partner-id')?.value || '').trim();
+            const partner = getChannelPartnerById(partnerId);
+            const data = {
+                sourceType,
+                channelPartnerId: partnerId,
+                brandSupplierCode: normalizeSupplierCode(canonicalSupplierCode),
+                commercialSupplierCode: normalizeSupplierCode(document.getElementById('m-commercial-supplier-code')?.value || ''),
+                factorySupplierCode: normalizeSupplierCode(document.getElementById('m-factory-supplier-code')?.value || canonicalSupplierCode),
+                brandOwnerSupplierCode: normalizeSupplierCode(document.getElementById('m-brand-owner-supplier-code')?.value || canonicalSupplierCode),
+                authorizationStatus: document.getElementById('m-authorization-status')?.value || partner?.authorizationStatus || '',
+                authorizationExpiry: String(document.getElementById('m-authorization-expiry')?.value || partner?.authorizationExpiry || '').trim(),
+                sourceRemark: String(document.getElementById('m-source-remark')?.value || '').trim()
+            };
+            return compactProductMasterObject(data);
+        }
+        function supplierSelectOptions(selectedCode = '', includeBlank = true) {
+            const selected = normalizeSupplierCode(selectedCode);
+            const blank = includeBlank ? '<option value="">-</option>' : '';
+            return blank + suppliers
+                .map(s => {
+                    const code = normalizeSupplierCode(s.code);
+                    const label = `${code} · ${getSupplierDisplayName(s)}`;
+                    return `<option value="${htmlSafe(code)}" ${code === selected ? 'selected' : ''}>${htmlSafe(label)}</option>`;
+                })
+                .join('');
+        }
+        function setSupplyRouteSelectOptions(sourcing = {}, canonicalSupplierCode = '') {
+            ['m-commercial-supplier-code', 'm-factory-supplier-code', 'm-brand-owner-supplier-code'].forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                const selected = id === 'm-commercial-supplier-code'
+                    ? (sourcing.commercialSupplierCode || canonicalSupplierCode)
+                    : (id === 'm-factory-supplier-code' ? sourcing.factorySupplierCode : sourcing.brandOwnerSupplierCode);
+                el.innerHTML = supplierSelectOptions(selected, true);
+            });
+        }
+        function updateProductChannelPartnerOptions() {
+            const select = document.getElementById('m-channel-partner-id');
+            if (!select) return;
+            const supplierCode = normalizeSupplierCode(document.getElementById('m-supplier-code')?.value || '');
+            const sourceType = document.getElementById('m-source-type')?.value || '';
+            const selected = select.value || '';
+            select.innerHTML = channelPartnerOptions(selected, supplierCode, sourceType);
+        }
+        window.updateProductChannelPartnerOptions = updateProductChannelPartnerOptions;
+        function updateSupplyRouteVisibility() {
+            const sourceType = document.getElementById('m-source-type')?.value || 'Unknown';
+            const direct = sourceType === 'Direct Factory';
+            const partnerWrap = document.getElementById('m-channel-partner-wrap');
+            const commercialWrap = document.getElementById('m-commercial-supplier-wrap');
+            const factoryWrap = document.getElementById('m-factory-supplier-wrap');
+            const brandWrap = document.getElementById('m-brand-owner-supplier-wrap');
+            if (partnerWrap) partnerWrap.classList.toggle('hidden', direct || sourceType === 'Unknown');
+            [commercialWrap, factoryWrap, brandWrap].forEach(wrap => wrap?.classList.add('hidden'));
+            const note = document.getElementById('m-source-route-note');
+            if (note) note.textContent = direct ? 'Direct factory uses selected Supplier as brand/factory' : 'Select a channel partner for non-direct supply';
+            updateProductChannelPartnerOptions();
+        }
+        window.updateSupplyRouteVisibility = updateSupplyRouteVisibility;
+        function fillProductSourcingDetails(product = {}) {
+            const sourcing = getProductSourcing(product);
+            const canonicalSupplierCode = normalizeSupplierCode(product?.supplierCode || '');
+            setSupplyRouteSelectOptions(sourcing, canonicalSupplierCode);
+            const setVal = (id, value) => { const el = document.getElementById(id); if (el) el.value = value || ''; };
+            setVal('m-source-type', sourcing.sourceType || 'Unknown');
+            updateProductChannelPartnerOptions();
+            setVal('m-channel-partner-id', sourcing.channelPartnerId);
+            setVal('m-commercial-supplier-code', sourcing.commercialSupplierCode || canonicalSupplierCode);
+            setVal('m-factory-supplier-code', sourcing.factorySupplierCode);
+            setVal('m-brand-owner-supplier-code', sourcing.brandOwnerSupplierCode);
+            setVal('m-authorization-status', sourcing.authorizationStatus);
+            setVal('m-authorization-expiry', sourcing.authorizationExpiry);
+            setVal('m-source-remark', sourcing.sourceRemark);
+            updateSupplyRouteVisibility();
+        }
+        function readProductMasterDataFromModal() {
+            const data = {};
+            PRODUCT_MASTER_COMMON_FIELD_KEYS.forEach(key => {
+                data[key] = String(document.getElementById(`m-master-${key}`)?.value || '').trim();
+            });
+            return compactProductMasterObject(data);
+        }
+        function readProductTechnicalSpecsFromModal(category) {
+            const specs = {};
+            getProductTechnicalSpecFieldsForCategory(category).forEach(field => {
+                specs[field.id] = coerceProductMasterFieldValue(document.getElementById(`m-tech-${field.id}`)?.value, field.type);
+            });
+            return compactProductMasterObject(specs);
+        }
+        function fillProductMasterDetails(product = {}) {
+            const md = getProductMasterData(product);
+            PRODUCT_MASTER_COMMON_FIELD_KEYS.forEach(key => {
+                const el = document.getElementById(`m-master-${key}`);
+                if (el) el.value = md[key] || '';
+            });
+        }
+        window.renderProductTechnicalFields = (category, values = {}) => {
+            const box = document.getElementById('product-master-technical-fields');
+            const label = document.getElementById('product-master-technical-group-label');
+            if (!box) return;
+            const fields = getProductTechnicalSpecFieldsForCategory(category);
+            const group = getProductTypeGroup({ category });
+            if (label) label.textContent = fields.length ? group.label : 'No V2 fields for this category';
+            if (!fields.length) {
+                box.innerHTML = `<div class="md:col-span-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-xs text-slate-400">Accessory keeps the existing Product Master fields in this version.</div>`;
+                return;
+            }
+            box.innerHTML = fields.map(field => {
+                const value = values?.[field.id] ?? '';
+                return `<div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">${htmlSafe(field.label)}</label>
+                    <input id="m-tech-${htmlSafe(field.id)}" type="${field.type === 'number' ? 'number' : 'text'}" ${field.type === 'number' ? 'step="0.01"' : ''} value="${htmlSafe(value)}" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                </div>`;
+            }).join('');
+        };
+        function flattenProductMasterValues(value) {
+            if (value === undefined || value === null) return [];
+            if (Array.isArray(value)) return value.flatMap(flattenProductMasterValues);
+            if (typeof value === 'object') return Object.values(value).flatMap(flattenProductMasterValues);
+            const text = String(value || '').trim();
+            return text ? [text] : [];
+        }
+        function productMasterSearchHaystack(product) {
+            const certReq = getProductCertificationRequirements(product);
+            return [
+                product?.id,
+                product?.name,
+                product?.category,
+                product?.scenario,
+                product?.spec,
+                getProductSupplierDisplay(product),
+                ...flattenProductMasterValues(getProductSourcing(product)),
+                ...flattenProductMasterValues(product.masterData),
+                ...flattenProductMasterValues(product.technicalSpecs),
+                ...flattenProductMasterValues(certReq.countries),
+                ...flattenProductMasterValues(certReq.standards),
+                ...flattenProductMasterValues(productMasterAttachedCertFiles(product)),
+                ...flattenProductMasterValues(productMasterAttachedSpecFiles(product)),
+                ...flattenProductMasterValues(getProductCompatibilityRules(product))
+            ].map(v => String(v || '').toLowerCase()).join(' ');
+        }
+        function productMatchesProductMasterSearch(product, query) {
+            const q = String(query || '').trim().toLowerCase();
+            if (!q) return true;
+            const haystack = productMasterSearchHaystack(product);
+            return q.split(/\s+/).filter(Boolean).every(term => haystack.includes(term));
+        }
+        function normalizeCompatibilityRule(rule = {}) {
+            const relationType = COMPATIBILITY_RELATION_TYPES.includes(rule.relationType) ? rule.relationType : 'PV ↔ Inverter';
+            const status = COMPATIBILITY_STATUS_TYPES.includes(rule.status) ? rule.status : 'Unknown';
+            const id = String(rule.id || `compat_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`).trim();
+            return {
+                id,
+                relationType,
+                sourceProductId: String(rule.sourceProductId || '').trim(),
+                targetProductId: String(rule.targetProductId || '').trim(),
+                systemScope: String(rule.systemScope || '').trim(),
+                status,
+                protocol: String(rule.protocol || '').trim(),
+                constraints: String(rule.constraints || '').trim(),
+                approvedBy: String(rule.approvedBy || '').trim(),
+                updatedAt: String(rule.updatedAt || '').trim(),
+                remark: String(rule.remark || '').trim()
+            };
+        }
+        function normalizeCompatibilityRules(rules = []) {
+            return (Array.isArray(rules) ? rules : []).map(normalizeCompatibilityRule).filter(rule => rule.sourceProductId || rule.targetProductId);
+        }
+        function getProductById(productId) {
+            const id = String(productId || '').trim();
+            return products.find(p => String(p.id || '').trim() === id) || null;
+        }
+        function getCompatibilityProductLabel(productId) {
+            const p = getProductById(productId);
+            return p ? `${p.id} · ${productListDisplayText(p.name)}` : String(productId || '-');
+        }
+        function getProductCompatibilityRules(product) {
+            const productId = String(product?.id || '').trim();
+            if (!productId) return [];
+            return compatibilityRules.filter(rule => rule.sourceProductId === productId || rule.targetProductId === productId);
+        }
+        function getProductCompatibilitySummary(product) {
+            const rules = getProductCompatibilityRules(product);
+            if (!rules.length) return { status: 'Unknown', count: 0, label: 'No rules', title: 'No compatibility rules yet' };
+            const blocked = rules.filter(rule => rule.status === 'Blocked').length;
+            const conditional = rules.filter(rule => rule.status === 'Conditional').length;
+            const pending = rules.filter(rule => rule.status === 'Pending').length;
+            const approved = rules.filter(rule => rule.status === 'Approved').length;
+            const status = blocked ? 'Blocked' : (conditional ? 'Conditional' : (pending ? 'Pending' : (approved ? 'Approved' : 'Unknown')));
+            return {
+                status,
+                count: rules.length,
+                label: `${status} (${rules.length})`,
+                title: rules.map(rule => `${rule.relationType}: ${getCompatibilityProductLabel(rule.sourceProductId)} -> ${getCompatibilityProductLabel(rule.targetProductId)} | ${rule.status}`).join('\n')
+            };
+        }
+        function productSelectOptions(selectedId = '') {
+            const selected = String(selectedId || '').trim();
+            return '<option value="">-</option>' + products.map(p => {
+                const id = String(p.id || '').trim();
+                return `<option value="${htmlSafe(id)}" ${id === selected ? 'selected' : ''}>${htmlSafe(getCompatibilityProductLabel(id))}</option>`;
+            }).join('');
+        }
+        function openProductCompatibilityDetails(productId) {
+            const searchEl = document.getElementById('compatibility-search');
+            if (searchEl) searchEl.value = String(productId || '');
+            renderCompatibilityMatrix();
+            document.getElementById('compatibility-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        window.openProductCompatibilityDetails = openProductCompatibilityDetails;
+        function setProductMasterControlState(prefix, activeId, ids) {
+            const activeClass = 'px-3 py-2 rounded-xl border border-purple-200 bg-white text-xs font-black text-purple-800 shadow-sm';
+            const idleClass = 'px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-black text-slate-500 hover:bg-slate-50';
+            ids.forEach(id => {
+                const el = document.getElementById(`${prefix}-${id}`);
+                if (el) el.className = id === activeId ? activeClass : idleClass;
+            });
+        }
+        function renderProductMasterControls(total = products.length, typeVisible = products.length, visible = typeVisible) {
+            const typeView = getProductMasterTypeView();
+            const roleView = getProductMasterRoleView();
+            setProductMasterControlState('product-master-type', typeView, PRODUCT_TYPE_GROUPS.map(group => group.id));
+            setProductMasterControlState('product-master-role', roleView, PRODUCT_ROLE_VIEWS.map(view => view.id));
+            const typeLabel = (PRODUCT_TYPE_GROUPS.find(group => group.id === typeView) || PRODUCT_TYPE_GROUPS[0]).label;
+            const roleLabel = (PRODUCT_ROLE_VIEWS.find(view => view.id === roleView) || PRODUCT_ROLE_VIEWS[0]).label;
+            const search = getProductMasterSearchQuery();
+            const searchEl = document.getElementById('product-master-search');
+            if (searchEl && searchEl.value !== search) searchEl.value = search;
+            const summary = document.getElementById('product-master-view-summary');
+            if (summary) summary.textContent = `${visible} visible / ${typeVisible} type-filtered / ${total} total | ${typeLabel} | ${roleLabel} view${search ? ` | Search: ${search}` : ''}`;
+        }
+        window.renderProductMasterControls = renderProductMasterControls;
+        window.setProductMasterTypeView = (typeId) => {
+            const next = PRODUCT_TYPE_GROUPS.some(group => group.id === typeId) ? typeId : 'all';
+            try { localStorage.setItem(PRODUCT_MASTER_TYPE_STORAGE_KEY, next); } catch (e) {}
+            renderDb();
+        };
+        window.setProductMasterRoleView = (roleViewId) => {
+            const next = PRODUCT_ROLE_VIEWS.some(view => view.id === roleViewId) ? roleViewId : getDefaultProductRoleView();
+            try { localStorage.setItem(PRODUCT_MASTER_ROLE_STORAGE_KEY, next); } catch (e) {}
+            renderDb();
+        };
+        window.setProductMasterSearch = (query) => {
+            try { localStorage.setItem(PRODUCT_MASTER_SEARCH_STORAGE_KEY, String(query || '').trim()); } catch (e) {}
             renderDb();
         };
         const PRODUCT_LIST_DISPLAY_REPLACEMENTS = [
@@ -4445,54 +5461,475 @@
             });
             return text.replace(/\s+days\b/g, ' days').replace(/\s+weeks\b/g, ' weeks');
         }
+        const FROZEN_TABLE_STORAGE_KEY = 'minova_frozen_table_columns_v1';
+        function getFrozenTableState() {
+            try {
+                const raw = JSON.parse(localStorage.getItem(FROZEN_TABLE_STORAGE_KEY) || '{}');
+                return raw && typeof raw === 'object' ? raw : {};
+            } catch (e) {
+                return {};
+            }
+        }
+        function getFrozenColumnCount(tableKey) {
+            const state = getFrozenTableState();
+            const n = parseInt(state[tableKey], 10);
+            return Number.isFinite(n) && n > 0 ? n : 0;
+        }
+        function setFrozenColumnCount(tableKey, count) {
+            const state = getFrozenTableState();
+            state[tableKey] = Math.max(0, parseInt(count, 10) || 0);
+            try { localStorage.setItem('minova_frozen_table_columns_v1', JSON.stringify(state)); } catch (e) {}
+        }
+        function renderFreezeColumnButton(tableKey, maxColumns = 3) {
+            const count = getFrozenColumnCount(tableKey);
+            return `<button id="freeze-${htmlSafe(tableKey)}-btn" type="button" class="table-freeze-btn" onclick="window.cycleFrozenColumns('${htmlSafe(tableKey)}', ${maxColumns})" title="Cycle frozen columns">Freeze ${count}</button>`;
+        }
+        function updateFreezeColumnButton(tableKey) {
+            const btn = document.getElementById(`freeze-${tableKey}-btn`);
+            if (!btn) return;
+            const count = getFrozenColumnCount(tableKey);
+            btn.textContent = `Freeze ${count}`;
+            btn.classList.toggle('bg-purple-50', count > 0);
+            btn.classList.toggle('text-purple-700', count > 0);
+            btn.classList.toggle('border-purple-200', count > 0);
+        }
+        window.cycleFrozenColumns = (tableKey, maxColumns = 3) => {
+            const next = (getFrozenColumnCount(tableKey) + 1) % (maxColumns + 1);
+            setFrozenColumnCount(tableKey, next);
+            window.applyFrozenColumns(tableKey);
+        };
+        window.applyFrozenColumns = (tableKey) => {
+            const table = document.querySelector(`[data-freeze-table="${tableKey}"]`);
+            updateFreezeColumnButton(tableKey);
+            if (!table) return;
+            table.querySelectorAll('[data-frozen-cell="true"]').forEach(cell => {
+                cell.dataset.frozenCell = '';
+                cell.style.position = '';
+                cell.style.left = '';
+                cell.style.zIndex = '';
+                cell.style.background = '';
+                cell.style.boxShadow = '';
+            });
+            const count = getFrozenColumnCount(tableKey);
+            if (!count) return;
+            const headRow = table.tHead?.rows?.[0];
+            if (!headRow) return;
+            let left = 0;
+            const offsets = [];
+            for (let i = 0; i < Math.min(count, headRow.cells.length); i += 1) {
+                const width = headRow.cells[i].getBoundingClientRect?.().width || headRow.cells[i].offsetWidth || 120;
+                offsets.push(left);
+                left += width;
+            }
+            Array.from(table.rows || []).forEach(row => {
+                offsets.forEach((offset, index) => {
+                    const cell = row.cells[index];
+                    if (!cell || cell.colSpan > 1) return;
+                    cell.dataset.frozenCell = 'true';
+                    cell.style.position = 'sticky';
+                    cell.style.left = `${offset}px`;
+                    cell.style.zIndex = cell.tagName === 'TH' ? '30' : '20';
+                    cell.style.background = cell.tagName === 'TH' ? '#f8fafc' : '#fff';
+                    cell.style.boxShadow = '1px 0 0 rgba(226, 232, 240, 0.9)';
+                });
+            });
+        };
+        function productMasterCellClass(column) {
+            const align = column.align ? ` ${column.align}` : '';
+            return `py-4 px-4${align}`;
+        }
+        function productMasterHeaderHtml(column) {
+            const align = column.align ? ` ${column.align}` : '';
+            const label = htmlSafe(column.label || '');
+            if (column.key === 'id') {
+                return `<th class="py-4 px-4${align}">
+                    <div class="flex flex-col items-start gap-1">
+                        <span>${label}</span>
+                        ${renderFreezeColumnButton('product-list', 3)}
+                    </div>
+                </th>`;
+            }
+            return `<th class="py-4 px-4${align}">${label}</th>`;
+        }
+        function productMasterActionsHtml(product) {
+            const id = htmlSafe(product?.id || '');
+            return `<div class="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                <button onclick="editProduct('${id}')" class="text-purple-700 hover:bg-purple-50 p-1 rounded">✎</button>
+                <button onclick="deleteProduct('${id}')" class="text-red-300 hover:text-red-500 p-1 rounded">🗑</button>
+            </div>`;
+        }
+        function productMasterImageHtml(product) {
+            const productImg = String(product?.productImageDataUrl || product?.imageDataUrl || '').trim();
+            return productImg
+                ? `<img src="${htmlSafe(productImg)}" class="h-10 w-16 object-contain rounded-lg border border-slate-100 bg-white" alt="${htmlSafe(product?.name || '')}">`
+                : `<div class="h-10 w-16 rounded-lg border border-dashed border-slate-200 bg-slate-50 flex items-center justify-center text-[10px] text-slate-300">No Img</div>`;
+        }
+        function productMasterWarrantyHtml(product) {
+            const warrantyY = product?.warrantyYears ? `${product.warrantyYears} years` : '-';
+            const warrantyC = product?.warrantyCycles ? `${product.warrantyCycles} cycles` : '-';
+            return `${htmlSafe(warrantyY)} / ${htmlSafe(warrantyC)}`;
+        }
+        function productMasterCertificationHtml(ctx) {
+            return `<span title="${htmlSafe(ctx.certTitle)}">${htmlSafe(ctx.certBrief)}</span>`;
+        }
+        function productMasterAttachedCertFiles(product) {
+            return [
+                ...(Array.isArray(product?.certifications?.tuvCerts) ? product.certifications.tuvCerts : [])
+            ].map(file => file?.name || file?.fileName || file?.path || file?.url || '').filter(Boolean);
+        }
+        function productMasterAttachedSpecFiles(product) {
+            return [
+                ...(Array.isArray(product?.certifications?.specSheets) ? product.certifications.specSheets : [])
+            ].map(file => file?.name || file?.fileName || file?.path || file?.url || '').filter(Boolean);
+        }
+        function productMasterCertificationStatus(product) {
+            const req = getProductCertificationRequirements(product);
+            const requirementsCount = (req.countries || []).length + (req.standards || []).length;
+            const attachedCount = productMasterAttachedCertFiles(product).length;
+            const externalLink = String(getProductMasterData(product).certificateLink || '').trim();
+            if (!requirementsCount && !attachedCount && !externalLink) return { status: 'Not Set', label: 'No requirements', gap: 'Requirements missing' };
+            if (requirementsCount && (attachedCount || externalLink)) return { status: 'Ready', label: `${attachedCount} files${externalLink ? ' + link' : ''}`, gap: '' };
+            if (requirementsCount) return { status: 'Gap', label: 'Requirements only', gap: 'Certificate evidence missing' };
+            return { status: 'Evidence Only', label: attachedCount ? `${attachedCount} files` : 'External link only', gap: 'Requirements missing' };
+        }
+        function productMasterStatusPill(status, tone = 'slate') {
+            const palette = {
+                green: 'bg-green-50 text-green-700',
+                amber: 'bg-amber-50 text-amber-700',
+                red: 'bg-red-50 text-red-700',
+                purple: 'bg-purple-50 text-purple-700',
+                slate: 'bg-slate-50 text-slate-500'
+            };
+            return `<span class="text-[10px] font-black px-2 py-1 rounded ${palette[tone] || palette.slate}">${htmlSafe(status || '-')}</span>`;
+        }
+        function productMasterQuoteReadiness(product) {
+            const md = getProductMasterData(product);
+            const cert = productMasterCertificationStatus(product);
+            const hasPrice = getProductPriceCny(product) > 0;
+            const active = !md.status || md.status === 'Active';
+            const hasLeadTime = !!String(product?.leadTime || '').trim();
+            const ready = hasPrice && active && hasLeadTime && cert.status !== 'Gap' && cert.status !== 'Not Set';
+            return ready
+                ? { status: 'Quote Ready', tone: 'green', note: 'Price, lead time, cert evidence' }
+                : { status: 'Check Before Quote', tone: 'amber', note: [hasPrice ? '' : 'price', active ? '' : 'status', hasLeadTime ? '' : 'lead time', cert.status === 'Gap' || cert.status === 'Not Set' ? 'certification' : ''].filter(Boolean).join(', ') || 'review' };
+        }
+        function productMasterSourceRisk(product) {
+            const sourcing = getProductSourcing(product);
+            const partner = getProductChannelPartner(product);
+            if (partner?.authorizationStatus === 'Expired') return { status: 'High', tone: 'red', note: 'Channel authorization expired' };
+            if (partner?.authorizationStatus === 'Authorized') return { status: 'Controlled', tone: 'green', note: partner.type };
+            if (sourcing.sourceType === 'Direct Factory') return { status: 'Low', tone: 'green', note: 'Direct factory' };
+            if (sourcing.sourceType === 'Authorized Distributor' && sourcing.authorizationStatus === 'Authorized') return { status: 'Controlled', tone: 'green', note: 'Authorized channel' };
+            if (sourcing.sourceType === 'Dealer') return { status: 'Review', tone: 'amber', note: 'Dealer channel' };
+            if (sourcing.authorizationStatus === 'Expired') return { status: 'High', tone: 'red', note: 'Authorization expired' };
+            return { status: 'Unknown', tone: 'slate', note: sourcing.sourceRemark || 'Source not confirmed' };
+        }
+        function supplierNameByCode(code) {
+            const supplier = getSupplierByCode(normalizeSupplierCode(code));
+            return supplier ? getSupplierDisplayName(supplier) : (code || '-');
+        }
+        function getProductChannelPartner(product) {
+            return getChannelPartnerById(getProductSourcing(product).channelPartnerId);
+        }
+        function productMasterCommercialSupplierName(product, ctx) {
+            const partner = getProductChannelPartner(product);
+            if (partner) return partner.name;
+            return supplierNameByCode(ctx.sourcing.commercialSupplierCode || product?.supplierCode);
+        }
+        function productMasterSupplyRouteHtml(ctx) {
+            const sourcing = ctx.sourcing;
+            const source = sourcing.sourceType || 'Unknown';
+            const partner = ctx.channelPartner;
+            const route = partner ? channelPartnerLabel(partner) : supplierNameByCode(sourcing.factorySupplierCode || sourcing.brandOwnerSupplierCode || sourcing.brandSupplierCode);
+            return `<div class="font-bold text-slate-700 text-xs">${htmlSafe(source)}</div><div class="text-[10px] text-slate-400">${htmlSafe(route !== '-' ? route : ctx.supplierName)}</div>`;
+        }
+        function productMasterQuotePriceHtml(product) {
+            const pricing = priceListProductPricing(product || {});
+            const selectedPrice = getPriceListSelectedPcsPrice(pricing);
+            const selectedLabel = getPriceListSelectedPriceLabel();
+            return `${renderDualCurrencyAmount(selectedPrice, 2, 'pcs')}<div class="text-[10px] text-slate-400">${htmlSafe(selectedLabel)} / quote-ready</div>`;
+        }
+        function productMasterTechnicalFitHtml(product) {
+            const group = getProductTypeGroup(product);
+            const inv = Number.isFinite(parseFloat(product?.inverterKw)) ? `${formatNumberAuto(product.inverterKw, 2)} kW inverter` : '';
+            const bat = Number.isFinite(parseFloat(product?.batteryKwh)) ? `${formatNumberAuto(product.batteryKwh, 2)} kWh battery` : '';
+            const capacity = [inv, bat].filter(Boolean).join(' / ');
+            return `<div class="font-bold text-slate-700">${htmlSafe(group.label)}</div><div class="text-[10px] text-slate-400">${htmlSafe(capacity || getProductPricingMeta(product || {}).label || '-')}</div>`;
+        }
+        function productMasterMarketAlignmentHtml(product) {
+            const summary = getMarketPriceSummary(product?.category || '', { days: 30 });
+            if (!summary.records.length) return `<div class="font-bold text-slate-400">No 30D benchmark</div><div class="text-[10px] text-slate-400">Unit /${htmlSafe(summary.unit)}</div>`;
+            return `${formatMarketPrice(summary.avgCny, summary.unit, getPriceListCurrencyPriority())}<div class="text-[10px] text-slate-400">30D market avg</div>`;
+        }
+        function productMasterValueHtml(value, fallback = '-') {
+            return htmlSafe(String(value ?? '').trim() || fallback);
+        }
+        function productMasterLinkHtml(value, label = 'Open') {
+            const url = String(value || '').trim();
+            if (!url) return '<span class="text-xs text-slate-400">-</span>';
+            return `<a href="${htmlSafe(url)}" target="_blank" rel="noopener" class="text-xs font-bold text-blue-600 hover:underline">${htmlSafe(label)}</a>`;
+        }
+        function productMasterTechnicalSummary(product) {
+            const group = getProductTypeGroup(product).id;
+            const t = getProductTechnicalSpecs(product);
+            if (group === 'pv') {
+                return [t.powerW ? `${t.powerW}W` : '', t.cellType, t.moduleType, t.maxSystemVoltageV ? `${t.maxSystemVoltageV}V max` : ''].filter(Boolean).join(' / ');
+            }
+            if (group === 'inverter') {
+                return [t.ratedAcPowerKw ? `${t.ratedAcPowerKw}kW AC` : '', t.maxPvInputPowerKw ? `${t.maxPvInputPowerKw}kW PV` : '', t.mpptQty ? `${t.mpptQty} MPPT` : '', t.compatibleBatterySeries].filter(Boolean).join(' / ');
+            }
+            if (group === 'battery') {
+                return [t.nominalEnergyKwh ? `${t.nominalEnergyKwh}kWh nominal` : '', t.usableEnergyKwh ? `${t.usableEnergyKwh}kWh usable` : '', t.batteryType, t.communication].filter(Boolean).join(' / ');
+            }
+            if (group === 'ess') {
+                return [t.nominalEnergyKwh ? `${t.nominalEnergyKwh}kWh` : '', t.pcsRatedPowerKw ? `${t.pcsRatedPowerKw}kW PCS` : '', t.coolingType, t.emsIncluded ? `EMS ${t.emsIncluded}` : ''].filter(Boolean).join(' / ');
+            }
+            return '';
+        }
+        function productMasterEfficiencyCapacity(product) {
+            const group = getProductTypeGroup(product).id;
+            const t = getProductTechnicalSpecs(product);
+            if (group === 'pv') return [t.moduleEfficiencyPct ? `${t.moduleEfficiencyPct}% eff.` : '', t.powerW ? `${t.powerW}W` : ''].filter(Boolean).join(' / ');
+            if (group === 'inverter') return [t.ratedAcPowerKw ? `${t.ratedAcPowerKw}kW` : '', t.maxAcOutputPowerKw ? `${t.maxAcOutputPowerKw}kW max` : ''].filter(Boolean).join(' / ');
+            if (group === 'battery') return [t.nominalEnergyKwh ? `${t.nominalEnergyKwh}kWh` : '', t.dodPct ? `${t.dodPct}% DOD` : '', t.cycleLife].filter(Boolean).join(' / ');
+            if (group === 'ess') return [t.nominalEnergyKwh ? `${t.nominalEnergyKwh}kWh` : '', t.pcsRatedPowerKw ? `${t.pcsRatedPowerKw}kW` : '', t.roundTripEfficiencyPct ? `${t.roundTripEfficiencyPct}% RTE` : ''].filter(Boolean).join(' / ');
+            return '';
+        }
+        function productMasterContext(product) {
+            const costCny = getProductCostCny(product);
+            const priceCny = getProductPriceCny(product);
+            const pricingMeta = getProductPricingMeta(product);
+            const margin = priceCny > 0 ? ((priceCny - costCny) / priceCny * 100).toFixed(1) : '0.0';
+            const supplier = getProductSupplier(product);
+            const supplierName = productListDisplayText(supplier ? getSupplierDisplayName(supplier) : (product?.vendor || '-'));
+            const certReq = getProductCertificationRequirements(product);
+            const certTitle = `${(certReq.countries || []).join(', ')}\n${(certReq.standards || []).join('\n')}`;
+            const certBrief = (certReq.standards || []).slice(0, 2).join(', ') || '-';
+            const contactHtml = product?.contact ? `<div class="relative group inline-block cursor-help"><span class="${product.contactInfo ? 'border-b border-dashed border-blue-400 text-blue-600' : ''}">${productListDisplayText(product.contact)}</span>${product.contactInfo ? `<div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block px-3 py-2 bg-slate-800 text-white text-xs rounded-lg z-50 whitespace-nowrap">Phone: ${htmlSafe(product.contactInfo)}</div>` : ''}</div>` : '-';
+            const masterData = getProductMasterData(product);
+            const technicalSpecs = getProductTechnicalSpecs(product);
+            const sourcing = getProductSourcing(product);
+            const channelPartner = getProductChannelPartner(product);
+            const certStatus = productMasterCertificationStatus(product);
+            const compatibility = getProductCompatibilitySummary(product);
+            const quoteReadiness = productMasterQuoteReadiness(product);
+            const sourceRisk = productMasterSourceRisk(product);
+            return { costCny, priceCny, pricingMeta, margin, supplier, supplierName, certReq, certTitle, certBrief, contactHtml, masterData, technicalSpecs, sourcing, channelPartner, certStatus, compatibility, quoteReadiness, sourceRisk };
+        }
+        const PRODUCT_MASTER_COLUMNS = {
+            id: { key: 'id', label: 'Product ID', render: p => htmlSafe(p.id || '-') },
+            image: { key: 'image', label: 'Image', render: p => productMasterImageHtml(p) },
+            name: { key: 'name', label: 'Product Name', render: p => `<span class="font-bold text-slate-700 text-sm max-w-[220px] block truncate" title="${htmlSafe(productListDisplayText(p.name))}">${htmlSafe(productListDisplayText(p.name))}</span>` },
+            model: { key: 'model', label: 'Model', render: (p, ctx) => `<span class="text-xs font-mono text-slate-600">${productMasterValueHtml(ctx.masterData.model)}</span>` },
+            brand: { key: 'brand', label: 'Brand', render: (p, ctx) => `<span class="text-xs text-slate-600">${productMasterValueHtml(ctx.masterData.brand || ctx.supplierName)}</span>` },
+            series: { key: 'series', label: 'Series', render: (p, ctx) => `<span class="text-xs text-slate-600">${productMasterValueHtml(ctx.masterData.series)}</span>` },
+            spec: { key: 'spec', label: 'Specification', render: (p, ctx) => `<div class="text-xs text-slate-600">${htmlSafe(getProductDisplaySpec(p) || '-')}</div><div class="text-[10px] text-slate-400 font-bold">${htmlSafe(ctx.pricingMeta.label)}</div>` },
+            category: { key: 'category', label: 'Category ↕', render: p => `<span class="text-xs text-slate-500 uppercase tracking-tighter">${htmlSafe(productListDisplayText(p.category))}</span>` },
+            subcategory: { key: 'subcategory', label: 'Subcategory', render: p => `<span class="text-xs text-slate-600">${htmlSafe(productListDisplayText(p.scenario))}</span>` },
+            application: { key: 'application', label: 'Application', render: (p, ctx) => `<span class="text-xs text-slate-600">${htmlSafe(productListDisplayText(ctx.masterData.application || p.application || p.scenario || '-'))}</span>` },
+            voltage: { key: 'voltage', label: 'Voltage', render: (p, ctx) => `<span class="text-xs text-slate-600">${productMasterValueHtml(ctx.masterData.voltageClass)}</span>` },
+            phase: { key: 'phase', label: 'Phase', render: (p, ctx) => `<span class="text-xs text-slate-600">${productMasterValueHtml(ctx.masterData.phase)}</span>` },
+            status: { key: 'status', label: 'Status', render: (p, ctx) => `<span class="text-[10px] font-black px-2 py-1 rounded ${ctx.masterData.status === 'Active' ? 'bg-green-50 text-green-600' : 'bg-slate-50 text-slate-500'}">${productMasterValueHtml(ctx.masterData.status)}</span>` },
+            country: { key: 'country', label: 'Country', render: (p, ctx) => `<span class="text-xs text-slate-600">${productMasterValueHtml(ctx.masterData.countryAvailable)}</span>` },
+            datasheet: { key: 'datasheet', label: 'Datasheet', render: (p, ctx) => productMasterLinkHtml(ctx.masterData.datasheetLink) },
+            quoteReadiness: { key: 'quoteReadiness', label: 'Quote Readiness', render: (p, ctx) => `${productMasterStatusPill(ctx.quoteReadiness.status, ctx.quoteReadiness.tone)}<div class="text-[10px] text-slate-400 mt-1">${htmlSafe(ctx.quoteReadiness.note)}</div>` },
+            supplyRoute: { key: 'supplyRoute', label: 'Supply Route', render: (p, ctx) => productMasterSupplyRouteHtml(ctx) },
+            certificationReadiness: { key: 'certificationReadiness', label: 'Certification Status', render: (p, ctx) => `${productMasterStatusPill(ctx.certStatus.status, ctx.certStatus.status === 'Ready' ? 'green' : (ctx.certStatus.status === 'Gap' ? 'amber' : 'slate'))}<div class="text-[10px] text-slate-400 mt-1">${htmlSafe(ctx.certStatus.label)}</div>` },
+            technicalSummary: { key: 'technicalSummary', label: 'Technical Summary', render: p => `<span class="text-xs text-slate-600 max-w-[260px] block truncate" title="${htmlSafe(productMasterTechnicalSummary(p))}">${productMasterValueHtml(productMasterTechnicalSummary(p))}</span>` },
+            dimensions: { key: 'dimensions', label: 'Dimensions', render: (p, ctx) => `<span class="text-xs text-slate-600">${productMasterValueHtml(ctx.technicalSpecs.dimensionsMm)}</span>` },
+            weight: { key: 'weight', label: 'Weight', render: (p, ctx) => `<span class="text-xs text-slate-600">${productMasterValueHtml(ctx.technicalSpecs.weightKg ? `${ctx.technicalSpecs.weightKg} kg` : '')}</span>` },
+            efficiencyCapacity: { key: 'efficiencyCapacity', label: 'Efficiency / Capacity', render: p => `<span class="text-xs text-slate-600 max-w-[220px] block truncate" title="${htmlSafe(productMasterEfficiencyCapacity(p))}">${productMasterValueHtml(productMasterEfficiencyCapacity(p))}</span>` },
+            warranty: { key: 'warranty', label: 'Warranty (Y/C)', align: 'text-center', render: p => `<span class="text-xs text-slate-500">${productMasterWarrantyHtml(p)}</span>` },
+            leadTime: { key: 'leadTime', label: 'Lead Time', render: p => `<span class="text-xs text-slate-600">${htmlSafe(productListDisplayText(p.leadTime))}</span>` },
+            supplier: { key: 'supplier', label: 'Supplier ↕', render: (p, ctx) => `<span class="text-xs text-slate-500">${htmlSafe(ctx.supplierName)}</span>` },
+            contact: { key: 'contact', label: 'Contact', sensitiveField: 'supplierContact', render: (p, ctx) => `<span class="text-xs">${ctx.contactHtml}</span>` },
+            certification: { key: 'certification', label: 'Certification', render: (p, ctx) => `<span class="text-xs text-slate-500 max-w-[220px] block truncate">${productMasterCertificationHtml(ctx)}</span>` },
+            certificationRequirements: { key: 'certificationRequirements', label: 'Certification Requirements', render: (p, ctx) => `<span class="text-xs text-slate-500 max-w-[240px] block truncate" title="${htmlSafe(ctx.certTitle)}">${productMasterCertificationHtml(ctx)}</span>` },
+            externalCertificateLink: { key: 'externalCertificateLink', label: 'External Certificate Link', render: (p, ctx) => productMasterLinkHtml(ctx.masterData.certificateLink, 'Certificate') },
+            attachedCerts: { key: 'attachedCerts', label: 'Attached Certs', render: p => `<span class="text-xs font-bold text-slate-600">${productMasterAttachedCertFiles(p).length}</span><div class="text-[10px] text-slate-400">cert files</div>` },
+            attachedSpecs: { key: 'attachedSpecs', label: 'Attached Specs', render: p => `<span class="text-xs font-bold text-slate-600">${productMasterAttachedSpecFiles(p).length}</span><div class="text-[10px] text-slate-400">spec sheets</div>` },
+            cost: { key: 'cost', label: 'Base Cost', align: 'text-right', sensitiveField: 'cost', render: (p, ctx) => `<div class="text-sm font-mono text-slate-400">${formatProductBaseAmount(p, 'cost')}</div><div class="text-[10px] font-bold text-slate-300">/${htmlSafe(ctx.pricingMeta.priceBasisUnit)}</div>` },
+            price: { key: 'price', label: 'Base Price', align: 'text-right', render: (p, ctx) => `<div class="text-sm font-bold text-purple-700">${formatProductBaseAmount(p, 'price')}</div><div class="text-[10px] font-bold text-purple-300">/${htmlSafe(ctx.pricingMeta.priceBasisUnit)}</div>` },
+            margin: { key: 'margin', label: 'Margin', align: 'text-right', sensitiveField: 'margin', render: (p, ctx) => `<span class="text-[10px] font-black px-2 py-1 rounded ${parseFloat(ctx.margin) > 30 ? 'bg-green-50 text-green-600' : 'bg-slate-50 text-slate-400'}">${ctx.margin}%</span>` },
+            quotePrice: { key: 'quotePrice', label: 'Quote Price', align: 'text-right', render: p => productMasterQuotePriceHtml(p) },
+            priceBasis: { key: 'priceBasis', label: 'Price Basis', render: (p, ctx) => `<span class="text-xs font-bold text-slate-600">/${htmlSafe(ctx.pricingMeta.priceBasisUnit)}</span><div class="text-[10px] text-slate-400">${htmlSafe(ctx.pricingMeta.label)}</div>` },
+            technicalFit: { key: 'technicalFit', label: 'Technical Fit', render: p => productMasterTechnicalFitHtml(p) },
+            compatibility: { key: 'compatibility', label: 'Compatibility', render: (p, ctx) => `<button onclick="openProductCompatibilityDetails('${htmlSafe(p.id || '')}')" class="text-xs font-bold text-purple-700 hover:underline">${htmlSafe(ctx.compatibility.label)}</button>` },
+            compatibilityStatus: { key: 'compatibilityStatus', label: 'Compatibility Status', render: (p, ctx) => `<button onclick="openProductCompatibilityDetails('${htmlSafe(p.id || '')}')" title="${htmlSafe(ctx.compatibility.title)}" class="text-xs font-bold text-purple-700 hover:underline">${htmlSafe(ctx.compatibility.label)}</button>` },
+            marketAlignment: { key: 'marketAlignment', label: 'Market / Price List', align: 'text-right', render: p => productMasterMarketAlignmentHtml(p) },
+            sourceType: { key: 'sourceType', label: 'Source Type', render: (p, ctx) => `<span class="text-xs font-bold text-slate-600">${htmlSafe(ctx.sourcing.sourceType || 'Unknown')}</span>` },
+            commercialSupplier: { key: 'commercialSupplier', label: 'Commercial Supplier', render: (p, ctx) => `<span class="text-xs text-slate-600">${htmlSafe(productMasterCommercialSupplierName(p, ctx))}</span>` },
+            factoryBrandOwner: { key: 'factoryBrandOwner', label: 'Factory / Brand Owner', render: (p, ctx) => `<div class="text-xs text-slate-600">${htmlSafe(supplierNameByCode(ctx.sourcing.factorySupplierCode || p.supplierCode))}</div><div class="text-[10px] text-slate-400">${htmlSafe(supplierNameByCode(ctx.sourcing.brandOwnerSupplierCode || p.supplierCode))}</div>` },
+            authorizationStatus: { key: 'authorizationStatus', label: 'Authorization Status', render: (p, ctx) => `${productMasterStatusPill(ctx.sourcing.authorizationStatus || 'Unknown', ctx.sourcing.authorizationStatus === 'Authorized' ? 'green' : (ctx.sourcing.authorizationStatus === 'Expired' ? 'red' : 'slate'))}<div class="text-[10px] text-slate-400 mt-1">${htmlSafe(ctx.sourcing.authorizationExpiry || '-')}</div>` },
+            sourceRisk: { key: 'sourceRisk', label: 'Source Risk', render: (p, ctx) => `${productMasterStatusPill(ctx.sourceRisk.status, ctx.sourceRisk.tone)}<div class="text-[10px] text-slate-400 mt-1">${htmlSafe(ctx.sourceRisk.note)}</div>` },
+            certificationGap: { key: 'certificationGap', label: 'Certification Gap', render: (p, ctx) => `<span class="text-xs text-slate-600">${htmlSafe(ctx.certStatus.gap || 'No gap')}</span><div class="text-[10px] text-slate-400">${htmlSafe(ctx.certStatus.label)}</div>` },
+            moq: { key: 'moq', label: 'MOQ', align: 'text-right', render: p => `<span class="text-xs text-slate-500">${htmlSafe(p.moq || p.MOQ || '-')}</span>` },
+            remark: { key: 'remark', label: 'Remark', render: (p, ctx) => `<span class="text-xs text-slate-500 max-w-[240px] block truncate" title="${htmlSafe(ctx.masterData.remark || '')}">${productMasterValueHtml(ctx.masterData.remark)}</span>` },
+            actions: { key: 'actions', label: 'Actions', align: 'text-center', render: p => productMasterActionsHtml(p) }
+        };
         window.renderDb = () => {
             const list = document.getElementById('db-list');
+            const head = document.getElementById('product-master-head-row');
             ensureSupplierData();
+            const typeView = getProductMasterTypeView();
+            const typeGroup = PRODUCT_TYPE_GROUPS.find(group => group.id === typeView) || PRODUCT_TYPE_GROUPS[0];
+            const filteredProducts = typeGroup.id === 'all'
+                ? [...products]
+                : products.filter(p => getProductTypeGroup(p).id === typeGroup.id);
+            const searchQuery = getProductMasterSearchQuery();
+            const searchFilteredProducts = filteredProducts.filter(p => productMatchesProductMasterSearch(p, searchQuery));
+            const columns = getProductMasterVisibleColumns();
+            if (head) head.innerHTML = columns.map(productMasterHeaderHtml).join('');
+            renderProductMasterControls(products.length, filteredProducts.length, searchFilteredProducts.length);
+            if(!list) return;
             if(products.length === 0) {
-                list.innerHTML = `<tr><td colspan="15" class="py-20 text-center text-slate-400 text-sm">No product records yet.</td></tr>`;
+                list.innerHTML = `<tr><td colspan="${columns.length || 1}" class="py-20 text-center text-slate-400 text-sm">No product records yet.</td></tr>`;
+                window.applyFrozenColumns('product-list');
                 return;
             }
-            const sorted = [...products].sort((a,b) => (a[dbGroupMode] || '').localeCompare(b[dbGroupMode] || ''));
+            if(filteredProducts.length === 0) {
+                list.innerHTML = `<tr><td colspan="${columns.length || 1}" class="py-20 text-center text-slate-400 text-sm">No products match this Product Master type view.</td></tr>`;
+                window.applyFrozenColumns('product-list');
+                return;
+            }
+            if(searchFilteredProducts.length === 0) {
+                list.innerHTML = `<tr><td colspan="${columns.length || 1}" class="py-20 text-center text-slate-400 text-sm">No products match this Product Master search.</td></tr>`;
+                window.applyFrozenColumns('product-list');
+                return;
+            }
+            const sortValue = p => dbGroupMode === 'vendor' ? getProductSupplierDisplay(p) : (p?.[dbGroupMode] || '');
+            const sorted = [...searchFilteredProducts].sort((a,b) => String(sortValue(a)).localeCompare(String(sortValue(b))));
             list.innerHTML = sorted.map(p => {
-                const costCny = getProductCostCny(p);
-                const priceCny = getProductPriceCny(p);
-                const margin = priceCny > 0 ? ((priceCny - costCny) / priceCny * 100).toFixed(1) : 0;
-                const warrantyY = p.warrantyYears ? `${p.warrantyYears} years` : '-';
-                const warrantyC = p.warrantyCycles ? `${p.warrantyCycles} cycles` : '-';
-                const supplier = getProductSupplier(p);
-                const supplierName = productListDisplayText(supplier ? getSupplierDisplayName(supplier) : (p.vendor || '-'));
-                const productImg = String(p.productImageDataUrl || p.imageDataUrl || '').trim();
-                const productImgHtml = productImg
-                    ? `<img src="${htmlSafe(productImg)}" class="h-10 w-16 object-contain rounded-lg border border-slate-100 bg-white" alt="${htmlSafe(p.name || '')}">`
-                    : `<div class="h-10 w-16 rounded-lg border border-dashed border-slate-200 bg-slate-50 flex items-center justify-center text-[10px] text-slate-300">No Img</div>`;
-                const certReq = getProductCertificationRequirements(p);
-                const certTitle = `${(certReq.countries || []).join(', ')}\n${(certReq.standards || []).join('\n')}`;
-                const certBrief = (certReq.standards || []).slice(0, 2).join(', ') || '-';
-                const contactHtml = p.contact ? `<div class="relative group inline-block cursor-help"><span class="${p.contactInfo ? 'border-b border-dashed border-blue-400 text-blue-600' : ''}">${productListDisplayText(p.contact)}</span>${p.contactInfo ? `<div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block px-3 py-2 bg-slate-800 text-white text-xs rounded-lg z-50 whitespace-nowrap">Phone: ${htmlSafe(p.contactInfo)}</div>` : ''}</div>` : '-';
+                const ctx = productMasterContext(p);
                 return `
                     <tr class="hover:bg-slate-50 transition-colors group">
-                        <td class="py-4 px-4 text-xs font-mono text-slate-500">${p.id || '-'}</td>
-                        <td class="py-4 px-4">${productImgHtml}</td>
-                        <td class="py-4 px-4 font-bold text-slate-700 text-sm max-w-[200px] truncate" title="${htmlSafe(productListDisplayText(p.name))}">${htmlSafe(productListDisplayText(p.name))}</td>
-                        <td class="py-4 px-4 text-xs text-slate-600">${p.spec || '-'}</td>
-                        <td class="py-4 px-4 text-xs text-slate-500 uppercase tracking-tighter">${htmlSafe(productListDisplayText(p.category))}</td>
-                        <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(productListDisplayText(p.scenario))}</td>
-                        <td class="py-4 px-4 text-xs text-slate-500 text-center">${warrantyY} / ${warrantyC}</td>
-                        <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(productListDisplayText(p.leadTime))}</td>
-                        <td class="py-4 px-4 text-xs text-slate-500">${htmlSafe(supplierName)}</td>
-                        <td class="py-4 px-4 text-xs">${contactHtml}</td>
-                        <td class="py-4 px-4 text-xs text-slate-500 max-w-[200px] truncate" title="${htmlSafe(certTitle)}">${htmlSafe(certBrief)}</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-400">${formatProductBaseAmount(p, 'cost')}</td>
-                        <td class="py-4 px-4 text-right text-sm font-bold text-purple-700">${formatProductBaseAmount(p, 'price')}</td>
-                        <td class="py-4 px-4 text-right"><span class="text-[10px] font-black px-2 py-1 rounded ${margin > 30 ? 'bg-green-50 text-green-600' : 'bg-slate-50 text-slate-400'}">${margin}%</span></td>
-                        <td class="py-4 px-4 text-center">
-                            <div class="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                                <button onclick="editProduct('${p.id}')" class="text-purple-700 hover:bg-purple-50 p-1 rounded">✎</button>
-                                <button onclick="deleteProduct('${p.id}')" class="text-red-300 hover:text-red-500 p-1 rounded">🗑</button>
-                            </div>
-                        </td>
+                        ${columns.map(column => `<td class="${productMasterCellClass(column)}">${column.render(p, ctx)}</td>`).join('')}
                     </tr>`;
             }).join('');
+            window.applyFrozenColumns('product-list');
+            try { renderCompatibilityMatrix(); } catch (e) {}
+        };
+        document.addEventListener('minova-auth-changed', () => {
+            try { renderDb(); } catch (e) {}
+        });
+
+        function compatibilityRuleMatchesFilters(rule) {
+            const q = String(document.getElementById('compatibility-search')?.value || '').trim().toLowerCase();
+            const relation = document.getElementById('compatibility-relation-filter')?.value || 'all';
+            const status = document.getElementById('compatibility-status-filter')?.value || 'all';
+            if (relation !== 'all' && rule.relationType !== relation) return false;
+            if (status !== 'all' && rule.status !== status) return false;
+            if (!q) return true;
+            const haystack = [
+                rule.id,
+                rule.relationType,
+                rule.sourceProductId,
+                rule.targetProductId,
+                getCompatibilityProductLabel(rule.sourceProductId),
+                getCompatibilityProductLabel(rule.targetProductId),
+                rule.systemScope,
+                rule.status,
+                rule.protocol,
+                rule.constraints,
+                rule.approvedBy,
+                rule.updatedAt,
+                rule.remark
+            ].map(v => String(v || '').toLowerCase()).join(' ');
+            return q.split(/\s+/).filter(Boolean).every(term => haystack.includes(term));
+        }
+        function compatibilityStatusPill(status) {
+            const tone = status === 'Approved' ? 'green' : (status === 'Blocked' ? 'red' : (status === 'Conditional' || status === 'Pending' ? 'amber' : 'slate'));
+            return productMasterStatusPill(status || 'Unknown', tone);
+        }
+        function renderCompatibilityMatrix() {
+            const list = document.getElementById('compatibility-list');
+            const summary = document.getElementById('compatibility-summary');
+            if (!list) return;
+            compatibilityRules = normalizeCompatibilityRules(compatibilityRules);
+            const visible = compatibilityRules.filter(compatibilityRuleMatchesFilters);
+            if (summary) summary.textContent = `${visible.length} visible / ${compatibilityRules.length} rules`;
+            if (!visible.length) {
+                list.innerHTML = `<tr><td colspan="10" class="py-12 text-center text-slate-400 text-sm">No compatibility rules match the current filters.</td></tr>`;
+                return;
+            }
+            list.innerHTML = visible.map(rule => `
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="py-4 px-4 text-xs font-bold text-slate-700">${htmlSafe(rule.relationType)}</td>
+                    <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(getCompatibilityProductLabel(rule.sourceProductId))}</td>
+                    <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(getCompatibilityProductLabel(rule.targetProductId))}</td>
+                    <td class="py-4 px-4 text-xs text-slate-500">${htmlSafe(rule.systemScope || '-')}</td>
+                    <td class="py-4 px-4">${compatibilityStatusPill(rule.status)}</td>
+                    <td class="py-4 px-4 text-xs text-slate-500">${htmlSafe(rule.protocol || '-')}</td>
+                    <td class="py-4 px-4 text-xs text-slate-500 max-w-[280px] truncate" title="${htmlSafe(rule.constraints || '')}">${htmlSafe(rule.constraints || '-')}</td>
+                    <td class="py-4 px-4 text-xs text-slate-500">${htmlSafe(rule.approvedBy || '-')}</td>
+                    <td class="py-4 px-4 text-xs text-slate-500">${htmlSafe(rule.updatedAt || '-')}</td>
+                    <td class="py-4 px-4 text-center">
+                        <button onclick="openCompatibilityModal('${htmlSafe(rule.id)}')" class="text-purple-700 hover:bg-purple-50 p-1 rounded">✎</button>
+                        <button onclick="deleteCompatibilityRule('${htmlSafe(rule.id)}')" class="text-red-300 hover:text-red-500 p-1 rounded">🗑</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+        window.renderCompatibilityMatrix = renderCompatibilityMatrix;
+        window.openCompatibilityModal = (ruleId = '') => {
+            const rule = compatibilityRules.find(r => r.id === ruleId) || null;
+            const setVal = (id, value) => { const el = document.getElementById(id); if (el) el.value = value || ''; };
+            const sourceSelect = document.getElementById('compat-source-product');
+            const targetSelect = document.getElementById('compat-target-product');
+            if (sourceSelect) sourceSelect.innerHTML = productSelectOptions(rule?.sourceProductId || '');
+            if (targetSelect) targetSelect.innerHTML = productSelectOptions(rule?.targetProductId || '');
+            setVal('compat-rule-id', rule?.id || '');
+            setVal('compat-relation-type', rule?.relationType || 'PV ↔ Inverter');
+            setVal('compat-source-product', rule?.sourceProductId || '');
+            setVal('compat-target-product', rule?.targetProductId || '');
+            setVal('compat-system-scope', rule?.systemScope || '');
+            setVal('compat-status', rule?.status || 'Approved');
+            setVal('compat-protocol', rule?.protocol || '');
+            setVal('compat-constraints', rule?.constraints || '');
+            setVal('compat-approved-by', rule?.approvedBy || '');
+            setVal('compat-updated-at', rule?.updatedAt || new Date().toISOString().slice(0, 10));
+            setVal('compat-remark', rule?.remark || '');
+            document.getElementById('compatibility-modal')?.classList.remove('hidden');
+        };
+        window.closeCompatibilityModal = () => {
+            document.getElementById('compatibility-modal')?.classList.add('hidden');
+        };
+        function readCompatibilityRuleFromModal() {
+            return normalizeCompatibilityRule({
+                id: document.getElementById('compat-rule-id')?.value || '',
+                relationType: document.getElementById('compat-relation-type')?.value || '',
+                sourceProductId: document.getElementById('compat-source-product')?.value || '',
+                targetProductId: document.getElementById('compat-target-product')?.value || '',
+                systemScope: document.getElementById('compat-system-scope')?.value || '',
+                status: document.getElementById('compat-status')?.value || '',
+                protocol: document.getElementById('compat-protocol')?.value || '',
+                constraints: document.getElementById('compat-constraints')?.value || '',
+                approvedBy: document.getElementById('compat-approved-by')?.value || '',
+                updatedAt: document.getElementById('compat-updated-at')?.value || '',
+                remark: document.getElementById('compat-remark')?.value || ''
+            });
+        }
+        function saveCompatibilityRule() {
+            const rule = readCompatibilityRuleFromModal();
+            if (!rule.sourceProductId || !rule.targetProductId) return alert('Please select both source and target products.');
+            const idx = compatibilityRules.findIndex(r => r.id === rule.id);
+            if (idx >= 0) compatibilityRules[idx] = rule;
+            else compatibilityRules.push(rule);
+            saveToLocal();
+            persistEntityToD1('compatibility_rule', rule.id, rule);
+            closeCompatibilityModal();
+            renderCompatibilityMatrix();
+            renderDb();
+        }
+        window.saveCompatibilityRule = saveCompatibilityRule;
+        window.deleteCompatibilityRule = (ruleId) => {
+            const id = String(ruleId || '').trim();
+            if (!id || !confirm('Delete this compatibility rule?')) return;
+            compatibilityRules = compatibilityRules.filter(rule => rule.id !== id);
+            saveToLocal();
+            deleteEntityFromD1('compatibility_rule', id);
+            renderCompatibilityMatrix();
+            renderDb();
         };
 
         function getNonStockProductsForPricing() {
@@ -4503,34 +5940,65 @@
         window.renderNonStockPricingStrategies = () => {
             const list = document.getElementById('non-stock-pricing-list');
             const summary = document.getElementById('non-stock-pricing-summary');
+            const currencyBtn = document.getElementById('non-stock-currency-toggle');
+            const purchaseHead = document.getElementById('non-stock-purchase-price-head');
+            if (currencyBtn) currencyBtn.textContent = getNonStockDisplayCurrency() === 'MYR' ? 'RM / ¥' : '¥ / RM';
+            if (purchaseHead) purchaseHead.textContent = `Purchase Price (${getNonStockDisplayCurrency() === 'MYR' ? 'RM' : '¥'})`;
+            updateNonStockProfitTargetButtons();
             if (!list) return;
             const rows = getNonStockProductsForPricing();
-            if (summary) summary.textContent = `${rows.length} products`;
+            const targetLabel = getNonStockProfitTarget() === 'biz' ? 'C&I' : 'RESI';
+            if (summary) summary.textContent = `${rows.length} products | ${targetLabel} | ${getNonStockDisplayCurrency()} | 1 MYR = ${getInventoryFxRateCnyPerMyr().toFixed(4)} CNY`;
             if (!rows.length) {
-                list.innerHTML = `<tr><td colspan="12" class="py-12 text-center text-slate-400 text-sm">No non-stock products need fallback pricing.</td></tr>`;
+                list.innerHTML = `<tr><td colspan="22" class="py-12 text-center text-slate-400 text-sm">No non-stock products need fallback pricing.</td></tr>`;
+                window.__nonStockRenderedCurrency = getNonStockDisplayCurrency();
+                window.__nonStockRenderedRateCnyPerMyr = getInventoryFxRateCnyPerMyr();
+                window.applyFrozenColumns('non-stock-pricing');
                 return;
             }
+            const draftStrategies = window.__nonStockPricingDrafts && typeof window.__nonStockPricingDrafts === 'object' ? window.__nonStockPricingDrafts : {};
             list.innerHTML = rows.map(p => {
                 const sid = domSafeId(p.id);
-                const strategy = getNonStockPricingStrategy(p.id);
+                const strategy = draftStrategies[p.id] ? normalizeNonStockPricingStrategy(draftStrategies[p.id]) : getNonStockPricingStrategy(p.id);
                 const encodedId = encodeURIComponent(p.id);
                 const def = getDefaultTaxInputsForProduct(p);
                 const pricing = priceListProductPricing(p);
                 const unit = normalizeUnitLabel(pricing.costUnit || getMarketCategoryUnitMeta(p.category || '').unit || 'pcs');
-                const avgValue = Number.isFinite(parseFloat(strategy.avgCostOverride)) ? parseFloat(strategy.avgCostOverride) : '';
+                const purchaseCnyValue = Number.isFinite(parseFloat(strategy.purchasePrice)) ? parseFloat(strategy.purchasePrice) : (Number.isFinite(parseFloat(strategy.avgCostOverride)) ? parseFloat(strategy.avgCostOverride) : NaN);
+                const purchaseValue = Number.isFinite(purchaseCnyValue) ? nonStockDisplayFromCny(purchaseCnyValue).toFixed(getNonStockDisplayCurrency() === 'MYR' ? 4 : 4) : '';
+                const purchasePlaceholder = nonStockDisplayFromCny(getProductCostCny(p) || 0).toFixed(4);
+                const shippingValue = Number.isFinite(parseFloat(strategy.shippingRatePct)) ? parseFloat(strategy.shippingRatePct) : def.shippingRatePct;
+                const domesticValue = Number.isFinite(parseFloat(strategy.domesticTaxRatePct)) ? parseFloat(strategy.domesticTaxRatePct) : def.domesticTaxRatePct;
                 const dutyValue = Number.isFinite(parseFloat(strategy.dutyPct)) ? parseFloat(strategy.dutyPct) : def.dutyPct;
                 const sstValue = Number.isFinite(parseFloat(strategy.sstPct)) ? parseFloat(strategy.sstPct) : def.sstPct;
                 const grayValue = Number.isFinite(parseFloat(strategy.grayPct)) ? parseFloat(strategy.grayPct) : def.grayPct;
+                const selectedClearancePcs = (getNonStockProfitTarget() === 'biz' ? pricing.clearanceBizPrice : pricing.clearanceHomePrice) * (pricing.pcsMultiplier || 1);
+                const selectedGrayPcs = (getNonStockProfitTarget() === 'biz' ? pricing.grayBizPrice : pricing.grayHomePrice) * (pricing.pcsMultiplier || 1);
+                const pcsPurchasePrice = (pricing.basePurchaseCost || 0) * (pricing.pcsMultiplier || 1);
+                const expectedPcsCost = (pricing.avgCost || 0) * (pricing.pcsMultiplier || 1);
+                const clearanceTariffFee = expectedPcsCost * ((pricing.dutyPct || 0) + (pricing.sstPct || 0)) / 100;
+                const greyTariffFee = expectedPcsCost * ((pricing.grayPct || 0) / 100);
                 return `
                     <tr class="hover:bg-slate-50 transition-colors">
                         <td class="py-4 px-4 text-xs font-mono text-slate-500">${htmlSafe(p.id)}</td>
                         <td class="py-4 px-4 font-bold text-slate-700 text-sm max-w-[220px] truncate" title="${htmlSafe(productListDisplayText(p.name || ''))}">${htmlSafe(productListDisplayText(p.name || '-'))}</td>
                         <td class="py-4 px-4 text-xs text-slate-500 uppercase tracking-tighter">${htmlSafe(normalizeProductCategory(p.category || '-'))}</td>
                         <td class="py-4 px-4 text-xs font-bold text-slate-500">${htmlSafe(unit)}</td>
-                        <td class="py-4 px-4 text-right text-xs font-mono text-slate-500">${formatCny(getProductCostCny(p), 4)}</td>
+                        <td class="py-4 px-4 text-right text-xs font-mono text-slate-500">${formatNonStockAmount(getProductCostCny(p), 4, unit)}</td>
                         <td class="py-3 px-3 text-right">
-                            <input id="non-stock-avg-${sid}" type="number" step="0.0001" min="0" value="${avgValue}" placeholder="${(getProductCostCny(p) || 0).toFixed(4)}" class="w-28 px-3 py-2 rounded-lg border border-slate-200 text-right text-xs font-mono focus:outline-none focus:ring-2 focus:ring-purple-100">
+                            <input id="non-stock-purchase-${sid}" type="number" step="0.0001" min="0" value="${purchaseValue}" placeholder="${purchasePlaceholder}" class="w-28 px-3 py-2 rounded-lg border border-slate-200 text-right text-xs font-mono focus:outline-none focus:ring-2 focus:ring-purple-100">
                         </td>
+                        <td class="py-4 px-4 text-right text-xs font-mono text-slate-400">${formatNonStockPriceUpdatedAt(strategy.updatedAt)}</td>
+                        <td class="py-4 px-4 text-right text-xs font-bold text-slate-500">${htmlSafe(pricing.pricingMeta?.label || `${formatNumberAuto(pricing.pcsMultiplier, 4)} ${unit}/pcs`)}</td>
+                        <td class="py-4 px-4 text-right text-xs font-mono text-slate-600">${formatNonStockAmount(pcsPurchasePrice, 2, 'pcs')}</td>
+                        <td class="py-3 px-3 text-right">
+                            <input id="non-stock-shipping-${sid}" type="number" step="0.01" min="0" value="${shippingValue}" class="w-20 px-3 py-2 rounded-lg border border-slate-200 text-right text-xs font-mono focus:outline-none focus:ring-2 focus:ring-purple-100">
+                        </td>
+                        <td class="py-3 px-3 text-right">
+                            <input id="non-stock-domestic-${sid}" type="number" step="0.01" min="0" value="${domesticValue}" class="w-20 px-3 py-2 rounded-lg border border-slate-200 text-right text-xs font-mono focus:outline-none focus:ring-2 focus:ring-purple-100">
+                        </td>
+                        <td class="py-4 px-4 text-right text-xs font-black text-slate-700">${formatNonStockAmount(pricing.avgCost || 0, 4, unit)}</td>
+                        <td class="py-4 px-4 text-right text-xs font-black text-slate-700">${formatNonStockAmount(expectedPcsCost, 2, 'pcs')}</td>
                         <td class="py-3 px-3 text-right">
                             <input id="non-stock-duty-${sid}" type="number" step="0.01" min="0" value="${dutyValue}" class="w-20 px-3 py-2 rounded-lg border border-slate-200 text-right text-xs font-mono focus:outline-none focus:ring-2 focus:ring-purple-100">
                         </td>
@@ -4540,8 +6008,16 @@
                         <td class="py-3 px-3 text-right">
                             <input id="non-stock-gray-${sid}" type="number" step="0.01" min="0" value="${grayValue}" class="w-20 px-3 py-2 rounded-lg border border-slate-200 text-right text-xs font-mono focus:outline-none focus:ring-2 focus:ring-purple-100">
                         </td>
-                        <td class="py-4 px-4 text-right text-xs font-black text-purple-700">${formatCny((pricing.clearanceHomePrice || 0) * (pricing.pcsMultiplier || 1), 2)}</td>
-                        <td class="py-4 px-4 text-right text-xs font-black text-slate-700">${formatCny((pricing.grayHomePrice || 0) * (pricing.pcsMultiplier || 1), 2)}</td>
+                        <td class="py-4 px-4 text-right text-xs">
+                            <div class="font-black text-slate-800">${formatNonStockAmount(clearanceTariffFee, 2, 'pcs')}</div>
+                            <div class="text-[10px] text-slate-400">Duty + SST</div>
+                            <div class="mt-1 font-bold text-slate-600">${formatNonStockAmount(greyTariffFee, 2, 'pcs')}</div>
+                            <div class="text-[10px] text-slate-400">Grey</div>
+                        </td>
+                        <td class="py-4 px-4 text-right text-xs">${renderNonStockProfitSplitCell(pricing, 'cn')}</td>
+                        <td class="py-4 px-4 text-right text-xs">${renderNonStockProfitSplitCell(pricing, 'my')}</td>
+                        <td class="py-4 px-4 text-right text-xs font-black text-purple-700">${formatNonStockAmount(selectedClearancePcs || 0, 2, 'pcs')}</td>
+                        <td class="py-4 px-4 text-right text-xs font-black text-slate-700">${formatNonStockAmount(selectedGrayPcs || 0, 2, 'pcs')}</td>
                         <td class="py-3 px-4 text-center">
                             <div class="flex items-center justify-center gap-2">
                                 <button onclick="saveNonStockPricingStrategy(decodeURIComponent('${htmlSafe(encodedId)}'))" class="px-3 py-2 rounded-lg bg-purple-700 text-white text-xs font-black hover:bg-purple-800">Save</button>
@@ -4551,6 +6027,9 @@
                     </tr>
                 `;
             }).join('');
+            window.__nonStockRenderedCurrency = getNonStockDisplayCurrency();
+            window.__nonStockRenderedRateCnyPerMyr = getInventoryFxRateCnyPerMyr();
+            window.applyFrozenColumns('non-stock-pricing');
         };
         window.saveNonStockPricingStrategy = (productId) => {
             const id = String(productId || '').trim();
@@ -4561,8 +6040,13 @@
                 const n = parseFloat(raw);
                 return Number.isFinite(n) && n >= 0 ? n : null;
             };
+            const purchaseDisplay = readNum('purchase');
+            const purchaseCny = purchaseDisplay === null ? null : nonStockCnyFromDisplay(purchaseDisplay);
             const next = normalizeNonStockPricingStrategy({
-                avgCostOverride: readNum('avg'),
+                purchasePrice: purchaseCny,
+                avgCostOverride: purchaseCny,
+                shippingRatePct: readNum('shipping'),
+                domesticTaxRatePct: readNum('domestic'),
                 dutyPct: readNum('duty'),
                 sstPct: readNum('sst'),
                 grayPct: readNum('gray'),
@@ -4571,7 +6055,9 @@
             nonStockPricingStrategies = normalizeNonStockPricingStrategies(nonStockPricingStrategies);
             if (Object.keys(next).length > 1) nonStockPricingStrategies[id] = next;
             else delete nonStockPricingStrategies[id];
+            if (window.__nonStockPricingDrafts && typeof window.__nonStockPricingDrafts === 'object') delete window.__nonStockPricingDrafts[id];
             saveToLocal();
+            persistSettingsToD1({ non_stock_pricing_strategies: nonStockPricingStrategies });
             renderNonStockPricingStrategies();
             renderPriceList();
             renderPriceListPicker();
@@ -4581,7 +6067,9 @@
             if (!id) return;
             nonStockPricingStrategies = normalizeNonStockPricingStrategies(nonStockPricingStrategies);
             delete nonStockPricingStrategies[id];
+            if (window.__nonStockPricingDrafts && typeof window.__nonStockPricingDrafts === 'object') delete window.__nonStockPricingDrafts[id];
             saveToLocal();
+            persistSettingsToD1({ non_stock_pricing_strategies: nonStockPricingStrategies });
             renderNonStockPricingStrategies();
             renderPriceList();
             renderPriceListPicker();
@@ -4593,16 +6081,18 @@
             if (headRow && !inventoryFullHeadHtml) inventoryFullHeadHtml = headRow.innerHTML;
             const btn = document.getElementById('btn-inv-summary');
             if (btn) btn.innerHTML = inventorySummaryMode ? '<span>Cancel Summary</span>' : '<span>Summary</span>';
+            const currencyBtn = document.getElementById('inventory-currency-toggle');
+            if (currencyBtn) currencyBtn.textContent = getInventoryDisplayCurrency() === 'MYR' ? 'RM / ¥' : '¥ / RM';
             if (inventorySummaryMode && headRow) {
                 headRow.innerHTML = `
-                    <th class="py-4 px-4">Product ID</th>
+                    <th class="py-4 px-4"><div class="flex flex-col items-start gap-1"><span>Product ID</span>${renderFreezeColumnButton('inventory', 3)}</div></th>
                     <th class="py-4 px-4">Product Name</th>
                     <th class="py-4 px-4">Category</th>
                     <th class="py-4 px-4">Subcategory</th>
                     <th class="py-4 px-4">Supplier</th>
-                    <th class="py-4 px-4">Spec</th>
+                    <th class="py-4 px-4">Qty/PCS</th>
                     <th class="py-4 px-4 text-center">Inventory Quantity (Summary)</th>
-                    <th class="py-4 px-4 text-right">Average Inventory Cost (¥)</th>
+                    <th class="py-4 px-4 text-right">Average Inventory Cost</th>
                 `;
             } else if (!inventorySummaryMode && headRow && inventoryFullHeadHtml) {
                 headRow.innerHTML = inventoryFullHeadHtml;
@@ -4611,6 +6101,7 @@
             if (inventorySummaryMode) {
                 if (inventory.length === 0) {
                     list.innerHTML = `<tr><td colspan="8" class="py-20 text-center text-slate-400 text-sm">No inventory records yet...</td></tr>`;
+                    window.applyFrozenColumns('inventory');
                     return;
                 }
                 const grouped = new Map();
@@ -4627,8 +6118,10 @@
                 list.innerHTML = rows.map(r => {
                     const p = products.find(x => x.id === r.productId) || {};
                     const ref = inventory.find(x => x.productId === r.productId && (parseFloat(x.quantity) || 0) > 0) || inventory.find(x => x.productId === r.productId);
-                    const specNum = Number.isFinite(parseFloat(ref?.spec)) ? parseFloat(ref.spec) : 1;
-                    const avgCost = getAverageInventoryCostPerSpec(r.productId, specNum);
+                    const pricingMeta = getProductPricingMeta(p, ref);
+                    const qtyPerPcs = pricingMeta.unitQtyPerPcs || 1;
+                    const avgCost = getAverageInventoryCostPerSpec(r.productId, qtyPerPcs);
+                    const avgPcsCost = (parseFloat(avgCost) || 0) * qtyPerPcs;
                     return `
                         <tr class="hover:bg-slate-50 transition-colors">
                             <td class="py-4 px-4 text-xs font-mono text-slate-500">${r.productId}</td>
@@ -4636,17 +6129,22 @@
                             <td class="py-4 px-4 text-xs text-slate-500 uppercase tracking-tighter">${p.category || '-'}</td>
                             <td class="py-4 px-4 text-xs text-slate-600">${p.scenario || '-'}</td>
                             <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(productListDisplayText(getProductSupplierDisplay(p)))}</td>
-                            <td class="py-4 px-4 text-xs text-slate-600">${specNum}</td>
+                            <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(pricingMeta.label)}</td>
                             <td class="py-4 px-4 text-center font-black text-green-700">${formatNumberAuto(r.quantity, 4)}</td>
-                            <td class="py-4 px-4 text-right text-sm font-mono text-slate-700">¥${(parseFloat(avgCost) || 0).toFixed(4)}</td>
+                            <td class="py-4 px-4 text-right text-sm font-mono text-slate-700">
+                                <div>${formatInventoryAmount(avgCost, 4, pricingMeta.priceBasisUnit)}</div>
+                                <div class="text-[10px] text-slate-400">${formatInventoryAmount(avgPcsCost, 2, 'pcs')}</div>
+                            </td>
                         </tr>
                     `;
                 }).join('');
+                window.applyFrozenColumns('inventory');
                 return;
             }
 
             if(inventory.length === 0) {
                 list.innerHTML = `<tr><td colspan="21" class="py-20 text-center text-slate-400 text-sm">No inventory records yet...</td></tr>`;
+                window.applyFrozenColumns('inventory');
                 return;
             }
             list.innerHTML = inventory.map(item => {
@@ -4657,9 +6155,10 @@
                 const disabled = locked ? 'disabled' : '';
                 const lockTitle = locked ? 'title="Transport order created"' : '';
 
-                const unitPrice = item.unitPurchasePrice || ((item.purchasePrice || 0) * (item.spec || 1));
+                const pricingMeta = getProductPricingMeta(product, item);
+                const spec = pricingMeta.unitQtyPerPcs || 1;
+                const unitPrice = item.unitPurchasePrice || ((item.purchasePrice || 0) * spec);
                 const purchaseDate = item.purchaseDate ? String(item.purchaseDate) : '-';
-                const spec = Number.isFinite(parseFloat(item.spec)) ? parseFloat(item.spec) : 1;
                 const purchaseTotal = item.purchaseTotal || (unitPrice * (item.quantity || 0));
                 const shippingRatePct = ((item.shippingRate ?? 0.08) * 100);
                 const taxRatePct = ((item.domesticTaxRate ?? 0.06) * 100);
@@ -4667,6 +6166,7 @@
                 const domesticTax = item.domesticTax ?? (purchaseTotal * (taxRatePct / 100));
                 const totalCost = item.totalCost ?? (purchaseTotal + shippingCost + domesticTax);
                 const avgCost = getAverageInventoryCostPerSpec(item.productId, spec);
+                const avgPcsCost = (parseFloat(avgCost) || 0) * spec;
 
                 return `
                     <tr class="hover:bg-slate-50 transition-colors">
@@ -4685,16 +6185,19 @@
                         <td class="py-4 px-4 text-xs text-slate-600">${purchaseDate}</td>
                         <td class="py-4 px-4 text-center font-bold text-green-600">${item.quantity}</td>
                         <td class="py-4 px-4 text-xs text-slate-600">${item.batchNo || '-'}</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">¥${(item.purchasePrice || 0).toFixed(2)}</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">${spec}</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">¥${unitPrice.toFixed(2)}</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">¥${purchaseTotal.toFixed(2)}</td>
+                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">${formatInventoryAmount(item.purchasePrice || 0, 4, pricingMeta.priceBasisUnit)}</td>
+                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">${htmlSafe(pricingMeta.label)}</td>
+                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">${formatInventoryAmount(unitPrice, 2, 'pcs')}</td>
+                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">${formatInventoryAmount(purchaseTotal, 2)}</td>
                         <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">${shippingRatePct.toFixed(1)}%</td>
                         <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">${taxRatePct.toFixed(1)}%</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">¥${shippingCost.toFixed(2)}</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">¥${domesticTax.toFixed(2)}</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-900 font-bold">¥${totalCost.toFixed(2)}</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-700">¥${avgCost.toFixed(2)}</td>
+                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">${formatInventoryAmount(shippingCost, 2)}</td>
+                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-600">${formatInventoryAmount(domesticTax, 2)}</td>
+                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-900 font-bold">${formatInventoryAmount(totalCost, 2)}</td>
+                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-700">
+                            <div>${formatInventoryAmount(avgCost, 4, pricingMeta.priceBasisUnit)}</div>
+                            <div class="text-[10px] text-slate-400">${formatInventoryAmount(avgPcsCost, 2, 'pcs')}</div>
+                        </td>
                         <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(productListDisplayText(item.location || '-'))}</td>
                         <td class="py-4 px-4 text-center">
                             <div class="flex items-center justify-center gap-2">
@@ -4706,6 +6209,7 @@
                         </td>
                     </tr>`;
             }).join('');
+            window.applyFrozenColumns('inventory');
         };
 
         window.toggleInventorySummary = () => {
@@ -4843,6 +6347,8 @@
             }
             selectedTransportRecords = new Set();
             saveToLocal();
+            ids.forEach(id => deleteEntityFromD1('transport', id));
+            persistInventoryStateToD1();
             renderTransport();
             renderInventory();
             try { renderCompanyCertUploadSelectors(); } catch (e) {}
@@ -4854,6 +6360,7 @@
             if (!rec) return;
             rec.status = String(status || 'draft');
             saveToLocal();
+            persistEntityToD1('transport', rec.id, rec);
             renderTransport();
         };
 
@@ -4870,6 +6377,8 @@
                 if (Array.isArray(item.transportIds)) item.transportIds = item.transportIds.filter(t => t !== id);
             }
             saveToLocal();
+            deleteEntityFromD1('transport', id);
+            persistInventoryStateToD1();
             renderTransport();
             renderInventory();
             try { renderCompanyCertUploadSelectors(); } catch (e) {}
@@ -5257,6 +6766,9 @@
             }
             selectedInventoryForTransport = new Set();
             saveToLocal();
+            if (editId) persistEntityToD1('transport', editId, transportRecords.find(r => r.id === editId));
+            else persistEntityToD1('transport', transportRecords[transportRecords.length - 1]?.id, transportRecords[transportRecords.length - 1]);
+            persistInventoryStateToD1();
             renderTransport();
             renderInventory();
             try { renderCompanyCertUploadSelectors(); } catch (e) {}
@@ -5466,6 +6978,7 @@
             });
 
             saveToLocal();
+            persistInventoryStateToD1();
             closeInventoryEditModal();
         };
 
@@ -5516,6 +7029,21 @@
             if (el && ymd) el.value = generateNextBatchNoForDate(ymd);
         };
 
+        function updateInventoryPricingLabels(product) {
+            const productId = document.getElementById('inv-product-id')?.value || '';
+            const p = product || products.find(x => x.id === productId) || {};
+            const meta = getProductPricingMeta(p);
+            const unit = meta.priceBasisUnit || 'unit';
+            const setText = (id, text) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = text;
+            };
+            setText('inv-spec-label', `Qty per PCS (${meta.label})`);
+            setText('inv-price-label', `Purchase Price (¥/${unit})`);
+            setText('inv-unit-price-label', 'Unit Purchase Price (¥/pcs)');
+            setText('inv-avg-cost-label', `Average Inventory Cost (¥/${unit})`);
+        }
+
         window.onInventoryProductChange = () => {
             const productId = document.getElementById('inv-product-id')?.value || '';
             const p = products.find(x => x.id === productId);
@@ -5524,11 +7052,15 @@
             if (vendorEl) vendorEl.value = p ? getProductSupplierDisplay(p) : '';
             if (subEl) subEl.value = p?.scenario || '';
             if (p) {
+                const meta = getProductPricingMeta(p);
+                const specEl = document.getElementById('inv-spec');
+                if (specEl && (!specEl.value || parseFloat(specEl.value) === 1)) specEl.value = String(meta.unitQtyPerPcs || 1);
                 const priceEl = document.getElementById('inv-price');
                 if (priceEl && !priceEl.value) priceEl.value = String(getProductCostCny(p).toFixed(2));
                 const taxEl = document.getElementById('inv-domestic-tax-rate');
                 if (taxEl && !taxEl.value) taxEl.value = String(getDefaultDomesticTaxRatePercent(p.category));
             }
+            updateInventoryPricingLabels(p);
             recalcInventoryCosts();
         };
 
@@ -5677,6 +7209,7 @@
             renderInstallerCostDetail(result);
             try { localStorage.setItem('minova_installer_profit_v1', JSON.stringify(installerProfitSettings)); } catch (e) {}
             try { localStorage.setItem('minova_installer_quote_settings_v1', JSON.stringify(installerQuoteSettings)); } catch (e) {}
+            persistQuoteSettingsToD1();
         };
 
         function getDefaultPvModuleQuantity() {
@@ -6078,6 +7611,8 @@
                 note: `Deleted sales-out record and rolled inventory back | Contract: ${r.contractNo || '-'}`
             });
             saveToLocal();
+            deleteEntityFromD1('sales_record', id);
+            persistInventoryStateToD1();
         };
 
         function getInventorySummary(productId) {
@@ -6434,6 +7969,7 @@
                     });
                     archiveZeroQtyInventoryItems(`Transfer Out | ${fromLoc} -> ${toLoc}`);
                     saveToLocal();
+                    persistInventoryStateToD1();
                     closeInventoryModal();
                     return;
                 }
@@ -6454,6 +7990,7 @@
             }
 
             saveToLocal();
+            persistInventoryStateToD1();
             closeInventoryModal();
         };
 
@@ -6532,7 +8069,7 @@
         function normalizeNonStockPricingStrategy(raw = {}) {
             const source = raw && typeof raw === 'object' ? raw : {};
             const out = {};
-            ['avgCostOverride', 'dutyPct', 'sstPct', 'grayPct'].forEach(key => {
+            ['purchasePrice', 'avgCostOverride', 'shippingRatePct', 'domesticTaxRatePct', 'dutyPct', 'sstPct', 'grayPct'].forEach(key => {
                 const n = parseFloat(source[key]);
                 if (Number.isFinite(n) && n >= 0) out[key] = n;
             });
@@ -6575,6 +8112,188 @@
             const rate = parseFloat(document.getElementById('rate-myr-cny')?.value) || 1.53;
             return rate > 0 ? rate : 1.53;
         }
+        function getInventoryFxRateCnyPerMyr() {
+            const direct = parseFloat(document.getElementById('inventory-rate-myr-cny')?.value);
+            if (Number.isFinite(direct) && direct > 0) return direct;
+            return getSalesOutRateCnyPerMyr();
+        }
+        function getInventoryDisplayCurrency() {
+            return window.inventoryDisplayCurrency === 'MYR' ? 'MYR' : 'CNY';
+        }
+        function getNonStockDisplayCurrency() {
+            return window.nonStockDisplayCurrency === 'MYR' ? 'MYR' : 'CNY';
+        }
+        function getNonStockProfitTarget() {
+            return window.nonStockProfitTarget === 'biz' ? 'biz' : 'home';
+        }
+        function formatAmountFromCnyForTable(valueCny, currency, digits = 2, unit = '', rateCnyPerMyr = getSalesOutRateCnyPerMyr()) {
+            const suffix = unit ? `/${normalizeUnitLabel(unit)}` : '';
+            const n = Number.isFinite(parseFloat(valueCny)) ? parseFloat(valueCny) : 0;
+            const amount = String(currency || '').toUpperCase() === 'MYR'
+                ? `RM ${(n / Math.max(0.0001, rateCnyPerMyr)).toFixed(digits)}`
+                : `¥${n.toFixed(digits)}`;
+            return `${amount}${suffix}`;
+        }
+        function formatInventoryAmount(valueCny, digits = 2, unit = '') {
+            return formatAmountFromCnyForTable(valueCny, getInventoryDisplayCurrency(), digits, unit, getInventoryFxRateCnyPerMyr());
+        }
+        function formatNonStockAmount(valueCny, digits = 2, unit = '') {
+            return formatAmountFromCnyForTable(valueCny, getNonStockDisplayCurrency(), digits, unit, getInventoryFxRateCnyPerMyr());
+        }
+        function nonStockDisplayFromCny(valueCny) {
+            const n = Number.isFinite(parseFloat(valueCny)) ? parseFloat(valueCny) : 0;
+            return getNonStockDisplayCurrency() === 'MYR' ? n / getInventoryFxRateCnyPerMyr() : n;
+        }
+        function nonStockCnyFromDisplay(value, currency = getNonStockDisplayCurrency(), rateCnyPerMyr = getInventoryFxRateCnyPerMyr()) {
+            const n = Number.isFinite(parseFloat(value)) ? parseFloat(value) : 0;
+            return currency === 'MYR' ? n * rateCnyPerMyr : n;
+        }
+        function readNonStockNumFromDom(field, sid) {
+            const raw = document.getElementById(`non-stock-${field}-${sid}`)?.value;
+            const n = parseFloat(raw);
+            return Number.isFinite(n) && n >= 0 ? n : null;
+        }
+        function captureNonStockPricingDraftsFromDom() {
+            const renderedCurrency = window.__nonStockRenderedCurrency === 'MYR' ? 'MYR' : 'CNY';
+            const renderedRate = Number.isFinite(parseFloat(window.__nonStockRenderedRateCnyPerMyr))
+                ? parseFloat(window.__nonStockRenderedRateCnyPerMyr)
+                : getInventoryFxRateCnyPerMyr();
+            const drafts = {};
+            const rows = getNonStockProductsForPricing();
+            rows.forEach(p => {
+                const sid = domSafeId(p.id);
+                const purchaseDisplay = readNonStockNumFromDom('purchase', sid);
+                const shippingRatePct = readNonStockNumFromDom('shipping', sid);
+                const domesticTaxRatePct = readNonStockNumFromDom('domestic', sid);
+                const dutyPct = readNonStockNumFromDom('duty', sid);
+                const sstPct = readNonStockNumFromDom('sst', sid);
+                const grayPct = readNonStockNumFromDom('gray', sid);
+                const existing = getNonStockPricingStrategy(p.id);
+                drafts[p.id] = normalizeNonStockPricingStrategy({
+                    ...existing,
+                    purchasePrice: purchaseDisplay === null ? existing.purchasePrice : nonStockCnyFromDisplay(purchaseDisplay, renderedCurrency, renderedRate),
+                    avgCostOverride: purchaseDisplay === null ? existing.avgCostOverride : nonStockCnyFromDisplay(purchaseDisplay, renderedCurrency, renderedRate),
+                    shippingRatePct: shippingRatePct === null ? existing.shippingRatePct : shippingRatePct,
+                    domesticTaxRatePct: domesticTaxRatePct === null ? existing.domesticTaxRatePct : domesticTaxRatePct,
+                    dutyPct: dutyPct === null ? existing.dutyPct : dutyPct,
+                    sstPct: sstPct === null ? existing.sstPct : sstPct,
+                    grayPct: grayPct === null ? existing.grayPct : grayPct
+                });
+            });
+            window.__nonStockPricingDrafts = drafts;
+        }
+        function formatNonStockPriceUpdatedAt(value) {
+            const raw = String(value || '').trim();
+            if (!raw) return '-';
+            const d = new Date(raw);
+            if (Number.isNaN(d.getTime())) return htmlSafe(raw);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        }
+        window.toggleInventoryCurrency = () => {
+            window.inventoryDisplayCurrency = getInventoryDisplayCurrency() === 'MYR' ? 'CNY' : 'MYR';
+            renderInventory();
+        };
+        window.toggleNonStockCurrency = () => {
+            captureNonStockPricingDraftsFromDom();
+            window.nonStockDisplayCurrency = getNonStockDisplayCurrency() === 'MYR' ? 'CNY' : 'MYR';
+            renderNonStockPricingStrategies();
+        };
+        window.setNonStockProfitTarget = (target) => {
+            window.nonStockProfitTarget = target === 'biz' ? 'biz' : 'home';
+            renderNonStockPricingStrategies();
+        };
+        function updateNonStockProfitTargetButtons() {
+            const activeClass = 'px-3 py-2 rounded-xl bg-purple-700 text-white text-xs font-black border border-purple-700';
+            const idleClass = 'px-3 py-2 rounded-xl bg-white text-slate-700 text-xs font-black border border-slate-200 hover:bg-slate-50';
+            const home = document.getElementById('non-stock-target-home');
+            const biz = document.getElementById('non-stock-target-biz');
+            const target = getNonStockProfitTarget();
+            if (home) home.className = target === 'home' ? activeClass : idleClass;
+            if (biz) biz.className = target === 'biz' ? activeClass : idleClass;
+        }
+        function renderNonStockProfitSplitCell(pricing, companyKey) {
+            const target = getNonStockProfitTarget();
+            const subsidiaryPct = target === 'biz'
+                ? (Number.isFinite(parseFloat(pricing.subsidiaryBizPct)) ? pricing.subsidiaryBizPct : pricing.myBizPct)
+                : (Number.isFinite(parseFloat(pricing.subsidiaryHomePct)) ? pricing.subsidiaryHomePct : pricing.myHomePct);
+            const pct = companyKey === 'cn'
+                ? (target === 'biz' ? pricing.cnBizPct : pricing.cnHomePct)
+                : subsidiaryPct;
+            const p = Number.isFinite(parseFloat(pct)) ? parseFloat(pct) : 0;
+            const multiplier = Number.isFinite(parseFloat(pricing.pcsMultiplier)) ? parseFloat(pricing.pcsMultiplier) : 1;
+            const clearance = (Number.isFinite(parseFloat(pricing.clearanceCost)) ? parseFloat(pricing.clearanceCost) : 0) * multiplier * (p / 100);
+            const grey = (Number.isFinite(parseFloat(pricing.grayCost)) ? parseFloat(pricing.grayCost) : 0) * multiplier * (p / 100);
+            return `
+                <div class="font-black text-slate-800">${formatNonStockAmount(clearance, 2, 'pcs')}</div>
+                <div class="text-[10px] text-slate-400">Clearance | ${p.toFixed(2)}%</div>
+                <div class="mt-1 font-bold text-slate-600">${formatNonStockAmount(grey, 2, 'pcs')}</div>
+                <div class="text-[10px] text-slate-400">Grey | ${p.toFixed(2)}%</div>
+            `;
+        }
+        window.renderNonStockProfitSplitCell = renderNonStockProfitSplitCell;
+        window.refreshFxDependentPricingViews = () => {
+            window.renderCostCalcUI?.();
+            window.renderPriceList?.();
+            window.renderPriceListPicker?.();
+            window.recalcInstallerQuote?.();
+        };
+        window.refreshInventoryFxDependentViews = () => {
+            captureNonStockPricingDraftsFromDom();
+            window.renderInventory?.();
+            window.renderNonStockPricingStrategies?.();
+        };
+        window.applyInventoryFxRate = (rate, { render = false, syncQuote = true } = {}) => {
+            const n = parseFloat(rate);
+            if (!Number.isFinite(n) || n <= 0) return false;
+            if (render) {
+                captureNonStockPricingDraftsFromDom();
+            } else {
+                window.__nonStockPricingDrafts = {};
+            }
+            const fixed = n.toFixed(4);
+            const inventoryRateEl = document.getElementById('inventory-rate-myr-cny');
+            if (inventoryRateEl) inventoryRateEl.value = fixed;
+            if (syncQuote) {
+                const quoteRateEl = document.getElementById('rate-myr-cny');
+                if (quoteRateEl) quoteRateEl.value = fixed;
+            }
+            if (render) {
+                window.renderInventory?.();
+                window.renderNonStockPricingStrategies?.();
+            } else {
+                window.__nonStockRenderedRateCnyPerMyr = n;
+                window.__nonStockRenderedCurrency = getNonStockDisplayCurrency();
+            }
+            return true;
+        };
+        window.syncInventoryFxRateFromQuoteSettings = ({ render = false } = {}) => {
+            window.applyInventoryFxRate(getSalesOutRateCnyPerMyr(), { render, syncQuote: false });
+        };
+        window.refreshInventoryLiveFx = async ({ render = true, btn = null } = {}) => {
+            const rateBtn = btn || document.getElementById('inventory-sync-quote-fx');
+            const originalText = rateBtn?.innerHTML || '';
+            if (rateBtn) {
+                rateBtn.innerHTML = 'Fetching...';
+                rateBtn.disabled = true;
+            }
+            try {
+                const res = await fetch('https://api.exchangerate-api.com/v4/latest/MYR');
+                const data = await res.json();
+                if (data?.rates?.CNY && window.applyInventoryFxRate(data.rates.CNY, { render, syncQuote: true })) {
+                    window.refreshFxDependentPricingViews?.();
+                    return true;
+                }
+            } catch (e) {
+                console.error('Failed to fetch inventory exchange rate:', e);
+            } finally {
+                if (rateBtn) {
+                    rateBtn.innerHTML = originalText;
+                    rateBtn.disabled = false;
+                }
+            }
+            window.syncInventoryFxRateFromQuoteSettings({ render });
+            return false;
+        };
         function getSalesOutCurrency() {
             return window.salesOutCurrency === 'MYR' ? 'MYR' : 'CNY';
         }
@@ -6628,21 +8347,26 @@
         function priceListProductPricing(product) {
             const p = product || {};
             const batches = getFifoBatchesForProduct(p.id);
-            const spec = batches.length
-                ? (Number.isFinite(parseFloat(batches[0].spec)) ? parseFloat(batches[0].spec) : 1)
-                : (Number.isFinite(parseFloat(p.spec)) ? parseFloat(p.spec) : 1);
+            const pricingMeta = getProductPricingMeta(p, batches[0]);
+            const spec = pricingMeta.unitQtyPerPcs || 1;
             const def = getDefaultTaxInputsForProduct(p);
             const inventoryAvg = getAverageInventoryCostPerSpec(p.id, spec);
             const strategy = getNonStockPricingStrategy(p.id);
-            const strategyAvg = Number.isFinite(parseFloat(strategy.avgCostOverride)) ? parseFloat(strategy.avgCostOverride) : NaN;
-            const avgFallback = Number.isFinite(strategyAvg) ? strategyAvg : getProductCostCny(p);
-            const avgCost = inventoryAvg > 0 ? inventoryAvg : avgFallback;
             const hasInventoryCost = inventoryAvg > 0;
+            const strategyPurchase = Number.isFinite(parseFloat(strategy.purchasePrice)) ? parseFloat(strategy.purchasePrice) : NaN;
+            const strategyAvg = Number.isFinite(parseFloat(strategy.avgCostOverride)) ? parseFloat(strategy.avgCostOverride) : NaN;
+            const basePurchaseCost = Number.isFinite(strategyPurchase) ? strategyPurchase : (Number.isFinite(strategyAvg) ? strategyAvg : getProductCostCny(p));
+            const shippingRatePct = hasInventoryCost ? def.shippingRatePct : (Number.isFinite(parseFloat(strategy.shippingRatePct)) ? parseFloat(strategy.shippingRatePct) : def.shippingRatePct);
+            const domesticTaxRatePct = hasInventoryCost ? def.domesticTaxRatePct : (Number.isFinite(parseFloat(strategy.domesticTaxRatePct)) ? parseFloat(strategy.domesticTaxRatePct) : def.domesticTaxRatePct);
+            const expectedFreightCost = basePurchaseCost * (shippingRatePct / 100);
+            const expectedDomesticTaxCost = basePurchaseCost * (domesticTaxRatePct / 100);
+            const avgFallback = basePurchaseCost + expectedFreightCost + expectedDomesticTaxCost;
+            const avgCost = inventoryAvg > 0 ? inventoryAvg : avgFallback;
             const dutyPct = hasInventoryCost ? def.dutyPct : (Number.isFinite(parseFloat(strategy.dutyPct)) ? parseFloat(strategy.dutyPct) : def.dutyPct);
             const sstPct = hasInventoryCost ? def.sstPct : (Number.isFinite(parseFloat(strategy.sstPct)) ? parseFloat(strategy.sstPct) : def.sstPct);
             const grayPct = hasInventoryCost ? def.grayPct : (Number.isFinite(parseFloat(strategy.grayPct)) ? parseFloat(strategy.grayPct) : def.grayPct);
-            const costUnit = getMarketCategoryUnitMeta(p.category || '').unit;
-            const pcsMultiplier = getProductSpecMultiplierForUnit(p, spec, costUnit);
+            const costUnit = pricingMeta.priceBasisUnit;
+            const pcsMultiplier = spec > 0 ? spec : 1;
             const pcsCost = avgCost * pcsMultiplier;
             const r = computeInventoryPricing({
                 item: {
@@ -6655,7 +8379,7 @@
                 },
                 product: p
             });
-            return { ...r, spec, costUnit, pcsMultiplier, pcsCost, stockQty: getTotalStockQty(p.id), usedInventoryCost: inventoryAvg > 0 };
+            return { ...r, spec, costUnit, pcsMultiplier, pcsCost, pricingMeta, stockQty: getTotalStockQty(p.id), usedInventoryCost: inventoryAvg > 0, basePurchaseCost, shippingRatePct, domesticTaxRatePct, expectedFreightCost, expectedDomesticTaxCost };
         }
         function getProductSpecMultiplierForUnit(product, fallbackSpec, unit) {
             const p = product || {};
@@ -6791,6 +8515,7 @@
             if (cat && unit) {
                 upsertMarketCategoryUnit(cat, unit);
                 try { localStorage.setItem('minova_market_prices_v1', JSON.stringify(marketPrices)); } catch (e) {}
+                persistMarketPricesToD1();
                 renderMarketPriceFormHint();
                 renderPriceList();
             }
@@ -6809,6 +8534,7 @@
                 if (priceEl) priceEl.value = '';
                 if (noteEl) noteEl.value = '';
                 saveToLocal();
+                persistMarketPricesToD1();
                 renderMarketPriceForm();
                 renderPriceList();
                 showToast('Market price saved', 'success');
@@ -7034,6 +8760,7 @@
                     rateCnyPerMyr: getSalesOutRateCnyPerMyr()
                 });
                 saveToLocal();
+                persistMarketPricesToD1();
                 renderPriceList();
                 const modal = document.getElementById('market-trend-modal');
                 renderMarketTrendBody(modal?.dataset?.category || '', modal?.dataset?.range || 'day');
@@ -7047,6 +8774,8 @@
             if (!recordId || !confirm('Delete this market price record?')) return;
             deleteMarketPriceRecord(recordId);
             saveToLocal();
+            deleteEntityFromD1('market_price', recordId);
+            persistMarketPricesToD1();
             renderPriceList();
             const modal = document.getElementById('market-trend-modal');
             renderMarketTrendBody(modal?.dataset?.category || '', modal?.dataset?.range || 'day');
@@ -7075,6 +8804,7 @@
             if (!rows.length) {
                 body.innerHTML = `<tr><td colspan="15" class="py-12 text-center text-slate-400 text-sm">No products match the current filters.</td></tr>`;
                 updatePriceListSelectionUi();
+                window.applyFrozenColumns('price-list');
                 return;
             }
             body.innerHTML = rows.map(p => {
@@ -7092,12 +8822,12 @@
                         <td class="py-4 px-4 text-center"><input type="checkbox" class="price-list-row-check h-4 w-4 accent-purple-700" value="${htmlSafe(p.id)}" ${checked} onchange="togglePriceListProduct('${htmlSafe(p.id)}', this.checked)"></td>
                         <td class="py-4 px-4">
                             <div class="font-black text-slate-800 text-sm">${htmlSafe(p.name || '-')}</div>
-                            <div class="text-[10px] font-mono text-slate-400">${htmlSafe(p.id || '-')} | ${htmlSafe(p.spec || '-')} | Stock ${formatNumberAuto(pricing.stockQty, 4)}</div>
+                            <div class="text-[10px] font-mono text-slate-400">${htmlSafe(p.id || '-')} | ${htmlSafe(getProductDisplaySpec(p) || '-')} | ${htmlSafe(pricing.pricingMeta?.label || '')} | Stock ${formatNumberAuto(pricing.stockQty, 4)}</div>
                         </td>
                         <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(p.category || '-')}<div class="text-[10px] text-slate-400">${htmlSafe(p.scenario || '-')}</div></td>
                         <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(getProductSupplierDisplay(p))}</td>
-                        <td class="py-4 px-4 text-right">${renderDualCurrencyAmount(selectedPcsPrice, 2, 'pcs')}<div class="text-[10px] text-slate-400">${htmlSafe(selectedPriceLabel)} × ${formatNumberAuto(pricing.pcsMultiplier, 4)} ${htmlSafe(pricing.costUnit)}/pcs</div></td>
-                        <td class="py-4 px-4 text-right">${renderDualCurrencyAmount(pricing.pcsCost, 4, 'pcs')}<div class="text-[10px] text-slate-400">${formatNumberAuto(pricing.pcsMultiplier, 4)} ${htmlSafe(pricing.costUnit)}/pcs</div></td>
+                        <td class="py-4 px-4 text-right">${renderDualCurrencyAmount(selectedPcsPrice, 2, 'pcs')}<div class="text-[10px] text-slate-400">${htmlSafe(selectedPriceLabel)} × ${htmlSafe(pricing.pricingMeta?.label || `${formatNumberAuto(pricing.pcsMultiplier, 4)} ${pricing.costUnit}/pcs`)}</div></td>
+                        <td class="py-4 px-4 text-right">${renderDualCurrencyAmount(pricing.pcsCost, 4, 'pcs')}<div class="text-[10px] text-slate-400">${htmlSafe(pricing.pricingMeta?.label || `${formatNumberAuto(pricing.pcsMultiplier, 4)} ${pricing.costUnit}/pcs`)}</div></td>
                         <td class="py-4 px-4 text-right">${renderDualCurrencyAmount(pricing.avgCost, 4, pricing.costUnit)}<div class="text-[10px] text-slate-400">${pricing.usedInventoryCost ? 'Inventory avg' : 'Base cost fallback'}</div></td>
                         <td class="py-4 px-4 text-right">${renderMarketSummaryCell(p.category || '')}</td>
                         <td class="py-4 px-4 text-right font-black text-green-700">${homeProfit.toFixed(2)}%</td>
@@ -7111,6 +8841,7 @@
                 `;
             }).join('');
             updatePriceListSelectionUi();
+            window.applyFrozenColumns('price-list');
         };
         window.togglePriceListCurrency = () => {
             window.priceListDisplayCurrency = getPriceListCurrencyPriority() === 'MYR' ? 'CNY' : 'MYR';
@@ -7145,38 +8876,94 @@
             });
             renderPriceList();
         };
+        function priceVarianceClass(value, benchmark) {
+            const v = parseFloat(value);
+            const b = parseFloat(benchmark);
+            if (!Number.isFinite(v) || !Number.isFinite(b) || b <= 0) return 'text-slate-200';
+            const diff = (v - b) / b;
+            if (diff >= 0.3) return 'text-green-300 font-black';
+            if (diff >= 0.15) return 'text-green-400 font-black';
+            if (diff >= 0.05) return 'text-green-500 font-bold';
+            if (diff > -0.05) return 'text-slate-100 font-bold';
+            if (diff > -0.15) return 'text-red-300 font-bold';
+            if (diff > -0.3) return 'text-red-400 font-black';
+            return 'text-red-500 font-black';
+        }
+        function renderPriceListTooltipPrice(value, unit, benchmark, digits = 2) {
+            const n = parseFloat(value);
+            if (!Number.isFinite(n)) return '<span class="text-slate-500">-</span>';
+            return `<span class="${priceVarianceClass(n, benchmark)}">${formatCurrencyFromCny(n, getPriceListCurrencyPriority(), digits)}/${htmlSafe(unit)}</span>`;
+        }
+        function renderPriceListTooltipComparison(product, pricing, market) {
+            const marketUnit = normalizeUnitLabel(market?.unit || pricing.costUnit || 'pcs');
+            const marketUnitPrice = market?.records?.length ? parseFloat(market.avgCny) : NaN;
+            const marketPcsMultiplier = getProductSpecMultiplierForUnit(product, pricing.pcsMultiplier, marketUnit);
+            const marketPcsPrice = Number.isFinite(marketUnitPrice) ? marketUnitPrice * marketPcsMultiplier : NaN;
+            const quoteUnit = normalizeUnitLabel(pricing.costUnit || marketUnit);
+            const quotePcsMultiplier = Number.isFinite(parseFloat(pricing.pcsMultiplier)) ? parseFloat(pricing.pcsMultiplier) : 1;
+            const quoteRows = [
+                ['Clearance RESI', pricing.clearanceHomePrice],
+                ['Clearance C&I', pricing.clearanceBizPrice],
+                ['Grey RESI', pricing.grayHomePrice],
+                ['Grey C&I', pricing.grayBizPrice]
+            ];
+            const marketUnitHtml = Number.isFinite(marketUnitPrice)
+                ? `${formatCurrencyFromCny(marketUnitPrice, getPriceListCurrencyPriority(), 4)}/${htmlSafe(marketUnit)}`
+                : 'No 30-day market price';
+            const marketPcsHtml = Number.isFinite(marketPcsPrice)
+                ? `${formatCurrencyFromCny(marketPcsPrice, getPriceListCurrencyPriority(), 2)}/pcs`
+                : '-';
+            return `
+                <div class="mt-2 rounded-lg overflow-hidden border border-slate-700">
+                    <div class="grid grid-cols-3 bg-slate-900/80 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        <div class="px-2 py-1.5">Item</div>
+                        <div class="px-2 py-1.5 text-right">Unit Price</div>
+                        <div class="px-2 py-1.5 text-right">PCS Price</div>
+                    </div>
+                    <div class="grid grid-cols-3 border-t border-slate-700 text-[11px]">
+                        <div class="px-2 py-1.5 text-amber-200 font-black">30D Market</div>
+                        <div class="px-2 py-1.5 text-right text-amber-100">${marketUnitHtml}</div>
+                        <div class="px-2 py-1.5 text-right text-amber-100">${marketPcsHtml}</div>
+                    </div>
+                    ${quoteRows.map(([label, unitPrice]) => {
+                        const unit = parseFloat(unitPrice);
+                        const pcs = Number.isFinite(unit) ? unit * quotePcsMultiplier : NaN;
+                        return `
+                            <div class="grid grid-cols-3 border-t border-slate-700 text-[11px]">
+                                <div class="px-2 py-1.5 text-slate-200 font-bold">${htmlSafe(label)}</div>
+                                <div class="px-2 py-1.5 text-right">${renderPriceListTooltipPrice(unit, quoteUnit, marketUnitPrice, 4)}</div>
+                                <div class="px-2 py-1.5 text-right">${renderPriceListTooltipPrice(pcs, 'pcs', marketPcsPrice, 2)}</div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
         window.showPriceListTooltip = (event, productId) => {
             const tooltip = document.getElementById('global-tooltip');
             const p = products.find(x => String(x.id) === String(productId));
             if (!tooltip || !p) return;
             const r = priceListProductPricing(p);
-            const req = getProductCertificationRequirements(p);
             const market = getMarketPriceSummary(p.category || '', { days: 30 });
-            const homeProfit = Number.isFinite(parseFloat(r.homeProfitPct)) ? parseFloat(r.homeProfitPct) : ((r.cnHomePct || 0) + (r.myHomePct || 0));
-            const bizProfit = Number.isFinite(parseFloat(r.bizProfitPct)) ? parseFloat(r.bizProfitPct) : ((r.cnBizPct || 0) + (r.myBizPct || 0));
-            const selectedPriceLabel = getPriceListSelectedPriceLabel();
-            const selectedPcsPrice = getPriceListSelectedPcsPrice(r);
             tooltip.innerHTML = `
                 <p class="font-black text-sm mb-2 border-b border-slate-600 pb-1">${htmlSafe(p.name || '-')}</p>
-                <div class="space-y-1">
-                    <p>PCS Price (${htmlSafe(selectedPriceLabel)}): <span class="font-black text-white">${formatCurrencyFromCny(selectedPcsPrice, getPriceListCurrencyPriority(), 2)}/pcs</span> (${formatCurrencyFromCny(selectedPcsPrice, getPriceListCurrencyPriority() === 'MYR' ? 'CNY' : 'MYR', 2)}/pcs)</p>
-                    <p class="text-slate-300">Formula: ${htmlSafe(selectedPriceLabel)} per ${htmlSafe(r.costUnit)} × ${formatNumberAuto(r.pcsMultiplier, 4)} ${htmlSafe(r.costUnit)}/pcs</p>
-                    <p>PCS Cost: <span class="font-black text-white">${formatCurrencyFromCny(r.pcsCost, getPriceListCurrencyPriority(), 4)}/pcs</span> (${formatCurrencyFromCny(r.pcsCost, getPriceListCurrencyPriority() === 'MYR' ? 'CNY' : 'MYR', 4)}/pcs)</p>
-                    <p>Avg Cost: <span class="font-black text-white">${formatCurrencyFromCny(r.avgCost, getPriceListCurrencyPriority(), 4)}/${r.costUnit}</span> (${formatCurrencyFromCny(r.avgCost, getPriceListCurrencyPriority() === 'MYR' ? 'CNY' : 'MYR', 4)}/${r.costUnit}; ${r.usedInventoryCost ? 'inventory average' : 'base cost'})</p>
-                    <p>Clearance Cost: ${formatCny(r.avgCost, 4)} × (1 + ${r.dutyPct}% duty + ${r.sstPct}% SST) = <span class="font-black text-blue-200">${formatCny(r.clearanceCost, 4)}</span></p>
-                    <p>Grey Cost: ${formatCny(r.avgCost, 4)} × (1 + ${r.grayPct}% grey tax) = <span class="font-black text-indigo-200">${formatCny(r.grayCost, 4)}</span></p>
-                    <p>RESI Price: cost × (1 + ${homeProfit.toFixed(2)}% total company margin) = +${homeProfit.toFixed(2)}%</p>
-                    <p>C&I Price: cost × (1 + ${bizProfit.toFixed(2)}% total company margin) = +${bizProfit.toFixed(2)}%</p>
-                    <p>Market 30D: <span class="font-black text-amber-200">${market.records.length ? formatMarketPrice(market.avgCny, market.unit, 'CNY') : 'No 30-day market price'}</span></p>
-                    <p>FX: 1 MYR = ${getSalesOutRateCnyPerMyr().toFixed(4)} CNY</p>
-                    <p class="pt-1 text-slate-300">Certifications: ${(req.standards || []).slice(0, 5).map(htmlSafe).join(', ') || '-'}</p>
-                </div>
+                ${renderPriceListTooltipComparison(p, r, market)}
             `;
+            tooltip.style.width = 'auto';
+            tooltip.style.maxWidth = `${Math.max(320, Math.min(560, window.innerWidth - 24))}px`;
             tooltip.classList.remove('hidden');
-            const x = event.clientX + 16;
-            const y = event.clientY + 16;
-            tooltip.style.left = `${Math.min(x, window.innerWidth - 280)}px`;
-            tooltip.style.top = `${Math.min(y, window.innerHeight - 260)}px`;
+            const tooltipWidth = tooltip.offsetWidth || Math.min(560, window.innerWidth - 24);
+            const tooltipHeight = tooltip.offsetHeight || 220;
+            const gap = 14;
+            const rightSpace = window.innerWidth - event.clientX;
+            const belowSpace = window.innerHeight - event.clientY;
+            const aboveSpace = event.clientY;
+            const shouldOpenLeft = rightSpace < tooltipWidth + gap && event.clientX > tooltipWidth + gap;
+            const shouldOpenUp = belowSpace < tooltipHeight + 18 && aboveSpace > belowSpace;
+            const rawLeft = shouldOpenLeft ? event.clientX - tooltipWidth - gap : event.clientX + gap;
+            const rawTop = shouldOpenUp ? event.clientY - tooltipHeight - gap : event.clientY + gap;
+            tooltip.style.left = `${Math.max(12, Math.min(rawLeft, window.innerWidth - tooltipWidth - 12))}px`;
+            tooltip.style.top = `${Math.max(12, Math.min(rawTop, window.innerHeight - tooltipHeight - 12))}px`;
         };
         window.hidePriceListTooltip = () => {
             document.getElementById('global-tooltip')?.classList.add('hidden');
@@ -7198,7 +8985,7 @@
                     'Category': p.category || '',
                     'Subcategory': p.scenario || '',
                     'Brand': getProductSupplierDisplay(p),
-                    'Spec': p.spec || '',
+                    'Spec': getProductDisplaySpec(p) || '',
                     'Stock Qty': r.stockQty || 0,
                     'Selected PCS Price Type': selectedPriceLabel,
                     'PCS Price CNY': selectedPcsPrice || 0,
@@ -7517,6 +9304,7 @@
                     updatedAt: Date.now()
                 };
                 saveToLocal();
+                persistInventoryStateToD1();
                 closeSalesOutModal();
                 return;
             }
@@ -7623,6 +9411,7 @@
                 }
             }
             saveToLocal();
+            persistInventoryStateToD1();
             closeSalesOutModal();
         };
 
@@ -7642,6 +9431,8 @@
                 });
                 inventory = inventory.filter(i => i.id !== id);
                 saveToLocal();
+                deleteEntityFromD1('inventory', id);
+                persistInventoryStateToD1();
             }
         };
         window.openModal = () => {
@@ -7655,6 +9446,9 @@
             updateProductCurrencyFromSupplier({ skipExisting: true });
             updateSubcatSuggestions();
             if (!window.editId) {
+                fillProductMasterDetails({});
+                fillProductSourcingDetails({ supplierCode: document.getElementById('m-supplier-code')?.value || '' });
+                renderProductTechnicalFields(document.getElementById('m-category')?.value || '');
                 ['tuv', 'specs'].forEach(type => {
                     const list = document.getElementById(`product-${type}-list`);
                     const empty = document.getElementById(`product-${type}-empty`);
@@ -7674,10 +9468,12 @@
         window.closeModal = () => {
             document.getElementById('modal').classList.add('hidden');
             window.editId = null;
-            ['m-name', 'm-category', 'm-supplier-code', 'm-spec', 'm-scenario', 'm-warranty-years', 'm-warranty-cycles', 'm-lead-time', 'm-contact', 'm-contact-info', 'm-cost', 'm-price', 'm-cert-requirements'].forEach(id => {
+            ['m-name', 'm-category', 'm-supplier-code', 'm-spec', 'm-inverter-kw', 'm-battery-kwh', 'm-scenario', 'm-warranty-years', 'm-warranty-cycles', 'm-lead-time', 'm-contact', 'm-contact-info', 'm-price-basis-unit', 'm-unit-qty-per-pcs', 'm-cost', 'm-price', 'm-cert-requirements', 'm-source-type', 'm-commercial-supplier-code', 'm-factory-supplier-code', 'm-brand-owner-supplier-code', 'm-authorization-status', 'm-authorization-expiry', 'm-source-remark', ...PRODUCT_MASTER_COMMON_FIELD_KEYS.map(key => `m-master-${key}`)].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.value = '';
             });
+            renderProductTechnicalFields('');
+            updateHybridSpecControls();
             const currencyEl = document.getElementById('m-price-currency');
             if (currencyEl) currencyEl.value = 'CNY';
             updateProductPriceCurrencyUi();
@@ -7694,13 +9490,28 @@
             const supplier = getSupplierByCode(supplierCode);
             if (!supplier) return alert('Please select a supplier from Supplier Master Data.');
             const productCurrency = normalizeProductPriceCurrency(document.getElementById('m-price-currency')?.value || inferSupplierPriceCurrency(supplier));
+            const hybrid = isHybridStorageCategory(category);
+            const hybridSpec = hybrid ? formatHybridStorageSpec({
+                inverterKw: document.getElementById('m-inverter-kw')?.value,
+                batteryKwh: document.getElementById('m-battery-kwh')?.value
+            }) : '';
+            const pricingDraft = getProductPricingMeta({
+                category,
+                spec: hybridSpec || document.getElementById('m-spec').value,
+                priceBasisUnit: document.getElementById('m-price-basis-unit')?.value || '',
+                unitQtyPerPcs: document.getElementById('m-unit-qty-per-pcs')?.value || ''
+            });
             const data = {
                 id: window.editId || generateNextId(category),
                 name: document.getElementById('m-name').value,
                 category: category,
                 supplierCode: supplier.code,
                 vendor: getSupplierDisplayName(supplier),
-                spec: document.getElementById('m-spec').value,
+                spec: hybridSpec || document.getElementById('m-spec').value,
+                inverterKw: hybrid ? (parseFloat(document.getElementById('m-inverter-kw')?.value) || 0) : undefined,
+                batteryKwh: hybrid ? (parseFloat(document.getElementById('m-battery-kwh')?.value) || 0) : undefined,
+                priceBasisUnit: normalizePricingUnit(document.getElementById('m-price-basis-unit')?.value || pricingDraft.priceBasisUnit),
+                unitQtyPerPcs: parseFloat(document.getElementById('m-unit-qty-per-pcs')?.value) || pricingDraft.unitQtyPerPcs,
                 scenario: normalizeProductSubcategory(document.getElementById('m-scenario').value),
                 warrantyYears: document.getElementById('m-warranty-years').value,
                 warrantyCycles: document.getElementById('m-warranty-cycles').value,
@@ -7711,6 +9522,9 @@
                 costCurrency: productCurrency,
                 price: parseFloat(document.getElementById('m-price').value) || 0,
                 priceCurrency: productCurrency,
+                sourcing: readProductSourcingFromModal(supplier.code),
+                masterData: readProductMasterDataFromModal(),
+                technicalSpecs: readProductTechnicalSpecsFromModal(category),
                 certificationRequirements: readProductCertificationRequirementsFromModal(),
                 productImageDataUrl: String(window.__productImageDraft || ''),
                 ts: Date.now()
@@ -7726,6 +9540,9 @@
             if (!data.certifications) {
                 data.certifications = { tuvCerts: [], specSheets: [] };
             }
+            if (!Object.keys(data.sourcing || {}).length || (data.sourcing.sourceType === 'Unknown' && !data.sourcing.factorySupplierCode && !data.sourcing.brandOwnerSupplierCode && !data.sourcing.authorizationStatus && !data.sourcing.authorizationExpiry && !data.sourcing.sourceRemark)) delete data.sourcing;
+            if (!Object.keys(data.masterData || {}).length) delete data.masterData;
+            if (!Object.keys(data.technicalSpecs || {}).length) delete data.technicalSpecs;
             if(!data.name) return alert("Please enter the product name.");
             const sub = normalizeProductSubcategory(data.scenario);
             const cat = normalizeProductCategory(data.category, 'Uncategorized');
@@ -7737,6 +9554,7 @@
             const idx = products.findIndex(p => p.id === data.id);
             if(idx !== -1) products[idx] = data; else products.push(data);
             saveToLocal(); closeModal();
+            persistEntityToD1('product', data.id, data);
         };
         window.editProduct = (id) => {
             const p = products.find(prod => prod.id === id);
@@ -7744,10 +9562,20 @@
             window.editId = id;
             ensureSupplierData();
             document.getElementById('m-name').value = p.name || '';
-            document.getElementById('m-category').value = p.category || '';
+            const category = p.category || '';
+            document.getElementById('m-category').value = category;
+            fillProductMasterDetails(p);
+            renderProductTechnicalFields(category, p?.technicalSpecs || {});
             updateSupplierSelects(p.supplierCode || getProductSupplier(p)?.code || '');
+            fillProductSourcingDetails(p);
             document.getElementById('m-spec').value = p.spec || '';
+            const hybridSpec = parseHybridStorageSpec(p);
+            const invEl = document.getElementById('m-inverter-kw');
+            const batEl = document.getElementById('m-battery-kwh');
+            if (invEl) invEl.value = hybridSpec.inverterKw ? formatCapacityValue(hybridSpec.inverterKw) : '';
+            if (batEl) batEl.value = hybridSpec.batteryKwh ? formatCapacityValue(hybridSpec.batteryKwh) : '';
             updateSubcatSuggestions();
+            updateHybridSpecControls();
             document.getElementById('m-scenario').value = p.scenario || '';
             document.getElementById('m-warranty-years').value = p.warrantyYears || '';
             document.getElementById('m-warranty-cycles').value = p.warrantyCycles || '';
@@ -7756,6 +9584,11 @@
             document.getElementById('m-contact-info').value = p.contactInfo || '';
             document.getElementById('m-cost').value = p.cost || 0;
             document.getElementById('m-price').value = p.price || 0;
+            const pricingMeta = getProductPricingMeta(p);
+            const unitEl = document.getElementById('m-price-basis-unit');
+            const qtyEl = document.getElementById('m-unit-qty-per-pcs');
+            if (unitEl) unitEl.value = p.priceBasisUnit ? pricingMeta.priceBasisUnit : '';
+            if (qtyEl) qtyEl.value = p.unitQtyPerPcs ? pricingMeta.unitQtyPerPcs : '';
             if (document.getElementById('m-price-currency')) document.getElementById('m-price-currency').value = getProductCurrency(p, 'cost');
             updateProductPriceCurrencyUi();
             const certReq = getProductCertificationRequirements(p);
@@ -7771,19 +9604,23 @@
             renderProductCertsInModal();
         };
         window.deleteProduct = (id) => {
-            if(confirm('Delete this product record?')) { products = products.filter(p => p.id !== id); saveToLocal(); }
+            if(confirm('Delete this product record?')) { products = products.filter(p => p.id !== id); saveToLocal(); deleteEntityFromD1('product', id); }
         };
 
         // --- 批量导入逻辑 ---
         let importStep = 1;
         let importData = [];
         let importHeaders = [];
+        let importCompatibilityData = [];
+        let importChannelPartnerData = [];
         const systemFields = {
             id: '产品编号',
             name: '产品全称',
             category: '类目',
             vendor: '供应商',
             spec: '规格型号',
+            inverterKw: '逆变器kW',
+            batteryKwh: '电池kWh',
             scenario: '应用场景',
             warrantyYears: '质保年限',
             warrantyCycles: '循环次数',
@@ -7793,6 +9630,8 @@
             certificationCountries: '产品认证国家',
             certificationStandards: '产品认证标准',
             costCurrency: '基准币种',
+            priceBasisUnit: '计价单位',
+            unitQtyPerPcs: '每PCS含量',
             cost: '基准采购价',
             price: '基准售价'
         };
@@ -7802,6 +9641,8 @@
             category: 'Category',
             vendor: 'Supplier',
             spec: 'Specification',
+            inverterKw: 'Inverter kW',
+            batteryKwh: 'Battery kWh',
             scenario: 'Subcategory',
             warrantyYears: 'Warranty Years',
             warrantyCycles: 'Cycle Count',
@@ -7811,9 +9652,53 @@
             certificationCountries: 'Certification Countries',
             certificationStandards: 'Certification Standards',
             costCurrency: 'Base Currency',
+            priceBasisUnit: 'Price Basis Unit',
+            unitQtyPerPcs: 'Qty per PCS',
             cost: 'Base Cost',
             price: 'Base Price'
         };
+        const PRODUCT_MASTER_IMPORT_MASTER_FIELDS = {
+            masterModel: 'SKU / Model',
+            masterBrand: 'Brand',
+            masterSeries: 'Series',
+            masterApplication: 'Application',
+            masterVoltageClass: 'Voltage Class',
+            masterPhase: 'Phase',
+            masterStatus: 'Status',
+            masterCountryAvailable: 'Country Available',
+            masterDatasheetLink: 'Datasheet Link',
+            masterCertificateLink: 'External Certificate Link',
+            masterRemark: 'Remark'
+        };
+        const PRODUCT_MASTER_IMPORT_SOURCING_FIELDS = {
+            sourceType: 'Source Type',
+            channelPartnerId: 'Channel Partner ID',
+            brandSupplierCode: 'Brand Supplier Code',
+            commercialSupplierCode: 'Commercial Supplier Code',
+            factorySupplierCode: 'Factory Supplier Code',
+            brandOwnerSupplierCode: 'Brand Owner Supplier Code',
+            authorizationStatus: 'Authorization Status',
+            authorizationExpiry: 'Authorization Expiry',
+            sourceRemark: 'Source Remark'
+        };
+        const COMPATIBILITY_IMPORT_FIELDS = {
+            relationType: 'Relation Type',
+            sourceProductId: 'Source Product ID',
+            targetProductId: 'Target Product ID',
+            systemScope: 'System Scope',
+            status: 'Status',
+            protocol: 'Protocol',
+            constraints: 'Constraints',
+            approvedBy: 'Approved By',
+            updatedAt: 'Updated At',
+            remark: 'Remark'
+        };
+        Object.assign(systemFields, PRODUCT_MASTER_IMPORT_MASTER_FIELDS);
+        Object.assign(systemFields, PRODUCT_MASTER_IMPORT_SOURCING_FIELDS);
+        Object.assign(systemFields, PRODUCT_MASTER_TECHNICAL_LABEL_BY_KEY);
+        Object.assign(systemFieldLabelsEnglish, PRODUCT_MASTER_IMPORT_MASTER_FIELDS);
+        Object.assign(systemFieldLabelsEnglish, PRODUCT_MASTER_IMPORT_SOURCING_FIELDS);
+        Object.assign(systemFieldLabelsEnglish, PRODUCT_MASTER_TECHNICAL_LABEL_BY_KEY);
 
         // 获取拼音首字母的简易映射
         function getPinyinInitials(str) {
@@ -7851,6 +9736,8 @@
             goToStep(1, true);
             document.getElementById('excel-file-input').value = '';
             document.getElementById('file-name-display').textContent = '';
+            importCompatibilityData = [];
+            importChannelPartnerData = [];
         };
 
         window.goToStep = (step, isReset = false) => {
@@ -7910,6 +9797,41 @@
                 const firstSheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[firstSheetName];
                 const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                const compatibilitySheet = workbook.Sheets['Compatibility Matrix'];
+                importCompatibilityData = [];
+                importChannelPartnerData = [];
+                const channelPartnerSheet = workbook.Sheets['Channel Partners'];
+                if (channelPartnerSheet) {
+                    const channelRows = XLSX.utils.sheet_to_json(channelPartnerSheet, { defval: '' });
+                    importChannelPartnerData = channelRows.map(row => normalizeChannelPartner({
+                        id: row.ID || row.Id || row.id || '',
+                        brandSupplierCode: row['Brand Supplier Code'],
+                        type: row['Partner Type'] || row.Type,
+                        name: row['Partner Name'] || row.Name,
+                        country: row['Country/Region'] || row.Country,
+                        authorizationStatus: row['Authorization Status'],
+                        authorizationExpiry: row['Authorization Expiry'],
+                        contact: row.Contact,
+                        contactInfo: row['Contact Info'],
+                        remark: row.Remark
+                    })).filter(partner => partner.brandSupplierCode && partner.name);
+                }
+                if (compatibilitySheet) {
+                    const compatRows = XLSX.utils.sheet_to_json(compatibilitySheet, { defval: '' });
+                    importCompatibilityData = compatRows.map(row => normalizeCompatibilityRule({
+                        id: row.ID || row.Id || row.id || '',
+                        relationType: row['Relation Type'],
+                        sourceProductId: row['Source Product ID'],
+                        targetProductId: row['Target Product ID'],
+                        systemScope: row['System Scope'],
+                        status: row.Status,
+                        protocol: row.Protocol,
+                        constraints: row.Constraints,
+                        approvedBy: row['Approved By'],
+                        updatedAt: row['Updated At'],
+                        remark: row.Remark
+                    })).filter(rule => rule.sourceProductId && rule.targetProductId);
+                }
 
                 if (json.length < 2) {
                     alert('The Excel file is empty or has no data.');
@@ -7938,11 +9860,42 @@
             const container = document.getElementById('field-mapping-container');
             const aliases = {
                 category: ['类目', 'Category', 'Product Category'],
+                inverterKw: ['逆变器kW', 'Inverter kW', 'Inverter Capacity', 'Inverter Capacity kW'],
+                batteryKwh: ['电池kWh', 'Battery kWh', 'Battery Capacity', 'Battery Capacity kWh'],
                 scenario: ['应用场景', 'Subcategory', 'Application Scenario'],
                 certificationCountries: ['产品认证国家', '认证国家', 'Certification Countries'],
                 certificationStandards: ['产品认证标准', '产品认证', 'Certification Standards', 'Product Certification'],
-                costCurrency: ['基准币种', 'Base Currency', 'Currency', 'Cost Currency', 'Price Currency']
+                costCurrency: ['基准币种', 'Base Currency', 'Currency', 'Cost Currency', 'Price Currency'],
+                priceBasisUnit: ['计价单位', 'Price Basis Unit', 'Pricing Unit', 'Unit'],
+                unitQtyPerPcs: ['每PCS含量', 'Qty per PCS', 'Unit Qty per PCS', 'Qty/PCS']
             };
+            Object.assign(aliases, {
+                masterModel: ['SKU / Model', 'Model', 'SKU', 'Spec Model'],
+                masterBrand: ['Brand', '品牌'],
+                masterSeries: ['Series', '系列'],
+                masterApplication: ['Application', '应用'],
+                masterVoltageClass: ['Voltage Class', 'Voltage_Class'],
+                masterPhase: ['Phase'],
+                masterStatus: ['Status'],
+                masterCountryAvailable: ['Country Available', 'Country_Available'],
+                masterDatasheetLink: ['Datasheet Link', 'Datasheet_Link'],
+                masterCertificateLink: ['External Certificate Link', 'Certificate Link', 'Certificate_Link'],
+                masterRemark: ['Remark', '备注']
+            });
+            Object.assign(aliases, {
+                sourceType: ['Source Type'],
+                channelPartnerId: ['Channel Partner ID', 'Channel Partner'],
+                brandSupplierCode: ['Brand Supplier Code', 'Brand Supplier'],
+                commercialSupplierCode: ['Commercial Supplier Code', 'Commercial Supplier'],
+                factorySupplierCode: ['Factory Supplier Code', 'Factory Supplier'],
+                brandOwnerSupplierCode: ['Brand Owner Supplier Code', 'Brand Owner'],
+                authorizationStatus: ['Authorization Status'],
+                authorizationExpiry: ['Authorization Expiry'],
+                sourceRemark: ['Source Remark']
+            });
+            PRODUCT_MASTER_TECHNICAL_IMPORT_KEYS.forEach(key => {
+                aliases[key] = [PRODUCT_MASTER_TECHNICAL_LABEL_BY_KEY[key], key];
+            });
             container.innerHTML = Object.keys(systemFields).map(key => `
                 <div class="flex items-center">
                     <label class="w-28 font-bold text-slate-600">${systemFieldLabelsEnglish[key] || systemFields[key]}:</label>
@@ -7995,6 +9948,49 @@
                 // Generate a product ID when the import row does not provide one.
                 newProduct.category = normalizeProductCategory(newProduct.category, 'Uncategorized');
                 newProduct.scenario = normalizeProductSubcategory(newProduct.scenario);
+                const importedMasterData = compactProductMasterObject({
+                    model: newProduct.masterModel,
+                    brand: newProduct.masterBrand,
+                    series: newProduct.masterSeries,
+                    application: newProduct.masterApplication,
+                    voltageClass: newProduct.masterVoltageClass,
+                    phase: newProduct.masterPhase,
+                    status: newProduct.masterStatus,
+                    countryAvailable: newProduct.masterCountryAvailable,
+                    datasheetLink: newProduct.masterDatasheetLink,
+                    certificateLink: newProduct.masterCertificateLink,
+                    remark: newProduct.masterRemark
+                });
+                Object.keys(PRODUCT_MASTER_IMPORT_MASTER_FIELDS).forEach(key => delete newProduct[key]);
+                const importedSourcing = compactProductMasterObject({
+                    sourceType: PRODUCT_SOURCE_TYPES.includes(newProduct.sourceType) ? newProduct.sourceType : (newProduct.sourceType ? 'Unknown' : ''),
+                    channelPartnerId: newProduct.channelPartnerId,
+                    brandSupplierCode: normalizeSupplierCode(newProduct.brandSupplierCode || ''),
+                    commercialSupplierCode: normalizeSupplierCode(newProduct.commercialSupplierCode || ''),
+                    factorySupplierCode: normalizeSupplierCode(newProduct.factorySupplierCode || ''),
+                    brandOwnerSupplierCode: normalizeSupplierCode(newProduct.brandOwnerSupplierCode || ''),
+                    authorizationStatus: PRODUCT_AUTHORIZATION_STATUS.includes(newProduct.authorizationStatus) ? newProduct.authorizationStatus : '',
+                    authorizationExpiry: newProduct.authorizationExpiry,
+                    sourceRemark: newProduct.sourceRemark
+                });
+                Object.keys(PRODUCT_MASTER_IMPORT_SOURCING_FIELDS).forEach(key => delete newProduct[key]);
+                const importedTechnicalSpecs = {};
+                getProductTechnicalSpecFieldsForCategory(newProduct.category).forEach(field => {
+                    if (newProduct[field.id] !== undefined && newProduct[field.id] !== '') {
+                        importedTechnicalSpecs[field.id] = coerceProductMasterFieldValue(newProduct[field.id], field.type);
+                    }
+                });
+                PRODUCT_MASTER_TECHNICAL_IMPORT_KEYS.forEach(key => delete newProduct[key]);
+                if (Object.keys(importedMasterData).length) newProduct.masterData = importedMasterData;
+                if (Object.keys(importedSourcing).length) newProduct.sourcing = importedSourcing;
+                if (Object.keys(importedTechnicalSpecs).length) newProduct.technicalSpecs = importedTechnicalSpecs;
+                if (isHybridStorageCategory(newProduct.category)) {
+                    const parsedHybrid = parseHybridStorageSpec(newProduct);
+                    if (parsedHybrid.inverterKw > 0) newProduct.inverterKw = parsedHybrid.inverterKw;
+                    if (parsedHybrid.batteryKwh > 0) newProduct.batteryKwh = parsedHybrid.batteryKwh;
+                    const formattedHybridSpec = formatHybridStorageSpec(newProduct);
+                    if (formattedHybridSpec) newProduct.spec = formattedHybridSpec;
+                }
                 if (!newProduct.id) {
                     newProduct.id = generateNextId(newProduct.category || 'Generic');
                 } else {
@@ -8009,6 +10005,18 @@
                 const importedCurrency = normalizeProductPriceCurrency(newProduct.costCurrency || newProduct.priceCurrency || inferSupplierPriceCurrency(supplier));
                 newProduct.costCurrency = importedCurrency;
                 newProduct.priceCurrency = importedCurrency;
+                const pricingMeta = getProductPricingMeta(newProduct);
+                if (String(newProduct.priceBasisUnit || '').trim()) {
+                    newProduct.priceBasisUnit = normalizePricingUnit(newProduct.priceBasisUnit);
+                } else {
+                    delete newProduct.priceBasisUnit;
+                }
+                const qtyPerPcs = parseFloat(newProduct.unitQtyPerPcs);
+                if (Number.isFinite(qtyPerPcs) && qtyPerPcs > 0) {
+                    newProduct.unitQtyPerPcs = qtyPerPcs;
+                } else {
+                    newProduct.unitQtyPerPcs = pricingMeta.unitQtyPerPcs;
+                }
                 if (newProduct.certificationCountries || newProduct.certificationStandards) {
                     const countries = uniqueCertList(String(newProduct.certificationCountries || '').split(/[\n;,/]+/)).map(v => v.toUpperCase());
                     const standards = uniqueCertList(String(newProduct.certificationStandards || '').split(/[\n;,]+/));
@@ -8030,9 +10038,51 @@
                 successCount++;
             });
 
+            const channelPartnerCount = processChannelPartnerImport();
+            const compatibilityCount = processCompatibilityImport();
+
             saveToLocal();
+            try {
+                window.__minovaBusiness?.upsertEntities?.([
+                    ...products.map(record => ({ domain: 'product', recordId: record.id, payload: cloneForD1(record) })),
+                    ...channelPartners.map(record => ({ domain: 'channel_partner', recordId: record.id, payload: cloneForD1(record) })),
+                    ...suppliers.map(record => ({ domain: 'supplier', recordId: record.id || record.code, payload: cloneForD1(record) })),
+                    ...compatibilityRules.map(record => ({ domain: 'compatibility_rule', recordId: record.id, payload: cloneForD1(record) }))
+                ]);
+            } catch (e) {
+                console.warn('D1 product import save queued/failed:', e);
+            }
+            if (channelPartnerCount) log.push(`<p class="text-green-600">Channel Partners imported: ${channelPartnerCount} records.</p>`);
+            if (compatibilityCount) log.push(`<p class="text-green-600">Compatibility Matrix imported: ${compatibilityCount} rules.</p>`);
             renderImportLog(successCount, failCount, log);
             goToStep(3);
+        }
+
+        function processCompatibilityImport() {
+            if (!Array.isArray(importCompatibilityData) || !importCompatibilityData.length) return 0;
+            let count = 0;
+            importCompatibilityData.forEach(rule => {
+                if (!rule.sourceProductId || !rule.targetProductId) return;
+                const idx = compatibilityRules.findIndex(r => r.id === rule.id);
+                if (idx >= 0) compatibilityRules[idx] = rule;
+                else compatibilityRules.push(rule);
+                count += 1;
+            });
+            compatibilityRules = normalizeCompatibilityRules(compatibilityRules);
+            return count;
+        }
+
+        function processChannelPartnerImport() {
+            if (!Array.isArray(importChannelPartnerData) || !importChannelPartnerData.length) return 0;
+            let count = 0;
+            importChannelPartnerData.forEach(partner => {
+                const idx = channelPartners.findIndex(p => p.id === partner.id);
+                if (idx >= 0) channelPartners[idx] = partner;
+                else channelPartners.push(partner);
+                count += 1;
+            });
+            channelPartners = normalizeChannelPartners(channelPartners);
+            return count;
         }
 
         function renderImportLog(success, failed, details) {
@@ -8045,13 +10095,24 @@
         }
 
         window.downloadTemplate = () => {
-            const headers = ['Product ID', 'Product Name', 'Category', 'Supplier', 'Spec Model', 'Subcategory', 'Warranty Years', 'Cycle Count', 'Lead Time', 'Contact', 'Contact Method', 'Product Certification Countries', 'Product Certification Standards', 'Base Currency', 'Base Cost', 'Base Price'];
-            const data = products.map(p => [
+            const masterHeaders = ['SKU / Model', 'Brand', 'Series', 'Application', 'Voltage Class', 'Phase', 'Status', 'Country Available', 'Datasheet Link', 'External Certificate Link', 'Remark'];
+            const sourcingHeaders = ['Source Type', 'Channel Partner ID', 'Brand Supplier Code', 'Commercial Supplier Code', 'Factory Supplier Code', 'Brand Owner Supplier Code', 'Authorization Status', 'Authorization Expiry', 'Source Remark'];
+            const technicalHeaders = PRODUCT_MASTER_TECHNICAL_IMPORT_KEYS.map(key => PRODUCT_MASTER_TECHNICAL_LABEL_BY_KEY[key]);
+            const headers = ['Product ID', 'Product Name', 'Category', 'Supplier', 'Spec Model', 'Inverter kW', 'Battery kWh', 'Subcategory', 'Warranty Years', 'Cycle Count', 'Lead Time', 'Contact', 'Contact Method', 'Product Certification Countries', 'Product Certification Standards', 'Base Currency', 'Price Basis Unit', 'Qty per PCS', 'Base Cost', 'Base Price', ...masterHeaders, ...sourcingHeaders, ...technicalHeaders];
+            const data = products.map(p => {
+                const pricingMeta = getProductPricingMeta(p);
+                const hybridSpec = isHybridStorageCategory(p.category) ? parseHybridStorageSpec(p) : { inverterKw: '', batteryKwh: '' };
+                const md = getProductMasterData(p);
+                const tech = getProductTechnicalSpecs(p);
+                const sourcing = getProductSourcing(p);
+                return [
                 p.id || '',
                 p.name || '',
                 p.category || '',
                 getProductSupplierDisplay(p),
-                p.spec || '',
+                getProductDisplaySpec(p) || '',
+                hybridSpec.inverterKw || '',
+                hybridSpec.batteryKwh || '',
                 p.scenario || '',
                 p.warrantyYears || '',
                 p.warrantyCycles || '',
@@ -8061,18 +10122,75 @@
                 (getProductCertificationRequirements(p).countries || []).join(', '),
                 (getProductCertificationRequirements(p).standards || []).join('; '),
                 getProductCurrency(p, 'cost'),
+                pricingMeta.priceBasisUnit,
+                pricingMeta.unitQtyPerPcs,
                 p.cost || 0,
-                p.price || 0
-            ]);
+                p.price || 0,
+                md.model || '',
+                md.brand || '',
+                md.series || '',
+                md.application || '',
+                md.voltageClass || '',
+                md.phase || '',
+                md.status || '',
+                md.countryAvailable || '',
+                md.datasheetLink || '',
+                md.certificateLink || '',
+                md.remark || '',
+                sourcing.sourceType || '',
+                sourcing.channelPartnerId || '',
+                sourcing.brandSupplierCode || p.supplierCode || '',
+                sourcing.commercialSupplierCode || '',
+                sourcing.factorySupplierCode || '',
+                sourcing.brandOwnerSupplierCode || '',
+                sourcing.authorizationStatus || '',
+                sourcing.authorizationExpiry || '',
+                sourcing.sourceRemark || '',
+                ...PRODUCT_MASTER_TECHNICAL_IMPORT_KEYS.map(key => tech[key] || '')
+            ];
+            });
 
             // 如果没数据，加一行示例
             if (data.length === 0) {
-                data.push(['PVM001', 'Sample Product', 'PV Module', 'Generic Supplier', '550W', 'Bifacial', '10', '0', '15 days', 'Sales Manager', 'sales@example.com', 'MY, US, EU', 'IEC 61215; IEC 61730', 'CNY', 500, 650]);
+                data.push(['PROD001', 'Sample All-in-One', 'All-in-One System', 'Generic Supplier', '5.5 kW / 10 kWh', 5.5, 10, 'Single-Phase All-in-One', '10', '0', '15 days', 'Sales Manager', 'sales@example.com', 'MY, US, EU', 'IEC 62619; IEC 62109-1/2', 'CNY', 'set', 1, 5000, 6500, 'AIO-5.5-10', 'Generic Brand', 'Hybrid Series', 'Residential', 'LV', 'Single', 'Active', 'MY', '', '', 'Sample V3 Product Master row', 'Direct Factory', '', 'SUP001', 'SUP001', 'SUP001', 'SUP001', 'Authorized', '', 'Factory source confirmed', ...PRODUCT_MASTER_TECHNICAL_IMPORT_KEYS.map(key => key === 'nominalEnergyKwh' ? 10 : (key === 'pcsRatedPowerKw' ? 5.5 : ''))]);
             }
 
             const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
+            const compatibilityHeaders = ['ID', 'Relation Type', 'Source Product ID', 'Target Product ID', 'System Scope', 'Status', 'Protocol', 'Constraints', 'Approved By', 'Updated At', 'Remark'];
+            const compatibilityRows = normalizeCompatibilityRules(compatibilityRules).map(rule => [
+                rule.id,
+                rule.relationType,
+                rule.sourceProductId,
+                rule.targetProductId,
+                rule.systemScope,
+                rule.status,
+                rule.protocol,
+                rule.constraints,
+                rule.approvedBy,
+                rule.updatedAt,
+                rule.remark
+            ]);
+            if (!compatibilityRows.length) compatibilityRows.push(['compat_001', 'Inverter ↔ Battery', 'INV001', 'BAT001', 'Residential', 'Pending', 'CAN / RS485', 'Voltage and firmware check required', '', '', 'Sample compatibility row']);
+            const compatibilityWorksheet = XLSX.utils.aoa_to_sheet([compatibilityHeaders, ...compatibilityRows]);
+            const channelPartnerHeaders = ['ID', 'Brand Supplier Code', 'Partner Type', 'Partner Name', 'Country/Region', 'Authorization Status', 'Authorization Expiry', 'Contact', 'Contact Info', 'Remark'];
+            const channelPartnerRows = normalizeChannelPartners(channelPartners).map(partner => [
+                partner.id,
+                partner.brandSupplierCode,
+                partner.type,
+                partner.name,
+                partner.country,
+                partner.authorizationStatus,
+                partner.authorizationExpiry,
+                partner.contact,
+                partner.contactInfo,
+                partner.remark
+            ]);
+            if (!channelPartnerRows.length) channelPartnerRows.push(['channel_001', 'SUP001', 'Authorized Distributor', 'Sample Distributor', 'MY', 'Authorized', '', 'Sales Manager', 'sales@example.com', 'Sample channel partner row']);
+            const channelPartnerWorksheet = XLSX.utils.aoa_to_sheet([channelPartnerHeaders, ...channelPartnerRows]);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, 'Product List');
+            XLSX.utils.book_append_sheet(workbook, channelPartnerWorksheet, 'Channel Partners');
+            XLSX.utils.book_append_sheet(workbook, compatibilityWorksheet, 'Compatibility Matrix');
             XLSX.writeFile(workbook, 'product-master-list.xlsx');
         };
 
@@ -8161,9 +10279,9 @@
         function getPickerInventoryPcsPricing(item, product, priceType = getPickerSelectedPriceType()) {
             const p = product || {};
             const r = computeInventoryPricing({ item, product: p });
-            const unit = getMarketCategoryUnitMeta(p.category || '').unit || 'pcs';
-            const multiplierRaw = getProductSpecMultiplierForUnit(p, item?.spec, unit);
-            const pcsMultiplier = multiplierRaw > 0 ? multiplierRaw : 1;
+            const pricingMeta = getProductPricingMeta(p, item);
+            const unit = pricingMeta.priceBasisUnit || 'pcs';
+            const pcsMultiplier = pricingMeta.unitQtyPerPcs > 0 ? pricingMeta.unitQtyPerPcs : 1;
             const selectedUnitPrice = getPickerSelectedPriceValue({
                 clearanceHomePrice: (item?.clearanceHomePrice ?? r.clearanceHomePrice) || 0,
                 clearanceBizPrice: (item?.clearanceBizPrice ?? r.clearanceBizPrice) || 0,
@@ -8174,40 +10292,35 @@
             const fallbackCost = Number.isFinite(parseFloat(item?.purchasePrice)) ? parseFloat(item.purchasePrice) : 0;
             return {
                 ...r,
-                costUnit: normalizeUnitLabel(unit),
+                costUnit: normalizePricingUnit(unit),
                 pcsMultiplier,
+                pricingMeta,
                 pcsPrice: selectedUnitPrice * pcsMultiplier,
                 pcsCost: (avgCost > 0 ? avgCost : fallbackCost) * pcsMultiplier
             };
         }
         function formatPickerInventorySpec(item, product) {
-            const unit = normalizeUnitLabel(getMarketCategoryUnitMeta(product?.category || '').unit || 'pcs');
-            const spec = Number.isFinite(parseFloat(item?.spec)) ? parseFloat(item.spec) : 0;
-            if (spec > 0) return `${formatNumberAuto(spec, 4)} ${unit}`;
-            const fallback = String(product?.spec || '').trim();
-            return fallback || `1 ${unit}`;
+            return getProductPricingMeta(product || {}, item).label;
         }
         function getPriceListProductPcsPricing(product, priceType = getPickerSelectedPriceType()) {
             const p = product || {};
+            const pricingMeta = getProductPricingMeta(p);
             const pricing = priceListProductPricing(p);
             const multiplierRaw = Number.isFinite(parseFloat(pricing.pcsMultiplier)) ? parseFloat(pricing.pcsMultiplier) : 1;
             const pcsMultiplier = multiplierRaw > 0 ? multiplierRaw : 1;
             const selectedUnitPrice = getPickerSelectedPriceValue(pricing, priceType);
             return {
                 ...pricing,
-                costUnit: normalizeUnitLabel(pricing.costUnit || getMarketCategoryUnitMeta(p.category || '').unit || 'pcs'),
+                costUnit: normalizePricingUnit(pricing.costUnit || pricingMeta.priceBasisUnit || 'pcs'),
                 pcsMultiplier,
+                pricingMeta: pricing.pricingMeta || pricingMeta,
                 pcsPrice: selectedUnitPrice * pcsMultiplier,
                 pcsCost: pricing.pcsCost || ((pricing.avgCost || 0) * pcsMultiplier),
                 priceType
             };
         }
         function formatPriceListProductSpec(product) {
-            const unit = normalizeUnitLabel(getMarketCategoryUnitMeta(product?.category || '').unit || 'pcs');
-            const multiplierRaw = getProductSpecMultiplierForUnit(product || {}, null, unit);
-            if (multiplierRaw > 0) return `${formatNumberAuto(multiplierRaw, 4)} ${unit}`;
-            const fallback = String(product?.spec || '').trim();
-            return fallback || `1 ${unit}`;
+            return getProductPricingMeta(product || {}).label;
         }
         function getProductDeliveryTime(product) {
             return String(product?.leadTime || product?.deliveryTime || '').trim() || '-';
@@ -8306,7 +10419,7 @@
                 const supplierCountry = String(supplier?.country || supplier?.region || '').trim();
                 const delivery = getProductDeliveryTime(p);
                 const hay = [
-                    p.id, p.name, p.category, p.scenario, p.spec,
+                    p.id, p.name, p.category, p.scenario, getProductDisplaySpec(p),
                     supplierName, supplierCountry, delivery
                 ].join(' ').toLowerCase();
                 return (!vendor || supplierName === vendor) &&
@@ -8369,14 +10482,14 @@
                 candidate.vendor = brand;
                 candidate.vendorManualOverride = false;
                 candidate.supplierCode = supplierCode;
-                candidate.spec = p.spec || '';
+                candidate.spec = getProductDisplaySpec(p) || '';
                 candidate.batchNo = item.batchNo;
                 candidate.price = price;
                 candidate.cost = cost;
                 candidate.productId = item.productId || '';
                 candidate.inventoryId = item.id || '';
             } else {
-                quoteRows.splice(insertIdx, 0, { id: Date.now(), description: p.name, vendor: brand, vendorManualOverride: false, supplierCode, spec: p.spec || '', batchNo: item.batchNo, quantity: 1, price: price, cost: cost, productId: item.productId || '', inventoryId: item.id || '' });
+                quoteRows.splice(insertIdx, 0, { id: Date.now(), description: p.name, vendor: brand, vendorManualOverride: false, supplierCode, spec: getProductDisplaySpec(p) || '', batchNo: item.batchNo, quantity: 1, price: price, cost: cost, productId: item.productId || '', inventoryId: item.id || '' });
             }
             renderQuote();
         }
@@ -8401,14 +10514,14 @@
                 candidate.vendor = brand;
                 candidate.vendorManualOverride = false;
                 candidate.supplierCode = supplierCode;
-                candidate.spec = p.spec || '';
+                candidate.spec = getProductDisplaySpec(p) || '';
                 candidate.batchNo = '';
                 candidate.price = price;
                 candidate.cost = cost;
                 candidate.productId = p.id || '';
                 candidate.inventoryId = '';
             } else {
-                quoteRows.splice(insertIdx, 0, { id: Date.now(), description: p.name, vendor: brand, vendorManualOverride: false, supplierCode, spec: p.spec || '', batchNo: '', quantity: 1, price: price, cost: cost, productId: p.id || '', inventoryId: '' });
+                quoteRows.splice(insertIdx, 0, { id: Date.now(), description: p.name, vendor: brand, vendorManualOverride: false, supplierCode, spec: getProductDisplaySpec(p) || '', batchNo: '', quantity: 1, price: price, cost: cost, productId: p.id || '', inventoryId: '' });
             }
             renderQuote();
         }
@@ -9276,7 +11389,7 @@
         };
         window.fetchLiveRate = async (btn) => {
             if(!btn) return; const oT = btn.innerHTML; btn.innerHTML = 'Fetching...'; btn.disabled = true;
-            try { const res = await fetch('https://api.exchangerate-api.com/v4/latest/MYR'); const data = await res.json(); if(data?.rates?.CNY) { document.getElementById('rate-myr-cny').value = data.rates.CNY.toFixed(4); renderCostCalcUI(); } }
+            try { const res = await fetch('https://api.exchangerate-api.com/v4/latest/MYR'); const data = await res.json(); if(data?.rates?.CNY) { document.getElementById('rate-myr-cny').value = data.rates.CNY.toFixed(4); window.refreshFxDependentPricingViews(); } }
             catch(e) { console.error('Failed to fetch exchange rate:', e); } finally { btn.innerHTML = oT; btn.disabled = false; }
         };
         window.generateQuoteNo = () => {
@@ -9365,9 +11478,11 @@
                 salesRecords,
                 historicalInventory,
                 suppliers,
+                channelPartners,
                 companyCerts,
                 transportRecords,
                 fileDeleteLogs,
+                compatibilityRules,
                 subcategoriesByCategory,
                 profitSettings,
                 installerProfitSettings,
@@ -9391,9 +11506,11 @@
                     salesRecords,
                     historicalInventory,
                     suppliers,
+                    channelPartners,
                     companyCerts,
                     transportRecords,
                     fileDeleteLogs,
+                    compatibilityRules,
                     subcategoriesByCategory,
                     profitSettings,
                     installerProfitSettings,
@@ -9779,6 +11896,7 @@
                     p.certifications.specSheets.push(certEntry);
                 }
                 saveToLocal();
+                persistEntityToD1('product', p.id, p);
                 renderProductCertsInModal();
             } catch (err) {
                 alert('上传失败: ' + err.message);
@@ -9850,6 +11968,7 @@
                     message: `minova: delete product cert ${pid} ${removed?.name || removed?.path || ''}`.trim()
                 });
                 saveToLocal();
+                persistEntityToD1('product', p.id, p);
                 renderProductCertsInModal();
                 try { if (document.getElementById('cert-attachment-modal')) renderProductCertCheckboxes(); } catch (e) {}
                 try { if (document.getElementById('cert-attachment-modal')) updateCertSelectedSummary(); } catch (e) {}

@@ -123,6 +123,367 @@ test('hidden-bypass check exposes English product list UI with migrated category
   assert.equal(html.includes("['明匠', 'Mingjiang']"), true, 'Missing display-only supplier mapping');
 });
 
+test('product master exposes product type and role view controls', () => {
+  const databaseTab = mainSnippet('<main id="view-database"');
+  [
+    'id="product-master-type-controls"',
+    'id="product-master-role-controls"',
+    'setProductMasterTypeView',
+    'setProductMasterRoleView',
+    'ESS / Hybrid Storage',
+    'BOS / Accessories',
+    'Engineering / Technical',
+    'Commercial / Audit'
+  ].forEach((text) => {
+    assert.equal(databaseTab.includes(text) || html.includes(text), true, `Missing Product Master view UI: ${text}`);
+  });
+});
+
+test('product master type groups map current product categories without schema migration', () => {
+  [
+    "id: 'ess'",
+    "categories: ['All-in-One System', 'C&I Storage']",
+    "id: 'bos'",
+    "categories: ['Accessory']",
+    'function getProductTypeGroup(product)',
+    'window.getProductTypeGroup = getProductTypeGroup'
+  ].forEach((text) => {
+    assert.equal(html.includes(text), true, `Missing product type grouping logic: ${text}`);
+  });
+});
+
+test('product master role views define permission-aware column sets', () => {
+  [
+    "id: 'sales'",
+    "id: 'engineering'",
+    "id: 'procurement'",
+    "id: 'commercial'",
+    "id: 'full'",
+    "sensitiveField: 'cost'",
+    "sensitiveField: 'supplierContact'",
+    'function getDefaultProductRoleView()',
+    "sales_management: 'sales'",
+    "supply_chain: 'procurement'",
+    "operation_management: 'engineering'",
+    "price_auditor: 'commercial'",
+    "admin: 'full'"
+  ].forEach((text) => {
+    assert.equal(html.includes(text), true, `Missing Product Master role view rule: ${text}`);
+  });
+});
+
+test('product master v2 exposes search and md-inspired technical field surfaces', () => {
+  const databaseTab = mainSnippet('<main id="view-database"');
+  const productModal = snippetBetween('<div id="modal"', '<div id="inventory-modal"');
+  const script = snippetBetween('const PRODUCT_MASTER_TYPE_STORAGE_KEY', '// --- Select器逻辑 ---');
+
+  [
+    'id="product-master-search"',
+    'minova_product_master_search_v1',
+    'Product Master Details',
+    'id="m-master-model"',
+    'id="m-master-series"',
+    'id="product-master-technical-fields"',
+    'Power_W',
+    'Rated_AC_Power_kW',
+    'Nominal_Energy_kWh',
+    'PCS_Rated_Power_kW'
+  ].forEach((text) => {
+    assert.equal(
+      databaseTab.includes(text) || productModal.includes(text) || script.includes(text),
+      true,
+      `Missing Product Master V2 UI or helper text: ${text}`
+    );
+  });
+});
+
+test('product master v2 saves lightweight masterData and technicalSpecs without replacing legacy fields', () => {
+  const script = snippetBetween('const PRODUCT_MASTER_TYPE_STORAGE_KEY', '// --- 批量导入逻辑 ---');
+
+  [
+    'masterData: readProductMasterDataFromModal()',
+    'technicalSpecs: readProductTechnicalSpecsFromModal(category)',
+    'fillProductMasterDetails(p)',
+    'renderProductTechnicalFields(category, p?.technicalSpecs || {})',
+    'spec: hybridSpec || document.getElementById(\'m-spec\').value',
+    'scenario: normalizeProductSubcategory(document.getElementById(\'m-scenario\').value)',
+    'inverterKw: hybrid ?',
+    'batteryKwh: hybrid ?'
+  ].forEach((text) => {
+    assert.equal(script.includes(text), true, `Missing V2 save/load compatibility logic: ${text}`);
+  });
+});
+
+test('product master v2 category specs map pv inverter battery and ess fields', () => {
+  [
+    "id: 'pv'",
+    "id: 'inverter'",
+    "id: 'battery'",
+    "id: 'ess'",
+    'powerW',
+    'moduleEfficiencyPct',
+    'ratedAcPowerKw',
+    'mpptQty',
+    'nominalEnergyKwh',
+    'cycleLife',
+    'pcsRatedPowerKw',
+    'emsIncluded'
+  ].forEach((text) => {
+    assert.equal(html.includes(text), true, `Missing category technical field mapping: ${text}`);
+  });
+});
+
+test('product master v2 search covers base supplier certification and technical values', () => {
+  const script = snippetBetween('const PRODUCT_MASTER_TYPE_STORAGE_KEY', '// --- Select器逻辑 ---');
+
+  [
+    'function getProductMasterSearchQuery()',
+    'function productMatchesProductMasterSearch(product, query)',
+    'flattenProductMasterValues(product.masterData)',
+    'flattenProductMasterValues(product.technicalSpecs)',
+    'getProductSupplierDisplay(product)',
+    'getProductCertificationRequirements(product)',
+    'searchFilteredProducts',
+    'renderProductMasterControls(products.length, filteredProducts.length, searchFilteredProducts.length)'
+  ].forEach((text) => {
+    assert.equal(script.includes(text), true, `Missing Product Master search behavior: ${text}`);
+  });
+});
+
+test('product master v2 role views and template include added master columns', () => {
+  [
+    "model: { key: 'model', label: 'Model'",
+    "brand: { key: 'brand', label: 'Brand'",
+    "series: { key: 'series', label: 'Series'",
+    "voltage: { key: 'voltage', label: 'Voltage'",
+    "phase: { key: 'phase', label: 'Phase'",
+    "status: { key: 'status', label: 'Status'",
+    "technicalSummary: { key: 'technicalSummary', label: 'Technical Summary'",
+    "efficiencyCapacity: { key: 'efficiencyCapacity', label: 'Efficiency / Capacity'",
+    "'SKU / Model'",
+    "'Voltage Class'",
+    "'Power_W'",
+    "'Rated_AC_Power_kW'",
+    "'Nominal_Energy_kWh'",
+    "'PCS_Rated_Power_kW'"
+  ].forEach((text) => {
+    assert.equal(html.includes(text), true, `Missing V2 Product Master column/template field: ${text}`);
+  });
+});
+
+test('product master v3 role views focus on role workflows', () => {
+  [
+    "id: 'sales'",
+    "columns: ['id', 'name', 'quoteReadiness', 'supplyRoute', 'certificationReadiness', 'application', 'warranty', 'leadTime', 'quotePrice', 'actions']",
+    "id: 'engineering'",
+    "compatibilityStatus",
+    "attachedSpecs",
+    "certificationRequirements",
+    "id: 'procurement'",
+    "sourceType",
+    "commercialSupplier",
+    "factoryBrandOwner",
+    "authorizationStatus",
+    "id: 'commercial'",
+    "sourceRisk",
+    "certificationGap",
+    "marketAlignment"
+  ].forEach((text) => {
+    assert.equal(html.includes(text), true, `Missing V3 role workflow column rule: ${text}`);
+  });
+});
+
+test('product master v3 separates certification requirements links and attached files', () => {
+  const productModal = snippetBetween('<div id="modal"', '<div id="inventory-modal"');
+  const script = snippetBetween('const PRODUCT_MASTER_TYPE_STORAGE_KEY', '// --- Select器逻辑 ---');
+
+  [
+    'Certification Requirements',
+    'External Certificate Link',
+    'Product Certification Files',
+    'Attached Certs',
+    'Certification Status'
+  ].forEach((text) => {
+    assert.equal(productModal.includes(text) || script.includes(text), true, `Missing V3 certification clarity UI: ${text}`);
+  });
+
+  [
+    'productMasterAttachedCertFiles(product)',
+    'productMasterCertificationStatus(product)',
+    'ctx.masterData.certificateLink',
+    'flattenProductMasterValues(productMasterAttachedCertFiles(product))'
+  ].forEach((text) => {
+    assert.equal(script.includes(text), true, `Missing V3 certification clarity logic: ${text}`);
+  });
+});
+
+test('product master v3 adds supply route fields without replacing canonical supplier', () => {
+  const productModal = snippetBetween('<div id="modal"', '<div id="inventory-modal"');
+  const script = snippetBetween('const PRODUCT_MASTER_TYPE_STORAGE_KEY', '// --- 批量导入逻辑 ---');
+
+  [
+    'Supply Route',
+    'id="m-source-type"',
+    'Direct Factory',
+    'Authorized Distributor',
+    'Dealer',
+    'EPC Partner',
+    'id="m-commercial-supplier-code"',
+    'id="m-factory-supplier-code"',
+    'id="m-brand-owner-supplier-code"',
+    'id="m-authorization-status"',
+    'id="m-authorization-expiry"',
+    'id="m-source-remark"'
+  ].forEach((text) => {
+    assert.equal(productModal.includes(text), true, `Missing V3 supply route modal field: ${text}`);
+  });
+
+  [
+    'function getProductSourcing(product = {})',
+    'function readProductSourcingFromModal(canonicalSupplierCode = \'\')',
+    'function fillProductSourcingDetails(product = {})',
+    'sourcing: readProductSourcingFromModal(supplier.code)',
+    'supplierCode: supplier.code',
+    'vendor: getSupplierDisplayName(supplier)'
+  ].forEach((text) => {
+    assert.equal(script.includes(text), true, `Missing V3 sourcing save/load behavior: ${text}`);
+  });
+});
+
+test('product master v3 exposes compatibility matrix workspace and state plumbing', () => {
+  const databaseTab = mainSnippet('<main id="view-database"');
+  const script = snippetBetween('const PRODUCT_MASTER_TYPE_STORAGE_KEY', '// --- Select器逻辑 ---');
+
+  [
+    'Compatibility Matrix',
+    'id="compatibility-panel"',
+    'id="compatibility-search"',
+    'id="compatibility-relation-filter"',
+    'id="compatibility-status-filter"',
+    'id="compatibility-list"',
+    'id="compatibility-modal"',
+    'id="compat-relation-type"',
+    'id="compat-source-product"',
+    'id="compat-target-product"',
+    'id="compat-status"'
+  ].forEach((text) => {
+    assert.equal(databaseTab.includes(text) || html.includes(text), true, `Missing V3 compatibility workspace UI: ${text}`);
+  });
+
+  [
+    'let compatibilityRules = []',
+    'localStorage.setItem(\'minova_compatibility_rules_v1\'',
+    'compatibilityRules = normalizeCompatibilityRules(data?.compatibilityRules)',
+    'function normalizeCompatibilityRule(rule = {})',
+    'function getProductCompatibilitySummary(product)',
+    'function openProductCompatibilityDetails(productId)',
+    'function renderCompatibilityMatrix()',
+    'function saveCompatibilityRule()',
+    'persistEntityToD1(\'compatibility_rule\''
+  ].forEach((text) => {
+    assert.equal(script.includes(text) || html.includes(text), true, `Missing V3 compatibility state or behavior: ${text}`);
+  });
+});
+
+test('product master v3 import export includes sourcing and compatibility matrix sheets', () => {
+  [
+    "'Source Type'",
+    "'Commercial Supplier Code'",
+    "'Factory Supplier Code'",
+    "'Brand Owner Supplier Code'",
+    "'Authorization Status'",
+    "'Authorization Expiry'",
+    "'Source Remark'",
+    "'Compatibility Matrix'",
+    "'Relation Type'",
+    "'Source Product ID'",
+    "'Target Product ID'",
+    "importCompatibilityData",
+    "processCompatibilityImport()",
+    "XLSX.utils.book_append_sheet(workbook, compatibilityWorksheet, 'Compatibility Matrix')"
+  ].forEach((text) => {
+    assert.equal(html.includes(text), true, `Missing V3 import/export compatibility field: ${text}`);
+  });
+});
+
+test('supplier master v4 exposes brand channel partners and a channel partner table', () => {
+  const databaseTab = mainSnippet('<main id="view-database"');
+  const supplierModal = snippetBetween('<div id="supplier-modal"', '<div id="modal"');
+  const channelModal = snippetBetween('<div id="channel-partner-modal"', '<div id="modal"');
+
+  [
+    'Channel Partners',
+    'id="channel-partner-panel"',
+    'id="channel-partner-list"',
+    'id="channel-partner-search"',
+    'id="channel-partner-type-filter"',
+    'id="channel-partner-brand-filter"'
+  ].forEach((text) => {
+    assert.equal(databaseTab.includes(text), true, `Missing V4 channel partner table UI: ${text}`);
+  });
+
+  [
+    'Brand Channel Partners',
+    'id="supplier-channel-partner-editor"',
+    'addSupplierChannelPartnerDraft',
+    'removeSupplierChannelPartnerDraft'
+  ].forEach((text) => {
+    assert.equal(supplierModal.includes(text) || html.includes(text), true, `Missing V4 supplier modal channel editor: ${text}`);
+  });
+
+  [
+    'id="channel-partner-modal"',
+    'id="channel-partner-brand-code"',
+    'id="channel-partner-type"',
+    'id="channel-partner-country"',
+    'id="channel-partner-name"',
+    'saveChannelPartner'
+  ].forEach((text) => {
+    assert.equal(channelModal.includes(text) || html.includes(text), true, `Missing V4 channel partner modal: ${text}`);
+  });
+});
+
+test('product supply route v4 uses channel partner selection and direct factory simplified UI', () => {
+  const productModal = snippetBetween('<div id="modal"', '<div id="inventory-modal"');
+  const script = snippetBetween('const PRODUCT_MASTER_TYPE_STORAGE_KEY', '// --- 批量导入逻辑 ---');
+
+  [
+    'onchange="updateSupplyRouteVisibility()"',
+    'id="m-channel-partner-wrap"',
+    'id="m-channel-partner-id"',
+    'id="m-commercial-supplier-wrap"',
+    'id="m-factory-supplier-wrap"',
+    'id="m-brand-owner-supplier-wrap"'
+  ].forEach((text) => {
+    assert.equal(productModal.includes(text), true, `Missing V4 supply route simplified UI: ${text}`);
+  });
+
+  [
+    'function updateSupplyRouteVisibility()',
+    'function updateProductChannelPartnerOptions()',
+    'channelPartnerId',
+    "if (sourceType === 'Direct Factory')",
+    'getProductChannelPartner(product)'
+  ].forEach((text) => {
+    assert.equal(script.includes(text), true, `Missing V4 supply route channel logic: ${text}`);
+  });
+});
+
+test('channel partners v4 are included in state d1 merge and export surfaces', () => {
+  [
+    'let channelPartners = []',
+    'localStorage.setItem(\'minova_channel_partners_v1\'',
+    'channelPartners = normalizeChannelPartners(data?.channelPartners)',
+    'channelPartners,',
+    "persistEntityToD1('channel_partner'",
+    "'Channel Partners'",
+    "'Channel Partner ID'",
+    "'Brand Supplier Code'"
+  ].forEach((text) => {
+    assert.equal(html.includes(text), true, `Missing V4 channel partner state/export behavior: ${text}`);
+  });
+});
+
 test('product import still accepts legacy Chinese column headers', () => {
   [
     "id: '产品编号'",
@@ -158,12 +519,12 @@ test('product base prices support supplier-defaulted CNY and MYR currencies', ()
     "priceCurrency: productCurrency",
     'updateProductCurrencyFromSupplier({ skipExisting: true })',
     "document.getElementById('m-price-currency').value = getProductCurrency(p, 'cost')",
-    'getProductPriceCny(p)',
     'getProductCostCny(p)'
   ].forEach((text) => {
     assert.equal(script.includes(text), true, `Product currency logic is missing: ${text}`);
   });
 
+  assert.match(script, /getProductPriceCny\((p|product)\)/, 'Product renderer should read normalized product price values');
   assert.match(script, /china[\s\S]*CNY/i, 'Supplier country inference should default China suppliers to CNY');
   assert.match(script, /malaysia[\s\S]*MYR/i, 'Supplier country inference should default Malaysia suppliers to MYR');
 });

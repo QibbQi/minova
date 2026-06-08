@@ -18,12 +18,14 @@ const ROLE_NAME_TO_KEY = Object.fromEntries(
 const BUSINESS_DOMAIN_PERMISSIONS = {
   supplier: 'suppliers',
   product: 'products',
+  channel_partner: 'products',
   inventory: 'inventory',
   inventory_history: 'inventory',
   sales_record: 'inventory',
   historical_inventory: 'inventory',
   transport: 'transport',
   market_price: 'priceList',
+  compatibility_rule: 'products',
   saved_quote: 'quotes'
 };
 const BUSINESS_SETTINGS_KEYS = new Set([
@@ -1159,12 +1161,14 @@ export function businessSnapshotToItems(data = {}, quotes = []) {
   const items = [
     ...arr(data.suppliers).map(record => ({ domain: 'supplier', recordId: recordIdFor(record), payload: record })),
     ...arr(data.products).map(record => ({ domain: 'product', recordId: recordIdFor(record), payload: record })),
+    ...arr(data.channelPartners).map(record => ({ domain: 'channel_partner', recordId: recordIdFor(record), payload: record })),
     ...arr(data.inventory).map(record => ({ domain: 'inventory', recordId: recordIdFor(record), payload: record })),
     ...arr(data.inventoryHistory).map((record, index) => ({ domain: 'inventory_history', recordId: recordIdFor(record, index), payload: record })),
     ...arr(data.salesRecords).map((record, index) => ({ domain: 'sales_record', recordId: recordIdFor(record, index), payload: record })),
     ...arr(data.historicalInventory).map((record, index) => ({ domain: 'historical_inventory', recordId: recordIdFor(record, index), payload: record })),
     ...arr(data.transportRecords).map(record => ({ domain: 'transport', recordId: recordIdFor(record), payload: record })),
     ...arr(data.marketPrices?.records).map(record => ({ domain: 'market_price', recordId: recordIdFor(record), payload: record })),
+    ...arr(data.compatibilityRules).map(record => ({ domain: 'compatibility_rule', recordId: recordIdFor(record), payload: record })),
     ...arr(quotes).map(record => ({ domain: 'saved_quote', recordId: recordIdFor(record), payload: record }))
   ].filter(item => item.recordId);
   const settings = {
@@ -1185,12 +1189,14 @@ export function buildBusinessBootstrapPayload(rows = [], settings = {}) {
   const bucket = {
     supplier: [],
     product: [],
+    channel_partner: [],
     inventory: [],
     inventory_history: [],
     sales_record: [],
     historical_inventory: [],
     transport: [],
     market_price: [],
+    compatibility_rule: [],
     saved_quote: []
   };
   const updatedAt = {};
@@ -1223,11 +1229,13 @@ export function buildBusinessBootstrapPayload(rows = [], settings = {}) {
     data: {
       products: bucket.product,
       suppliers: bucket.supplier,
+      channelPartners: bucket.channel_partner,
       inventory: bucket.inventory,
       inventoryHistory: bucket.inventory_history,
       salesRecords: bucket.sales_record,
       historicalInventory: bucket.historical_inventory,
       transportRecords: bucket.transport,
+      compatibilityRules: bucket.compatibility_rule,
       marketPrices: {
         records: bucket.market_price,
         categoryUnits: settings.market_price_settings?.categoryUnits || {},

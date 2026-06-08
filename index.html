@@ -2248,13 +2248,58 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             <th class="py-4 px-4">Contact</th>
                             <th class="py-4 px-4">Phone/Email</th>
                             <th class="py-4 px-4">Website</th>
+                            <th class="py-4 px-4 text-center">Channel Partners</th>
                             <th class="py-4 px-4 text-center">Linked Products</th>
                             <th class="py-4 px-4 text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="supplier-list" class="divide-y divide-slate-50">
-                    <tr><td colspan="13" class="py-12 text-center text-slate-400 text-sm">Loading suppliers...</td></tr>
+                    <tr><td colspan="14" class="py-12 text-center text-slate-400 text-sm">Loading suppliers...</td></tr>
                 </tbody>
+                </table>
+            </div>
+        </div>
+        <div id="channel-partner-panel" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-4">
+            <div class="p-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-800">Channel Partners</h2>
+                    <p class="text-xs text-slate-400 mt-1">Manage distributors, dealers, and EPC partners by brand and country.</p>
+                </div>
+                <button onclick="openChannelPartnerModal()" class="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-slate-100 hover:bg-black flex items-center gap-2">
+                    <span>+ New Channel Partner</span>
+                </button>
+            </div>
+            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/40 flex flex-col lg:flex-row lg:items-center gap-3">
+                <input id="channel-partner-search" type="search" oninput="renderChannelPartners()" placeholder="Search channel partners / country / contact" class="w-full lg:max-w-md border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-purple-500 bg-white">
+                <select id="channel-partner-type-filter" onchange="renderChannelPartners()" class="border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold outline-none bg-white">
+                    <option value="all">All Types</option>
+                    <option value="Authorized Distributor">Authorized Distributor</option>
+                    <option value="Dealer">Dealer</option>
+                    <option value="EPC Partner">EPC Partner</option>
+                </select>
+                <select id="channel-partner-brand-filter" onchange="renderChannelPartners()" class="border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold outline-none bg-white">
+                    <option value="all">All Brands</option>
+                </select>
+                <div id="channel-partner-summary" class="text-[11px] font-bold text-slate-400 lg:ml-auto">0 partners</div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left whitespace-nowrap">
+                    <thead class="bg-slate-50/50">
+                        <tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                            <th class="py-4 px-4">Partner</th>
+                            <th class="py-4 px-4">Type</th>
+                            <th class="py-4 px-4">Brand</th>
+                            <th class="py-4 px-4">Country/Region</th>
+                            <th class="py-4 px-4">Authorization</th>
+                            <th class="py-4 px-4">Contact</th>
+                            <th class="py-4 px-4">Remark</th>
+                            <th class="py-4 px-4 text-center">Linked Products</th>
+                            <th class="py-4 px-4 text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="channel-partner-list" class="divide-y divide-slate-50">
+                        <tr><td colspan="9" class="py-12 text-center text-slate-400 text-sm">No channel partners yet.</td></tr>
+                    </tbody>
                 </table>
             </div>
         </div>
@@ -2264,7 +2309,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     <h2 class="text-xl font-bold text-slate-800">Product Master List</h2>
                     <p class="text-xs text-slate-400 mt-1">Manage product costs and benchmark sales prices</p>
                 </div>
-                <div class="flex items-center gap-3">
+                <div class="flex flex-wrap items-center gap-3">
                     <div class="bg-slate-100 p-1 rounded-xl flex">
                         <button onclick="setDbGroup('category')" id="btn-group-category" class="px-4 py-1.5 text-xs font-bold rounded-lg transition-all bg-white shadow-sm text-blue-600">By Category</button>
                         <button onclick="setDbGroup('vendor')" id="btn-group-vendor" class="px-4 py-1.5 text-xs font-bold rounded-lg transition-all text-slate-500">By Supplier</button>
@@ -2279,10 +2324,41 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     </button>
                 </div>
             </div>
+            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/40 space-y-3">
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                    <div>
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Product Type</p>
+                        <div id="product-master-type-controls" class="mt-2 flex flex-wrap gap-2">
+                            <button id="product-master-type-all" type="button" onclick="setProductMasterTypeView('all')" class="px-3 py-2 rounded-xl border border-purple-200 bg-white text-xs font-black text-purple-800 shadow-sm">All</button>
+                            <button id="product-master-type-pv" type="button" onclick="setProductMasterTypeView('pv')" class="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-black text-slate-500 hover:bg-slate-50">PV Module</button>
+                            <button id="product-master-type-inverter" type="button" onclick="setProductMasterTypeView('inverter')" class="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-black text-slate-500 hover:bg-slate-50">Inverter</button>
+                            <button id="product-master-type-battery" type="button" onclick="setProductMasterTypeView('battery')" class="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-black text-slate-500 hover:bg-slate-50">Battery</button>
+                            <button id="product-master-type-ess" type="button" onclick="setProductMasterTypeView('ess')" class="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-black text-slate-500 hover:bg-slate-50">ESS / Hybrid Storage</button>
+                            <button id="product-master-type-bos" type="button" onclick="setProductMasterTypeView('bos')" class="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-black text-slate-500 hover:bg-slate-50">BOS / Accessories</button>
+                        </div>
+                    </div>
+                    <div class="lg:text-right">
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Role View</p>
+                        <div id="product-master-role-controls" class="mt-2 flex flex-wrap gap-2 lg:justify-end">
+                            <button id="product-master-role-sales" type="button" onclick="setProductMasterRoleView('sales')" class="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-black text-slate-500 hover:bg-slate-50">Sales</button>
+                            <button id="product-master-role-engineering" type="button" onclick="setProductMasterRoleView('engineering')" class="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-black text-slate-500 hover:bg-slate-50">Engineering / Technical</button>
+                            <button id="product-master-role-procurement" type="button" onclick="setProductMasterRoleView('procurement')" class="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-black text-slate-500 hover:bg-slate-50">Procurement</button>
+                            <button id="product-master-role-commercial" type="button" onclick="setProductMasterRoleView('commercial')" class="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-black text-slate-500 hover:bg-slate-50">Commercial / Audit</button>
+                            <button id="product-master-role-full" type="button" onclick="setProductMasterRoleView('full')" class="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-black text-slate-500 hover:bg-slate-50">Full</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div class="relative w-full md:max-w-xl">
+                        <input id="product-master-search" type="search" oninput="setProductMasterSearch(this.value)" placeholder="Search product, supplier, certification, technical spec..." class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-purple-500 bg-white">
+                    </div>
+                    <div id="product-master-view-summary" class="text-[11px] font-bold text-slate-400 md:text-right">All products | Full view</div>
+                </div>
+            </div>
             <div class="overflow-x-auto">
                 <table data-freeze-table="product-list" class="w-full text-left whitespace-nowrap">
                     <thead class="bg-slate-50/50">
-                        <tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                        <tr id="product-master-head-row" class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
                             <th class="py-4 px-4">
                                 <div class="flex flex-col items-start gap-1">
                                     <span>Product ID</span>
@@ -2311,7 +2387,130 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 </table>
             </div>
         </div>
+        <div id="compatibility-panel" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="p-6 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-800">Compatibility Matrix</h2>
+                    <p class="text-xs text-slate-400 mt-1">Manage system relationships such as PV to inverter, inverter to battery, required BOS, and bundled ESS systems.</p>
+                </div>
+                <button onclick="openCompatibilityModal()" class="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg hover:bg-black flex items-center gap-2">
+                    <span>+ New Rule</span>
+                </button>
+            </div>
+            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/40 flex flex-col lg:flex-row lg:items-center gap-3">
+                <input id="compatibility-search" type="search" oninput="renderCompatibilityMatrix()" placeholder="Search product, protocol, constraint, approver..." class="w-full lg:max-w-md border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-purple-500 bg-white">
+                <select id="compatibility-relation-filter" onchange="renderCompatibilityMatrix()" class="border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold outline-none bg-white">
+                    <option value="all">All Relations</option>
+                    <option value="PV ↔ Inverter">PV ↔ Inverter</option>
+                    <option value="Inverter ↔ Battery">Inverter ↔ Battery</option>
+                    <option value="ESS ↔ Battery/PCS">ESS ↔ Battery/PCS</option>
+                    <option value="BOS Required">BOS Required</option>
+                    <option value="System Bundle">System Bundle</option>
+                </select>
+                <select id="compatibility-status-filter" onchange="renderCompatibilityMatrix()" class="border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold outline-none bg-white">
+                    <option value="all">All Status</option>
+                    <option value="Approved">Approved</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Conditional">Conditional</option>
+                    <option value="Blocked">Blocked</option>
+                    <option value="Unknown">Unknown</option>
+                </select>
+                <div id="compatibility-summary" class="text-[11px] font-bold text-slate-400 lg:ml-auto">0 rules</div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left whitespace-nowrap">
+                    <thead class="bg-slate-50/50">
+                        <tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                            <th class="py-4 px-4">Relation</th>
+                            <th class="py-4 px-4">Source Product</th>
+                            <th class="py-4 px-4">Target Product</th>
+                            <th class="py-4 px-4">Scope</th>
+                            <th class="py-4 px-4">Status</th>
+                            <th class="py-4 px-4">Protocol</th>
+                            <th class="py-4 px-4">Constraints</th>
+                            <th class="py-4 px-4">Approved By</th>
+                            <th class="py-4 px-4">Updated</th>
+                            <th class="py-4 px-4 text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="compatibility-list" class="divide-y divide-slate-50">
+                        <tr><td colspan="10" class="py-12 text-center text-slate-400 text-sm">No compatibility rules yet.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </main>
+
+    <div id="compatibility-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center z-[210] p-4">
+        <div class="bg-white rounded-3xl p-8 w-full max-w-3xl shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-start mb-6">
+                <div>
+                    <h3 class="text-xl font-bold text-slate-800">Compatibility Rule</h3>
+                    <p class="text-xs text-slate-400 mt-1">Use this matrix for engineering fit and sales bundle confidence.</p>
+                </div>
+                <button onclick="closeCompatibilityModal()" class="text-slate-400 hover:text-slate-600 text-2xl">×</button>
+            </div>
+            <input id="compat-rule-id" type="hidden">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Relation Type</label>
+                    <select id="compat-relation-type" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-500 bg-white">
+                        <option value="PV ↔ Inverter">PV ↔ Inverter</option>
+                        <option value="Inverter ↔ Battery">Inverter ↔ Battery</option>
+                        <option value="ESS ↔ Battery/PCS">ESS ↔ Battery/PCS</option>
+                        <option value="BOS Required">BOS Required</option>
+                        <option value="System Bundle">System Bundle</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Status</label>
+                    <select id="compat-status" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-500 bg-white">
+                        <option value="Approved">Approved</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Conditional">Conditional</option>
+                        <option value="Blocked">Blocked</option>
+                        <option value="Unknown">Unknown</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Source Product</label>
+                    <select id="compat-source-product" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-500 bg-white"></select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Target Product</label>
+                    <select id="compat-target-product" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-500 bg-white"></select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">System Scope</label>
+                    <input id="compat-system-scope" type="text" placeholder="Residential / C&I / ESS Cabinet..." class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-500">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Protocol</label>
+                    <input id="compat-protocol" type="text" placeholder="CAN / RS485 / Modbus / mechanical..." class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-500">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Constraints</label>
+                    <textarea id="compat-constraints" rows="3" placeholder="Voltage range, firmware, cable, installation limits..." class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-500 resize-none"></textarea>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Approved By</label>
+                    <input id="compat-approved-by" type="text" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-500">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Updated At</label>
+                    <input id="compat-updated-at" type="date" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-500">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Remark</label>
+                    <input id="compat-remark" type="text" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-500">
+                </div>
+            </div>
+            <div class="mt-8 flex gap-3">
+                <button onclick="closeCompatibilityModal()" class="flex-1 py-3 text-slate-400 font-bold hover:bg-slate-50 rounded-2xl transition-colors border border-slate-200">Cancel</button>
+                <button onclick="saveCompatibilityRule()" class="flex-1 py-3 bg-slate-900 text-white rounded-2xl font-bold shadow-lg hover:bg-black transition-all">Save Rule</button>
+            </div>
+        </div>
+    </div>
 
     <main id="view-pvcalc" class="max-w-6xl mx-auto px-4 mb-20 hidden" style="display: none;">
         <div class="mb-4 no-print flex flex-wrap gap-4 justify-between items-center bg-white p-3 rounded-2xl shadow-sm border border-slate-200">
@@ -3212,6 +3411,16 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Address</label>
                         <input type="text" id="supplier-address" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-600" placeholder="Factory or office address">
                     </div>
+                    <div class="md:col-span-2 border border-slate-200 rounded-2xl p-4 bg-slate-50/60">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-3">
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Brand Channel Partners</label>
+                                <p class="text-xs text-slate-400">Default one editable row; add distributors, dealers, or EPC partners for this brand by country.</p>
+                            </div>
+                            <button type="button" onclick="addSupplierChannelPartnerDraft()" class="px-3 py-2 rounded-xl bg-purple-700 text-white text-xs font-black hover:bg-purple-800">+ Add Partner</button>
+                        </div>
+                        <div id="supplier-channel-partner-editor" class="space-y-2"></div>
+                    </div>
                     <div class="md:col-span-2 border border-purple-100 rounded-2xl p-4 bg-purple-50/30">
                         <div class="flex flex-col md:flex-row md:items-start justify-between gap-3 mb-4">
                             <div>
@@ -3345,6 +3554,72 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         </div>
     </div>
 
+    <div id="channel-partner-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[210] p-4 hidden">
+        <div class="bg-white rounded-3xl p-8 w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex items-start justify-between gap-4 mb-6">
+                <div>
+                    <h3 id="channel-partner-modal-title" class="text-xl font-bold text-slate-800">Channel Partner</h3>
+                    <p class="text-xs text-slate-400 mt-1">Distributor, dealer, or EPC partner linked to one brand supplier and country.</p>
+                </div>
+                <button onclick="closeChannelPartnerModal()" class="text-slate-400 hover:text-slate-700 text-xl leading-none">×</button>
+            </div>
+            <input id="channel-partner-id" type="hidden">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Brand Supplier</label>
+                    <select id="channel-partner-brand-code" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-600 bg-white"></select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Partner Type</label>
+                    <select id="channel-partner-type" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-600 bg-white">
+                        <option value="Authorized Distributor">Authorized Distributor</option>
+                        <option value="Dealer">Dealer</option>
+                        <option value="EPC Partner">EPC Partner</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Partner Name</label>
+                    <input id="channel-partner-name" type="text" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-600">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Country/Region</label>
+                    <input id="channel-partner-country" type="text" placeholder="MY / VN / TH..." class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-600">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Authorization Status</label>
+                    <select id="channel-partner-auth-status" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-600 bg-white">
+                        <option value="">-</option>
+                        <option value="Authorized">Authorized</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Expired">Expired</option>
+                        <option value="Not Required">Not Required</option>
+                        <option value="Unknown">Unknown</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Authorization Expiry</label>
+                    <input id="channel-partner-auth-expiry" type="date" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-600">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Contact</label>
+                    <input id="channel-partner-contact" type="text" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-600">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Phone / Email</label>
+                    <input id="channel-partner-contact-info" type="text" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-600">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Remark</label>
+                    <input id="channel-partner-remark" type="text" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-600">
+                </div>
+            </div>
+            <div class="mt-8 flex gap-3">
+                <button onclick="closeChannelPartnerModal()" class="flex-1 py-3 text-slate-400 font-bold hover:bg-slate-50 rounded-2xl transition-colors border border-slate-200">Cancel</button>
+                <button onclick="saveChannelPartner()" class="flex-1 py-3 bg-slate-900 text-white rounded-2xl font-bold shadow-lg hover:bg-black transition-all">Save Channel Partner</button>
+            </div>
+        </div>
+    </div>
+
     <div id="modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[200] p-4 hidden">
         <!-- 为了容纳更多字段，弹窗宽度由 max-w-lg 增加到了 max-w-2xl -->
         <div class="bg-white rounded-3xl p-8 w-full max-w-3xl shadow-2xl max-h-[90vh] overflow-y-auto">
@@ -3360,12 +3635,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     </div>
                     <div class="col-span-1">
                         <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Category</label>
-                        <input type="text" id="m-category" list="cat-suggestions" oninput="updateSubcatSuggestions(); updateHybridSpecControls(); updateProductPriceUnitNote(); maybeFillProductCertificationDefaults()" onchange="updateSubcatSuggestions(); updateHybridSpecControls(); updateProductPriceUnitNote(); maybeFillProductCertificationDefaults()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50">
+                        <input type="text" id="m-category" list="cat-suggestions" oninput="updateSubcatSuggestions(); updateHybridSpecControls(); updateProductPriceUnitNote(); renderProductTechnicalFields(this.value); maybeFillProductCertificationDefaults()" onchange="updateSubcatSuggestions(); updateHybridSpecControls(); updateProductPriceUnitNote(); renderProductTechnicalFields(this.value); maybeFillProductCertificationDefaults()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50">
                         <datalist id="cat-suggestions"><option value="PV Module"></option><option value="Inverter"></option><option value="Battery"></option><option value="Accessory"></option><option value="All-in-One System"></option><option value="C&amp;I Storage"></option></datalist>
                     </div>
                     <div class="col-span-1">
                         <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Supplier</label>
-                        <select id="m-supplier-code" onchange="updateProductCurrencyFromSupplier({ force: false })" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 bg-white"><option value="">Select Supplier</option><option value="LESSO">LESSO · 联塑 LESSO</option><option value="SUP1186">SUP1186 · 明匠</option><option value="SUP2790">SUP2790 · 埃克森</option><option value="SUP9590">SUP9590 · 汉伏</option></select>
+                        <select id="m-supplier-code" onchange="updateProductCurrencyFromSupplier({ force: false }); updateSupplyRouteVisibility()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 bg-white"><option value="">Select Supplier</option><option value="LESSO">LESSO · 联塑 LESSO</option><option value="SUP1186">SUP1186 · 明匠</option><option value="SUP2790">SUP2790 · 埃克森</option><option value="SUP9590">SUP9590 · 汉伏</option></select>
                     </div>
 
                     <!-- Add字段区段 -->
@@ -3386,6 +3661,125 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <div>
                             <label class="block text-[10px] font-black text-purple-500 uppercase mb-1">Battery Capacity (kWh)</label>
                             <input type="number" id="m-battery-kwh" step="0.01" min="0" placeholder="e.g. 10" oninput="syncHybridSpecFromInputs()" onchange="syncHybridSpecFromInputs()" class="w-full border border-purple-100 rounded-xl p-3 text-sm outline-none focus:border-purple-500 bg-white">
+                        </div>
+                    </div>
+
+                    <div class="col-span-2 border-t border-slate-100 my-2 pt-4">
+                        <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3 mb-3">
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Product Master Details</label>
+                                <p class="text-xs text-slate-400">Lightweight 01-05 Product Master fields for sales, engineering, and procurement search views.</p>
+                            </div>
+                            <div id="product-master-technical-group-label" class="text-[10px] font-black px-3 py-1 rounded-full bg-slate-100 text-slate-500">Select category</div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">SKU / Model</label>
+                                <input id="m-master-model" type="text" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Brand</label>
+                                <input id="m-master-brand" type="text" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Series</label>
+                                <input id="m-master-series" type="text" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Application</label>
+                                <input id="m-master-application" type="text" placeholder="Residential / C&I / Utility" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Voltage Class</label>
+                                <input id="m-master-voltageClass" type="text" placeholder="LV / HV / N/A" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Phase</label>
+                                <input id="m-master-phase" type="text" placeholder="Single / Three / N/A" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Status</label>
+                                <select id="m-master-status" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500 bg-white">
+                                    <option value="">-</option>
+                                    <option value="Active">Active</option>
+                                    <option value="Discontinued">Discontinued</option>
+                                    <option value="Pending">Pending</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Country Available</label>
+                                <input id="m-master-countryAvailable" type="text" placeholder="MY, VN, TH..." class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Datasheet Link</label>
+                                <input id="m-master-datasheetLink" type="text" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">External Certificate Link</label>
+                                <input id="m-master-certificateLink" type="text" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Remark</label>
+                                <input id="m-master-remark" type="text" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                            </div>
+                        </div>
+                        <div id="product-master-technical-fields" class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3"></div>
+                    </div>
+
+                    <div class="col-span-2 border-t border-slate-100 my-2 pt-4">
+                        <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3 mb-3">
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Supply Route</label>
+                                <p class="text-xs text-slate-400">Clarifies whether this product is sourced from the factory, an authorized distributor, dealer, or partner. The main Supplier field stays the quote and inventory supplier.</p>
+                            </div>
+                            <div id="m-source-route-note" class="text-[10px] font-black px-3 py-1 rounded-full bg-slate-100 text-slate-500">Canonical supplier unchanged</div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Source Type</label>
+                                <select id="m-source-type" onchange="updateSupplyRouteVisibility()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500 bg-white">
+                                    <option value="Unknown">Unknown</option>
+                                    <option value="Direct Factory">Direct Factory</option>
+                                    <option value="Authorized Distributor">Authorized Distributor</option>
+                                    <option value="Dealer">Dealer</option>
+                                    <option value="EPC Partner">EPC Partner</option>
+                                </select>
+                            </div>
+                            <div id="m-channel-partner-wrap">
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Channel Partner</label>
+                                <select id="m-channel-partner-id" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500 bg-white"></select>
+                            </div>
+                            <div id="m-commercial-supplier-wrap">
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Commercial Supplier</label>
+                                <select id="m-commercial-supplier-code" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500 bg-white"></select>
+                            </div>
+                            <div id="m-factory-supplier-wrap">
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Factory Supplier</label>
+                                <select id="m-factory-supplier-code" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500 bg-white"></select>
+                            </div>
+                            <div id="m-brand-owner-supplier-wrap">
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Brand Owner</label>
+                                <select id="m-brand-owner-supplier-code" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500 bg-white"></select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Authorization Status</label>
+                                <select id="m-authorization-status" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500 bg-white">
+                                    <option value="">-</option>
+                                    <option value="Authorized">Authorized</option>
+                                    <option value="Pending">Pending</option>
+                                    <option value="Expired">Expired</option>
+                                    <option value="Not Required">Not Required</option>
+                                    <option value="Unknown">Unknown</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Authorization Expiry</label>
+                                <input id="m-authorization-expiry" type="date" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                            </div>
+                            <div class="md:col-span-3">
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Source Remark</label>
+                                <input id="m-source-remark" type="text" placeholder="Factory relationship, distributor agreement, delivery caveats..." class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                            </div>
                         </div>
                     </div>
 
@@ -3416,7 +3810,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     <div class="col-span-2 border-t border-slate-100 my-2 pt-4">
                         <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3 mb-3">
                             <div>
-                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Product Certification</label>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Certification Requirements</label>
                                 <p class="text-xs text-slate-400">Editable market access defaults for customs, compliance, and sales quotation filters.</p>
                             </div>
                             <div class="flex flex-wrap gap-2">
@@ -4960,9 +5354,11 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         let salesRecords = [];
         let historicalInventory = [];
         let suppliers = [];
+        let channelPartners = [];
         let companyCerts = { isoCerts: [], transportCerts: [] };
         let transportRecords = [];
         let fileDeleteLogs = [];
+        let compatibilityRules = [];
         let inventorySummaryMode = false;
         let inventoryFullHeadHtml = '';
         let selectedInventoryForTransport = new Set();
@@ -5987,6 +6383,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 const cur = selectedCode || productSel.value || '';
                 productSel.innerHTML = renderSupplierOptions(cur);
                 if (cur && getSupplierByCode(cur)) productSel.value = normalizeSupplierCode(cur);
+                try { setSupplyRouteSelectOptions(getProductSourcing({ supplierCode: cur }), cur); } catch (e) {}
+                try { updateProductChannelPartnerOptions(); updateSupplyRouteVisibility(); } catch (e) {}
             }
         }
         window.__minovaGetProducts = () => products;
@@ -6441,6 +6839,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     salesRecords = Array.isArray(embedded.data.salesRecords) ? embedded.data.salesRecords : [];
                     historicalInventory = Array.isArray(embedded.data.historicalInventory) ? embedded.data.historicalInventory : [];
                     suppliers = Array.isArray(embedded.data.suppliers) ? embedded.data.suppliers : [];
+                    channelPartners = Array.isArray(embedded.data.channelPartners) ? embedded.data.channelPartners : [];
                     subcategoriesByCategory = embedded.data.subcategoriesByCategory && typeof embedded.data.subcategoriesByCategory === 'object' ? embedded.data.subcategoriesByCategory : {};
                     profitSettings = normalizeProfitSettings(embedded.data.profitSettings || null);
                     installerProfitSettings = normalizeInstallerProfitSettings(embedded.data.installerProfitSettings || installerProfitSettings || null);
@@ -6456,6 +6855,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         localStorage.setItem('minova_sales_records_v1', JSON.stringify(salesRecords));
                         localStorage.setItem('minova_historical_inventory_v1', JSON.stringify(historicalInventory));
                         localStorage.setItem('minova_suppliers_v1', JSON.stringify(suppliers));
+                        localStorage.setItem('minova_channel_partners_v1', JSON.stringify(channelPartners));
                         localStorage.setItem('minova_subcategories_v1', JSON.stringify(subcategoriesByCategory));
                         localStorage.setItem('minova_profit_settings_v1', JSON.stringify(profitSettings));
                         localStorage.setItem('minova_installer_profit_v1', JSON.stringify(installerProfitSettings));
@@ -6465,6 +6865,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     companyCerts = embedded.data.companyCerts && typeof embedded.data.companyCerts === 'object' ? embedded.data.companyCerts : companyCerts;
                     transportRecords = Array.isArray(embedded.data.transportRecords) ? embedded.data.transportRecords : [];
                     fileDeleteLogs = Array.isArray(embedded.data.fileDeleteLogs) ? embedded.data.fileDeleteLogs : [];
+                    compatibilityRules = Array.isArray(embedded.data.compatibilityRules) ? embedded.data.compatibilityRules : [];
+                    try { localStorage.setItem('minova_compatibility_rules_v1', JSON.stringify(compatibilityRules)); } catch (e) {}
                 }
             }
         } catch (e) {}
@@ -6482,6 +6884,14 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         try {
             const raw = localStorage.getItem('minova_file_delete_logs_v1');
             if (raw) fileDeleteLogs = Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : fileDeleteLogs;
+        } catch (e) {}
+        try {
+            const raw = localStorage.getItem('minova_compatibility_rules_v1');
+            if (raw) compatibilityRules = Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : compatibilityRules;
+        } catch (e) {}
+        try {
+            const raw = localStorage.getItem('minova_channel_partners_v1');
+            if (raw) channelPartners = Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : channelPartners;
         } catch (e) {}
         try {
             const raw = localStorage.getItem('minova_market_prices_v1');
@@ -6555,6 +6965,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             try {
                 if (key === 'database') {
                     renderSuppliers();
+                    renderChannelPartners();
                     renderDb();
                     updateDatalists();
                 } else if (key === 'inventory') {
@@ -6634,6 +7045,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             historicalInventory = Array.isArray(data?.historicalInventory) ? data.historicalInventory : [];
             suppliers = Array.isArray(data?.suppliers) ? data.suppliers : [];
             ensureSupplierData();
+            channelPartners = normalizeChannelPartners(data?.channelPartners);
+            compatibilityRules = normalizeCompatibilityRules(data?.compatibilityRules);
             subcategoriesByCategory = data?.subcategoriesByCategory && typeof data.subcategoriesByCategory === 'object' ? data.subcategoriesByCategory : {};
             profitSettings = normalizeProfitSettings(data?.profitSettings || profitSettings || null);
             installerProfitSettings = normalizeInstallerProfitSettings(data?.installerProfitSettings || installerProfitSettings || null);
@@ -6649,6 +7062,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 localStorage.setItem('minova_sales_records_v1', JSON.stringify(salesRecords));
                 localStorage.setItem('minova_historical_inventory_v1', JSON.stringify(historicalInventory));
                 localStorage.setItem('minova_suppliers_v1', JSON.stringify(suppliers));
+                localStorage.setItem('minova_channel_partners_v1', JSON.stringify(channelPartners));
+                localStorage.setItem('minova_compatibility_rules_v1', JSON.stringify(compatibilityRules));
                 localStorage.setItem('minova_subcategories_v1', JSON.stringify(subcategoriesByCategory));
                 localStorage.setItem('minova_profit_settings_v1', JSON.stringify(profitSettings));
                 localStorage.setItem('minova_installer_profit_v1', JSON.stringify(installerProfitSettings));
@@ -6727,7 +7142,11 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             localStorage.setItem('minova_sales_records_v1', JSON.stringify(salesRecords));
             localStorage.setItem('minova_historical_inventory_v1', JSON.stringify(historicalInventory));
             localStorage.setItem('minova_suppliers_v1', JSON.stringify(suppliers));
+            channelPartners = normalizeChannelPartners(channelPartners);
+            localStorage.setItem('minova_channel_partners_v1', JSON.stringify(channelPartners));
             localStorage.setItem('minova_company_certs', JSON.stringify(companyCerts));
+            compatibilityRules = normalizeCompatibilityRules(compatibilityRules);
+            try { localStorage.setItem('minova_compatibility_rules_v1', JSON.stringify(compatibilityRules)); } catch (e) {}
             try { localStorage.setItem('minova_transport_records_v1', JSON.stringify(transportRecords)); } catch (e) {}
             try { localStorage.setItem('minova_file_delete_logs_v1', JSON.stringify(fileDeleteLogs)); } catch (e) {}
             rebuildSubcategoryIndexFromProducts();
@@ -6748,12 +7167,14 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             data: {
                 products,
                 suppliers,
+                channelPartners,
                 inventory,
                 inventoryHistory,
                 marketPrices,
                 salesRecords,
                 historicalInventory,
                 transportRecords,
+                compatibilityRules,
                 subcategoriesByCategory,
                 profitSettings,
                 installerProfitSettings,
@@ -8313,7 +8734,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             ensureSupplierData();
             renderSupplierFunnelSummary(suppliers);
             if (!suppliers.length) {
-                list.innerHTML = `<tr><td colspan="13" class="py-12 text-center text-slate-400 text-sm">No suppliers yet. Add a supplier before maintaining product records.</td></tr>`;
+                list.innerHTML = `<tr><td colspan="14" class="py-12 text-center text-slate-400 text-sm">No suppliers yet. Add a supplier before maintaining product records.</td></tr>`;
                 updateSupplierSelects();
                 return;
             }
@@ -8324,11 +8745,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const rows = suppliers.map(s => {
                 const details = getSupplierEvaluationDetails(s);
                 const linked = products.filter(p => normalizeSupplierCode(p.supplierCode) === normalizeSupplierCode(s.code)).length;
+                const channelCount = getChannelPartnersForBrand(s.code).length;
                 const hay = [
                     s.code, s.nameZh, s.nameEn, s.country, s.contact, s.contactInfo, s.website, s.address, s.notes,
                     getSupplierStageDef(details.stage).label, getSupplierStageDef(details.suggestedStage).label
                 ].filter(Boolean).map(v => String(v).toLowerCase()).join(' | ');
-                return { supplier: s, details, linked, hay };
+                return { supplier: s, details, linked, channelCount, hay };
             }).filter(row => {
                 if (supplierStageFilter !== 'all' && row.details.stage !== supplierStageFilter) return false;
                 return !query || row.hay.includes(query);
@@ -8343,7 +8765,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 return (b.details.totalScore - a.details.totalScore) || supplierStageIndex(b.details.stage) - supplierStageIndex(a.details.stage);
             });
             if (!rows.length) {
-                list.innerHTML = `<tr><td colspan="13" class="py-12 text-center text-slate-400 text-sm">No suppliers match the current filters.</td></tr>`;
+                list.innerHTML = `<tr><td colspan="14" class="py-12 text-center text-slate-400 text-sm">No suppliers match the current filters.</td></tr>`;
                 updateSupplierSelects();
                 return;
             }
@@ -8351,6 +8773,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 const s = row.supplier;
                 const details = row.details;
                 const linked = row.linked;
+                const channelCount = row.channelCount;
                 const logo = getSupplierLogo(s)
                     ? `<img src="${htmlSafe(getSupplierLogo(s))}" class="h-10 w-20 object-contain rounded-lg bg-white border border-slate-100" alt="${htmlSafe(getSupplierDisplayName(s))} logo">`
                     : `<div class="h-10 w-20 rounded-lg bg-slate-50 border border-dashed border-slate-200 flex items-center justify-center text-[10px] text-slate-300">No Logo</div>`;
@@ -8373,6 +8796,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(s.contact || '-')}</td>
                         <td class="py-4 px-4 text-xs text-slate-500">${htmlSafe(s.contactInfo || '-')}</td>
                         <td class="py-4 px-4 text-xs max-w-[180px] truncate">${website}</td>
+                        <td class="py-4 px-4 text-center"><span class="text-[10px] font-black px-2 py-1 rounded-full bg-amber-50 text-amber-700">${channelCount}</span></td>
                         <td class="py-4 px-4 text-center"><span class="text-[10px] font-black px-2 py-1 rounded-full bg-purple-50 text-purple-700">${linked}</span></td>
                         <td class="py-4 px-4 text-center">
                             <div class="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
@@ -8517,6 +8941,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             setVal('supplier-website', supplier?.website || '');
             setVal('supplier-address', supplier?.address || '');
             setVal('supplier-notes', supplier?.notes || '');
+            window.__supplierChannelPartnerDrafts = getSupplierChannelPartnerDraftsForCode(supplier?.code || code || '');
+            renderSupplierChannelPartnerDrafts();
             setSupplierEvaluationToModal(supplier || {});
             window.__supplierLogoDraft = supplier ? getSupplierLogo(supplier) : '';
             const fileEl = document.getElementById('supplier-logo-file');
@@ -8531,6 +8957,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             window.__editingSupplierCode = '';
             window.__supplierLogoDraft = '';
             window.__supplierLastReviewedAt = '';
+            window.__supplierChannelPartnerDrafts = [];
         };
 
         window.uploadSupplierLogo = async (input) => {
@@ -8579,6 +9006,16 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const idx = oldCode ? suppliers.findIndex(s => normalizeSupplierCode(s.code) === oldCode) : -1;
             if (idx >= 0) suppliers[idx] = next;
             else suppliers.push(next);
+            if (oldCode && oldCode !== code) {
+                channelPartners.forEach(partner => {
+                    if (normalizeSupplierCode(partner.brandSupplierCode) === oldCode) partner.brandSupplierCode = code;
+                });
+            }
+            const nextChannelPartners = readSupplierChannelPartnerDrafts(code);
+            channelPartners = [
+                ...channelPartners.filter(partner => normalizeSupplierCode(partner.brandSupplierCode) !== code),
+                ...nextChannelPartners
+            ];
             products.forEach(p => {
                 if (oldCode && (normalizeSupplierCode(p.supplierCode) === oldCode || (!p.supplierCode && prevDisplay && p.vendor === prevDisplay))) {
                     p.supplierCode = next.code;
@@ -8591,6 +9028,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             closeSupplierModal();
             saveToLocal();
             persistEntityToD1('supplier', next.id || next.code, next);
+            nextChannelPartners.forEach(partner => persistEntityToD1('channel_partner', partner.id, partner));
             try { renderCompanyCertUploadSelectors(); renderCompanyCertList(); } catch (e) {}
         };
 
@@ -8603,6 +9041,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (!supplier) return;
             const used = products.filter(p => normalizeSupplierCode(p.supplierCode) === c);
             if (used.length) return alert(`This supplier is linked to ${used.length} products and cannot be deleted. Adjust product records first.`);
+            const channels = getChannelPartnersForBrand(c);
+            if (channels.length) return alert(`This supplier is linked to ${channels.length} channel partners and cannot be deleted. Delete or reassign channel partners first.`);
             if (!confirm(`Delete supplier: ${getSupplierDisplayName(supplier)}?`)) return;
             suppliers = suppliers.filter(s => normalizeSupplierCode(s.code) !== c);
             saveToLocal();
@@ -8622,10 +9062,717 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             renderProductImagePreview();
         };
 
+        const CHANNEL_PARTNER_TYPES = ['Authorized Distributor', 'Dealer', 'EPC Partner'];
+        function normalizeChannelPartner(partner = {}) {
+            const id = String(partner.id || `channel_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`).trim();
+            const type = CHANNEL_PARTNER_TYPES.includes(partner.type) ? partner.type : 'Authorized Distributor';
+            return {
+                id,
+                type,
+                brandSupplierCode: normalizeSupplierCode(partner.brandSupplierCode || partner.supplierCode || ''),
+                name: String(partner.name || partner.nameEn || partner.nameZh || '').trim(),
+                country: String(partner.country || partner.countryRegion || '').trim(),
+                contact: String(partner.contact || '').trim(),
+                contactInfo: String(partner.contactInfo || '').trim(),
+                authorizationStatus: PRODUCT_AUTHORIZATION_STATUS.includes(partner.authorizationStatus) ? partner.authorizationStatus : '',
+                authorizationExpiry: String(partner.authorizationExpiry || '').trim(),
+                remark: String(partner.remark || partner.notes || '').trim(),
+                ts: partner.ts || Date.now()
+            };
+        }
+        function normalizeChannelPartners(partners = []) {
+            return (Array.isArray(partners) ? partners : [])
+                .map(normalizeChannelPartner)
+                .filter(partner => partner.brandSupplierCode && partner.name);
+        }
+        function getChannelPartnerById(id) {
+            const key = String(id || '').trim();
+            return channelPartners.find(partner => partner.id === key) || null;
+        }
+        function getChannelPartnersForBrand(brandSupplierCode = '', type = '') {
+            const brand = normalizeSupplierCode(brandSupplierCode);
+            return channelPartners.filter(partner => {
+                if (brand && partner.brandSupplierCode !== brand) return false;
+                if (type && CHANNEL_PARTNER_TYPES.includes(type) && partner.type !== type) return false;
+                return true;
+            });
+        }
+        function channelPartnerLabel(partner) {
+            if (!partner) return '-';
+            return [partner.name, partner.country, partner.type].filter(Boolean).join(' · ');
+        }
+        function channelPartnerOptions(selectedId = '', brandSupplierCode = '', sourceType = '') {
+            const selected = String(selectedId || '').trim();
+            const partners = getChannelPartnersForBrand(brandSupplierCode, sourceType);
+            return '<option value="">- Select Channel Partner -</option>' + partners.map(partner => `<option value="${htmlSafe(partner.id)}" ${partner.id === selected ? 'selected' : ''}>${htmlSafe(channelPartnerLabel(partner))}</option>`).join('');
+        }
+        function updateChannelPartnerBrandFilter(selectedCode = '') {
+            const filter = document.getElementById('channel-partner-brand-filter');
+            if (!filter) return;
+            const current = selectedCode || filter.value || 'all';
+            filter.innerHTML = '<option value="all">All Brands</option>' + suppliers.map(s => {
+                const code = normalizeSupplierCode(s.code);
+                return `<option value="${htmlSafe(code)}" ${current === code ? 'selected' : ''}>${htmlSafe(code)} · ${htmlSafe(getSupplierDisplayName(s))}</option>`;
+            }).join('');
+        }
+        function renderChannelPartners() {
+            const list = document.getElementById('channel-partner-list');
+            if (!list) return;
+            ensureSupplierData();
+            channelPartners = normalizeChannelPartners(channelPartners);
+            updateChannelPartnerBrandFilter();
+            const query = String(document.getElementById('channel-partner-search')?.value || '').trim().toLowerCase();
+            const type = document.getElementById('channel-partner-type-filter')?.value || 'all';
+            const brand = normalizeSupplierCode(document.getElementById('channel-partner-brand-filter')?.value || '');
+            const rows = channelPartners.filter(partner => {
+                if (type !== 'all' && partner.type !== type) return false;
+                if (brand && brand !== 'ALL' && partner.brandSupplierCode !== brand) return false;
+                if (!query) return true;
+                const hay = [partner.name, partner.type, partner.brandSupplierCode, supplierNameByCode(partner.brandSupplierCode), partner.country, partner.contact, partner.contactInfo, partner.authorizationStatus, partner.remark].map(v => String(v || '').toLowerCase()).join(' ');
+                return query.split(/\s+/).filter(Boolean).every(term => hay.includes(term));
+            });
+            const summary = document.getElementById('channel-partner-summary');
+            if (summary) summary.textContent = `${rows.length} visible / ${channelPartners.length} partners`;
+            if (!rows.length) {
+                list.innerHTML = `<tr><td colspan="9" class="py-12 text-center text-slate-400 text-sm">No channel partners match the current filters.</td></tr>`;
+                return;
+            }
+            list.innerHTML = rows.map(partner => {
+                const linked = products.filter(p => String(p?.sourcing?.channelPartnerId || '') === partner.id).length;
+                return `<tr class="hover:bg-slate-50 transition-colors group">
+                    <td class="py-4 px-4 text-sm font-bold text-slate-700">${htmlSafe(partner.name)}</td>
+                    <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(partner.type)}</td>
+                    <td class="py-4 px-4 text-xs text-slate-500">${htmlSafe(supplierNameByCode(partner.brandSupplierCode))}</td>
+                    <td class="py-4 px-4 text-xs text-slate-500">${htmlSafe(partner.country || '-')}</td>
+                    <td class="py-4 px-4">${productMasterStatusPill(partner.authorizationStatus || 'Unknown', partner.authorizationStatus === 'Authorized' ? 'green' : (partner.authorizationStatus === 'Expired' ? 'red' : 'slate'))}<div class="text-[10px] text-slate-400 mt-1">${htmlSafe(partner.authorizationExpiry || '-')}</div></td>
+                    <td class="py-4 px-4 text-xs text-slate-500">${htmlSafe([partner.contact, partner.contactInfo].filter(Boolean).join(' / ') || '-')}</td>
+                    <td class="py-4 px-4 text-xs text-slate-500 max-w-[220px] truncate" title="${htmlSafe(partner.remark || '')}">${htmlSafe(partner.remark || '-')}</td>
+                    <td class="py-4 px-4 text-center"><span class="text-[10px] font-black px-2 py-1 rounded-full bg-purple-50 text-purple-700">${linked}</span></td>
+                    <td class="py-4 px-4 text-center">
+                        <button onclick="openChannelPartnerModal('${htmlSafe(partner.id)}')" class="text-purple-700 hover:bg-purple-50 p-1 rounded">✎</button>
+                        <button onclick="deleteChannelPartner('${htmlSafe(partner.id)}')" class="text-red-300 hover:text-red-500 p-1 rounded">🗑</button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+        window.renderChannelPartners = renderChannelPartners;
+        function readChannelPartnerModal() {
+            return normalizeChannelPartner({
+                id: document.getElementById('channel-partner-id')?.value || '',
+                brandSupplierCode: document.getElementById('channel-partner-brand-code')?.value || '',
+                type: document.getElementById('channel-partner-type')?.value || '',
+                name: document.getElementById('channel-partner-name')?.value || '',
+                country: document.getElementById('channel-partner-country')?.value || '',
+                authorizationStatus: document.getElementById('channel-partner-auth-status')?.value || '',
+                authorizationExpiry: document.getElementById('channel-partner-auth-expiry')?.value || '',
+                contact: document.getElementById('channel-partner-contact')?.value || '',
+                contactInfo: document.getElementById('channel-partner-contact-info')?.value || '',
+                remark: document.getElementById('channel-partner-remark')?.value || ''
+            });
+        }
+        window.openChannelPartnerModal = (partnerId = '', brandSupplierCode = '') => {
+            ensureSupplierData();
+            const partner = getChannelPartnerById(partnerId);
+            const setVal = (id, value) => { const el = document.getElementById(id); if (el) el.value = value || ''; };
+            const brandSelect = document.getElementById('channel-partner-brand-code');
+            if (brandSelect) brandSelect.innerHTML = supplierSelectOptions(partner?.brandSupplierCode || brandSupplierCode, false);
+            setVal('channel-partner-id', partner?.id || '');
+            setVal('channel-partner-brand-code', partner?.brandSupplierCode || brandSupplierCode || suppliers[0]?.code || '');
+            setVal('channel-partner-type', partner?.type || 'Authorized Distributor');
+            setVal('channel-partner-name', partner?.name || '');
+            setVal('channel-partner-country', partner?.country || '');
+            setVal('channel-partner-auth-status', partner?.authorizationStatus || '');
+            setVal('channel-partner-auth-expiry', partner?.authorizationExpiry || '');
+            setVal('channel-partner-contact', partner?.contact || '');
+            setVal('channel-partner-contact-info', partner?.contactInfo || '');
+            setVal('channel-partner-remark', partner?.remark || '');
+            document.getElementById('channel-partner-modal')?.classList.remove('hidden');
+        };
+        window.closeChannelPartnerModal = () => {
+            document.getElementById('channel-partner-modal')?.classList.add('hidden');
+        };
+        window.saveChannelPartner = () => {
+            const partner = readChannelPartnerModal();
+            if (!partner.brandSupplierCode) return alert('Please select a brand supplier.');
+            if (!partner.name) return alert('Please enter the channel partner name.');
+            const idx = channelPartners.findIndex(p => p.id === partner.id);
+            if (idx >= 0) channelPartners[idx] = partner;
+            else channelPartners.push(partner);
+            saveToLocal();
+            persistEntityToD1('channel_partner', partner.id, partner);
+            closeChannelPartnerModal();
+            renderChannelPartners();
+            renderSuppliers();
+            updateProductChannelPartnerOptions();
+        };
+        window.deleteChannelPartner = (partnerId) => {
+            const id = String(partnerId || '').trim();
+            if (!id || !confirm('Delete this channel partner?')) return;
+            channelPartners = channelPartners.filter(partner => partner.id !== id);
+            products.forEach(p => {
+                if (p?.sourcing?.channelPartnerId === id) {
+                    p.sourcing = { ...p.sourcing, channelPartnerId: '', sourceRemark: [p.sourcing.sourceRemark, 'Channel partner removed'].filter(Boolean).join(' | ') };
+                }
+            });
+            saveToLocal();
+            deleteEntityFromD1('channel_partner', id);
+            renderChannelPartners();
+            renderSuppliers();
+            renderDb();
+        };
+        function getSupplierChannelPartnerDraftsForCode(code = '') {
+            const brand = normalizeSupplierCode(code);
+            const drafts = getChannelPartnersForBrand(brand).map(p => ({ ...p }));
+            return drafts.length ? drafts : [{ id: '', type: 'Authorized Distributor', brandSupplierCode: brand, name: '', country: '', contact: '', contactInfo: '', authorizationStatus: '', authorizationExpiry: '', remark: '' }];
+        }
+        function renderSupplierChannelPartnerDrafts() {
+            const box = document.getElementById('supplier-channel-partner-editor');
+            if (!box) return;
+            const drafts = Array.isArray(window.__supplierChannelPartnerDrafts) ? window.__supplierChannelPartnerDrafts : [];
+            box.innerHTML = drafts.map((draft, index) => `<div class="grid grid-cols-1 md:grid-cols-7 gap-2 rounded-xl border border-slate-200 bg-white p-2">
+                <select id="supplier-channel-${index}-type" class="border border-slate-200 rounded-lg px-2 py-2 text-xs bg-white">
+                    ${CHANNEL_PARTNER_TYPES.map(type => `<option value="${htmlSafe(type)}" ${draft.type === type ? 'selected' : ''}>${htmlSafe(type)}</option>`).join('')}
+                </select>
+                <input id="supplier-channel-${index}-name" value="${htmlSafe(draft.name || '')}" placeholder="Partner name" class="md:col-span-2 border border-slate-200 rounded-lg px-2 py-2 text-xs">
+                <input id="supplier-channel-${index}-country" value="${htmlSafe(draft.country || '')}" placeholder="Country" class="border border-slate-200 rounded-lg px-2 py-2 text-xs">
+                <input id="supplier-channel-${index}-contact" value="${htmlSafe(draft.contact || '')}" placeholder="Contact" class="border border-slate-200 rounded-lg px-2 py-2 text-xs">
+                <select id="supplier-channel-${index}-auth" class="border border-slate-200 rounded-lg px-2 py-2 text-xs bg-white">
+                    ${PRODUCT_AUTHORIZATION_STATUS.map(status => `<option value="${htmlSafe(status)}" ${draft.authorizationStatus === status ? 'selected' : ''}>${htmlSafe(status || '-')}</option>`).join('')}
+                </select>
+                <button type="button" onclick="removeSupplierChannelPartnerDraft(${index})" class="text-red-400 hover:text-red-600 text-xs font-black">Delete</button>
+                <input id="supplier-channel-${index}-contact-info" value="${htmlSafe(draft.contactInfo || '')}" placeholder="Phone / Email" class="md:col-span-2 border border-slate-200 rounded-lg px-2 py-2 text-xs">
+                <input id="supplier-channel-${index}-expiry" value="${htmlSafe(draft.authorizationExpiry || '')}" type="date" class="border border-slate-200 rounded-lg px-2 py-2 text-xs">
+                <input id="supplier-channel-${index}-remark" value="${htmlSafe(draft.remark || '')}" placeholder="Remark" class="md:col-span-4 border border-slate-200 rounded-lg px-2 py-2 text-xs">
+            </div>`).join('');
+        }
+        function readSupplierChannelPartnerDrafts(brandSupplierCode = '') {
+            const brand = normalizeSupplierCode(brandSupplierCode);
+            const drafts = Array.isArray(window.__supplierChannelPartnerDrafts) ? window.__supplierChannelPartnerDrafts : [];
+            return drafts.map((draft, index) => normalizeChannelPartner({
+                ...draft,
+                brandSupplierCode: brand,
+                type: document.getElementById(`supplier-channel-${index}-type`)?.value || draft.type,
+                name: document.getElementById(`supplier-channel-${index}-name`)?.value || '',
+                country: document.getElementById(`supplier-channel-${index}-country`)?.value || '',
+                contact: document.getElementById(`supplier-channel-${index}-contact`)?.value || '',
+                contactInfo: document.getElementById(`supplier-channel-${index}-contact-info`)?.value || '',
+                authorizationStatus: document.getElementById(`supplier-channel-${index}-auth`)?.value || '',
+                authorizationExpiry: document.getElementById(`supplier-channel-${index}-expiry`)?.value || '',
+                remark: document.getElementById(`supplier-channel-${index}-remark`)?.value || ''
+            })).filter(partner => partner.name);
+        }
+        window.addSupplierChannelPartnerDraft = () => {
+            if (!Array.isArray(window.__supplierChannelPartnerDrafts)) window.__supplierChannelPartnerDrafts = [];
+            window.__supplierChannelPartnerDrafts.push({ id: '', type: 'Authorized Distributor', name: '', country: '', contact: '', contactInfo: '', authorizationStatus: '', authorizationExpiry: '', remark: '' });
+            renderSupplierChannelPartnerDrafts();
+        };
+        window.removeSupplierChannelPartnerDraft = (index) => {
+            if (!Array.isArray(window.__supplierChannelPartnerDrafts)) return;
+            window.__supplierChannelPartnerDrafts.splice(index, 1);
+            if (!window.__supplierChannelPartnerDrafts.length) window.__supplierChannelPartnerDrafts.push({ id: '', type: 'Authorized Distributor', name: '', country: '', contact: '', contactInfo: '', authorizationStatus: '', authorizationExpiry: '', remark: '' });
+            renderSupplierChannelPartnerDrafts();
+        };
+
         window.setDbGroup = (mode) => {
             dbGroupMode = mode;
             document.getElementById('btn-group-category').className = mode === 'category' ? 'px-4 py-1.5 text-xs font-bold rounded-lg transition-all bg-white shadow-sm text-purple-700' : 'px-4 py-1.5 text-xs font-bold rounded-lg transition-all text-slate-500';
             document.getElementById('btn-group-vendor').className = mode === 'vendor' ? 'px-4 py-1.5 text-xs font-bold rounded-lg transition-all bg-white shadow-sm text-purple-700' : 'px-4 py-1.5 text-xs font-bold rounded-lg transition-all text-slate-500';
+            renderDb();
+        };
+        const PRODUCT_MASTER_TYPE_STORAGE_KEY = 'minova_product_master_type_view_v1';
+        const PRODUCT_MASTER_ROLE_STORAGE_KEY = 'minova_product_master_role_view_v1';
+        const PRODUCT_MASTER_SEARCH_STORAGE_KEY = 'minova_product_master_search_v1';
+        const PRODUCT_TYPE_GROUPS = [
+            { id: 'all', label: 'All', categories: [] },
+            { id: 'pv', label: 'PV Module', categories: ['PV Module'] },
+            { id: 'inverter', label: 'Inverter', categories: ['Inverter'] },
+            { id: 'battery', label: 'Battery', categories: ['Battery'] },
+            { id: 'ess', label: 'ESS / Hybrid Storage', categories: ['All-in-One System', 'C&I Storage'] },
+            { id: 'bos', label: 'BOS / Accessories', categories: ['Accessory'] }
+        ];
+        const PRODUCT_ROLE_VIEWS = [
+            { id: 'sales', label: 'Sales', columns: ['id', 'name', 'quoteReadiness', 'supplyRoute', 'certificationReadiness', 'application', 'warranty', 'leadTime', 'quotePrice', 'actions'] },
+            { id: 'engineering', label: 'Engineering / Technical', columns: ['id', 'name', 'category', 'technicalSummary', 'compatibilityStatus', 'technicalFit', 'efficiencyCapacity', 'dimensions', 'weight', 'attachedSpecs', 'certificationRequirements', 'actions'] },
+            { id: 'procurement', label: 'Procurement', columns: ['id', 'name', 'category', 'sourceType', 'commercialSupplier', 'factoryBrandOwner', 'authorizationStatus', 'moq', 'leadTime', 'cost', 'priceBasis', 'contact', 'actions'] },
+            { id: 'commercial', label: 'Commercial / Audit', columns: ['id', 'name', 'category', 'supplier', 'cost', 'price', 'margin', 'priceBasis', 'marketAlignment', 'sourceRisk', 'certificationGap', 'actions'] },
+            { id: 'full', label: 'Full', columns: ['id', 'image', 'name', 'model', 'brand', 'series', 'category', 'subcategory', 'application', 'status', 'quoteReadiness', 'supplyRoute', 'sourceType', 'commercialSupplier', 'factoryBrandOwner', 'authorizationStatus', 'technicalSummary', 'compatibilityStatus', 'efficiencyCapacity', 'dimensions', 'weight', 'warranty', 'leadTime', 'datasheet', 'certificationRequirements', 'externalCertificateLink', 'attachedCerts', 'attachedSpecs', 'cost', 'price', 'margin', 'marketAlignment', 'remark', 'actions'] }
+        ];
+        const PRODUCT_SOURCE_TYPES = ['Unknown', 'Direct Factory', 'Authorized Distributor', 'Dealer', 'EPC Partner'];
+        const PRODUCT_AUTHORIZATION_STATUS = ['', 'Authorized', 'Pending', 'Expired', 'Not Required', 'Unknown'];
+        const COMPATIBILITY_RELATION_TYPES = ['PV ↔ Inverter', 'Inverter ↔ Battery', 'ESS ↔ Battery/PCS', 'BOS Required', 'System Bundle'];
+        const COMPATIBILITY_STATUS_TYPES = ['Approved', 'Pending', 'Conditional', 'Blocked', 'Unknown'];
+        const PRODUCT_ROLE_TO_DEFAULT_VIEW = {
+            sales: 'sales',
+            sales_management: 'sales',
+            supply_chain: 'procurement',
+            operation_management: 'engineering',
+            price_auditor: 'commercial',
+            admin: 'full',
+            read_only: 'sales'
+        };
+        const PRODUCT_MASTER_COMMON_FIELD_KEYS = ['model', 'brand', 'series', 'application', 'voltageClass', 'phase', 'status', 'countryAvailable', 'datasheetLink', 'certificateLink', 'remark'];
+        const PRODUCT_TECHNICAL_SPEC_GROUPS = {
+            pv: [
+                { id: 'powerW', label: 'Power_W', type: 'number' },
+                { id: 'cellType', label: 'Cell_Type' },
+                { id: 'moduleType', label: 'Module_Type' },
+                { id: 'moduleEfficiencyPct', label: 'Module_Efficiency_%', type: 'number' },
+                { id: 'vocV', label: 'Voc_V', type: 'number' },
+                { id: 'vmpV', label: 'Vmp_V', type: 'number' },
+                { id: 'iscA', label: 'Isc_A', type: 'number' },
+                { id: 'impA', label: 'Imp_A', type: 'number' },
+                { id: 'maxSystemVoltageV', label: 'Max_System_Voltage_V' },
+                { id: 'tempCoeffPmax', label: 'Temp_Coeff_Pmax' },
+                { id: 'dimensionsMm', label: 'Dimensions_mm' },
+                { id: 'weightKg', label: 'Weight_kg', type: 'number' },
+                { id: 'performanceWarrantyYears', label: 'Performance_Warranty_Years', type: 'number' },
+                { id: 'certification', label: 'Certification' }
+            ],
+            inverter: [
+                { id: 'inverterType', label: 'Inverter_Type' },
+                { id: 'ratedAcPowerKw', label: 'Rated_AC_Power_kW', type: 'number' },
+                { id: 'maxAcOutputPowerKw', label: 'Max_AC_Output_Power_kW', type: 'number' },
+                { id: 'gridVoltageV', label: 'Grid_Voltage_V' },
+                { id: 'frequencyHz', label: 'Frequency_Hz' },
+                { id: 'ipRating', label: 'IP_Rating' },
+                { id: 'coolingType', label: 'Cooling_Type' },
+                { id: 'dimensionsMm', label: 'Dimensions_mm' },
+                { id: 'weightKg', label: 'Weight_kg', type: 'number' },
+                { id: 'maxPvInputPowerKw', label: 'Max_PV_Input_Power_kW', type: 'number' },
+                { id: 'maxDcVoltageV', label: 'Max_DC_Voltage_V' },
+                { id: 'startUpVoltageV', label: 'Start_Up_Voltage_V' },
+                { id: 'mpptVoltageRangeV', label: 'MPPT_Voltage_Range_V' },
+                { id: 'mpptQty', label: 'MPPT_Qty', type: 'number' },
+                { id: 'stringPerMppt', label: 'String_Per_MPPT', type: 'number' },
+                { id: 'batteryVoltageRangeV', label: 'Battery_Voltage_Range_V' },
+                { id: 'batteryType', label: 'Battery_Type' },
+                { id: 'batteryCommunication', label: 'Battery_Communication' },
+                { id: 'compatibleBatterySeries', label: 'Compatible_Battery_Series' },
+                { id: 'epsFunction', label: 'EPS_Function' },
+                { id: 'epsRatedPowerKw', label: 'EPS_Rated_Power_kW', type: 'number' },
+                { id: 'parallelQty', label: 'Parallel_Qty', type: 'number' },
+                { id: 'generatorCompatible', label: 'Generator_Compatible' },
+                { id: 'acCouplingSupport', label: 'AC_Coupling_Support' }
+            ],
+            battery: [
+                { id: 'batteryType', label: 'Battery_Type' },
+                { id: 'voltageClass', label: 'Voltage_Class' },
+                { id: 'installationType', label: 'Installation_Type' },
+                { id: 'indoorOutdoor', label: 'Indoor_Outdoor' },
+                { id: 'ipRating', label: 'IP_Rating' },
+                { id: 'nominalEnergyKwh', label: 'Nominal_Energy_kWh', type: 'number' },
+                { id: 'usableEnergyKwh', label: 'Usable_Energy_kWh', type: 'number' },
+                { id: 'nominalVoltageV', label: 'Nominal_Voltage_V' },
+                { id: 'operatingVoltageRangeV', label: 'Operating_Voltage_Range_V' },
+                { id: 'capacityAh', label: 'Capacity_Ah', type: 'number' },
+                { id: 'dodPct', label: 'DOD_%', type: 'number' },
+                { id: 'cycleLife', label: 'Cycle_Life' },
+                { id: 'communication', label: 'Communication' },
+                { id: 'bms', label: 'BMS' },
+                { id: 'expansionQty', label: 'Expansion_Qty', type: 'number' },
+                { id: 'dimensionsMm', label: 'Dimensions_mm' },
+                { id: 'weightKg', label: 'Weight_kg', type: 'number' },
+                { id: 'mountingMethod', label: 'Mounting_Method' },
+                { id: 'operatingTemperature', label: 'Operating_Temperature' },
+                { id: 'storageTemperature', label: 'Storage_Temperature' },
+                { id: 'certification', label: 'Certification' }
+            ],
+            ess: [
+                { id: 'essType', label: 'ESS_Type' },
+                { id: 'coolingType', label: 'Cooling_Type' },
+                { id: 'acDcCoupled', label: 'AC_Coupled_or_DC_Coupled' },
+                { id: 'indoorOutdoor', label: 'Indoor_Outdoor' },
+                { id: 'ipRating', label: 'IP_Rating' },
+                { id: 'batteryChemistry', label: 'Battery_Chemistry' },
+                { id: 'cellCapacityAh', label: 'Cell_Capacity_Ah', type: 'number' },
+                { id: 'nominalEnergyKwh', label: 'Nominal_Energy_kWh', type: 'number' },
+                { id: 'usableEnergyKwh', label: 'Usable_Energy_kWh', type: 'number' },
+                { id: 'ratedDcVoltageV', label: 'Rated_DC_Voltage_V' },
+                { id: 'dcVoltageRangeV', label: 'DC_Voltage_Range_V' },
+                { id: 'batteryModuleQty', label: 'Battery_Module_Qty', type: 'number' },
+                { id: 'packConfiguration', label: 'Pack_Configuration' },
+                { id: 'dodPct', label: 'DOD_%', type: 'number' },
+                { id: 'cycleLife', label: 'Cycle_Life' },
+                { id: 'pcsRatedPowerKw', label: 'PCS_Rated_Power_kW', type: 'number' },
+                { id: 'maxOutputPowerKw', label: 'Max_Output_Power_kW', type: 'number' },
+                { id: 'acVoltageV', label: 'AC_Voltage_V' },
+                { id: 'gridType', label: 'Grid_Type' },
+                { id: 'pvInputSupport', label: 'PV_Input_Support' },
+                { id: 'maxPvInputPowerKw', label: 'Max_PV_Input_Power_kW', type: 'number' },
+                { id: 'mpptQty', label: 'MPPT_Qty', type: 'number' },
+                { id: 'roundTripEfficiencyPct', label: 'Round_Trip_Efficiency_%', type: 'number' },
+                { id: 'communication', label: 'Communication' },
+                { id: 'emsIncluded', label: 'EMS_Included' },
+                { id: 'fireSuppressionSystem', label: 'Fire_Suppression_System' },
+                { id: 'safetyStandard', label: 'Safety_Standard' },
+                { id: 'gridCode', label: 'Grid_Code' },
+                { id: 'dimensionsMm', label: 'Dimensions_mm' },
+                { id: 'weightKg', label: 'Weight_kg', type: 'number' },
+                { id: 'footprintM2', label: 'Footprint_m2', type: 'number' },
+                { id: 'installationMethod', label: 'Installation_Method' }
+            ]
+        };
+        const PRODUCT_MASTER_TECHNICAL_IMPORT_KEYS = Array.from(new Set(Object.values(PRODUCT_TECHNICAL_SPEC_GROUPS).flat().map(field => field.id)));
+        const PRODUCT_MASTER_TECHNICAL_LABEL_BY_KEY = Object.values(PRODUCT_TECHNICAL_SPEC_GROUPS).flat().reduce((acc, field) => {
+            acc[field.id] = field.label;
+            return acc;
+        }, {});
+        function getProductMasterTypeView() {
+            let stored = '';
+            try { stored = localStorage.getItem(PRODUCT_MASTER_TYPE_STORAGE_KEY) || ''; } catch (e) {}
+            return PRODUCT_TYPE_GROUPS.some(group => group.id === stored) ? stored : 'all';
+        }
+        function getProductTypeGroup(product) {
+            const category = normalizeProductCategory(product?.category || '');
+            return PRODUCT_TYPE_GROUPS.find(group => group.id !== 'all' && group.categories.includes(category)) || PRODUCT_TYPE_GROUPS[0];
+        }
+        window.getProductTypeGroup = getProductTypeGroup;
+        function getDefaultProductRoleView() {
+            const auth = window.__minovaAuth || {};
+            if (window.location?.protocol === 'file:' && !auth.state?.user) return 'full';
+            const role = String(auth.state?.permission?.role || auth.state?.user?.role || 'read_only').trim().toLowerCase().replace(/[\s-]+/g, '_');
+            const roleDefaults = PRODUCT_ROLE_TO_DEFAULT_VIEW;
+            return roleDefaults[role] || 'sales';
+        }
+        function getProductMasterRoleView() {
+            let stored = '';
+            try { stored = localStorage.getItem(PRODUCT_MASTER_ROLE_STORAGE_KEY) || ''; } catch (e) {}
+            return PRODUCT_ROLE_VIEWS.some(view => view.id === stored) ? stored : getDefaultProductRoleView();
+        }
+        function canViewProductMasterSensitiveField(field) {
+            if (!field) return true;
+            const auth = window.__minovaAuth || {};
+            if (!auth.state?.user && window.location?.protocol === 'file:') return true;
+            if (typeof auth.canViewSensitiveField === 'function') return !!auth.canViewSensitiveField(field);
+            if (!auth.state?.user) return false;
+            return false;
+        }
+        function getProductMasterVisibleColumns() {
+            const roleView = PRODUCT_ROLE_VIEWS.find(view => view.id === getProductMasterRoleView()) || PRODUCT_ROLE_VIEWS.find(view => view.id === 'full');
+            return roleView.columns
+                .map(key => PRODUCT_MASTER_COLUMNS[key])
+                .filter(Boolean)
+                .filter(column => !column.sensitiveField || canViewProductMasterSensitiveField(column.sensitiveField));
+        }
+        function getProductMasterSearchQuery() {
+            let stored = '';
+            try { stored = localStorage.getItem(PRODUCT_MASTER_SEARCH_STORAGE_KEY) || ''; } catch (e) {}
+            return String(stored || '').trim();
+        }
+        function getProductTechnicalSpecFieldsForCategory(category) {
+            const group = getProductTypeGroup({ category });
+            return PRODUCT_TECHNICAL_SPEC_GROUPS[group.id] || [];
+        }
+        function coerceProductMasterFieldValue(value, type = 'text') {
+            const raw = String(value ?? '').trim();
+            if (!raw) return '';
+            if (type === 'number') {
+                const n = parseFloat(raw);
+                return Number.isFinite(n) ? n : raw;
+            }
+            return raw;
+        }
+        function compactProductMasterObject(obj) {
+            const out = {};
+            Object.entries(obj || {}).forEach(([key, value]) => {
+                if (value === undefined || value === null || value === '') return;
+                out[key] = value;
+            });
+            return out;
+        }
+        function getProductMasterData(product = {}) {
+            const md = product?.masterData && typeof product.masterData === 'object' ? product.masterData : {};
+            return {
+                model: md.model || product.model || product.sku || '',
+                brand: md.brand || product.brand || '',
+                series: md.series || product.series || '',
+                application: md.application || product.application || product.scenario || '',
+                voltageClass: md.voltageClass || product.voltageClass || '',
+                phase: md.phase || product.phase || '',
+                status: md.status || product.status || '',
+                countryAvailable: md.countryAvailable || product.countryAvailable || '',
+                datasheetLink: md.datasheetLink || product.datasheetLink || '',
+                certificateLink: md.certificateLink || product.certificateLink || '',
+                remark: md.remark || product.remark || ''
+            };
+        }
+        function getProductTechnicalSpecs(product = {}) {
+            return product?.technicalSpecs && typeof product.technicalSpecs === 'object' ? product.technicalSpecs : {};
+        }
+        function getProductSourcing(product = {}) {
+            const src = product?.sourcing && typeof product.sourcing === 'object' ? product.sourcing : {};
+            const canonicalSupplierCode = normalizeSupplierCode(product?.supplierCode || '');
+            return {
+                sourceType: PRODUCT_SOURCE_TYPES.includes(src.sourceType) ? src.sourceType : 'Unknown',
+                channelPartnerId: String(src.channelPartnerId || '').trim(),
+                brandSupplierCode: normalizeSupplierCode(src.brandSupplierCode || product?.supplierCode || ''),
+                commercialSupplierCode: normalizeSupplierCode(src.commercialSupplierCode || canonicalSupplierCode),
+                factorySupplierCode: normalizeSupplierCode(src.factorySupplierCode || ''),
+                brandOwnerSupplierCode: normalizeSupplierCode(src.brandOwnerSupplierCode || ''),
+                authorizationStatus: PRODUCT_AUTHORIZATION_STATUS.includes(src.authorizationStatus) ? src.authorizationStatus : '',
+                authorizationExpiry: String(src.authorizationExpiry || '').trim(),
+                sourceRemark: String(src.sourceRemark || '').trim()
+            };
+        }
+        function readProductSourcingFromModal(canonicalSupplierCode = '') {
+            const sourceType = document.getElementById('m-source-type')?.value || 'Unknown';
+            if (sourceType === 'Direct Factory') {
+                return compactProductMasterObject({
+                    sourceType,
+                    channelPartnerId: '',
+                    brandSupplierCode: normalizeSupplierCode(canonicalSupplierCode),
+                    commercialSupplierCode: normalizeSupplierCode(canonicalSupplierCode),
+                    factorySupplierCode: normalizeSupplierCode(canonicalSupplierCode),
+                    brandOwnerSupplierCode: normalizeSupplierCode(canonicalSupplierCode),
+                    authorizationStatus: 'Not Required',
+                    authorizationExpiry: '',
+                    sourceRemark: String(document.getElementById('m-source-remark')?.value || '').trim()
+                });
+            }
+            const partnerId = String(document.getElementById('m-channel-partner-id')?.value || '').trim();
+            const partner = getChannelPartnerById(partnerId);
+            const data = {
+                sourceType,
+                channelPartnerId: partnerId,
+                brandSupplierCode: normalizeSupplierCode(canonicalSupplierCode),
+                commercialSupplierCode: normalizeSupplierCode(document.getElementById('m-commercial-supplier-code')?.value || ''),
+                factorySupplierCode: normalizeSupplierCode(document.getElementById('m-factory-supplier-code')?.value || canonicalSupplierCode),
+                brandOwnerSupplierCode: normalizeSupplierCode(document.getElementById('m-brand-owner-supplier-code')?.value || canonicalSupplierCode),
+                authorizationStatus: document.getElementById('m-authorization-status')?.value || partner?.authorizationStatus || '',
+                authorizationExpiry: String(document.getElementById('m-authorization-expiry')?.value || partner?.authorizationExpiry || '').trim(),
+                sourceRemark: String(document.getElementById('m-source-remark')?.value || '').trim()
+            };
+            return compactProductMasterObject(data);
+        }
+        function supplierSelectOptions(selectedCode = '', includeBlank = true) {
+            const selected = normalizeSupplierCode(selectedCode);
+            const blank = includeBlank ? '<option value="">-</option>' : '';
+            return blank + suppliers
+                .map(s => {
+                    const code = normalizeSupplierCode(s.code);
+                    const label = `${code} · ${getSupplierDisplayName(s)}`;
+                    return `<option value="${htmlSafe(code)}" ${code === selected ? 'selected' : ''}>${htmlSafe(label)}</option>`;
+                })
+                .join('');
+        }
+        function setSupplyRouteSelectOptions(sourcing = {}, canonicalSupplierCode = '') {
+            ['m-commercial-supplier-code', 'm-factory-supplier-code', 'm-brand-owner-supplier-code'].forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                const selected = id === 'm-commercial-supplier-code'
+                    ? (sourcing.commercialSupplierCode || canonicalSupplierCode)
+                    : (id === 'm-factory-supplier-code' ? sourcing.factorySupplierCode : sourcing.brandOwnerSupplierCode);
+                el.innerHTML = supplierSelectOptions(selected, true);
+            });
+        }
+        function updateProductChannelPartnerOptions() {
+            const select = document.getElementById('m-channel-partner-id');
+            if (!select) return;
+            const supplierCode = normalizeSupplierCode(document.getElementById('m-supplier-code')?.value || '');
+            const sourceType = document.getElementById('m-source-type')?.value || '';
+            const selected = select.value || '';
+            select.innerHTML = channelPartnerOptions(selected, supplierCode, sourceType);
+        }
+        window.updateProductChannelPartnerOptions = updateProductChannelPartnerOptions;
+        function updateSupplyRouteVisibility() {
+            const sourceType = document.getElementById('m-source-type')?.value || 'Unknown';
+            const direct = sourceType === 'Direct Factory';
+            const partnerWrap = document.getElementById('m-channel-partner-wrap');
+            const commercialWrap = document.getElementById('m-commercial-supplier-wrap');
+            const factoryWrap = document.getElementById('m-factory-supplier-wrap');
+            const brandWrap = document.getElementById('m-brand-owner-supplier-wrap');
+            if (partnerWrap) partnerWrap.classList.toggle('hidden', direct || sourceType === 'Unknown');
+            [commercialWrap, factoryWrap, brandWrap].forEach(wrap => wrap?.classList.add('hidden'));
+            const note = document.getElementById('m-source-route-note');
+            if (note) note.textContent = direct ? 'Direct factory uses selected Supplier as brand/factory' : 'Select a channel partner for non-direct supply';
+            updateProductChannelPartnerOptions();
+        }
+        window.updateSupplyRouteVisibility = updateSupplyRouteVisibility;
+        function fillProductSourcingDetails(product = {}) {
+            const sourcing = getProductSourcing(product);
+            const canonicalSupplierCode = normalizeSupplierCode(product?.supplierCode || '');
+            setSupplyRouteSelectOptions(sourcing, canonicalSupplierCode);
+            const setVal = (id, value) => { const el = document.getElementById(id); if (el) el.value = value || ''; };
+            setVal('m-source-type', sourcing.sourceType || 'Unknown');
+            updateProductChannelPartnerOptions();
+            setVal('m-channel-partner-id', sourcing.channelPartnerId);
+            setVal('m-commercial-supplier-code', sourcing.commercialSupplierCode || canonicalSupplierCode);
+            setVal('m-factory-supplier-code', sourcing.factorySupplierCode);
+            setVal('m-brand-owner-supplier-code', sourcing.brandOwnerSupplierCode);
+            setVal('m-authorization-status', sourcing.authorizationStatus);
+            setVal('m-authorization-expiry', sourcing.authorizationExpiry);
+            setVal('m-source-remark', sourcing.sourceRemark);
+            updateSupplyRouteVisibility();
+        }
+        function readProductMasterDataFromModal() {
+            const data = {};
+            PRODUCT_MASTER_COMMON_FIELD_KEYS.forEach(key => {
+                data[key] = String(document.getElementById(`m-master-${key}`)?.value || '').trim();
+            });
+            return compactProductMasterObject(data);
+        }
+        function readProductTechnicalSpecsFromModal(category) {
+            const specs = {};
+            getProductTechnicalSpecFieldsForCategory(category).forEach(field => {
+                specs[field.id] = coerceProductMasterFieldValue(document.getElementById(`m-tech-${field.id}`)?.value, field.type);
+            });
+            return compactProductMasterObject(specs);
+        }
+        function fillProductMasterDetails(product = {}) {
+            const md = getProductMasterData(product);
+            PRODUCT_MASTER_COMMON_FIELD_KEYS.forEach(key => {
+                const el = document.getElementById(`m-master-${key}`);
+                if (el) el.value = md[key] || '';
+            });
+        }
+        window.renderProductTechnicalFields = (category, values = {}) => {
+            const box = document.getElementById('product-master-technical-fields');
+            const label = document.getElementById('product-master-technical-group-label');
+            if (!box) return;
+            const fields = getProductTechnicalSpecFieldsForCategory(category);
+            const group = getProductTypeGroup({ category });
+            if (label) label.textContent = fields.length ? group.label : 'No V2 fields for this category';
+            if (!fields.length) {
+                box.innerHTML = `<div class="md:col-span-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-xs text-slate-400">Accessory keeps the existing Product Master fields in this version.</div>`;
+                return;
+            }
+            box.innerHTML = fields.map(field => {
+                const value = values?.[field.id] ?? '';
+                return `<div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">${htmlSafe(field.label)}</label>
+                    <input id="m-tech-${htmlSafe(field.id)}" type="${field.type === 'number' ? 'number' : 'text'}" ${field.type === 'number' ? 'step="0.01"' : ''} value="${htmlSafe(value)}" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                </div>`;
+            }).join('');
+        };
+        function flattenProductMasterValues(value) {
+            if (value === undefined || value === null) return [];
+            if (Array.isArray(value)) return value.flatMap(flattenProductMasterValues);
+            if (typeof value === 'object') return Object.values(value).flatMap(flattenProductMasterValues);
+            const text = String(value || '').trim();
+            return text ? [text] : [];
+        }
+        function productMasterSearchHaystack(product) {
+            const certReq = getProductCertificationRequirements(product);
+            return [
+                product?.id,
+                product?.name,
+                product?.category,
+                product?.scenario,
+                product?.spec,
+                getProductSupplierDisplay(product),
+                ...flattenProductMasterValues(getProductSourcing(product)),
+                ...flattenProductMasterValues(product.masterData),
+                ...flattenProductMasterValues(product.technicalSpecs),
+                ...flattenProductMasterValues(certReq.countries),
+                ...flattenProductMasterValues(certReq.standards),
+                ...flattenProductMasterValues(productMasterAttachedCertFiles(product)),
+                ...flattenProductMasterValues(productMasterAttachedSpecFiles(product)),
+                ...flattenProductMasterValues(getProductCompatibilityRules(product))
+            ].map(v => String(v || '').toLowerCase()).join(' ');
+        }
+        function productMatchesProductMasterSearch(product, query) {
+            const q = String(query || '').trim().toLowerCase();
+            if (!q) return true;
+            const haystack = productMasterSearchHaystack(product);
+            return q.split(/\s+/).filter(Boolean).every(term => haystack.includes(term));
+        }
+        function normalizeCompatibilityRule(rule = {}) {
+            const relationType = COMPATIBILITY_RELATION_TYPES.includes(rule.relationType) ? rule.relationType : 'PV ↔ Inverter';
+            const status = COMPATIBILITY_STATUS_TYPES.includes(rule.status) ? rule.status : 'Unknown';
+            const id = String(rule.id || `compat_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`).trim();
+            return {
+                id,
+                relationType,
+                sourceProductId: String(rule.sourceProductId || '').trim(),
+                targetProductId: String(rule.targetProductId || '').trim(),
+                systemScope: String(rule.systemScope || '').trim(),
+                status,
+                protocol: String(rule.protocol || '').trim(),
+                constraints: String(rule.constraints || '').trim(),
+                approvedBy: String(rule.approvedBy || '').trim(),
+                updatedAt: String(rule.updatedAt || '').trim(),
+                remark: String(rule.remark || '').trim()
+            };
+        }
+        function normalizeCompatibilityRules(rules = []) {
+            return (Array.isArray(rules) ? rules : []).map(normalizeCompatibilityRule).filter(rule => rule.sourceProductId || rule.targetProductId);
+        }
+        function getProductById(productId) {
+            const id = String(productId || '').trim();
+            return products.find(p => String(p.id || '').trim() === id) || null;
+        }
+        function getCompatibilityProductLabel(productId) {
+            const p = getProductById(productId);
+            return p ? `${p.id} · ${productListDisplayText(p.name)}` : String(productId || '-');
+        }
+        function getProductCompatibilityRules(product) {
+            const productId = String(product?.id || '').trim();
+            if (!productId) return [];
+            return compatibilityRules.filter(rule => rule.sourceProductId === productId || rule.targetProductId === productId);
+        }
+        function getProductCompatibilitySummary(product) {
+            const rules = getProductCompatibilityRules(product);
+            if (!rules.length) return { status: 'Unknown', count: 0, label: 'No rules', title: 'No compatibility rules yet' };
+            const blocked = rules.filter(rule => rule.status === 'Blocked').length;
+            const conditional = rules.filter(rule => rule.status === 'Conditional').length;
+            const pending = rules.filter(rule => rule.status === 'Pending').length;
+            const approved = rules.filter(rule => rule.status === 'Approved').length;
+            const status = blocked ? 'Blocked' : (conditional ? 'Conditional' : (pending ? 'Pending' : (approved ? 'Approved' : 'Unknown')));
+            return {
+                status,
+                count: rules.length,
+                label: `${status} (${rules.length})`,
+                title: rules.map(rule => `${rule.relationType}: ${getCompatibilityProductLabel(rule.sourceProductId)} -> ${getCompatibilityProductLabel(rule.targetProductId)} | ${rule.status}`).join('\n')
+            };
+        }
+        function productSelectOptions(selectedId = '') {
+            const selected = String(selectedId || '').trim();
+            return '<option value="">-</option>' + products.map(p => {
+                const id = String(p.id || '').trim();
+                return `<option value="${htmlSafe(id)}" ${id === selected ? 'selected' : ''}>${htmlSafe(getCompatibilityProductLabel(id))}</option>`;
+            }).join('');
+        }
+        function openProductCompatibilityDetails(productId) {
+            const searchEl = document.getElementById('compatibility-search');
+            if (searchEl) searchEl.value = String(productId || '');
+            renderCompatibilityMatrix();
+            document.getElementById('compatibility-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        window.openProductCompatibilityDetails = openProductCompatibilityDetails;
+        function setProductMasterControlState(prefix, activeId, ids) {
+            const activeClass = 'px-3 py-2 rounded-xl border border-purple-200 bg-white text-xs font-black text-purple-800 shadow-sm';
+            const idleClass = 'px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-black text-slate-500 hover:bg-slate-50';
+            ids.forEach(id => {
+                const el = document.getElementById(`${prefix}-${id}`);
+                if (el) el.className = id === activeId ? activeClass : idleClass;
+            });
+        }
+        function renderProductMasterControls(total = products.length, typeVisible = products.length, visible = typeVisible) {
+            const typeView = getProductMasterTypeView();
+            const roleView = getProductMasterRoleView();
+            setProductMasterControlState('product-master-type', typeView, PRODUCT_TYPE_GROUPS.map(group => group.id));
+            setProductMasterControlState('product-master-role', roleView, PRODUCT_ROLE_VIEWS.map(view => view.id));
+            const typeLabel = (PRODUCT_TYPE_GROUPS.find(group => group.id === typeView) || PRODUCT_TYPE_GROUPS[0]).label;
+            const roleLabel = (PRODUCT_ROLE_VIEWS.find(view => view.id === roleView) || PRODUCT_ROLE_VIEWS[0]).label;
+            const search = getProductMasterSearchQuery();
+            const searchEl = document.getElementById('product-master-search');
+            if (searchEl && searchEl.value !== search) searchEl.value = search;
+            const summary = document.getElementById('product-master-view-summary');
+            if (summary) summary.textContent = `${visible} visible / ${typeVisible} type-filtered / ${total} total | ${typeLabel} | ${roleLabel} view${search ? ` | Search: ${search}` : ''}`;
+        }
+        window.renderProductMasterControls = renderProductMasterControls;
+        window.setProductMasterTypeView = (typeId) => {
+            const next = PRODUCT_TYPE_GROUPS.some(group => group.id === typeId) ? typeId : 'all';
+            try { localStorage.setItem(PRODUCT_MASTER_TYPE_STORAGE_KEY, next); } catch (e) {}
+            renderDb();
+        };
+        window.setProductMasterRoleView = (roleViewId) => {
+            const next = PRODUCT_ROLE_VIEWS.some(view => view.id === roleViewId) ? roleViewId : getDefaultProductRoleView();
+            try { localStorage.setItem(PRODUCT_MASTER_ROLE_STORAGE_KEY, next); } catch (e) {}
+            renderDb();
+        };
+        window.setProductMasterSearch = (query) => {
+            try { localStorage.setItem(PRODUCT_MASTER_SEARCH_STORAGE_KEY, String(query || '').trim()); } catch (e) {}
             renderDb();
         };
         const PRODUCT_LIST_DISPLAY_REPLACEMENTS = [
@@ -8751,66 +9898,402 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 });
             });
         };
+        function productMasterCellClass(column) {
+            const align = column.align ? ` ${column.align}` : '';
+            return `py-4 px-4${align}`;
+        }
+        function productMasterHeaderHtml(column) {
+            const align = column.align ? ` ${column.align}` : '';
+            const label = htmlSafe(column.label || '');
+            if (column.key === 'id') {
+                return `<th class="py-4 px-4${align}">
+                    <div class="flex flex-col items-start gap-1">
+                        <span>${label}</span>
+                        ${renderFreezeColumnButton('product-list', 3)}
+                    </div>
+                </th>`;
+            }
+            return `<th class="py-4 px-4${align}">${label}</th>`;
+        }
+        function productMasterActionsHtml(product) {
+            const id = htmlSafe(product?.id || '');
+            return `<div class="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                <button onclick="editProduct('${id}')" class="text-purple-700 hover:bg-purple-50 p-1 rounded">✎</button>
+                <button onclick="deleteProduct('${id}')" class="text-red-300 hover:text-red-500 p-1 rounded">🗑</button>
+            </div>`;
+        }
+        function productMasterImageHtml(product) {
+            const productImg = String(product?.productImageDataUrl || product?.imageDataUrl || '').trim();
+            return productImg
+                ? `<img src="${htmlSafe(productImg)}" class="h-10 w-16 object-contain rounded-lg border border-slate-100 bg-white" alt="${htmlSafe(product?.name || '')}">`
+                : `<div class="h-10 w-16 rounded-lg border border-dashed border-slate-200 bg-slate-50 flex items-center justify-center text-[10px] text-slate-300">No Img</div>`;
+        }
+        function productMasterWarrantyHtml(product) {
+            const warrantyY = product?.warrantyYears ? `${product.warrantyYears} years` : '-';
+            const warrantyC = product?.warrantyCycles ? `${product.warrantyCycles} cycles` : '-';
+            return `${htmlSafe(warrantyY)} / ${htmlSafe(warrantyC)}`;
+        }
+        function productMasterCertificationHtml(ctx) {
+            return `<span title="${htmlSafe(ctx.certTitle)}">${htmlSafe(ctx.certBrief)}</span>`;
+        }
+        function productMasterAttachedCertFiles(product) {
+            return [
+                ...(Array.isArray(product?.certifications?.tuvCerts) ? product.certifications.tuvCerts : [])
+            ].map(file => file?.name || file?.fileName || file?.path || file?.url || '').filter(Boolean);
+        }
+        function productMasterAttachedSpecFiles(product) {
+            return [
+                ...(Array.isArray(product?.certifications?.specSheets) ? product.certifications.specSheets : [])
+            ].map(file => file?.name || file?.fileName || file?.path || file?.url || '').filter(Boolean);
+        }
+        function productMasterCertificationStatus(product) {
+            const req = getProductCertificationRequirements(product);
+            const requirementsCount = (req.countries || []).length + (req.standards || []).length;
+            const attachedCount = productMasterAttachedCertFiles(product).length;
+            const externalLink = String(getProductMasterData(product).certificateLink || '').trim();
+            if (!requirementsCount && !attachedCount && !externalLink) return { status: 'Not Set', label: 'No requirements', gap: 'Requirements missing' };
+            if (requirementsCount && (attachedCount || externalLink)) return { status: 'Ready', label: `${attachedCount} files${externalLink ? ' + link' : ''}`, gap: '' };
+            if (requirementsCount) return { status: 'Gap', label: 'Requirements only', gap: 'Certificate evidence missing' };
+            return { status: 'Evidence Only', label: attachedCount ? `${attachedCount} files` : 'External link only', gap: 'Requirements missing' };
+        }
+        function productMasterStatusPill(status, tone = 'slate') {
+            const palette = {
+                green: 'bg-green-50 text-green-700',
+                amber: 'bg-amber-50 text-amber-700',
+                red: 'bg-red-50 text-red-700',
+                purple: 'bg-purple-50 text-purple-700',
+                slate: 'bg-slate-50 text-slate-500'
+            };
+            return `<span class="text-[10px] font-black px-2 py-1 rounded ${palette[tone] || palette.slate}">${htmlSafe(status || '-')}</span>`;
+        }
+        function productMasterQuoteReadiness(product) {
+            const md = getProductMasterData(product);
+            const cert = productMasterCertificationStatus(product);
+            const hasPrice = getProductPriceCny(product) > 0;
+            const active = !md.status || md.status === 'Active';
+            const hasLeadTime = !!String(product?.leadTime || '').trim();
+            const ready = hasPrice && active && hasLeadTime && cert.status !== 'Gap' && cert.status !== 'Not Set';
+            return ready
+                ? { status: 'Quote Ready', tone: 'green', note: 'Price, lead time, cert evidence' }
+                : { status: 'Check Before Quote', tone: 'amber', note: [hasPrice ? '' : 'price', active ? '' : 'status', hasLeadTime ? '' : 'lead time', cert.status === 'Gap' || cert.status === 'Not Set' ? 'certification' : ''].filter(Boolean).join(', ') || 'review' };
+        }
+        function productMasterSourceRisk(product) {
+            const sourcing = getProductSourcing(product);
+            const partner = getProductChannelPartner(product);
+            if (partner?.authorizationStatus === 'Expired') return { status: 'High', tone: 'red', note: 'Channel authorization expired' };
+            if (partner?.authorizationStatus === 'Authorized') return { status: 'Controlled', tone: 'green', note: partner.type };
+            if (sourcing.sourceType === 'Direct Factory') return { status: 'Low', tone: 'green', note: 'Direct factory' };
+            if (sourcing.sourceType === 'Authorized Distributor' && sourcing.authorizationStatus === 'Authorized') return { status: 'Controlled', tone: 'green', note: 'Authorized channel' };
+            if (sourcing.sourceType === 'Dealer') return { status: 'Review', tone: 'amber', note: 'Dealer channel' };
+            if (sourcing.authorizationStatus === 'Expired') return { status: 'High', tone: 'red', note: 'Authorization expired' };
+            return { status: 'Unknown', tone: 'slate', note: sourcing.sourceRemark || 'Source not confirmed' };
+        }
+        function supplierNameByCode(code) {
+            const supplier = getSupplierByCode(normalizeSupplierCode(code));
+            return supplier ? getSupplierDisplayName(supplier) : (code || '-');
+        }
+        function getProductChannelPartner(product) {
+            return getChannelPartnerById(getProductSourcing(product).channelPartnerId);
+        }
+        function productMasterCommercialSupplierName(product, ctx) {
+            const partner = getProductChannelPartner(product);
+            if (partner) return partner.name;
+            return supplierNameByCode(ctx.sourcing.commercialSupplierCode || product?.supplierCode);
+        }
+        function productMasterSupplyRouteHtml(ctx) {
+            const sourcing = ctx.sourcing;
+            const source = sourcing.sourceType || 'Unknown';
+            const partner = ctx.channelPartner;
+            const route = partner ? channelPartnerLabel(partner) : supplierNameByCode(sourcing.factorySupplierCode || sourcing.brandOwnerSupplierCode || sourcing.brandSupplierCode);
+            return `<div class="font-bold text-slate-700 text-xs">${htmlSafe(source)}</div><div class="text-[10px] text-slate-400">${htmlSafe(route !== '-' ? route : ctx.supplierName)}</div>`;
+        }
+        function productMasterQuotePriceHtml(product) {
+            const pricing = priceListProductPricing(product || {});
+            const selectedPrice = getPriceListSelectedPcsPrice(pricing);
+            const selectedLabel = getPriceListSelectedPriceLabel();
+            return `${renderDualCurrencyAmount(selectedPrice, 2, 'pcs')}<div class="text-[10px] text-slate-400">${htmlSafe(selectedLabel)} / quote-ready</div>`;
+        }
+        function productMasterTechnicalFitHtml(product) {
+            const group = getProductTypeGroup(product);
+            const inv = Number.isFinite(parseFloat(product?.inverterKw)) ? `${formatNumberAuto(product.inverterKw, 2)} kW inverter` : '';
+            const bat = Number.isFinite(parseFloat(product?.batteryKwh)) ? `${formatNumberAuto(product.batteryKwh, 2)} kWh battery` : '';
+            const capacity = [inv, bat].filter(Boolean).join(' / ');
+            return `<div class="font-bold text-slate-700">${htmlSafe(group.label)}</div><div class="text-[10px] text-slate-400">${htmlSafe(capacity || getProductPricingMeta(product || {}).label || '-')}</div>`;
+        }
+        function productMasterMarketAlignmentHtml(product) {
+            const summary = getMarketPriceSummary(product?.category || '', { days: 30 });
+            if (!summary.records.length) return `<div class="font-bold text-slate-400">No 30D benchmark</div><div class="text-[10px] text-slate-400">Unit /${htmlSafe(summary.unit)}</div>`;
+            return `${formatMarketPrice(summary.avgCny, summary.unit, getPriceListCurrencyPriority())}<div class="text-[10px] text-slate-400">30D market avg</div>`;
+        }
+        function productMasterValueHtml(value, fallback = '-') {
+            return htmlSafe(String(value ?? '').trim() || fallback);
+        }
+        function productMasterLinkHtml(value, label = 'Open') {
+            const url = String(value || '').trim();
+            if (!url) return '<span class="text-xs text-slate-400">-</span>';
+            return `<a href="${htmlSafe(url)}" target="_blank" rel="noopener" class="text-xs font-bold text-blue-600 hover:underline">${htmlSafe(label)}</a>`;
+        }
+        function productMasterTechnicalSummary(product) {
+            const group = getProductTypeGroup(product).id;
+            const t = getProductTechnicalSpecs(product);
+            if (group === 'pv') {
+                return [t.powerW ? `${t.powerW}W` : '', t.cellType, t.moduleType, t.maxSystemVoltageV ? `${t.maxSystemVoltageV}V max` : ''].filter(Boolean).join(' / ');
+            }
+            if (group === 'inverter') {
+                return [t.ratedAcPowerKw ? `${t.ratedAcPowerKw}kW AC` : '', t.maxPvInputPowerKw ? `${t.maxPvInputPowerKw}kW PV` : '', t.mpptQty ? `${t.mpptQty} MPPT` : '', t.compatibleBatterySeries].filter(Boolean).join(' / ');
+            }
+            if (group === 'battery') {
+                return [t.nominalEnergyKwh ? `${t.nominalEnergyKwh}kWh nominal` : '', t.usableEnergyKwh ? `${t.usableEnergyKwh}kWh usable` : '', t.batteryType, t.communication].filter(Boolean).join(' / ');
+            }
+            if (group === 'ess') {
+                return [t.nominalEnergyKwh ? `${t.nominalEnergyKwh}kWh` : '', t.pcsRatedPowerKw ? `${t.pcsRatedPowerKw}kW PCS` : '', t.coolingType, t.emsIncluded ? `EMS ${t.emsIncluded}` : ''].filter(Boolean).join(' / ');
+            }
+            return '';
+        }
+        function productMasterEfficiencyCapacity(product) {
+            const group = getProductTypeGroup(product).id;
+            const t = getProductTechnicalSpecs(product);
+            if (group === 'pv') return [t.moduleEfficiencyPct ? `${t.moduleEfficiencyPct}% eff.` : '', t.powerW ? `${t.powerW}W` : ''].filter(Boolean).join(' / ');
+            if (group === 'inverter') return [t.ratedAcPowerKw ? `${t.ratedAcPowerKw}kW` : '', t.maxAcOutputPowerKw ? `${t.maxAcOutputPowerKw}kW max` : ''].filter(Boolean).join(' / ');
+            if (group === 'battery') return [t.nominalEnergyKwh ? `${t.nominalEnergyKwh}kWh` : '', t.dodPct ? `${t.dodPct}% DOD` : '', t.cycleLife].filter(Boolean).join(' / ');
+            if (group === 'ess') return [t.nominalEnergyKwh ? `${t.nominalEnergyKwh}kWh` : '', t.pcsRatedPowerKw ? `${t.pcsRatedPowerKw}kW` : '', t.roundTripEfficiencyPct ? `${t.roundTripEfficiencyPct}% RTE` : ''].filter(Boolean).join(' / ');
+            return '';
+        }
+        function productMasterContext(product) {
+            const costCny = getProductCostCny(product);
+            const priceCny = getProductPriceCny(product);
+            const pricingMeta = getProductPricingMeta(product);
+            const margin = priceCny > 0 ? ((priceCny - costCny) / priceCny * 100).toFixed(1) : '0.0';
+            const supplier = getProductSupplier(product);
+            const supplierName = productListDisplayText(supplier ? getSupplierDisplayName(supplier) : (product?.vendor || '-'));
+            const certReq = getProductCertificationRequirements(product);
+            const certTitle = `${(certReq.countries || []).join(', ')}\n${(certReq.standards || []).join('\n')}`;
+            const certBrief = (certReq.standards || []).slice(0, 2).join(', ') || '-';
+            const contactHtml = product?.contact ? `<div class="relative group inline-block cursor-help"><span class="${product.contactInfo ? 'border-b border-dashed border-blue-400 text-blue-600' : ''}">${productListDisplayText(product.contact)}</span>${product.contactInfo ? `<div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block px-3 py-2 bg-slate-800 text-white text-xs rounded-lg z-50 whitespace-nowrap">Phone: ${htmlSafe(product.contactInfo)}</div>` : ''}</div>` : '-';
+            const masterData = getProductMasterData(product);
+            const technicalSpecs = getProductTechnicalSpecs(product);
+            const sourcing = getProductSourcing(product);
+            const channelPartner = getProductChannelPartner(product);
+            const certStatus = productMasterCertificationStatus(product);
+            const compatibility = getProductCompatibilitySummary(product);
+            const quoteReadiness = productMasterQuoteReadiness(product);
+            const sourceRisk = productMasterSourceRisk(product);
+            return { costCny, priceCny, pricingMeta, margin, supplier, supplierName, certReq, certTitle, certBrief, contactHtml, masterData, technicalSpecs, sourcing, channelPartner, certStatus, compatibility, quoteReadiness, sourceRisk };
+        }
+        const PRODUCT_MASTER_COLUMNS = {
+            id: { key: 'id', label: 'Product ID', render: p => htmlSafe(p.id || '-') },
+            image: { key: 'image', label: 'Image', render: p => productMasterImageHtml(p) },
+            name: { key: 'name', label: 'Product Name', render: p => `<span class="font-bold text-slate-700 text-sm max-w-[220px] block truncate" title="${htmlSafe(productListDisplayText(p.name))}">${htmlSafe(productListDisplayText(p.name))}</span>` },
+            model: { key: 'model', label: 'Model', render: (p, ctx) => `<span class="text-xs font-mono text-slate-600">${productMasterValueHtml(ctx.masterData.model)}</span>` },
+            brand: { key: 'brand', label: 'Brand', render: (p, ctx) => `<span class="text-xs text-slate-600">${productMasterValueHtml(ctx.masterData.brand || ctx.supplierName)}</span>` },
+            series: { key: 'series', label: 'Series', render: (p, ctx) => `<span class="text-xs text-slate-600">${productMasterValueHtml(ctx.masterData.series)}</span>` },
+            spec: { key: 'spec', label: 'Specification', render: (p, ctx) => `<div class="text-xs text-slate-600">${htmlSafe(getProductDisplaySpec(p) || '-')}</div><div class="text-[10px] text-slate-400 font-bold">${htmlSafe(ctx.pricingMeta.label)}</div>` },
+            category: { key: 'category', label: 'Category ↕', render: p => `<span class="text-xs text-slate-500 uppercase tracking-tighter">${htmlSafe(productListDisplayText(p.category))}</span>` },
+            subcategory: { key: 'subcategory', label: 'Subcategory', render: p => `<span class="text-xs text-slate-600">${htmlSafe(productListDisplayText(p.scenario))}</span>` },
+            application: { key: 'application', label: 'Application', render: (p, ctx) => `<span class="text-xs text-slate-600">${htmlSafe(productListDisplayText(ctx.masterData.application || p.application || p.scenario || '-'))}</span>` },
+            voltage: { key: 'voltage', label: 'Voltage', render: (p, ctx) => `<span class="text-xs text-slate-600">${productMasterValueHtml(ctx.masterData.voltageClass)}</span>` },
+            phase: { key: 'phase', label: 'Phase', render: (p, ctx) => `<span class="text-xs text-slate-600">${productMasterValueHtml(ctx.masterData.phase)}</span>` },
+            status: { key: 'status', label: 'Status', render: (p, ctx) => `<span class="text-[10px] font-black px-2 py-1 rounded ${ctx.masterData.status === 'Active' ? 'bg-green-50 text-green-600' : 'bg-slate-50 text-slate-500'}">${productMasterValueHtml(ctx.masterData.status)}</span>` },
+            country: { key: 'country', label: 'Country', render: (p, ctx) => `<span class="text-xs text-slate-600">${productMasterValueHtml(ctx.masterData.countryAvailable)}</span>` },
+            datasheet: { key: 'datasheet', label: 'Datasheet', render: (p, ctx) => productMasterLinkHtml(ctx.masterData.datasheetLink) },
+            quoteReadiness: { key: 'quoteReadiness', label: 'Quote Readiness', render: (p, ctx) => `${productMasterStatusPill(ctx.quoteReadiness.status, ctx.quoteReadiness.tone)}<div class="text-[10px] text-slate-400 mt-1">${htmlSafe(ctx.quoteReadiness.note)}</div>` },
+            supplyRoute: { key: 'supplyRoute', label: 'Supply Route', render: (p, ctx) => productMasterSupplyRouteHtml(ctx) },
+            certificationReadiness: { key: 'certificationReadiness', label: 'Certification Status', render: (p, ctx) => `${productMasterStatusPill(ctx.certStatus.status, ctx.certStatus.status === 'Ready' ? 'green' : (ctx.certStatus.status === 'Gap' ? 'amber' : 'slate'))}<div class="text-[10px] text-slate-400 mt-1">${htmlSafe(ctx.certStatus.label)}</div>` },
+            technicalSummary: { key: 'technicalSummary', label: 'Technical Summary', render: p => `<span class="text-xs text-slate-600 max-w-[260px] block truncate" title="${htmlSafe(productMasterTechnicalSummary(p))}">${productMasterValueHtml(productMasterTechnicalSummary(p))}</span>` },
+            dimensions: { key: 'dimensions', label: 'Dimensions', render: (p, ctx) => `<span class="text-xs text-slate-600">${productMasterValueHtml(ctx.technicalSpecs.dimensionsMm)}</span>` },
+            weight: { key: 'weight', label: 'Weight', render: (p, ctx) => `<span class="text-xs text-slate-600">${productMasterValueHtml(ctx.technicalSpecs.weightKg ? `${ctx.technicalSpecs.weightKg} kg` : '')}</span>` },
+            efficiencyCapacity: { key: 'efficiencyCapacity', label: 'Efficiency / Capacity', render: p => `<span class="text-xs text-slate-600 max-w-[220px] block truncate" title="${htmlSafe(productMasterEfficiencyCapacity(p))}">${productMasterValueHtml(productMasterEfficiencyCapacity(p))}</span>` },
+            warranty: { key: 'warranty', label: 'Warranty (Y/C)', align: 'text-center', render: p => `<span class="text-xs text-slate-500">${productMasterWarrantyHtml(p)}</span>` },
+            leadTime: { key: 'leadTime', label: 'Lead Time', render: p => `<span class="text-xs text-slate-600">${htmlSafe(productListDisplayText(p.leadTime))}</span>` },
+            supplier: { key: 'supplier', label: 'Supplier ↕', render: (p, ctx) => `<span class="text-xs text-slate-500">${htmlSafe(ctx.supplierName)}</span>` },
+            contact: { key: 'contact', label: 'Contact', sensitiveField: 'supplierContact', render: (p, ctx) => `<span class="text-xs">${ctx.contactHtml}</span>` },
+            certification: { key: 'certification', label: 'Certification', render: (p, ctx) => `<span class="text-xs text-slate-500 max-w-[220px] block truncate">${productMasterCertificationHtml(ctx)}</span>` },
+            certificationRequirements: { key: 'certificationRequirements', label: 'Certification Requirements', render: (p, ctx) => `<span class="text-xs text-slate-500 max-w-[240px] block truncate" title="${htmlSafe(ctx.certTitle)}">${productMasterCertificationHtml(ctx)}</span>` },
+            externalCertificateLink: { key: 'externalCertificateLink', label: 'External Certificate Link', render: (p, ctx) => productMasterLinkHtml(ctx.masterData.certificateLink, 'Certificate') },
+            attachedCerts: { key: 'attachedCerts', label: 'Attached Certs', render: p => `<span class="text-xs font-bold text-slate-600">${productMasterAttachedCertFiles(p).length}</span><div class="text-[10px] text-slate-400">cert files</div>` },
+            attachedSpecs: { key: 'attachedSpecs', label: 'Attached Specs', render: p => `<span class="text-xs font-bold text-slate-600">${productMasterAttachedSpecFiles(p).length}</span><div class="text-[10px] text-slate-400">spec sheets</div>` },
+            cost: { key: 'cost', label: 'Base Cost', align: 'text-right', sensitiveField: 'cost', render: (p, ctx) => `<div class="text-sm font-mono text-slate-400">${formatProductBaseAmount(p, 'cost')}</div><div class="text-[10px] font-bold text-slate-300">/${htmlSafe(ctx.pricingMeta.priceBasisUnit)}</div>` },
+            price: { key: 'price', label: 'Base Price', align: 'text-right', render: (p, ctx) => `<div class="text-sm font-bold text-purple-700">${formatProductBaseAmount(p, 'price')}</div><div class="text-[10px] font-bold text-purple-300">/${htmlSafe(ctx.pricingMeta.priceBasisUnit)}</div>` },
+            margin: { key: 'margin', label: 'Margin', align: 'text-right', sensitiveField: 'margin', render: (p, ctx) => `<span class="text-[10px] font-black px-2 py-1 rounded ${parseFloat(ctx.margin) > 30 ? 'bg-green-50 text-green-600' : 'bg-slate-50 text-slate-400'}">${ctx.margin}%</span>` },
+            quotePrice: { key: 'quotePrice', label: 'Quote Price', align: 'text-right', render: p => productMasterQuotePriceHtml(p) },
+            priceBasis: { key: 'priceBasis', label: 'Price Basis', render: (p, ctx) => `<span class="text-xs font-bold text-slate-600">/${htmlSafe(ctx.pricingMeta.priceBasisUnit)}</span><div class="text-[10px] text-slate-400">${htmlSafe(ctx.pricingMeta.label)}</div>` },
+            technicalFit: { key: 'technicalFit', label: 'Technical Fit', render: p => productMasterTechnicalFitHtml(p) },
+            compatibility: { key: 'compatibility', label: 'Compatibility', render: (p, ctx) => `<button onclick="openProductCompatibilityDetails('${htmlSafe(p.id || '')}')" class="text-xs font-bold text-purple-700 hover:underline">${htmlSafe(ctx.compatibility.label)}</button>` },
+            compatibilityStatus: { key: 'compatibilityStatus', label: 'Compatibility Status', render: (p, ctx) => `<button onclick="openProductCompatibilityDetails('${htmlSafe(p.id || '')}')" title="${htmlSafe(ctx.compatibility.title)}" class="text-xs font-bold text-purple-700 hover:underline">${htmlSafe(ctx.compatibility.label)}</button>` },
+            marketAlignment: { key: 'marketAlignment', label: 'Market / Price List', align: 'text-right', render: p => productMasterMarketAlignmentHtml(p) },
+            sourceType: { key: 'sourceType', label: 'Source Type', render: (p, ctx) => `<span class="text-xs font-bold text-slate-600">${htmlSafe(ctx.sourcing.sourceType || 'Unknown')}</span>` },
+            commercialSupplier: { key: 'commercialSupplier', label: 'Commercial Supplier', render: (p, ctx) => `<span class="text-xs text-slate-600">${htmlSafe(productMasterCommercialSupplierName(p, ctx))}</span>` },
+            factoryBrandOwner: { key: 'factoryBrandOwner', label: 'Factory / Brand Owner', render: (p, ctx) => `<div class="text-xs text-slate-600">${htmlSafe(supplierNameByCode(ctx.sourcing.factorySupplierCode || p.supplierCode))}</div><div class="text-[10px] text-slate-400">${htmlSafe(supplierNameByCode(ctx.sourcing.brandOwnerSupplierCode || p.supplierCode))}</div>` },
+            authorizationStatus: { key: 'authorizationStatus', label: 'Authorization Status', render: (p, ctx) => `${productMasterStatusPill(ctx.sourcing.authorizationStatus || 'Unknown', ctx.sourcing.authorizationStatus === 'Authorized' ? 'green' : (ctx.sourcing.authorizationStatus === 'Expired' ? 'red' : 'slate'))}<div class="text-[10px] text-slate-400 mt-1">${htmlSafe(ctx.sourcing.authorizationExpiry || '-')}</div>` },
+            sourceRisk: { key: 'sourceRisk', label: 'Source Risk', render: (p, ctx) => `${productMasterStatusPill(ctx.sourceRisk.status, ctx.sourceRisk.tone)}<div class="text-[10px] text-slate-400 mt-1">${htmlSafe(ctx.sourceRisk.note)}</div>` },
+            certificationGap: { key: 'certificationGap', label: 'Certification Gap', render: (p, ctx) => `<span class="text-xs text-slate-600">${htmlSafe(ctx.certStatus.gap || 'No gap')}</span><div class="text-[10px] text-slate-400">${htmlSafe(ctx.certStatus.label)}</div>` },
+            moq: { key: 'moq', label: 'MOQ', align: 'text-right', render: p => `<span class="text-xs text-slate-500">${htmlSafe(p.moq || p.MOQ || '-')}</span>` },
+            remark: { key: 'remark', label: 'Remark', render: (p, ctx) => `<span class="text-xs text-slate-500 max-w-[240px] block truncate" title="${htmlSafe(ctx.masterData.remark || '')}">${productMasterValueHtml(ctx.masterData.remark)}</span>` },
+            actions: { key: 'actions', label: 'Actions', align: 'text-center', render: p => productMasterActionsHtml(p) }
+        };
         window.renderDb = () => {
             const list = document.getElementById('db-list');
+            const head = document.getElementById('product-master-head-row');
             ensureSupplierData();
+            const typeView = getProductMasterTypeView();
+            const typeGroup = PRODUCT_TYPE_GROUPS.find(group => group.id === typeView) || PRODUCT_TYPE_GROUPS[0];
+            const filteredProducts = typeGroup.id === 'all'
+                ? [...products]
+                : products.filter(p => getProductTypeGroup(p).id === typeGroup.id);
+            const searchQuery = getProductMasterSearchQuery();
+            const searchFilteredProducts = filteredProducts.filter(p => productMatchesProductMasterSearch(p, searchQuery));
+            const columns = getProductMasterVisibleColumns();
+            if (head) head.innerHTML = columns.map(productMasterHeaderHtml).join('');
+            renderProductMasterControls(products.length, filteredProducts.length, searchFilteredProducts.length);
+            if(!list) return;
             if(products.length === 0) {
-                list.innerHTML = `<tr><td colspan="15" class="py-20 text-center text-slate-400 text-sm">No product records yet.</td></tr>`;
+                list.innerHTML = `<tr><td colspan="${columns.length || 1}" class="py-20 text-center text-slate-400 text-sm">No product records yet.</td></tr>`;
                 window.applyFrozenColumns('product-list');
                 return;
             }
-            const sorted = [...products].sort((a,b) => (a[dbGroupMode] || '').localeCompare(b[dbGroupMode] || ''));
+            if(filteredProducts.length === 0) {
+                list.innerHTML = `<tr><td colspan="${columns.length || 1}" class="py-20 text-center text-slate-400 text-sm">No products match this Product Master type view.</td></tr>`;
+                window.applyFrozenColumns('product-list');
+                return;
+            }
+            if(searchFilteredProducts.length === 0) {
+                list.innerHTML = `<tr><td colspan="${columns.length || 1}" class="py-20 text-center text-slate-400 text-sm">No products match this Product Master search.</td></tr>`;
+                window.applyFrozenColumns('product-list');
+                return;
+            }
+            const sortValue = p => dbGroupMode === 'vendor' ? getProductSupplierDisplay(p) : (p?.[dbGroupMode] || '');
+            const sorted = [...searchFilteredProducts].sort((a,b) => String(sortValue(a)).localeCompare(String(sortValue(b))));
             list.innerHTML = sorted.map(p => {
-                const costCny = getProductCostCny(p);
-                const priceCny = getProductPriceCny(p);
-                const pricingMeta = getProductPricingMeta(p);
-                const margin = priceCny > 0 ? ((priceCny - costCny) / priceCny * 100).toFixed(1) : 0;
-                const warrantyY = p.warrantyYears ? `${p.warrantyYears} years` : '-';
-                const warrantyC = p.warrantyCycles ? `${p.warrantyCycles} cycles` : '-';
-                const supplier = getProductSupplier(p);
-                const supplierName = productListDisplayText(supplier ? getSupplierDisplayName(supplier) : (p.vendor || '-'));
-                const productImg = String(p.productImageDataUrl || p.imageDataUrl || '').trim();
-                const productImgHtml = productImg
-                    ? `<img src="${htmlSafe(productImg)}" class="h-10 w-16 object-contain rounded-lg border border-slate-100 bg-white" alt="${htmlSafe(p.name || '')}">`
-                    : `<div class="h-10 w-16 rounded-lg border border-dashed border-slate-200 bg-slate-50 flex items-center justify-center text-[10px] text-slate-300">No Img</div>`;
-                const certReq = getProductCertificationRequirements(p);
-                const certTitle = `${(certReq.countries || []).join(', ')}\n${(certReq.standards || []).join('\n')}`;
-                const certBrief = (certReq.standards || []).slice(0, 2).join(', ') || '-';
-                const contactHtml = p.contact ? `<div class="relative group inline-block cursor-help"><span class="${p.contactInfo ? 'border-b border-dashed border-blue-400 text-blue-600' : ''}">${productListDisplayText(p.contact)}</span>${p.contactInfo ? `<div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block px-3 py-2 bg-slate-800 text-white text-xs rounded-lg z-50 whitespace-nowrap">Phone: ${htmlSafe(p.contactInfo)}</div>` : ''}</div>` : '-';
+                const ctx = productMasterContext(p);
                 return `
                     <tr class="hover:bg-slate-50 transition-colors group">
-                        <td class="py-4 px-4 text-xs font-mono text-slate-500">${p.id || '-'}</td>
-                        <td class="py-4 px-4">${productImgHtml}</td>
-                        <td class="py-4 px-4 font-bold text-slate-700 text-sm max-w-[200px] truncate" title="${htmlSafe(productListDisplayText(p.name))}">${htmlSafe(productListDisplayText(p.name))}</td>
-                        <td class="py-4 px-4 text-xs text-slate-600">
-                            <div>${htmlSafe(getProductDisplaySpec(p) || '-')}</div>
-                            <div class="text-[10px] text-slate-400 font-bold">${htmlSafe(pricingMeta.label)}</div>
-                        </td>
-                        <td class="py-4 px-4 text-xs text-slate-500 uppercase tracking-tighter">${htmlSafe(productListDisplayText(p.category))}</td>
-                        <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(productListDisplayText(p.scenario))}</td>
-                        <td class="py-4 px-4 text-xs text-slate-500 text-center">${warrantyY} / ${warrantyC}</td>
-                        <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(productListDisplayText(p.leadTime))}</td>
-                        <td class="py-4 px-4 text-xs text-slate-500">${htmlSafe(supplierName)}</td>
-                        <td class="py-4 px-4 text-xs">${contactHtml}</td>
-                        <td class="py-4 px-4 text-xs text-slate-500 max-w-[200px] truncate" title="${htmlSafe(certTitle)}">${htmlSafe(certBrief)}</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono text-slate-400">
-                            <div>${formatProductBaseAmount(p, 'cost')}</div>
-                            <div class="text-[10px] font-bold text-slate-300">/${htmlSafe(pricingMeta.priceBasisUnit)}</div>
-                        </td>
-                        <td class="py-4 px-4 text-right text-sm font-bold text-purple-700">
-                            <div>${formatProductBaseAmount(p, 'price')}</div>
-                            <div class="text-[10px] font-bold text-purple-300">/${htmlSafe(pricingMeta.priceBasisUnit)}</div>
-                        </td>
-                        <td class="py-4 px-4 text-right"><span class="text-[10px] font-black px-2 py-1 rounded ${margin > 30 ? 'bg-green-50 text-green-600' : 'bg-slate-50 text-slate-400'}">${margin}%</span></td>
-                        <td class="py-4 px-4 text-center">
-                            <div class="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                                <button onclick="editProduct('${p.id}')" class="text-purple-700 hover:bg-purple-50 p-1 rounded">✎</button>
-                                <button onclick="deleteProduct('${p.id}')" class="text-red-300 hover:text-red-500 p-1 rounded">🗑</button>
-                            </div>
-                        </td>
+                        ${columns.map(column => `<td class="${productMasterCellClass(column)}">${column.render(p, ctx)}</td>`).join('')}
                     </tr>`;
             }).join('');
             window.applyFrozenColumns('product-list');
+            try { renderCompatibilityMatrix(); } catch (e) {}
+        };
+        document.addEventListener('minova-auth-changed', () => {
+            try { renderDb(); } catch (e) {}
+        });
+
+        function compatibilityRuleMatchesFilters(rule) {
+            const q = String(document.getElementById('compatibility-search')?.value || '').trim().toLowerCase();
+            const relation = document.getElementById('compatibility-relation-filter')?.value || 'all';
+            const status = document.getElementById('compatibility-status-filter')?.value || 'all';
+            if (relation !== 'all' && rule.relationType !== relation) return false;
+            if (status !== 'all' && rule.status !== status) return false;
+            if (!q) return true;
+            const haystack = [
+                rule.id,
+                rule.relationType,
+                rule.sourceProductId,
+                rule.targetProductId,
+                getCompatibilityProductLabel(rule.sourceProductId),
+                getCompatibilityProductLabel(rule.targetProductId),
+                rule.systemScope,
+                rule.status,
+                rule.protocol,
+                rule.constraints,
+                rule.approvedBy,
+                rule.updatedAt,
+                rule.remark
+            ].map(v => String(v || '').toLowerCase()).join(' ');
+            return q.split(/\s+/).filter(Boolean).every(term => haystack.includes(term));
+        }
+        function compatibilityStatusPill(status) {
+            const tone = status === 'Approved' ? 'green' : (status === 'Blocked' ? 'red' : (status === 'Conditional' || status === 'Pending' ? 'amber' : 'slate'));
+            return productMasterStatusPill(status || 'Unknown', tone);
+        }
+        function renderCompatibilityMatrix() {
+            const list = document.getElementById('compatibility-list');
+            const summary = document.getElementById('compatibility-summary');
+            if (!list) return;
+            compatibilityRules = normalizeCompatibilityRules(compatibilityRules);
+            const visible = compatibilityRules.filter(compatibilityRuleMatchesFilters);
+            if (summary) summary.textContent = `${visible.length} visible / ${compatibilityRules.length} rules`;
+            if (!visible.length) {
+                list.innerHTML = `<tr><td colspan="10" class="py-12 text-center text-slate-400 text-sm">No compatibility rules match the current filters.</td></tr>`;
+                return;
+            }
+            list.innerHTML = visible.map(rule => `
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="py-4 px-4 text-xs font-bold text-slate-700">${htmlSafe(rule.relationType)}</td>
+                    <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(getCompatibilityProductLabel(rule.sourceProductId))}</td>
+                    <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(getCompatibilityProductLabel(rule.targetProductId))}</td>
+                    <td class="py-4 px-4 text-xs text-slate-500">${htmlSafe(rule.systemScope || '-')}</td>
+                    <td class="py-4 px-4">${compatibilityStatusPill(rule.status)}</td>
+                    <td class="py-4 px-4 text-xs text-slate-500">${htmlSafe(rule.protocol || '-')}</td>
+                    <td class="py-4 px-4 text-xs text-slate-500 max-w-[280px] truncate" title="${htmlSafe(rule.constraints || '')}">${htmlSafe(rule.constraints || '-')}</td>
+                    <td class="py-4 px-4 text-xs text-slate-500">${htmlSafe(rule.approvedBy || '-')}</td>
+                    <td class="py-4 px-4 text-xs text-slate-500">${htmlSafe(rule.updatedAt || '-')}</td>
+                    <td class="py-4 px-4 text-center">
+                        <button onclick="openCompatibilityModal('${htmlSafe(rule.id)}')" class="text-purple-700 hover:bg-purple-50 p-1 rounded">✎</button>
+                        <button onclick="deleteCompatibilityRule('${htmlSafe(rule.id)}')" class="text-red-300 hover:text-red-500 p-1 rounded">🗑</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+        window.renderCompatibilityMatrix = renderCompatibilityMatrix;
+        window.openCompatibilityModal = (ruleId = '') => {
+            const rule = compatibilityRules.find(r => r.id === ruleId) || null;
+            const setVal = (id, value) => { const el = document.getElementById(id); if (el) el.value = value || ''; };
+            const sourceSelect = document.getElementById('compat-source-product');
+            const targetSelect = document.getElementById('compat-target-product');
+            if (sourceSelect) sourceSelect.innerHTML = productSelectOptions(rule?.sourceProductId || '');
+            if (targetSelect) targetSelect.innerHTML = productSelectOptions(rule?.targetProductId || '');
+            setVal('compat-rule-id', rule?.id || '');
+            setVal('compat-relation-type', rule?.relationType || 'PV ↔ Inverter');
+            setVal('compat-source-product', rule?.sourceProductId || '');
+            setVal('compat-target-product', rule?.targetProductId || '');
+            setVal('compat-system-scope', rule?.systemScope || '');
+            setVal('compat-status', rule?.status || 'Approved');
+            setVal('compat-protocol', rule?.protocol || '');
+            setVal('compat-constraints', rule?.constraints || '');
+            setVal('compat-approved-by', rule?.approvedBy || '');
+            setVal('compat-updated-at', rule?.updatedAt || new Date().toISOString().slice(0, 10));
+            setVal('compat-remark', rule?.remark || '');
+            document.getElementById('compatibility-modal')?.classList.remove('hidden');
+        };
+        window.closeCompatibilityModal = () => {
+            document.getElementById('compatibility-modal')?.classList.add('hidden');
+        };
+        function readCompatibilityRuleFromModal() {
+            return normalizeCompatibilityRule({
+                id: document.getElementById('compat-rule-id')?.value || '',
+                relationType: document.getElementById('compat-relation-type')?.value || '',
+                sourceProductId: document.getElementById('compat-source-product')?.value || '',
+                targetProductId: document.getElementById('compat-target-product')?.value || '',
+                systemScope: document.getElementById('compat-system-scope')?.value || '',
+                status: document.getElementById('compat-status')?.value || '',
+                protocol: document.getElementById('compat-protocol')?.value || '',
+                constraints: document.getElementById('compat-constraints')?.value || '',
+                approvedBy: document.getElementById('compat-approved-by')?.value || '',
+                updatedAt: document.getElementById('compat-updated-at')?.value || '',
+                remark: document.getElementById('compat-remark')?.value || ''
+            });
+        }
+        function saveCompatibilityRule() {
+            const rule = readCompatibilityRuleFromModal();
+            if (!rule.sourceProductId || !rule.targetProductId) return alert('Please select both source and target products.');
+            const idx = compatibilityRules.findIndex(r => r.id === rule.id);
+            if (idx >= 0) compatibilityRules[idx] = rule;
+            else compatibilityRules.push(rule);
+            saveToLocal();
+            persistEntityToD1('compatibility_rule', rule.id, rule);
+            closeCompatibilityModal();
+            renderCompatibilityMatrix();
+            renderDb();
+        }
+        window.saveCompatibilityRule = saveCompatibilityRule;
+        window.deleteCompatibilityRule = (ruleId) => {
+            const id = String(ruleId || '').trim();
+            if (!id || !confirm('Delete this compatibility rule?')) return;
+            compatibilityRules = compatibilityRules.filter(rule => rule.id !== id);
+            saveToLocal();
+            deleteEntityFromD1('compatibility_rule', id);
+            renderCompatibilityMatrix();
+            renderDb();
         };
 
         function getNonStockProductsForPricing() {
@@ -12327,6 +13810,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             updateProductCurrencyFromSupplier({ skipExisting: true });
             updateSubcatSuggestions();
             if (!window.editId) {
+                fillProductMasterDetails({});
+                fillProductSourcingDetails({ supplierCode: document.getElementById('m-supplier-code')?.value || '' });
+                renderProductTechnicalFields(document.getElementById('m-category')?.value || '');
                 ['tuv', 'specs'].forEach(type => {
                     const list = document.getElementById(`product-${type}-list`);
                     const empty = document.getElementById(`product-${type}-empty`);
@@ -12346,10 +13832,11 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         window.closeModal = () => {
             document.getElementById('modal').classList.add('hidden');
             window.editId = null;
-            ['m-name', 'm-category', 'm-supplier-code', 'm-spec', 'm-inverter-kw', 'm-battery-kwh', 'm-scenario', 'm-warranty-years', 'm-warranty-cycles', 'm-lead-time', 'm-contact', 'm-contact-info', 'm-price-basis-unit', 'm-unit-qty-per-pcs', 'm-cost', 'm-price', 'm-cert-requirements'].forEach(id => {
+            ['m-name', 'm-category', 'm-supplier-code', 'm-spec', 'm-inverter-kw', 'm-battery-kwh', 'm-scenario', 'm-warranty-years', 'm-warranty-cycles', 'm-lead-time', 'm-contact', 'm-contact-info', 'm-price-basis-unit', 'm-unit-qty-per-pcs', 'm-cost', 'm-price', 'm-cert-requirements', 'm-source-type', 'm-commercial-supplier-code', 'm-factory-supplier-code', 'm-brand-owner-supplier-code', 'm-authorization-status', 'm-authorization-expiry', 'm-source-remark', ...PRODUCT_MASTER_COMMON_FIELD_KEYS.map(key => `m-master-${key}`)].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.value = '';
             });
+            renderProductTechnicalFields('');
             updateHybridSpecControls();
             const currencyEl = document.getElementById('m-price-currency');
             if (currencyEl) currencyEl.value = 'CNY';
@@ -12399,6 +13886,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 costCurrency: productCurrency,
                 price: parseFloat(document.getElementById('m-price').value) || 0,
                 priceCurrency: productCurrency,
+                sourcing: readProductSourcingFromModal(supplier.code),
+                masterData: readProductMasterDataFromModal(),
+                technicalSpecs: readProductTechnicalSpecsFromModal(category),
                 certificationRequirements: readProductCertificationRequirementsFromModal(),
                 productImageDataUrl: String(window.__productImageDraft || ''),
                 ts: Date.now()
@@ -12414,6 +13904,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (!data.certifications) {
                 data.certifications = { tuvCerts: [], specSheets: [] };
             }
+            if (!Object.keys(data.sourcing || {}).length || (data.sourcing.sourceType === 'Unknown' && !data.sourcing.factorySupplierCode && !data.sourcing.brandOwnerSupplierCode && !data.sourcing.authorizationStatus && !data.sourcing.authorizationExpiry && !data.sourcing.sourceRemark)) delete data.sourcing;
+            if (!Object.keys(data.masterData || {}).length) delete data.masterData;
+            if (!Object.keys(data.technicalSpecs || {}).length) delete data.technicalSpecs;
             if(!data.name) return alert("Please enter the product name.");
             const sub = normalizeProductSubcategory(data.scenario);
             const cat = normalizeProductCategory(data.category, 'Uncategorized');
@@ -12433,8 +13926,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             window.editId = id;
             ensureSupplierData();
             document.getElementById('m-name').value = p.name || '';
-            document.getElementById('m-category').value = p.category || '';
+            const category = p.category || '';
+            document.getElementById('m-category').value = category;
+            fillProductMasterDetails(p);
+            renderProductTechnicalFields(category, p?.technicalSpecs || {});
             updateSupplierSelects(p.supplierCode || getProductSupplier(p)?.code || '');
+            fillProductSourcingDetails(p);
             document.getElementById('m-spec').value = p.spec || '';
             const hybridSpec = parseHybridStorageSpec(p);
             const invEl = document.getElementById('m-inverter-kw');
@@ -12478,6 +13975,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         let importStep = 1;
         let importData = [];
         let importHeaders = [];
+        let importCompatibilityData = [];
+        let importChannelPartnerData = [];
         const systemFields = {
             id: '产品编号',
             name: '产品全称',
@@ -12522,6 +14021,48 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             cost: 'Base Cost',
             price: 'Base Price'
         };
+        const PRODUCT_MASTER_IMPORT_MASTER_FIELDS = {
+            masterModel: 'SKU / Model',
+            masterBrand: 'Brand',
+            masterSeries: 'Series',
+            masterApplication: 'Application',
+            masterVoltageClass: 'Voltage Class',
+            masterPhase: 'Phase',
+            masterStatus: 'Status',
+            masterCountryAvailable: 'Country Available',
+            masterDatasheetLink: 'Datasheet Link',
+            masterCertificateLink: 'External Certificate Link',
+            masterRemark: 'Remark'
+        };
+        const PRODUCT_MASTER_IMPORT_SOURCING_FIELDS = {
+            sourceType: 'Source Type',
+            channelPartnerId: 'Channel Partner ID',
+            brandSupplierCode: 'Brand Supplier Code',
+            commercialSupplierCode: 'Commercial Supplier Code',
+            factorySupplierCode: 'Factory Supplier Code',
+            brandOwnerSupplierCode: 'Brand Owner Supplier Code',
+            authorizationStatus: 'Authorization Status',
+            authorizationExpiry: 'Authorization Expiry',
+            sourceRemark: 'Source Remark'
+        };
+        const COMPATIBILITY_IMPORT_FIELDS = {
+            relationType: 'Relation Type',
+            sourceProductId: 'Source Product ID',
+            targetProductId: 'Target Product ID',
+            systemScope: 'System Scope',
+            status: 'Status',
+            protocol: 'Protocol',
+            constraints: 'Constraints',
+            approvedBy: 'Approved By',
+            updatedAt: 'Updated At',
+            remark: 'Remark'
+        };
+        Object.assign(systemFields, PRODUCT_MASTER_IMPORT_MASTER_FIELDS);
+        Object.assign(systemFields, PRODUCT_MASTER_IMPORT_SOURCING_FIELDS);
+        Object.assign(systemFields, PRODUCT_MASTER_TECHNICAL_LABEL_BY_KEY);
+        Object.assign(systemFieldLabelsEnglish, PRODUCT_MASTER_IMPORT_MASTER_FIELDS);
+        Object.assign(systemFieldLabelsEnglish, PRODUCT_MASTER_IMPORT_SOURCING_FIELDS);
+        Object.assign(systemFieldLabelsEnglish, PRODUCT_MASTER_TECHNICAL_LABEL_BY_KEY);
 
         // 获取拼音首字母的简易映射
         function getPinyinInitials(str) {
@@ -12559,6 +14100,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             goToStep(1, true);
             document.getElementById('excel-file-input').value = '';
             document.getElementById('file-name-display').textContent = '';
+            importCompatibilityData = [];
+            importChannelPartnerData = [];
         };
 
         window.goToStep = (step, isReset = false) => {
@@ -12618,6 +14161,41 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 const firstSheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[firstSheetName];
                 const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                const compatibilitySheet = workbook.Sheets['Compatibility Matrix'];
+                importCompatibilityData = [];
+                importChannelPartnerData = [];
+                const channelPartnerSheet = workbook.Sheets['Channel Partners'];
+                if (channelPartnerSheet) {
+                    const channelRows = XLSX.utils.sheet_to_json(channelPartnerSheet, { defval: '' });
+                    importChannelPartnerData = channelRows.map(row => normalizeChannelPartner({
+                        id: row.ID || row.Id || row.id || '',
+                        brandSupplierCode: row['Brand Supplier Code'],
+                        type: row['Partner Type'] || row.Type,
+                        name: row['Partner Name'] || row.Name,
+                        country: row['Country/Region'] || row.Country,
+                        authorizationStatus: row['Authorization Status'],
+                        authorizationExpiry: row['Authorization Expiry'],
+                        contact: row.Contact,
+                        contactInfo: row['Contact Info'],
+                        remark: row.Remark
+                    })).filter(partner => partner.brandSupplierCode && partner.name);
+                }
+                if (compatibilitySheet) {
+                    const compatRows = XLSX.utils.sheet_to_json(compatibilitySheet, { defval: '' });
+                    importCompatibilityData = compatRows.map(row => normalizeCompatibilityRule({
+                        id: row.ID || row.Id || row.id || '',
+                        relationType: row['Relation Type'],
+                        sourceProductId: row['Source Product ID'],
+                        targetProductId: row['Target Product ID'],
+                        systemScope: row['System Scope'],
+                        status: row.Status,
+                        protocol: row.Protocol,
+                        constraints: row.Constraints,
+                        approvedBy: row['Approved By'],
+                        updatedAt: row['Updated At'],
+                        remark: row.Remark
+                    })).filter(rule => rule.sourceProductId && rule.targetProductId);
+                }
 
                 if (json.length < 2) {
                     alert('The Excel file is empty or has no data.');
@@ -12655,6 +14233,33 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 priceBasisUnit: ['计价单位', 'Price Basis Unit', 'Pricing Unit', 'Unit'],
                 unitQtyPerPcs: ['每PCS含量', 'Qty per PCS', 'Unit Qty per PCS', 'Qty/PCS']
             };
+            Object.assign(aliases, {
+                masterModel: ['SKU / Model', 'Model', 'SKU', 'Spec Model'],
+                masterBrand: ['Brand', '品牌'],
+                masterSeries: ['Series', '系列'],
+                masterApplication: ['Application', '应用'],
+                masterVoltageClass: ['Voltage Class', 'Voltage_Class'],
+                masterPhase: ['Phase'],
+                masterStatus: ['Status'],
+                masterCountryAvailable: ['Country Available', 'Country_Available'],
+                masterDatasheetLink: ['Datasheet Link', 'Datasheet_Link'],
+                masterCertificateLink: ['External Certificate Link', 'Certificate Link', 'Certificate_Link'],
+                masterRemark: ['Remark', '备注']
+            });
+            Object.assign(aliases, {
+                sourceType: ['Source Type'],
+                channelPartnerId: ['Channel Partner ID', 'Channel Partner'],
+                brandSupplierCode: ['Brand Supplier Code', 'Brand Supplier'],
+                commercialSupplierCode: ['Commercial Supplier Code', 'Commercial Supplier'],
+                factorySupplierCode: ['Factory Supplier Code', 'Factory Supplier'],
+                brandOwnerSupplierCode: ['Brand Owner Supplier Code', 'Brand Owner'],
+                authorizationStatus: ['Authorization Status'],
+                authorizationExpiry: ['Authorization Expiry'],
+                sourceRemark: ['Source Remark']
+            });
+            PRODUCT_MASTER_TECHNICAL_IMPORT_KEYS.forEach(key => {
+                aliases[key] = [PRODUCT_MASTER_TECHNICAL_LABEL_BY_KEY[key], key];
+            });
             container.innerHTML = Object.keys(systemFields).map(key => `
                 <div class="flex items-center">
                     <label class="w-28 font-bold text-slate-600">${systemFieldLabelsEnglish[key] || systemFields[key]}:</label>
@@ -12707,6 +14312,42 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 // Generate a product ID when the import row does not provide one.
                 newProduct.category = normalizeProductCategory(newProduct.category, 'Uncategorized');
                 newProduct.scenario = normalizeProductSubcategory(newProduct.scenario);
+                const importedMasterData = compactProductMasterObject({
+                    model: newProduct.masterModel,
+                    brand: newProduct.masterBrand,
+                    series: newProduct.masterSeries,
+                    application: newProduct.masterApplication,
+                    voltageClass: newProduct.masterVoltageClass,
+                    phase: newProduct.masterPhase,
+                    status: newProduct.masterStatus,
+                    countryAvailable: newProduct.masterCountryAvailable,
+                    datasheetLink: newProduct.masterDatasheetLink,
+                    certificateLink: newProduct.masterCertificateLink,
+                    remark: newProduct.masterRemark
+                });
+                Object.keys(PRODUCT_MASTER_IMPORT_MASTER_FIELDS).forEach(key => delete newProduct[key]);
+                const importedSourcing = compactProductMasterObject({
+                    sourceType: PRODUCT_SOURCE_TYPES.includes(newProduct.sourceType) ? newProduct.sourceType : (newProduct.sourceType ? 'Unknown' : ''),
+                    channelPartnerId: newProduct.channelPartnerId,
+                    brandSupplierCode: normalizeSupplierCode(newProduct.brandSupplierCode || ''),
+                    commercialSupplierCode: normalizeSupplierCode(newProduct.commercialSupplierCode || ''),
+                    factorySupplierCode: normalizeSupplierCode(newProduct.factorySupplierCode || ''),
+                    brandOwnerSupplierCode: normalizeSupplierCode(newProduct.brandOwnerSupplierCode || ''),
+                    authorizationStatus: PRODUCT_AUTHORIZATION_STATUS.includes(newProduct.authorizationStatus) ? newProduct.authorizationStatus : '',
+                    authorizationExpiry: newProduct.authorizationExpiry,
+                    sourceRemark: newProduct.sourceRemark
+                });
+                Object.keys(PRODUCT_MASTER_IMPORT_SOURCING_FIELDS).forEach(key => delete newProduct[key]);
+                const importedTechnicalSpecs = {};
+                getProductTechnicalSpecFieldsForCategory(newProduct.category).forEach(field => {
+                    if (newProduct[field.id] !== undefined && newProduct[field.id] !== '') {
+                        importedTechnicalSpecs[field.id] = coerceProductMasterFieldValue(newProduct[field.id], field.type);
+                    }
+                });
+                PRODUCT_MASTER_TECHNICAL_IMPORT_KEYS.forEach(key => delete newProduct[key]);
+                if (Object.keys(importedMasterData).length) newProduct.masterData = importedMasterData;
+                if (Object.keys(importedSourcing).length) newProduct.sourcing = importedSourcing;
+                if (Object.keys(importedTechnicalSpecs).length) newProduct.technicalSpecs = importedTechnicalSpecs;
                 if (isHybridStorageCategory(newProduct.category)) {
                     const parsedHybrid = parseHybridStorageSpec(newProduct);
                     if (parsedHybrid.inverterKw > 0) newProduct.inverterKw = parsedHybrid.inverterKw;
@@ -12761,17 +14402,51 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 successCount++;
             });
 
+            const channelPartnerCount = processChannelPartnerImport();
+            const compatibilityCount = processCompatibilityImport();
+
             saveToLocal();
             try {
                 window.__minovaBusiness?.upsertEntities?.([
                     ...products.map(record => ({ domain: 'product', recordId: record.id, payload: cloneForD1(record) })),
-                    ...suppliers.map(record => ({ domain: 'supplier', recordId: record.id || record.code, payload: cloneForD1(record) }))
+                    ...channelPartners.map(record => ({ domain: 'channel_partner', recordId: record.id, payload: cloneForD1(record) })),
+                    ...suppliers.map(record => ({ domain: 'supplier', recordId: record.id || record.code, payload: cloneForD1(record) })),
+                    ...compatibilityRules.map(record => ({ domain: 'compatibility_rule', recordId: record.id, payload: cloneForD1(record) }))
                 ]);
             } catch (e) {
                 console.warn('D1 product import save queued/failed:', e);
             }
+            if (channelPartnerCount) log.push(`<p class="text-green-600">Channel Partners imported: ${channelPartnerCount} records.</p>`);
+            if (compatibilityCount) log.push(`<p class="text-green-600">Compatibility Matrix imported: ${compatibilityCount} rules.</p>`);
             renderImportLog(successCount, failCount, log);
             goToStep(3);
+        }
+
+        function processCompatibilityImport() {
+            if (!Array.isArray(importCompatibilityData) || !importCompatibilityData.length) return 0;
+            let count = 0;
+            importCompatibilityData.forEach(rule => {
+                if (!rule.sourceProductId || !rule.targetProductId) return;
+                const idx = compatibilityRules.findIndex(r => r.id === rule.id);
+                if (idx >= 0) compatibilityRules[idx] = rule;
+                else compatibilityRules.push(rule);
+                count += 1;
+            });
+            compatibilityRules = normalizeCompatibilityRules(compatibilityRules);
+            return count;
+        }
+
+        function processChannelPartnerImport() {
+            if (!Array.isArray(importChannelPartnerData) || !importChannelPartnerData.length) return 0;
+            let count = 0;
+            importChannelPartnerData.forEach(partner => {
+                const idx = channelPartners.findIndex(p => p.id === partner.id);
+                if (idx >= 0) channelPartners[idx] = partner;
+                else channelPartners.push(partner);
+                count += 1;
+            });
+            channelPartners = normalizeChannelPartners(channelPartners);
+            return count;
         }
 
         function renderImportLog(success, failed, details) {
@@ -12784,10 +14459,16 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
 
         window.downloadTemplate = () => {
-            const headers = ['Product ID', 'Product Name', 'Category', 'Supplier', 'Spec Model', 'Inverter kW', 'Battery kWh', 'Subcategory', 'Warranty Years', 'Cycle Count', 'Lead Time', 'Contact', 'Contact Method', 'Product Certification Countries', 'Product Certification Standards', 'Base Currency', 'Price Basis Unit', 'Qty per PCS', 'Base Cost', 'Base Price'];
+            const masterHeaders = ['SKU / Model', 'Brand', 'Series', 'Application', 'Voltage Class', 'Phase', 'Status', 'Country Available', 'Datasheet Link', 'External Certificate Link', 'Remark'];
+            const sourcingHeaders = ['Source Type', 'Channel Partner ID', 'Brand Supplier Code', 'Commercial Supplier Code', 'Factory Supplier Code', 'Brand Owner Supplier Code', 'Authorization Status', 'Authorization Expiry', 'Source Remark'];
+            const technicalHeaders = PRODUCT_MASTER_TECHNICAL_IMPORT_KEYS.map(key => PRODUCT_MASTER_TECHNICAL_LABEL_BY_KEY[key]);
+            const headers = ['Product ID', 'Product Name', 'Category', 'Supplier', 'Spec Model', 'Inverter kW', 'Battery kWh', 'Subcategory', 'Warranty Years', 'Cycle Count', 'Lead Time', 'Contact', 'Contact Method', 'Product Certification Countries', 'Product Certification Standards', 'Base Currency', 'Price Basis Unit', 'Qty per PCS', 'Base Cost', 'Base Price', ...masterHeaders, ...sourcingHeaders, ...technicalHeaders];
             const data = products.map(p => {
                 const pricingMeta = getProductPricingMeta(p);
                 const hybridSpec = isHybridStorageCategory(p.category) ? parseHybridStorageSpec(p) : { inverterKw: '', batteryKwh: '' };
+                const md = getProductMasterData(p);
+                const tech = getProductTechnicalSpecs(p);
+                const sourcing = getProductSourcing(p);
                 return [
                 p.id || '',
                 p.name || '',
@@ -12808,18 +14489,72 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 pricingMeta.priceBasisUnit,
                 pricingMeta.unitQtyPerPcs,
                 p.cost || 0,
-                p.price || 0
+                p.price || 0,
+                md.model || '',
+                md.brand || '',
+                md.series || '',
+                md.application || '',
+                md.voltageClass || '',
+                md.phase || '',
+                md.status || '',
+                md.countryAvailable || '',
+                md.datasheetLink || '',
+                md.certificateLink || '',
+                md.remark || '',
+                sourcing.sourceType || '',
+                sourcing.channelPartnerId || '',
+                sourcing.brandSupplierCode || p.supplierCode || '',
+                sourcing.commercialSupplierCode || '',
+                sourcing.factorySupplierCode || '',
+                sourcing.brandOwnerSupplierCode || '',
+                sourcing.authorizationStatus || '',
+                sourcing.authorizationExpiry || '',
+                sourcing.sourceRemark || '',
+                ...PRODUCT_MASTER_TECHNICAL_IMPORT_KEYS.map(key => tech[key] || '')
             ];
             });
 
             // 如果没数据，加一行示例
             if (data.length === 0) {
-                data.push(['PROD001', 'Sample All-in-One', 'All-in-One System', 'Generic Supplier', '5.5 kW / 10 kWh', 5.5, 10, 'Single-Phase All-in-One', '10', '0', '15 days', 'Sales Manager', 'sales@example.com', 'MY, US, EU', 'IEC 62619; IEC 62109-1/2', 'CNY', 'set', 1, 5000, 6500]);
+                data.push(['PROD001', 'Sample All-in-One', 'All-in-One System', 'Generic Supplier', '5.5 kW / 10 kWh', 5.5, 10, 'Single-Phase All-in-One', '10', '0', '15 days', 'Sales Manager', 'sales@example.com', 'MY, US, EU', 'IEC 62619; IEC 62109-1/2', 'CNY', 'set', 1, 5000, 6500, 'AIO-5.5-10', 'Generic Brand', 'Hybrid Series', 'Residential', 'LV', 'Single', 'Active', 'MY', '', '', 'Sample V3 Product Master row', 'Direct Factory', '', 'SUP001', 'SUP001', 'SUP001', 'SUP001', 'Authorized', '', 'Factory source confirmed', ...PRODUCT_MASTER_TECHNICAL_IMPORT_KEYS.map(key => key === 'nominalEnergyKwh' ? 10 : (key === 'pcsRatedPowerKw' ? 5.5 : ''))]);
             }
 
             const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
+            const compatibilityHeaders = ['ID', 'Relation Type', 'Source Product ID', 'Target Product ID', 'System Scope', 'Status', 'Protocol', 'Constraints', 'Approved By', 'Updated At', 'Remark'];
+            const compatibilityRows = normalizeCompatibilityRules(compatibilityRules).map(rule => [
+                rule.id,
+                rule.relationType,
+                rule.sourceProductId,
+                rule.targetProductId,
+                rule.systemScope,
+                rule.status,
+                rule.protocol,
+                rule.constraints,
+                rule.approvedBy,
+                rule.updatedAt,
+                rule.remark
+            ]);
+            if (!compatibilityRows.length) compatibilityRows.push(['compat_001', 'Inverter ↔ Battery', 'INV001', 'BAT001', 'Residential', 'Pending', 'CAN / RS485', 'Voltage and firmware check required', '', '', 'Sample compatibility row']);
+            const compatibilityWorksheet = XLSX.utils.aoa_to_sheet([compatibilityHeaders, ...compatibilityRows]);
+            const channelPartnerHeaders = ['ID', 'Brand Supplier Code', 'Partner Type', 'Partner Name', 'Country/Region', 'Authorization Status', 'Authorization Expiry', 'Contact', 'Contact Info', 'Remark'];
+            const channelPartnerRows = normalizeChannelPartners(channelPartners).map(partner => [
+                partner.id,
+                partner.brandSupplierCode,
+                partner.type,
+                partner.name,
+                partner.country,
+                partner.authorizationStatus,
+                partner.authorizationExpiry,
+                partner.contact,
+                partner.contactInfo,
+                partner.remark
+            ]);
+            if (!channelPartnerRows.length) channelPartnerRows.push(['channel_001', 'SUP001', 'Authorized Distributor', 'Sample Distributor', 'MY', 'Authorized', '', 'Sales Manager', 'sales@example.com', 'Sample channel partner row']);
+            const channelPartnerWorksheet = XLSX.utils.aoa_to_sheet([channelPartnerHeaders, ...channelPartnerRows]);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, 'Product List');
+            XLSX.utils.book_append_sheet(workbook, channelPartnerWorksheet, 'Channel Partners');
+            XLSX.utils.book_append_sheet(workbook, compatibilityWorksheet, 'Compatibility Matrix');
             XLSX.writeFile(workbook, 'product-master-list.xlsx');
         };
 
@@ -14107,9 +15842,11 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 salesRecords,
                 historicalInventory,
                 suppliers,
+                channelPartners,
                 companyCerts,
                 transportRecords,
                 fileDeleteLogs,
+                compatibilityRules,
                 subcategoriesByCategory,
                 profitSettings,
                 installerProfitSettings,
@@ -14133,9 +15870,11 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     salesRecords,
                     historicalInventory,
                     suppliers,
+                    channelPartners,
                     companyCerts,
                     transportRecords,
                     fileDeleteLogs,
+                    compatibilityRules,
                     subcategoriesByCategory,
                     profitSettings,
                     installerProfitSettings,

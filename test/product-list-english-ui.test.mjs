@@ -435,8 +435,10 @@ test('product certification v4 defines class profiles standards catalog and evid
 
 test('product certification v4 class profiles encode class A-E conditions and class C grid N/A rules', () => {
   [
-    "id: 'class_a'",
-    "label: 'Class A Grid-Tied PV'",
+    "id: 'class_a1'",
+    "label: 'Class A1 Grid-Tied PV Only'",
+    "id: 'class_a2'",
+    "label: 'Class A2 Grid-Tied PV + Battery'",
     "id: 'class_b'",
     "label: 'Class B Hybrid PV+BESS'",
     "id: 'class_c'",
@@ -484,6 +486,9 @@ test('product certification matrix selector replaces legacy country requirements
     'id="cert-matrix-project-filter"',
     'id="cert-matrix-evidence-filter"',
     'id="cert-matrix-list"',
+    'cert-matrix-evidence-fields',
+    'Evidence fields',
+    'grid grid-cols-1 md:grid-cols-3 gap-2',
     'saveProductCertificationMatrix'
   ].forEach((text) => {
     assert.equal(productModal.includes(text) || html.includes(text), true, `Missing certification matrix selector surface: ${text}`);
@@ -533,20 +538,39 @@ test('engineering workspace is a top-level tab instead of a database panel', () 
     'id="class-selection-panel"',
     'id="cert-class-tabs"',
     'id="cert-class-condition-card"',
-    'id="cert-class-product-stack"',
     'id="cert-class-checklist"',
-    'id="cert-class-capacity-filter"',
-    'id="cert-class-outdoor-filter"',
-    'id="cert-class-grid-discharge-filter"',
+    'id="cert-class-level-filters"',
+    'toggleCertificationClassLevelFilter',
+    'minova_cert_class_level_filters_v1',
+    'id="cert-class-add-standard-btn"',
+    'id="certification-standard-modal"',
     'setCertificationClassSelection',
     'renderCertificationClassWorkspace',
+    'Class A1 Grid-Tied PV Only',
+    'Class A2 Grid-Tied PV + Battery',
+    'Class Certification Requirements',
+    'Record ID',
+    'Standard / Requirement',
+    'Requirement Level',
+    'Applicability Condition',
+    'Evidence Type',
+    'Project Applicability',
+    'Registry URL',
     'PV Module',
     'Inverter / PCS',
-    'Battery',
-    'ESS',
+    'Battery / BESS',
     'BOS'
   ].forEach((text) => {
     assert.equal(engineeringTab.includes(text) || html.includes(text), true, `Missing Engineering Class Selection UI: ${text}`);
+  });
+  [
+    'Recommended Product Stack',
+    'id="cert-class-product-stack"',
+    'id="cert-class-capacity-filter"',
+    'id="cert-class-outdoor-filter"',
+    'id="cert-class-grid-discharge-filter"'
+  ].forEach((text) => {
+    assert.equal(engineeringTab.includes(text) || html.includes(text), false, `Engineering product stack should be removed: ${text}`);
   });
 });
 

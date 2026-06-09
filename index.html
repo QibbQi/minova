@@ -1759,51 +1759,39 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 <div>
                     <p class="text-[10px] font-black text-purple-700 uppercase tracking-widest mb-1">Engineering Workspace</p>
                     <h2 class="text-xl font-bold text-slate-800">Class Product Selection</h2>
-                    <p class="text-xs text-slate-400 mt-1">Select products by architecture class, compatibility, and Malaysia certification readiness.</p>
-                </div>
-                <div class="flex flex-wrap gap-2">
-                    <input id="cert-class-capacity-filter" type="number" min="0" step="0.1" oninput="renderCertificationClassWorkspace()" placeholder="kW / kWh" class="w-28 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none bg-white focus:border-purple-500">
-                    <select id="cert-class-outdoor-filter" onchange="renderCertificationClassWorkspace()" class="border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none bg-white">
-                        <option value="all">Indoor / Outdoor</option>
-                        <option value="outdoor">Outdoor</option>
-                        <option value="indoor">Indoor</option>
-                    </select>
-                    <select id="cert-class-grid-discharge-filter" onchange="renderCertificationClassWorkspace()" class="border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none bg-white">
-                        <option value="all">Grid Discharge</option>
-                        <option value="yes">Yes</option>
-                        <option value="no">No / Backup Only</option>
-                    </select>
+                    <p class="text-xs text-slate-400 mt-1">Maintain architecture class requirements and Malaysia certification standards by product type.</p>
                 </div>
             </div>
             <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/40">
                 <div id="cert-class-tabs" class="flex flex-wrap gap-2">
-                    <button id="cert-class-tab-class_a" type="button" onclick="setCertificationClassSelection('class_a')" class="px-3 py-2 rounded-xl border border-purple-200 bg-white text-xs font-black text-purple-800 shadow-sm">Class A Grid-Tied PV</button>
+                    <button id="cert-class-tab-class_a1" type="button" onclick="setCertificationClassSelection('class_a1')" class="px-3 py-2 rounded-xl border border-purple-200 bg-white text-xs font-black text-purple-800 shadow-sm">Class A1 Grid-Tied PV Only</button>
+                    <button id="cert-class-tab-class_a2" type="button" onclick="setCertificationClassSelection('class_a2')" class="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-black text-slate-500 hover:bg-slate-50">Class A2 Grid-Tied PV + Battery</button>
                     <button id="cert-class-tab-class_b" type="button" onclick="setCertificationClassSelection('class_b')" class="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-black text-slate-500 hover:bg-slate-50">Class B Hybrid PV+BESS</button>
                     <button id="cert-class-tab-class_c" type="button" onclick="setCertificationClassSelection('class_c')" class="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-black text-slate-500 hover:bg-slate-50">Class C Off-Grid</button>
                     <button id="cert-class-tab-class_d" type="button" onclick="setCertificationClassSelection('class_d')" class="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-black text-slate-500 hover:bg-slate-50">Class D Utility Solar</button>
                     <button id="cert-class-tab-class_e" type="button" onclick="setCertificationClassSelection('class_e')" class="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-black text-slate-500 hover:bg-slate-50">Class E Utility BESS</button>
                 </div>
             </div>
-            <div class="grid grid-cols-1 xl:grid-cols-[260px_minmax(0,1fr)_360px] gap-4 p-6 bg-white">
-                <aside id="cert-class-condition-card" class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-sm text-slate-500">Select a class to view architecture conditions.</aside>
-                <section>
-                    <div class="flex items-center justify-between mb-3">
-                        <h3 class="text-sm font-black text-slate-700 uppercase tracking-widest">Recommended Product Stack</h3>
-                        <div id="cert-class-stack-summary" class="text-[11px] font-bold text-slate-400">0 products</div>
+            <div class="grid grid-cols-1 xl:grid-cols-[320px_minmax(0,1fr)] gap-5 p-6 bg-white">
+                <aside id="cert-class-condition-card" class="rounded-2xl border border-blue-200 bg-blue-50/80 p-4 text-sm text-slate-500">Select a class to view architecture conditions.</aside>
+                <section class="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+                    <div class="p-4 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                        <div>
+                            <h3 class="text-sm font-black text-slate-700 uppercase tracking-widest">Class Certification Requirements</h3>
+                            <p class="text-[11px] text-slate-400 mt-1">Grouped by product type and requirement level for engineering review.</p>
+                        </div>
+                        <div class="flex flex-col md:items-end gap-2">
+                            <div class="flex flex-wrap items-center justify-end gap-2">
+                                <div id="cert-class-checklist-summary" class="text-[11px] font-bold text-slate-400">0 items</div>
+                                <button id="cert-class-add-standard-btn" type="button" onclick="openCertificationStandardEditor('', '', false)" class="hidden rounded-xl bg-purple-700 px-3 py-2 text-xs font-black text-white hover:bg-purple-800">+ Add Standard</button>
+                            </div>
+                            <div id="cert-class-level-filters" class="flex flex-wrap justify-start md:justify-end gap-1.5"></div>
+                        </div>
                     </div>
-                    <div id="cert-class-product-stack" class="space-y-3">
-                        <div class="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-400">No products loaded.</div>
+                    <div id="cert-class-checklist" class="space-y-3 p-4">
+                        <div class="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-400">No requirements loaded.</div>
                     </div>
                 </section>
-                <aside>
-                    <div class="flex items-center justify-between mb-3">
-                        <h3 class="text-sm font-black text-slate-700 uppercase tracking-widest">Certification Checklist</h3>
-                        <div id="cert-class-checklist-summary" class="text-[11px] font-bold text-slate-400">0 items</div>
-                    </div>
-                    <div id="cert-class-checklist" class="space-y-2">
-                        <div class="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-400">No checklist loaded.</div>
-                    </div>
-                </aside>
             </div>
         </div>
     </main>
@@ -3974,18 +3962,20 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 </div>
                 <button onclick="closeProductCertificationMatrix()" class="text-slate-400 hover:text-slate-600 text-2xl">×</button>
             </div>
-            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/60 flex flex-col xl:flex-row xl:items-center gap-3">
-                <input id="cert-matrix-search" type="search" oninput="renderProductCertificationMatrix()" placeholder="Search standard, condition, evidence type..." class="w-full xl:max-w-sm border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-purple-500 bg-white">
-                <select id="cert-matrix-level-filter" onchange="renderProductCertificationMatrix()" class="border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold outline-none bg-white">
-                    <option value="">All Levels</option>
-                </select>
-                <select id="cert-matrix-project-filter" onchange="renderProductCertificationMatrix()" class="border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold outline-none bg-white">
-                    <option value="">All Project Applicability</option>
-                </select>
-                <select id="cert-matrix-evidence-filter" onchange="renderProductCertificationMatrix()" class="border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold outline-none bg-white">
-                    <option value="">All Evidence Types</option>
-                </select>
-                <div id="cert-matrix-summary" class="text-[11px] font-bold text-slate-400 xl:ml-auto">0 selected</div>
+            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/60 grid grid-cols-1 xl:grid-cols-[minmax(260px,360px)_minmax(0,1fr)_auto] gap-3 xl:items-center">
+                <input id="cert-matrix-search" type="search" oninput="renderProductCertificationMatrix()" placeholder="Search standard, condition, evidence type..." class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-purple-500 bg-white">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <select id="cert-matrix-level-filter" onchange="renderProductCertificationMatrix()" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold outline-none bg-white">
+                        <option value="">All Levels</option>
+                    </select>
+                    <select id="cert-matrix-project-filter" onchange="renderProductCertificationMatrix()" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold outline-none bg-white">
+                        <option value="">All Project Applicability</option>
+                    </select>
+                    <select id="cert-matrix-evidence-filter" onchange="renderProductCertificationMatrix()" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold outline-none bg-white">
+                        <option value="">All Evidence Types</option>
+                    </select>
+                </div>
+                <div id="cert-matrix-summary" class="text-[11px] font-bold text-slate-400 xl:text-right">0 selected</div>
             </div>
             <div class="overflow-auto p-6">
                 <div id="cert-matrix-list" class="space-y-3">
@@ -3995,6 +3985,87 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             <div class="p-5 border-t border-slate-100 bg-white flex justify-end gap-3">
                 <button onclick="closeProductCertificationMatrix()" class="px-4 py-2 rounded-xl border border-slate-200 text-slate-500 text-sm font-bold hover:bg-slate-50">Cancel</button>
                 <button onclick="saveProductCertificationMatrix()" class="px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-black">Save Matrix Evidence</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="certification-standard-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center z-[240] p-4">
+        <div class="bg-white rounded-3xl w-full max-w-3xl shadow-2xl max-h-[92vh] overflow-y-auto">
+            <div class="p-6 border-b border-slate-100 flex items-start justify-between gap-4">
+                <div>
+                    <p class="text-[10px] font-black text-purple-700 uppercase tracking-widest mb-1">Certification Standard</p>
+                    <h3 id="cert-standard-modal-title" class="text-xl font-bold text-slate-800">Add Standard</h3>
+                    <p id="cert-standard-modal-subtitle" class="text-xs text-slate-400 mt-1">Select an existing Record ID to autofill defaults, or maintain a new catalog row.</p>
+                </div>
+                <button onclick="closeCertificationStandardEditor()" class="text-slate-400 hover:text-slate-600 text-2xl">×</button>
+            </div>
+            <div class="p-6 space-y-4">
+                <input id="cert-standard-original-id" type="hidden">
+                <input id="cert-standard-editor-mode" type="hidden" value="catalog">
+                <div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Select Existing Record ID</label>
+                    <select id="cert-standard-existing-id" onchange="onCertificationStandardExistingRecordChange(this.value)" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none bg-white focus:border-purple-500">
+                        <option value="">Create new standard</option>
+                    </select>
+                    <p class="text-[10px] text-slate-400 mt-1">Choosing an existing RECORD ID auto fills PRODUCT CATEGORY, Standard / Requirement, Applicability Condition, Evidence Type, Project Applicability, and Registry URL.</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Record ID</label>
+                        <input id="cert-standard-record-id" type="text" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-purple-500">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Matrix Type</label>
+                        <select id="cert-standard-matrix-type" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none bg-white focus:border-purple-500">
+                            <option value="PV Module">PV Module</option>
+                            <option value="Inverter / PCS">Inverter / PCS</option>
+                            <option value="Battery / BESS">Battery / BESS</option>
+                            <option value="BOS">BOS</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Product Category</label>
+                        <input id="cert-standard-product-category" type="text" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-purple-500">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Requirement Level</label>
+                        <select id="cert-standard-requirement-level" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none bg-white focus:border-purple-500">
+                            <option value="Mandatory">Mandatory</option>
+                            <option value="Utility Preferred">Utility Preferred</option>
+                            <option value="International Finance Preferred">International Finance Preferred</option>
+                            <option value="Optional">Optional</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Standard / Requirement</label>
+                        <input id="cert-standard-standard-requirement" type="text" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-purple-500">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Applicability Condition</label>
+                        <textarea id="cert-standard-applicability-condition" rows="2" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-purple-500"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Evidence Type</label>
+                        <input id="cert-standard-evidence-type" type="text" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-purple-500">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Project Applicability</label>
+                        <input id="cert-standard-project-applicability" type="text" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-purple-500">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Registry URL</label>
+                        <input id="cert-standard-registry-url" type="url" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-purple-500">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Remarks</label>
+                        <textarea id="cert-standard-remarks" rows="2" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-purple-500"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="p-5 border-t border-slate-100 bg-white flex flex-wrap justify-end gap-3">
+                <button id="cert-standard-delete-btn" onclick="deleteCertificationStandardFromEditor()" class="hidden px-4 py-2 rounded-xl border border-red-100 text-red-500 text-sm font-bold hover:bg-red-50">Delete</button>
+                <button onclick="closeCertificationStandardEditor()" class="px-4 py-2 rounded-xl border border-slate-200 text-slate-500 text-sm font-bold hover:bg-slate-50">Cancel</button>
+                <button id="cert-standard-save-btn" onclick="saveCertificationStandardFromEditor()" class="px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-black">Save Standard</button>
             </div>
         </div>
     </div>
@@ -9353,8 +9424,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             { matrixRecordId: 'BESS-029', matrixSheet: 'Battery_BESS_Cert', matrixType: 'Battery / BESS', productCategory: 'Battery Pack / System', standardRequirement: 'SIRIM Battery / BESS Certification', requirementLevel: 'Utility Preferred', applicabilityCondition: 'Project/tender-specific unless an official mandatory order covers the exact product and scope.', evidenceType: 'Product Listing / License', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.sirim-qas.com.my/', projectApplicability: 'Project-specific', remarks: '', autoCompletenessCheck: 'Action Required' }
         ];
         const CERTIFICATION_CLASS_PROFILES_DEFAULTS = [
-            { id: 'class_a', label: 'Class A Grid-Tied PV', title: 'Grid-Tied PV / Solar ATAP', examples: ['Solar ATAP', 'Factory Rooftop', 'Warehouse Rooftop', 'Commercial Building'], gridConnected: true, bessRequired: false, gridFormingRequired: false, gensetIntegrationRequired: false, utilityComplianceRequired: false, productGroups: ['PV Module', 'Inverter / PCS', 'BOS'], mandatoryStandards: ['IEC 61215', 'IEC 61730', 'IEC 62109', 'IEC 61727', 'IEC 62116', 'IEC 61683'], preferredStandards: ['IEC 61000 EMC', 'IEC 61853', 'IEC 62941', 'SIRIM Product Certification'], notApplicableStandards: [] },
-            { id: 'class_b', label: 'Class B Hybrid PV+BESS', title: 'Hybrid PV + BESS', examples: ['Factory Peak Shaving', 'Data Center', 'Mall', 'Hospital'], gridConnected: true, bessRequired: true, gridFormingRequired: false, gensetIntegrationRequired: false, utilityComplianceRequired: true, productGroups: ['PV Module', 'Inverter / PCS', 'Battery', 'ESS', 'BOS'], mandatoryStandards: ['IEC 61215', 'IEC 61730', 'IEC 62109', 'IEC 61727', 'IEC 62116', 'IEC 61683', 'IEC 62477-1', 'IEC 62619', 'IEC 63056', 'UN 38.3', 'IEC 62933-5-1', 'IEC 62933-5-2'], preferredStandards: ['IEC 61508', 'IEC 61850', 'UL 9540A', 'IEC 60529'], notApplicableStandards: [] },
+            { id: 'class_a1', label: 'Class A1 Grid-Tied PV Only', title: 'Grid-Tied PV Only / Solar ATAP', examples: ['Solar ATAP', 'Factory Rooftop', 'Warehouse Rooftop', 'Commercial Building'], gridConnected: true, bessRequired: false, gridFormingRequired: false, gensetIntegrationRequired: false, utilityComplianceRequired: false, productGroups: ['PV Module', 'Inverter / PCS', 'BOS'], mandatoryStandards: ['IEC 61215', 'IEC 61730', 'IEC 62109', 'IEC 61727', 'IEC 62116', 'IEC 61683'], preferredStandards: ['IEC 61000 EMC', 'IEC 61853', 'IEC 62941', 'SIRIM Product Certification'], internationalFinanceStandards: [], optionalStandards: ['IEC 61701', 'IEC 62716'], notApplicableStandards: [] },
+            { id: 'class_a2', label: 'Class A2 Grid-Tied PV + Battery', title: 'Grid-Tied PV + Battery', examples: ['Solar ATAP + Battery', 'Factory Rooftop ESS', 'Warehouse Rooftop ESS'], gridConnected: true, bessRequired: true, gridFormingRequired: false, gensetIntegrationRequired: false, utilityComplianceRequired: false, productGroups: ['PV Module', 'Inverter / PCS', 'Battery', 'ESS', 'BOS'], mandatoryStandards: ['IEC 61215', 'IEC 61730', 'IEC 62109', 'IEC 61727', 'IEC 62116', 'IEC 61683', 'IEC 62619', 'IEC 63056', 'IEC 62477-1', 'UN 38.3', 'Project Scope Documentation'], preferredStandards: ['IEC 61508', 'IEC 61850', 'IEC 61000', 'IEC 61853', 'IEC TS 62804', 'IEC 62933'], internationalFinanceStandards: ['UL 9540', 'UL 9540A', 'UL 1973', 'NFPA 855'], optionalStandards: ['ISO 9001', 'ISO 14001', 'Regional Standards'], notApplicableStandards: [] },
+            { id: 'class_b', label: 'Class B Hybrid PV+BESS', title: 'Hybrid PV + BESS', examples: ['Factory Peak Shaving', 'Data Center', 'Mall', 'Hospital'], gridConnected: true, bessRequired: true, gridFormingRequired: false, gensetIntegrationRequired: false, utilityComplianceRequired: true, productGroups: ['PV Module', 'Inverter / PCS', 'Battery', 'ESS', 'BOS'], mandatoryStandards: ['IEC 61215', 'IEC 61730', 'IEC 62109', 'IEC 61727', 'IEC 62116', 'IEC 61683', 'IEC 62477-1', 'IEC 62619', 'IEC 63056', 'UN 38.3', 'IEC 62933-5-1', 'IEC 62933-5-2'], preferredStandards: ['IEC 61508', 'IEC 61850', 'IEC 60529'], internationalFinanceStandards: ['UL 9540A', 'UL 9540', 'UL 1973', 'NFPA 855'], optionalStandards: ['ISO 9001', 'ISO 14001'], notApplicableStandards: [] },
             { id: 'class_c', label: 'Class C Off-Grid', title: 'Off-Grid PV + BESS + Genset', examples: ['Palm Oil Estate', 'Remote Plantation', 'Mining', 'Telecom Tower', 'Island Resort'], gridConnected: false, bessRequired: true, gridFormingRequired: true, gensetIntegrationRequired: true, utilityComplianceRequired: false, productGroups: ['PV Module', 'Inverter / PCS', 'Battery', 'ESS', 'BOS'], mandatoryStandards: ['IEC 61215', 'IEC 61730', 'IEC 62109', 'IEC 62477-1', 'IEC 62619', 'IEC 63056', 'UN 38.3', 'IEC 62933-5-1', 'IEC 62933-5-2', 'FAT', 'SAT'], preferredStandards: ['IEC 61508', 'UL 9540A'], notApplicableStandards: ['IEC 61727', 'IEC 62116', 'IEEE 1547'] },
             { id: 'class_d', label: 'Class D Utility Solar', title: 'Utility Scale Solar', examples: ['LSS', 'CGPP', 'Solar Farm'], gridConnected: true, bessRequired: false, gridFormingRequired: false, gensetIntegrationRequired: false, utilityComplianceRequired: true, productGroups: ['PV Module', 'Inverter / PCS', 'BOS'], mandatoryStandards: ['IEC 61215', 'IEC 61730', 'IEC 62109', 'IEC 61727', 'IEC 62116', 'IEC 61683'], preferredStandards: ['IEC 61000 EMC', 'IEC 61853', 'IEC 62941', 'IEEE 1547'], notApplicableStandards: [] },
             { id: 'class_e', label: 'Class E Utility BESS', title: 'Utility Scale BESS', examples: ['MyBEST', 'TNB BESS', 'Sabah BESS'], gridConnected: true, bessRequired: true, gridFormingRequired: true, gensetIntegrationRequired: false, utilityComplianceRequired: true, productGroups: ['Inverter / PCS', 'Battery', 'ESS', 'BOS'], mandatoryStandards: ['IEC 62619', 'IEC 63056', 'IEC 61508', 'IEC 61850', 'IEC 62477-1', 'IEC 62116', 'IEC 62933-5-1', 'IEC 62933-5-2', 'UN 38.3', 'FAT', 'SAT'], preferredStandards: ['UL 9540A', 'UL 9540', 'UL 1973', 'NFPA 855', 'IEC 60529'], notApplicableStandards: [] }
@@ -10073,7 +10145,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 productGroups: Array.isArray(profile.productGroups) ? profile.productGroups.map(v => String(v || '').trim()).filter(Boolean) : [],
                 mandatoryStandards: Array.isArray(profile.mandatoryStandards) ? profile.mandatoryStandards.map(v => String(v || '').trim()).filter(Boolean) : [],
                 preferredStandards: Array.isArray(profile.preferredStandards) ? profile.preferredStandards.map(v => String(v || '').trim()).filter(Boolean) : [],
-                notApplicableStandards: Array.isArray(profile.notApplicableStandards) ? profile.notApplicableStandards.map(v => String(v || '').trim()).filter(Boolean) : []
+                internationalFinanceStandards: Array.isArray(profile.internationalFinanceStandards) ? profile.internationalFinanceStandards.map(v => String(v || '').trim()).filter(Boolean) : [],
+                optionalStandards: Array.isArray(profile.optionalStandards) ? profile.optionalStandards.map(v => String(v || '').trim()).filter(Boolean) : [],
+                notApplicableStandards: Array.isArray(profile.notApplicableStandards) ? profile.notApplicableStandards.map(v => String(v || '').trim()).filter(Boolean) : [],
+                levelOverrides: profile.levelOverrides && typeof profile.levelOverrides === 'object' ? { ...profile.levelOverrides } : {}
             };
         }
         function normalizeCertificationClassProfiles(records = []) {
@@ -10292,35 +10367,41 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             ${productMasterStatusPill(ev?.verificationStatus || row.verificationStatus || 'Not Reviewed', ev?.verificationStatus === 'Verified' ? 'green' : 'slate')}
                         </div>
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-4 xl:grid-cols-6 gap-2 mt-3">
-                        <label class="block">
-                            <span class="block text-[9px] font-black text-slate-400 uppercase mb-1">Applicable</span>
-                            <select id="cert-matrix-${rid}-isApplicable" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs bg-white">
-                                ${['Conditional', 'Yes', 'No', 'Not Applicable'].map(value => `<option value="${value}" ${(ev?.isApplicable || row.isApplicable) === value ? 'selected' : ''}>${value}</option>`).join('')}
-                            </select>
-                        </label>
-                        <label class="block">
-                            <span class="block text-[9px] font-black text-slate-400 uppercase mb-1">Evidence</span>
-                            <select id="cert-matrix-${rid}-evidenceAvailable" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs bg-white">
-                                ${['No', 'Yes', 'Partial'].map(value => `<option value="${value}" ${(ev?.evidenceAvailable || row.evidenceAvailable) === value ? 'selected' : ''}>${value}</option>`).join('')}
-                            </select>
-                        </label>
-                        <label class="block">
-                            <span class="block text-[9px] font-black text-slate-400 uppercase mb-1">Verification</span>
-                            <select id="cert-matrix-${rid}-verificationStatus" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs bg-white">
-                                ${['Not Reviewed', 'Pending Evidence', 'Under Review', 'Verified', 'Conditional Acceptance', 'Rejected', 'Expired'].map(value => `<option value="${value}" ${(ev?.verificationStatus || row.verificationStatus) === value ? 'selected' : ''}>${value}</option>`).join('')}
-                            </select>
-                        </label>
-                        ${certificationMatrixEvidenceInput(row, ev, 'certificateNo', 'Certificate No.')}
-                        ${certificationMatrixEvidenceInput(row, ev, 'reportNo', 'Report No.')}
-                        ${certificationMatrixEvidenceInput(row, ev, 'expiryDate', 'Expiry Date', 'date')}
-                        ${certificationMatrixEvidenceInput(row, ev, 'certificationListingBody', 'Body')}
-                        ${certificationMatrixEvidenceInput(row, ev, 'testingLaboratory', 'Testing Lab')}
-                        ${certificationMatrixEvidenceInput(row, ev, 'standardEditionVersion', 'Version')}
-                        ${certificationMatrixEvidenceInput(row, ev, 'officialRegistrySourceUrl', 'Registry URL')}
-                        ${certificationMatrixEvidenceInput(row, ev, 'documentLink', 'Document Link')}
-                        ${certificationMatrixEvidenceInput(row, ev, 'remarks', 'Remarks')}
-                    </div>
+                    <details class="cert-matrix-evidence-fields mt-3 rounded-xl border border-slate-200 bg-white/80">
+                        <summary class="cursor-pointer select-none px-3 py-2 text-[11px] font-black text-purple-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                            <span>Evidence fields</span>
+                            <span class="text-[10px] font-bold text-slate-400">Applicable / Evidence / Verification / Certificate No. / Report No. / Expiry Date / Body / Testing Lab / Version / Registry URL / Document Link / Remarks</span>
+                        </summary>
+                        <div class="grid grid-cols-1 md:grid-cols-4 xl:grid-cols-6 gap-2 p-3 border-t border-slate-100">
+                            <label class="block">
+                                <span class="block text-[9px] font-black text-slate-400 uppercase mb-1">Applicable</span>
+                                <select id="cert-matrix-${rid}-isApplicable" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs bg-white">
+                                    ${['Conditional', 'Yes', 'No', 'Not Applicable'].map(value => `<option value="${value}" ${(ev?.isApplicable || row.isApplicable) === value ? 'selected' : ''}>${value}</option>`).join('')}
+                                </select>
+                            </label>
+                            <label class="block">
+                                <span class="block text-[9px] font-black text-slate-400 uppercase mb-1">Evidence</span>
+                                <select id="cert-matrix-${rid}-evidenceAvailable" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs bg-white">
+                                    ${['No', 'Yes', 'Partial'].map(value => `<option value="${value}" ${(ev?.evidenceAvailable || row.evidenceAvailable) === value ? 'selected' : ''}>${value}</option>`).join('')}
+                                </select>
+                            </label>
+                            <label class="block">
+                                <span class="block text-[9px] font-black text-slate-400 uppercase mb-1">Verification</span>
+                                <select id="cert-matrix-${rid}-verificationStatus" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs bg-white">
+                                    ${['Not Reviewed', 'Pending Evidence', 'Under Review', 'Verified', 'Conditional Acceptance', 'Rejected', 'Expired'].map(value => `<option value="${value}" ${(ev?.verificationStatus || row.verificationStatus) === value ? 'selected' : ''}>${value}</option>`).join('')}
+                                </select>
+                            </label>
+                            ${certificationMatrixEvidenceInput(row, ev, 'certificateNo', 'Certificate No.')}
+                            ${certificationMatrixEvidenceInput(row, ev, 'reportNo', 'Report No.')}
+                            ${certificationMatrixEvidenceInput(row, ev, 'expiryDate', 'Expiry Date', 'date')}
+                            ${certificationMatrixEvidenceInput(row, ev, 'certificationListingBody', 'Body')}
+                            ${certificationMatrixEvidenceInput(row, ev, 'testingLaboratory', 'Testing Lab')}
+                            ${certificationMatrixEvidenceInput(row, ev, 'standardEditionVersion', 'Version')}
+                            ${certificationMatrixEvidenceInput(row, ev, 'officialRegistrySourceUrl', 'Registry URL')}
+                            ${certificationMatrixEvidenceInput(row, ev, 'documentLink', 'Document Link')}
+                            ${certificationMatrixEvidenceInput(row, ev, 'remarks', 'Remarks')}
+                        </div>
+                    </details>
                 </div>`;
             }).join('') : '<div class="rounded-2xl border border-dashed border-slate-200 p-8 text-center text-sm text-slate-400">No certification matrix rows match this product or filter.</div>';
         }
@@ -10452,10 +10533,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 const stored = localStorage.getItem('minova_certification_class_view_v1') || '';
                 if (stored) return stored;
             } catch (e) {}
-            return 'class_a';
+            return 'class_a1';
         }
         window.setCertificationClassSelection = (classId) => {
-            const id = String(classId || 'class_a').trim();
+            const id = String(classId || 'class_a1').trim();
             try { localStorage.setItem('minova_certification_class_view_v1', id); } catch (e) {}
             renderCertificationClassWorkspace();
             try { renderDb(); } catch (e) {}
@@ -10700,92 +10781,176 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 </div>
             </div>`;
         }
-        function productMatchesCertificationClass(product, profile) {
-            const groupLabel = getProductTypeGroup(product).label;
-            return (profile.productGroups || []).some(group => {
-                if (group === 'Inverter / PCS') return groupLabel === 'Inverter';
-                if (group === 'ESS') return groupLabel.includes('ESS');
-                if (group === 'BOS') return groupLabel.includes('BOS');
-                return group.includes(groupLabel) || groupLabel.includes(group);
+        function canEditCertificationStandards() {
+            const auth = window.__minovaAuth || {};
+            if (!auth.state?.user && window.location?.protocol === 'file:') return true;
+            const role = String(auth.state?.permission?.role || auth.state?.user?.role || '').trim().toLowerCase();
+            return role === 'admin' || role === 'operation_management';
+        }
+        function certificationClassStandardTokens(profile = {}) {
+            return [
+                ...(profile.mandatoryStandards || []),
+                ...(profile.preferredStandards || []),
+                ...(profile.internationalFinanceStandards || []),
+                ...(profile.optionalStandards || [])
+            ].filter(Boolean);
+        }
+        function certificationClassIncludesStandard(profile = {}, record = {}) {
+            const id = String(record.matrixRecordId || '').trim();
+            const standard = String(record.standardRequirement || '').trim().toLowerCase();
+            return certificationClassStandardTokens(profile).some(token => {
+                const q = String(token || '').trim().toLowerCase();
+                return q && (q === id.toLowerCase() || q === standard || standard.includes(q) || q.includes(standard));
             });
         }
-        function productPassesCertificationClassFilters(product) {
-            const outdoor = document.getElementById('cert-class-outdoor-filter')?.value || 'all';
-            const gridDischarge = document.getElementById('cert-class-grid-discharge-filter')?.value || 'all';
-            const capacity = parseFloat(document.getElementById('cert-class-capacity-filter')?.value || '');
-            const text = flattenProductMasterValues([product.masterData, product.technicalSpecs, product.spec, product.scenario]).join(' ').toLowerCase();
-            if (outdoor === 'outdoor' && !text.includes('outdoor') && !text.includes('ip')) return false;
-            if (outdoor === 'indoor' && text.includes('outdoor')) return false;
-            if (gridDischarge === 'yes' && !text.includes('grid') && !text.includes('pcs') && !text.includes('hybrid')) return false;
-            if (gridDischarge === 'no' && text.includes('grid discharge')) return false;
-            if (Number.isFinite(capacity) && capacity > 0) {
-                const summary = [productMasterTechnicalSummary(product), productMasterEfficiencyCapacity(product), product.spec].join(' ');
-                const nums = summary.match(/\d+(?:\.\d+)?/g)?.map(Number) || [];
-                if (nums.length && Math.max(...nums) < capacity * 0.5) return false;
+        function certificationClassLevelForStandard(profile = {}, record = {}) {
+            const override = profile.levelOverrides?.[record.matrixRecordId];
+            if (override) return override;
+            const id = String(record.matrixRecordId || '').trim().toLowerCase();
+            const standard = String(record.standardRequirement || '').trim().toLowerCase();
+            const hasToken = list => (list || []).some(token => {
+                const q = String(token || '').trim().toLowerCase();
+                return q && (q === id || q === standard || standard.includes(q) || q.includes(standard));
+            });
+            if (hasToken(profile.mandatoryStandards)) return 'Mandatory';
+            if (hasToken(profile.preferredStandards)) return 'Utility Preferred';
+            if (hasToken(profile.internationalFinanceStandards)) return 'International Finance Preferred';
+            if (hasToken(profile.optionalStandards)) return 'Optional';
+            return record.requirementLevel || 'Optional';
+        }
+        function recordsForCertificationClass(profile = {}) {
+            ensureCertificationV4Data();
+            const rows = certificationStandardsCatalog.filter(record => certificationClassIncludesStandard(profile, record));
+            const seen = new Set();
+            return rows.map(record => ({ ...record, requirementLevel: certificationClassLevelForStandard(profile, record) }))
+                .filter(record => {
+                    const key = record.matrixRecordId || record.standardRequirement;
+                    if (seen.has(key)) return false;
+                    seen.add(key);
+                    return true;
+                });
+        }
+        function certificationStandardLevelClass(level = '') {
+            const text = String(level || '').trim();
+            if (text === 'Mandatory') return 'bg-red-50 text-red-700 border-red-100';
+            if (text === 'Utility Preferred') return 'bg-amber-50 text-amber-700 border-amber-100';
+            if (text === 'International Finance Preferred') return 'bg-purple-50 text-purple-700 border-purple-100';
+            return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+        }
+        const CERT_CLASS_LEVEL_FILTER_STORAGE_KEY = 'minova_cert_class_level_filters_v1';
+        function getCertificationClassLevelFilters() {
+            try {
+                const parsed = JSON.parse(localStorage.getItem(CERT_CLASS_LEVEL_FILTER_STORAGE_KEY) || '[]');
+                const valid = Array.isArray(parsed) ? parsed.filter(level => CERTIFICATION_LEVELS.includes(level)) : [];
+                return valid.length ? valid : [...CERTIFICATION_LEVELS];
+            } catch (e) {
+                return [...CERTIFICATION_LEVELS];
             }
-            return true;
         }
-        function certificationProductCardHtml(product, profile) {
-            const status = getProductCertificationV4Status(product, profile.id);
-            const compat = getProductCompatibilitySummary(product);
-            return `<div class="rounded-xl border border-slate-200 bg-white px-3 py-3">
-                <div class="flex items-start justify-between gap-3">
-                    <div class="min-w-0">
-                        <div class="text-xs font-black text-slate-800 truncate">${htmlSafe(product.id || '')} · ${htmlSafe(productListDisplayText(product.name))}</div>
-                        <div class="text-[10px] text-slate-400 mt-1 truncate">${htmlSafe(productMasterTechnicalSummary(product) || getProductDisplaySpec(product) || '-')}</div>
-                    </div>
-                    ${productMasterStatusPill(status.status, status.tone)}
-                </div>
-                <div class="mt-2 flex flex-wrap gap-1.5">
-                    ${productMasterStatusPill(`Compatibility: ${compat.label}`, compat.status === 'Approved' ? 'green' : (compat.status === 'Blocked' ? 'red' : 'slate'))}
-                    ${productMasterStatusPill(getProductSourcing(product).sourceType || 'Unknown', 'slate')}
-                </div>
-            </div>`;
+        function setCertificationClassLevelFilters(levels = []) {
+            const valid = Array.isArray(levels) ? levels.filter(level => CERTIFICATION_LEVELS.includes(level)) : [];
+            localStorage.setItem(CERT_CLASS_LEVEL_FILTER_STORAGE_KEY, JSON.stringify(valid.length ? valid : CERTIFICATION_LEVELS));
         }
-        function renderCertificationClassProductStack(profile) {
-            const stack = document.getElementById('cert-class-product-stack');
-            const summary = document.getElementById('cert-class-stack-summary');
-            if (!stack) return;
-            const groups = [
-                ['PV Module', p => getProductTypeGroup(p).id === 'pv'],
-                ['Inverter / PCS', p => getProductTypeGroup(p).id === 'inverter'],
-                ['Battery', p => getProductTypeGroup(p).id === 'battery'],
-                ['ESS', p => getProductTypeGroup(p).id === 'ess'],
-                ['BOS', p => getProductTypeGroup(p).id === 'bos']
-            ].filter(([label]) => (profile.productGroups || []).includes(label) || (label === 'Inverter / PCS' && (profile.productGroups || []).includes('Inverter / PCS')));
-            let total = 0;
-            stack.innerHTML = groups.map(([label, predicate]) => {
-                const rows = products.filter(p => predicate(p) && productMatchesCertificationClass(p, profile) && productPassesCertificationClassFilters(p)).slice(0, 8);
-                total += rows.length;
-                return `<div class="rounded-2xl border border-slate-200 bg-slate-50/60 p-3">
-                    <div class="flex items-center justify-between mb-2">
-                        <h4 class="text-xs font-black text-slate-700 uppercase tracking-widest">${htmlSafe(label)}</h4>
-                        <span class="text-[10px] font-black text-slate-400">${rows.length}</span>
-                    </div>
-                    <div class="space-y-2">${rows.length ? rows.map(p => certificationProductCardHtml(p, profile)).join('') : '<div class="rounded-xl border border-dashed border-slate-200 bg-white p-3 text-xs text-slate-400">No matching products.</div>'}</div>
-                </div>`;
+        window.toggleCertificationClassLevelFilter = (level = '') => {
+            const value = String(level || '').trim();
+            if (!CERTIFICATION_LEVELS.includes(value)) return;
+            const selected = new Set(getCertificationClassLevelFilters());
+            if (selected.has(value) && selected.size > 1) selected.delete(value);
+            else selected.add(value);
+            setCertificationClassLevelFilters([...selected]);
+            renderCertificationClassWorkspace();
+        };
+        function renderCertificationClassLevelFilters() {
+            const box = document.getElementById('cert-class-level-filters');
+            if (!box) return;
+            const selected = new Set(getCertificationClassLevelFilters());
+            box.innerHTML = CERTIFICATION_LEVELS.map(level => {
+                const active = selected.has(level);
+                const tone = certificationStandardLevelClass(level);
+                return `<button type="button" onclick="toggleCertificationClassLevelFilter('${htmlSafe(level)}')" class="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-black ${active ? tone : 'bg-white text-slate-400 border-slate-200'}">
+                    <span class="inline-flex h-3 w-3 items-center justify-center rounded-full border ${active ? 'border-current bg-white/70' : 'border-slate-200'}">${active ? '✓' : ''}</span>
+                    ${htmlSafe(level)}
+                </button>`;
             }).join('');
-            if (summary) summary.textContent = `${total} products`;
+        }
+        function certificationMatrixGroupLabel(type = '') {
+            const value = String(type || '').trim();
+            if (value === 'PV Module') return 'PV Module';
+            if (value === 'Inverter / PCS') return 'Inverter / PCS';
+            if (value === 'Battery / BESS') return 'Battery / BESS';
+            return value || 'Other';
+        }
+        function certificationStandardRowHtml(record, canEdit = false) {
+            const rid = htmlSafe(record.matrixRecordId || '');
+            const registry = String(record.officialRegistrySourceUrl || '').trim();
+            return `<tr class="border-b border-cyan-200/80 odd:bg-cyan-50 even:bg-white hover:bg-purple-50/40">
+                <td class="py-3 px-3 font-mono text-xs text-slate-700">${rid || '-'}</td>
+                <td class="py-3 px-3 text-xs text-slate-700">${htmlSafe(record.productCategory || record.matrixType || '-')}</td>
+                <td class="py-3 px-3 text-xs font-bold text-slate-800 max-w-[260px] whitespace-normal">${htmlSafe(record.standardRequirement || '-')}</td>
+                <td class="py-3 px-3"><span class="inline-flex rounded-lg border px-2 py-1 text-[10px] font-black ${certificationStandardLevelClass(record.requirementLevel)}">${htmlSafe(record.requirementLevel || 'Optional')}</span></td>
+                <td class="py-3 px-3 text-xs text-slate-600 max-w-[340px] whitespace-normal">${htmlSafe(record.applicabilityCondition || '-')}</td>
+                <td class="py-3 px-3 text-xs text-slate-700">${htmlSafe(record.evidenceType || '-')}</td>
+                <td class="py-3 px-3 text-xs text-slate-700">${htmlSafe(record.projectApplicability || '-')}</td>
+                <td class="py-3 px-3 text-xs">${registry ? `<a href="${htmlSafe(registry)}" target="_blank" rel="noopener" class="font-bold text-blue-600 hover:underline">Open</a>` : '<span class="text-slate-300">-</span>'}</td>
+                <td class="py-3 px-3">
+                    ${canEdit ? `<div class="flex items-center gap-2">
+                        <button type="button" onclick="openCertificationStandardEditor('${htmlSafe(record.matrixType || '')}', '${rid}', false)" class="text-xs font-black text-purple-700 hover:underline">Edit</button>
+                        <button type="button" onclick="deleteCertificationStandard('${rid}')" class="text-xs font-black text-red-500 hover:underline">Delete</button>
+                    </div>` : '<span class="text-xs font-bold text-slate-300">View</span>'}
+                </td>
+            </tr>`;
+        }
+        function certificationStandardsTableHtml(records = [], canEdit = false) {
+            if (!records.length) return '<div class="rounded-2xl border border-dashed border-slate-200 p-8 text-center text-sm text-slate-400">No standards in this group.</div>';
+            return `<div class="overflow-x-auto rounded-2xl border border-cyan-200">
+                <table class="w-full min-w-[1180px] text-left whitespace-nowrap">
+                    <thead class="bg-teal-700 text-white">
+                        <tr class="text-[10px] font-black uppercase tracking-widest">
+                            <th class="py-3 px-3">Record ID</th>
+                            <th class="py-3 px-3">Product Category</th>
+                            <th class="py-3 px-3">Standard / Requirement</th>
+                            <th class="py-3 px-3">Requirement Level</th>
+                            <th class="py-3 px-3">Applicability Condition</th>
+                            <th class="py-3 px-3">Evidence Type</th>
+                            <th class="py-3 px-3">Project Applicability</th>
+                            <th class="py-3 px-3">Registry URL</th>
+                            <th class="py-3 px-3">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>${records.map(record => certificationStandardRowHtml(record, canEdit)).join('')}</tbody>
+                </table>
+            </div>`;
         }
         function renderCertificationClassChecklist(profile) {
             const box = document.getElementById('cert-class-checklist');
             const summary = document.getElementById('cert-class-checklist-summary');
+            const addBtn = document.getElementById('cert-class-add-standard-btn');
             if (!box) return;
-            const items = getCertificationChecklistForClass(profile.id);
-            if (summary) summary.textContent = `${items.length} items`;
-            box.innerHTML = items.map(item => {
-                const status = item.notApplicable ? 'N/A' : (item.level === 'Mandatory' ? 'Needs Review' : item.level);
-                return `<div class="rounded-xl border border-slate-200 bg-white p-3">
-                    <div class="flex items-start justify-between gap-3">
-                        <div class="min-w-0">
-                            <div class="text-xs font-black text-slate-800">${htmlSafe(item.code)}</div>
-                            <div class="text-[10px] text-slate-500 mt-1">${htmlSafe(item.documentType)}</div>
-                        </div>
-                        ${productMasterStatusPill(status, certificationLevelTone(item.level, status))}
-                    </div>
-                    <div class="mt-2 text-[10px] text-slate-400 leading-relaxed">${htmlSafe(item.notApplicable ? item.reason : item.applicabilityCondition || item.requiredEvidence || '-')}</div>
-                </div>`;
-            }).join('');
+            const canEdit = canEditCertificationStandards();
+            if (addBtn) addBtn.classList.toggle('hidden', !canEdit);
+            renderCertificationClassLevelFilters();
+            const allRows = recordsForCertificationClass(profile);
+            const selectedLevels = new Set(getCertificationClassLevelFilters());
+            const rows = allRows.filter(record => selectedLevels.has(record.requirementLevel || 'Optional'));
+            if (summary) summary.textContent = `${rows.length} visible / ${allRows.length} requirements`;
+            const order = ['PV Module', 'Inverter / PCS', 'Battery / BESS', 'BOS', 'Other'];
+            const groups = order.map(label => {
+                const records = rows.filter(record => {
+                    const group = certificationMatrixGroupLabel(record.matrixType);
+                    return label === 'Other' ? !order.slice(0, -1).includes(group) : group === label;
+                });
+                return { label, records };
+            }).filter(group => group.records.length);
+            box.innerHTML = groups.length ? groups.map(group => {
+                const counts = CERTIFICATION_LEVELS.map(level => `${group.records.filter(record => record.requirementLevel === level).length} ${level}`).join(' / ');
+                return `<details class="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+                    <summary class="cursor-pointer select-none px-4 py-3 bg-slate-50 flex flex-wrap items-center justify-between gap-3">
+                        <span class="text-sm font-black text-slate-800">${htmlSafe(group.label)}</span>
+                        <span class="text-[11px] font-black text-slate-400">${group.records.length} items · ${htmlSafe(counts)}</span>
+                    </summary>
+                    <div class="p-3">${certificationStandardsTableHtml(group.records, canEdit)}</div>
+                </details>`;
+            }).join('') : '<div class="rounded-2xl border border-dashed border-slate-200 p-8 text-center text-sm text-slate-400">No requirements assigned to this class.</div>';
         }
         function updateCertificationClassTabs(activeId) {
             certificationClassProfiles.forEach(profile => {
@@ -10803,9 +10968,172 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             updateCertificationClassTabs(profile.id);
             const condition = document.getElementById('cert-class-condition-card');
             if (condition) condition.innerHTML = certificationClassConditionHtml(profile);
-            renderCertificationClassProductStack(profile);
             renderCertificationClassChecklist(profile);
         }
+        function certificationLevelKey(level = '') {
+            const text = String(level || '').trim().toLowerCase();
+            if (text === 'mandatory') return 'mandatoryStandards';
+            if (text === 'utility preferred') return 'preferredStandards';
+            if (text === 'international finance preferred') return 'internationalFinanceStandards';
+            return 'optionalStandards';
+        }
+        function certificationStandardExistingOptions(selectedId = '') {
+            const selected = String(selectedId || '').trim();
+            const options = normalizeCertificationStandardsCatalog(certificationStandardsCatalog)
+                .sort((a, b) => String(a.matrixRecordId || '').localeCompare(String(b.matrixRecordId || ''), undefined, { numeric: true }))
+                .map(record => `<option value="${htmlSafe(record.matrixRecordId)}" ${record.matrixRecordId === selected ? 'selected' : ''}>${htmlSafe(record.matrixRecordId)} · ${htmlSafe(record.standardRequirement || '')}</option>`)
+                .join('');
+            return `<option value="">Create new standard</option>${options}`;
+        }
+        function fillCertificationStandardEditor(record = {}) {
+            const set = (id, value) => { const el = document.getElementById(id); if (el) el.value = value || ''; };
+            set('cert-standard-record-id', record.matrixRecordId || '');
+            set('cert-standard-matrix-type', record.matrixType || 'PV Module');
+            set('cert-standard-product-category', record.productCategory || '');
+            set('cert-standard-standard-requirement', record.standardRequirement || '');
+            set('cert-standard-requirement-level', record.requirementLevel || 'Optional');
+            set('cert-standard-applicability-condition', record.applicabilityCondition || '');
+            set('cert-standard-evidence-type', record.evidenceType || '');
+            set('cert-standard-project-applicability', record.projectApplicability || '');
+            set('cert-standard-registry-url', record.officialRegistrySourceUrl || '');
+            set('cert-standard-remarks', record.remarks || '');
+        }
+        function onCertificationStandardExistingRecordChange(matrixRecordId = '') {
+            const record = getCertificationStandard(matrixRecordId);
+            if (record) fillCertificationStandardEditor(record);
+        }
+        function nextCertificationMatrixRecordId(matrixType = '') {
+            const type = String(matrixType || '').trim();
+            const prefix = type === 'Inverter / PCS' ? 'INV' : type === 'Battery / BESS' ? 'BESS' : type === 'BOS' ? 'BOS' : 'PV';
+            const used = normalizeCertificationStandardsCatalog(certificationStandardsCatalog)
+                .map(record => String(record.matrixRecordId || ''))
+                .filter(id => id.startsWith(`${prefix}-`))
+                .map(id => parseInt(id.replace(`${prefix}-`, ''), 10))
+                .filter(Number.isFinite);
+            const next = (used.length ? Math.max(...used) : 0) + 1;
+            return `${prefix}-${String(next).padStart(3, '0')}`;
+        }
+        function openCertificationStandardEditor(matrixType = '', matrixRecordId = '', viewOnly = false) {
+            ensureCertificationV4Data();
+            const modal = document.getElementById('certification-standard-modal');
+            if (!modal) return;
+            const canEdit = canEditCertificationStandards() && !viewOnly;
+            const record = getCertificationStandard(matrixRecordId) || normalizeCertificationStandard({
+                matrixRecordId: '',
+                matrixType: matrixType || 'PV Module',
+                productCategory: matrixType || 'PV Module',
+                requirementLevel: 'Mandatory',
+                evidenceType: 'Certificate / Report',
+                projectApplicability: 'All'
+            });
+            const existing = document.getElementById('cert-standard-existing-id');
+            if (existing) existing.innerHTML = certificationStandardExistingOptions(record?.matrixRecordId || '');
+            document.getElementById('cert-standard-original-id').value = record?.matrixRecordId || '';
+            document.getElementById('cert-standard-editor-mode').value = 'class';
+            document.getElementById('cert-standard-modal-title').textContent = record?.matrixRecordId ? (canEdit ? 'Edit Standard' : 'View Standard') : 'Add Standard';
+            document.getElementById('cert-standard-modal-subtitle').textContent = 'Save will update the central certification standards catalog and add this Record ID to the selected Class requirements.';
+            fillCertificationStandardEditor(record || {});
+            if (!record?.matrixRecordId) {
+                const type = matrixType || 'PV Module';
+                document.getElementById('cert-standard-record-id').value = nextCertificationMatrixRecordId(type);
+                document.getElementById('cert-standard-matrix-type').value = type;
+            }
+            modal.querySelectorAll('input, select, textarea').forEach(el => {
+                if (el.id === 'cert-standard-existing-id' || el.type === 'hidden') return;
+                el.disabled = !canEdit;
+            });
+            document.getElementById('cert-standard-save-btn')?.classList.toggle('hidden', !canEdit);
+            document.getElementById('cert-standard-delete-btn')?.classList.toggle('hidden', !canEdit || !record?.matrixRecordId);
+            modal.classList.remove('hidden');
+        }
+        function closeCertificationStandardEditor() {
+            document.getElementById('certification-standard-modal')?.classList.add('hidden');
+        }
+        function readCertificationStandardFromEditor() {
+            const get = id => String(document.getElementById(id)?.value || '').trim();
+            return normalizeCertificationStandard({
+                matrixRecordId: get('cert-standard-record-id'),
+                matrixType: get('cert-standard-matrix-type'),
+                productCategory: get('cert-standard-product-category'),
+                standardRequirement: get('cert-standard-standard-requirement'),
+                requirementLevel: get('cert-standard-requirement-level'),
+                applicabilityCondition: get('cert-standard-applicability-condition'),
+                evidenceType: get('cert-standard-evidence-type'),
+                projectApplicability: get('cert-standard-project-applicability'),
+                officialRegistrySourceUrl: get('cert-standard-registry-url'),
+                remarks: get('cert-standard-remarks')
+            });
+        }
+        function addCertificationStandardToCurrentClass(record) {
+            const profile = getCertificationClassProfile(getSelectedCertificationClassId());
+            const key = certificationLevelKey(record.requirementLevel);
+            const token = record.matrixRecordId || record.standardRequirement;
+            const next = { ...profile };
+            next[key] = uniqueCertList([...(next[key] || []), token]);
+            next.levelOverrides = { ...(next.levelOverrides || {}), [record.matrixRecordId]: record.requirementLevel };
+            if (record.matrixType === 'PV Module') next.productGroups = uniqueCertList([...(next.productGroups || []), 'PV Module']);
+            if (record.matrixType === 'Inverter / PCS') next.productGroups = uniqueCertList([...(next.productGroups || []), 'Inverter / PCS']);
+            if (record.matrixType === 'Battery / BESS') next.productGroups = uniqueCertList([...(next.productGroups || []), 'Battery', 'ESS']);
+            const idx = certificationClassProfiles.findIndex(item => item.id === next.id);
+            if (idx >= 0) certificationClassProfiles[idx] = normalizeCertificationClassProfile(next);
+            persistEntityToD1('certification_class_profile', next.id, next);
+        }
+        function saveCertificationStandardFromEditor() {
+            if (!canEditCertificationStandards()) return;
+            const record = readCertificationStandardFromEditor();
+            if (!record?.matrixRecordId || !record.standardRequirement) {
+                alert('Record ID and Standard / Requirement are required.');
+                return;
+            }
+            const originalId = String(document.getElementById('cert-standard-original-id')?.value || '').trim();
+            const duplicate = certificationStandardsCatalog.some(item => item.matrixRecordId === record.matrixRecordId && item.matrixRecordId !== originalId);
+            if (duplicate) {
+                alert(`Record ID ${record.matrixRecordId} already exists.`);
+                return;
+            }
+            certificationStandardsCatalog = certificationStandardsCatalog.filter(item => item.matrixRecordId !== (originalId || record.matrixRecordId));
+            certificationStandardsCatalog.push(record);
+            addCertificationStandardToCurrentClass(record);
+            persistEntityToD1('certification_standard', record.matrixRecordId, record);
+            saveToLocal();
+            closeCertificationStandardEditor();
+            renderCertificationClassWorkspace();
+        }
+        function deleteCertificationStandardFromEditor() {
+            const id = String(document.getElementById('cert-standard-original-id')?.value || '').trim();
+            if (id) deleteCertificationStandard(id);
+        }
+        function deleteCertificationStandard(matrixRecordId = '') {
+            if (!canEditCertificationStandards()) return;
+            const id = String(matrixRecordId || '').trim();
+            if (!id) return;
+            const used = productCertificationEvidence.some(item => item.matrixRecordId === id);
+            if (!confirm(used ? `Delete ${id}? Existing product evidence will keep a historical reference.` : `Delete ${id}?`)) return;
+            certificationStandardsCatalog = certificationStandardsCatalog.filter(item => item.matrixRecordId !== id);
+            certificationClassProfiles = certificationClassProfiles.map(profile => {
+                const remove = list => (list || []).filter(token => token !== id);
+                const levelOverrides = { ...(profile.levelOverrides || {}) };
+                delete levelOverrides[id];
+                return normalizeCertificationClassProfile({
+                    ...profile,
+                    mandatoryStandards: remove(profile.mandatoryStandards),
+                    preferredStandards: remove(profile.preferredStandards),
+                    internationalFinanceStandards: remove(profile.internationalFinanceStandards),
+                    optionalStandards: remove(profile.optionalStandards),
+                    levelOverrides
+                });
+            }).filter(Boolean);
+            deleteEntityFromD1('certification_standard', id);
+            saveToLocal();
+            closeCertificationStandardEditor();
+            renderCertificationClassWorkspace();
+        }
+        window.openCertificationStandardEditor = openCertificationStandardEditor;
+        window.closeCertificationStandardEditor = closeCertificationStandardEditor;
+        window.onCertificationStandardExistingRecordChange = onCertificationStandardExistingRecordChange;
+        window.saveCertificationStandardFromEditor = saveCertificationStandardFromEditor;
+        window.deleteCertificationStandardFromEditor = deleteCertificationStandardFromEditor;
+        window.deleteCertificationStandard = deleteCertificationStandard;
         window.renderCertificationClassWorkspace = renderCertificationClassWorkspace;
         window.renderDb = () => {
             const list = document.getElementById('db-list');

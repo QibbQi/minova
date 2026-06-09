@@ -218,6 +218,9 @@ test('business domain permission maps D1 domains to RBAC resources', () => {
   assert.deepEqual(domainPermission('supplier'), { resource: 'suppliers', read: 'read', write: 'edit', delete: 'delete' });
   assert.deepEqual(domainPermission('product'), { resource: 'products', read: 'read', write: 'edit', delete: 'delete' });
   assert.deepEqual(domainPermission('compatibility_rule'), { resource: 'products', read: 'read', write: 'edit', delete: 'delete' });
+  assert.deepEqual(domainPermission('certification_standard'), { resource: 'products', read: 'read', write: 'edit', delete: 'delete' });
+  assert.deepEqual(domainPermission('certification_class_profile'), { resource: 'products', read: 'read', write: 'edit', delete: 'delete' });
+  assert.deepEqual(domainPermission('certification_evidence'), { resource: 'products', read: 'read', write: 'edit', delete: 'delete' });
   assert.deepEqual(domainPermission('channel_partner'), { resource: 'suppliers', read: 'read', write: 'edit', delete: 'delete' });
   assert.deepEqual(domainPermission('market_price'), { resource: 'priceList', read: 'read', write: 'edit', delete: 'delete' });
   assert.deepEqual(domainPermission('saved_quote'), { resource: 'quotes', read: 'read', write: 'edit', delete: 'delete' });
@@ -324,6 +327,9 @@ test('business bootstrap payload reshapes entity rows into app state', () => {
     { domain: 'inventory', record_id: 'I1', payload_json: '{"id":"I1","productId":"P1"}', updated_at: '2026-06-03 01:01:00' },
     { domain: 'market_price', record_id: 'M1', payload_json: '{"id":"M1","category":"PV Module"}', updated_at: '2026-06-03 01:02:00' },
     { domain: 'compatibility_rule', record_id: 'CR1', payload_json: '{"id":"CR1","sourceProductId":"P1","targetProductId":"I1"}', updated_at: '2026-06-03 01:02:30' },
+    { domain: 'certification_standard', record_id: 'INV-005', payload_json: '{"matrixRecordId":"INV-005","standardRequirement":"IEC 61683","evidenceType":"Test Report","projectApplicability":"Grid-connected only"}', updated_at: '2026-06-03 01:02:35' },
+    { domain: 'certification_class_profile', record_id: 'class_c', payload_json: '{"id":"class_c","label":"Class C Off-Grid"}', updated_at: '2026-06-03 01:02:36' },
+    { domain: 'certification_evidence', record_id: 'P1_INV-005', payload_json: '{"id":"P1_INV-005","productId":"P1","matrixRecordId":"INV-005","standardRequirement":"IEC 61683","verificationStatus":"Not Reviewed"}', updated_at: '2026-06-03 01:02:37' },
     { domain: 'saved_quote', record_id: 'Q1', payload_json: '{"id":"Q1","name":"Quote 1","snapshot":{}}', updated_at: '2026-06-03 01:03:00' }
   ], {
     market_price_settings: { categoryUnits: { 'PV Module': 'W' }, deletedRecordIds: ['old'] },
@@ -335,6 +341,9 @@ test('business bootstrap payload reshapes entity rows into app state', () => {
   assert.deepEqual(payload.data.channelPartners, [{ id: 'CP1', brandSupplierCode: 'SUP1', type: 'Authorized Distributor', name: 'MY Distributor' }]);
   assert.deepEqual(payload.data.inventory, [{ id: 'I1', productId: 'P1' }]);
   assert.deepEqual(payload.data.compatibilityRules, [{ id: 'CR1', sourceProductId: 'P1', targetProductId: 'I1' }]);
+  assert.deepEqual(payload.data.certificationStandardsCatalog, [{ matrixRecordId: 'INV-005', standardRequirement: 'IEC 61683', evidenceType: 'Test Report', projectApplicability: 'Grid-connected only' }]);
+  assert.deepEqual(payload.data.certificationClassProfiles, [{ id: 'class_c', label: 'Class C Off-Grid' }]);
+  assert.deepEqual(payload.data.productCertificationEvidence, [{ id: 'P1_INV-005', productId: 'P1', matrixRecordId: 'INV-005', standardRequirement: 'IEC 61683', verificationStatus: 'Not Reviewed' }]);
   assert.deepEqual(payload.data.marketPrices.records, [{ id: 'M1', category: 'PV Module' }]);
   assert.deepEqual(payload.data.marketPrices.categoryUnits, { 'PV Module': 'W' });
   assert.deepEqual(payload.data.subcategoriesByCategory, { 'PV Module': ['Bifacial'] });
@@ -354,7 +363,10 @@ test('business snapshot migration maps suppliers into D1 entities', () => {
     suppliers: [{ id: 'supplier_SUP1', code: 'SUP1', nameEn: 'Supplier One' }],
     products: [{ id: 'P1', name: 'PV' }],
     channelPartners: [{ id: 'CP1', brandSupplierCode: 'SUP1', type: 'Dealer', name: 'Dealer One' }],
-    compatibilityRules: [{ id: 'CR1', sourceProductId: 'P1', targetProductId: 'INV1' }]
+    compatibilityRules: [{ id: 'CR1', sourceProductId: 'P1', targetProductId: 'INV1' }],
+    certificationStandardsCatalog: [{ matrixRecordId: 'INV-005', standardRequirement: 'IEC 61683', evidenceType: 'Test Report' }],
+    certificationClassProfiles: [{ id: 'class_c', label: 'Class C Off-Grid' }],
+    productCertificationEvidence: [{ id: 'P1_INV-005', productId: 'P1', matrixRecordId: 'INV-005', verificationStatus: 'Not Reviewed' }]
   });
 
   assert.deepEqual(items.filter(item => item.domain === 'supplier'), [{
@@ -372,6 +384,21 @@ test('business snapshot migration maps suppliers into D1 entities', () => {
     recordId: 'CP1',
     payload: { id: 'CP1', brandSupplierCode: 'SUP1', type: 'Dealer', name: 'Dealer One' }
   }]);
+  assert.deepEqual(items.filter(item => item.domain === 'certification_standard'), [{
+    domain: 'certification_standard',
+    recordId: 'INV-005',
+    payload: { matrixRecordId: 'INV-005', standardRequirement: 'IEC 61683', evidenceType: 'Test Report' }
+  }]);
+  assert.deepEqual(items.filter(item => item.domain === 'certification_class_profile'), [{
+    domain: 'certification_class_profile',
+    recordId: 'class_c',
+    payload: { id: 'class_c', label: 'Class C Off-Grid' }
+  }]);
+  assert.deepEqual(items.filter(item => item.domain === 'certification_evidence'), [{
+    domain: 'certification_evidence',
+    recordId: 'P1_INV-005',
+    payload: { id: 'P1_INV-005', productId: 'P1', matrixRecordId: 'INV-005', verificationStatus: 'Not Reviewed' }
+  }]);
 });
 
 test('quote-setting save paths persist D1 settings directly', () => {
@@ -381,7 +408,7 @@ test('quote-setting save paths persist D1 settings directly', () => {
 });
 
 test('top navigation tabs use compact SVG icon buttons with hover labels', () => {
-  for (const tab of ['quotation', 'pvcalc', 'costcalc', 'database', 'pricelist', 'inventory', 'transport']) {
+  for (const tab of ['quotation', 'pvcalc', 'costcalc', 'database', 'engineering', 'pricelist', 'inventory', 'transport']) {
     assert.match(indexHtmlSource, new RegExp(`id="tab-${tab}"[^>]*aria-label=`));
     assert.match(indexHtmlSource, new RegExp(`id="tab-${tab}"[\\s\\S]*?<svg`));
     assert.match(indexHtmlSource, new RegExp(`id="tab-${tab}"[\\s\\S]*?data-tab-label`));

@@ -767,6 +767,7 @@
                 <button onclick="switchTab('pvcalc')" id="tab-pvcalc" aria-label="PV + ESS Calculator" title="PV + ESS Calculator" data-tab-label="PV + ESS Calculator" class="app-shell-tab px-6 py-2 hover:text-purple-700 transition-all text-sm leading-tight text-center text-slate-500 hover:text-blue-600"><span class="tab-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 10h16"/><path d="M6 6h12l2 8H4z"/><path d="M8 18h8"/><path d="M12 14v4"/></svg></span></button>
                 <button onclick="switchTab('costcalc')" id="tab-costcalc" aria-label="Quote Settings" title="Quote Settings" data-tab-label="Quote Settings" class="app-shell-tab px-6 py-2 hover:text-purple-700 transition-all text-sm leading-tight text-center text-slate-500 hover:text-blue-600" style=""><span class="tab-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M12 3v3"/><path d="M12 18v3"/><path d="M4.22 6.22l2.12 2.12"/><path d="M17.66 17.66l2.12 2.12"/><path d="M3 12h3"/><path d="M18 12h3"/><circle cx="12" cy="12" r="4"/></svg></span></button>
                 <button onclick="switchTab('database')" id="tab-database" aria-label="Product List" title="Product List" data-tab-label="Product List" class="app-shell-tab px-6 py-2 hover:text-purple-700 transition-all text-sm leading-tight text-center tab-active" style=""><span class="tab-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/><path d="M8 4v16"/></svg></span></button>
+                <button onclick="switchTab('engineering')" id="tab-engineering" aria-label="Engineering Workspace" title="Engineering Workspace" data-tab-label="Engineering Workspace" class="app-shell-tab px-6 py-2 hover:text-purple-700 transition-all text-sm leading-tight text-center text-slate-500 hover:text-blue-600" style=""><span class="tab-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 19h16"/><path d="M6 16l4-10 4 10"/><path d="M8 12h4"/><path d="M16 5v11"/><path d="M14 7h4"/></svg></span></button>
                 <button onclick="switchTab('pricelist')" id="tab-pricelist" aria-label="Price List" title="Price List" data-tab-label="Price List" style="" class="app-shell-tab px-6 py-2 hover:text-purple-700 transition-all text-sm leading-tight text-center text-slate-500 hover:text-blue-600"><span class="tab-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M5 6h14"/><path d="M5 12h14"/><path d="M5 18h10"/><path d="M17 16l2 2 3-4"/></svg></span></button>
                 <button onclick="switchTab('inventory')" id="tab-inventory" aria-label="Inventory Mgmt" title="Inventory Mgmt" data-tab-label="Inventory Mgmt" class="app-shell-tab px-6 py-2 hover:text-purple-700 transition-all text-sm leading-tight text-center text-slate-500 hover:text-blue-600" style=""><span class="tab-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 8l8-4 8 4-8 4z"/><path d="M4 8v8l8 4 8-4V8"/><path d="M12 12v8"/></svg></span></button>
                 <button onclick="switchTab('transport')" id="tab-transport" aria-label="Transport Mgmt" title="Transport Mgmt" data-tab-label="Transport Mgmt" class="app-shell-tab px-6 py-2 hover:text-purple-700 transition-all text-sm leading-tight text-center text-slate-500 hover:text-blue-600" style=""><span class="tab-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M3 7h11v10H3z"/><path d="M14 10h4l3 3v4h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg></span></button>
@@ -1752,6 +1753,61 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
     </main>
 
+    <main id="view-engineering" class="max-w-6xl mx-auto px-4 mb-20 hidden" style="display: none;">
+        <div id="class-selection-panel" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mt-4 mb-4">
+            <div class="p-6 border-b border-slate-100 flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+                <div>
+                    <p class="text-[10px] font-black text-purple-700 uppercase tracking-widest mb-1">Engineering Workspace</p>
+                    <h2 class="text-xl font-bold text-slate-800">Class Product Selection</h2>
+                    <p class="text-xs text-slate-400 mt-1">Select products by architecture class, compatibility, and Malaysia certification readiness.</p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <input id="cert-class-capacity-filter" type="number" min="0" step="0.1" oninput="renderCertificationClassWorkspace()" placeholder="kW / kWh" class="w-28 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none bg-white focus:border-purple-500">
+                    <select id="cert-class-outdoor-filter" onchange="renderCertificationClassWorkspace()" class="border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none bg-white">
+                        <option value="all">Indoor / Outdoor</option>
+                        <option value="outdoor">Outdoor</option>
+                        <option value="indoor">Indoor</option>
+                    </select>
+                    <select id="cert-class-grid-discharge-filter" onchange="renderCertificationClassWorkspace()" class="border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none bg-white">
+                        <option value="all">Grid Discharge</option>
+                        <option value="yes">Yes</option>
+                        <option value="no">No / Backup Only</option>
+                    </select>
+                </div>
+            </div>
+            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/40">
+                <div id="cert-class-tabs" class="flex flex-wrap gap-2">
+                    <button id="cert-class-tab-class_a" type="button" onclick="setCertificationClassSelection('class_a')" class="px-3 py-2 rounded-xl border border-purple-200 bg-white text-xs font-black text-purple-800 shadow-sm">Class A Grid-Tied PV</button>
+                    <button id="cert-class-tab-class_b" type="button" onclick="setCertificationClassSelection('class_b')" class="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-black text-slate-500 hover:bg-slate-50">Class B Hybrid PV+BESS</button>
+                    <button id="cert-class-tab-class_c" type="button" onclick="setCertificationClassSelection('class_c')" class="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-black text-slate-500 hover:bg-slate-50">Class C Off-Grid</button>
+                    <button id="cert-class-tab-class_d" type="button" onclick="setCertificationClassSelection('class_d')" class="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-black text-slate-500 hover:bg-slate-50">Class D Utility Solar</button>
+                    <button id="cert-class-tab-class_e" type="button" onclick="setCertificationClassSelection('class_e')" class="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-black text-slate-500 hover:bg-slate-50">Class E Utility BESS</button>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 xl:grid-cols-[260px_minmax(0,1fr)_360px] gap-4 p-6 bg-white">
+                <aside id="cert-class-condition-card" class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-sm text-slate-500">Select a class to view architecture conditions.</aside>
+                <section>
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-sm font-black text-slate-700 uppercase tracking-widest">Recommended Product Stack</h3>
+                        <div id="cert-class-stack-summary" class="text-[11px] font-bold text-slate-400">0 products</div>
+                    </div>
+                    <div id="cert-class-product-stack" class="space-y-3">
+                        <div class="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-400">No products loaded.</div>
+                    </div>
+                </section>
+                <aside>
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-sm font-black text-slate-700 uppercase tracking-widest">Certification Checklist</h3>
+                        <div id="cert-class-checklist-summary" class="text-[11px] font-bold text-slate-400">0 items</div>
+                    </div>
+                    <div id="cert-class-checklist" class="space-y-2">
+                        <div class="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-400">No checklist loaded.</div>
+                    </div>
+                </aside>
+            </div>
+        </div>
+    </main>
+
     <main id="view-pricelist" class="max-w-6xl mx-auto px-4 mb-20 hidden" style="display: none;">
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
             <div class="p-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -1777,7 +1833,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 <input id="price-list-search" type="search" oninput="renderPriceList()" placeholder="Search product, model, brand..." class="md:col-span-2 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
                 <select id="price-list-category-filter" onchange="renderPriceList()" class="border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none bg-white"><option value="">All Categories</option><option value="All-in-One System">All-in-One System</option><option value="Accessory">Accessory</option><option value="Battery">Battery</option><option value="C&amp;I Storage">C&amp;I Storage</option><option value="Inverter">Inverter</option><option value="PV Module">PV Module</option></select>
                 <select id="price-list-brand-filter" onchange="renderPriceList()" class="border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none bg-white"><option value="">All Brands</option><option value="埃克森">埃克森</option><option value="汉伏">汉伏</option><option value="联塑 LESSO">联塑 LESSO</option><option value="明匠">明匠</option></select>
-                <select id="price-list-country-filter" onchange="renderPriceListFilters(); renderPriceList()" class="border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none bg-white"><option value="">All Countries</option><option value="MY">Malaysia</option><option value="US">United States</option><option value="EU">European Union</option><option value="UK">United Kingdom</option><option value="AU">Australia</option></select>
+                <select id="price-list-country-filter" onchange="renderPriceListFilters(); renderPriceList()" class="border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none bg-white"><option value="">All Project Applicability</option></select>
                 <select id="price-list-cert-filter" onchange="renderPriceList()" class="border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none bg-white"><option value="">All Certifications</option><option value="AS/NZS 4777.2">AS/NZS 4777.2</option><option value="AS/NZS compliance where applicable">AS/NZS compliance where applicable</option><option value="BS EN IEC 61215">BS EN IEC 61215</option><option value="BS EN IEC 61730">BS EN IEC 61730</option><option value="CE declaration">CE declaration</option><option value="CE/RoHS where applicable">CE/RoHS where applicable</option><option value="CEC Approved Batteries list">CEC Approved Batteries list</option><option value="CEC Approved Inverters/PCE list">CEC Approved Inverters/PCE list</option><option value="CEC Approved PV Modules list">CEC Approved PV Modules list</option><option value="Electrical Equipment (Safety) Regulations 2016">Electrical Equipment (Safety) Regulations 2016</option><option value="EMC Directive 2014/30/EU">EMC Directive 2014/30/EU</option><option value="EMC Regulations 2016">EMC Regulations 2016</option><option value="EN IEC 61215">EN IEC 61215</option><option value="EN IEC 61730">EN IEC 61730</option><option value="EN IEC 62109-1/2">EN IEC 62109-1/2</option><option value="EN IEC 62619">EN IEC 62619</option><option value="ENA G98/G99 where grid-tied">ENA G98/G99 where grid-tied</option><option value="IEC 61215">IEC 61215</option><option value="IEC 61730">IEC 61730</option><option value="IEC 62109-1">IEC 62109-1</option><option value="IEC 62109-1/2">IEC 62109-1/2</option><option value="IEC 62109-2">IEC 62109-2</option><option value="IEC 62477 (when applicable)">IEC 62477 (when applicable)</option><option value="IEC 62619">IEC 62619</option><option value="IEC TS 62804-1 (PID, when applicable)">IEC TS 62804-1 (PID, when applicable)</option><option value="IEC/UL 61215 series">IEC/UL 61215 series</option><option value="IEEE 1547 / 1547.1">IEEE 1547 / 1547.1</option><option value="Low Voltage Directive 2014/35/EU">Low Voltage Directive 2014/35/EU</option><option value="MSDS">MSDS</option><option value="NRTL listing where applicable">NRTL listing where applicable</option><option value="Project-specific electrical/import compliance review">Project-specific electrical/import compliance review</option><option value="RoHS">RoHS</option><option value="SIRIM / local battery requirements where applicable">SIRIM / local battery requirements where applicable</option><option value="SIRIM / local import compliance where applicable">SIRIM / local import compliance where applicable</option><option value="SIRIM / local utility requirements where applicable">SIRIM / local utility requirements where applicable</option><option value="SIRIM / MS IEC 61215">SIRIM / MS IEC 61215</option><option value="SIRIM / MS IEC 61730">SIRIM / MS IEC 61730</option><option value="UKCA declaration">UKCA declaration</option><option value="UKCA where applicable">UKCA where applicable</option><option value="UL 1699B where applicable">UL 1699B where applicable</option><option value="UL 1741">UL 1741</option><option value="UL 1973">UL 1973</option><option value="UL 61730-1">UL 61730-1</option><option value="UL 61730-2">UL 61730-2</option><option value="UL 9540">UL 9540</option><option value="UL 9540A">UL 9540A</option><option value="UN 38.3">UN 38.3</option></select>
             </div>
             <div class="p-4 border-b border-slate-100 bg-white">
@@ -3636,7 +3692,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     </div>
                     <div class="col-span-1">
                         <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Category</label>
-                        <input type="text" id="m-category" list="cat-suggestions" oninput="updateSubcatSuggestions(); updateHybridSpecControls(); updateProductPriceUnitNote(); renderProductTechnicalFields(this.value); maybeFillProductCertificationDefaults()" onchange="updateSubcatSuggestions(); updateHybridSpecControls(); updateProductPriceUnitNote(); renderProductTechnicalFields(this.value); maybeFillProductCertificationDefaults()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50">
+                        <input type="text" id="m-category" list="cat-suggestions" oninput="updateSubcatSuggestions(); updateHybridSpecControls(); updateProductPriceUnitNote(); renderProductTechnicalFields(this.value); renderProductCertificationMatrixSummary({ id: window.editId || '', name: document.getElementById('m-name')?.value || '', category: this.value })" onchange="updateSubcatSuggestions(); updateHybridSpecControls(); updateProductPriceUnitNote(); renderProductTechnicalFields(this.value); renderProductCertificationMatrixSummary({ id: window.editId || '', name: document.getElementById('m-name')?.value || '', category: this.value })" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50">
                         <datalist id="cat-suggestions"><option value="PV Module"></option><option value="Inverter"></option><option value="Battery"></option><option value="Accessory"></option><option value="All-in-One System"></option><option value="C&amp;I Storage"></option></datalist>
                     </div>
                     <div class="col-span-1">
@@ -3811,17 +3867,16 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     <div class="col-span-2 border-t border-slate-100 my-2 pt-4">
                         <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3 mb-3">
                             <div>
-                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Certification Requirements</label>
-                                <p class="text-xs text-slate-400">Editable market access defaults for customs, compliance, and sales quotation filters.</p>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Certification Matrix</label>
+                                <p class="text-xs text-slate-400">Select applicable standards and maintain evidence status from the master certification matrix.</p>
                             </div>
                             <div class="flex flex-wrap gap-2">
-                                <button type="button" onclick="applyDefaultProductCertifications()" class="px-3 py-2 rounded-xl bg-purple-700 text-white text-xs font-black hover:bg-purple-800">Apply Default</button>
-                                <button type="button" onclick="refreshCertificationDefaults()" class="px-3 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-black hover:bg-slate-50">Refresh Defaults</button>
+                                <button type="button" onclick="openProductCertificationMatrix()" class="px-3 py-2 rounded-xl bg-purple-700 text-white text-xs font-black hover:bg-purple-800">Open Matrix</button>
                             </div>
                         </div>
-                        <div id="m-cert-country-list" class="flex flex-wrap gap-2 mb-3"></div>
-                        <textarea id="m-cert-requirements" rows="4" oninput="window.__certificationAutoFilled=false" placeholder="Certification standards, one per line" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500 resize-none"></textarea>
-                        <p id="m-cert-source-note" class="text-[10px] text-slate-400 mt-2">Defaults are advisory and can be edited per product.</p>
+                        <div id="m-cert-matrix-summary" class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-xs text-slate-500">
+                            No certification evidence selected yet.
+                        </div>
                     </div>
 
                     <!-- 价格核算 -->
@@ -3905,6 +3960,41 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             <div class="mt-8 flex gap-3">
                 <button onclick="closeModal()" class="flex-1 py-3 text-slate-400 font-bold hover:bg-slate-50 rounded-2xl transition-colors border border-slate-200">Cancel</button>
                 <button onclick="saveProduct()" class="flex-1 py-3 bg-slate-900 text-white rounded-2xl font-bold shadow-lg hover:bg-black transition-all">Save Product Record</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="certification-matrix-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center z-[230] p-4">
+        <div class="bg-white rounded-3xl w-full max-w-6xl shadow-2xl max-h-[92vh] overflow-hidden flex flex-col">
+            <div class="p-6 border-b border-slate-100 flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+                <div>
+                    <p class="text-[10px] font-black text-purple-700 uppercase tracking-widest mb-1">Certification Matrix</p>
+                    <h3 id="cert-matrix-title" class="text-xl font-bold text-slate-800">Product Certification Evidence</h3>
+                    <p id="cert-matrix-subtitle" class="text-xs text-slate-400 mt-1">Select applicable matrix rows and maintain evidence fields.</p>
+                </div>
+                <button onclick="closeProductCertificationMatrix()" class="text-slate-400 hover:text-slate-600 text-2xl">×</button>
+            </div>
+            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/60 flex flex-col xl:flex-row xl:items-center gap-3">
+                <input id="cert-matrix-search" type="search" oninput="renderProductCertificationMatrix()" placeholder="Search standard, condition, evidence type..." class="w-full xl:max-w-sm border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-purple-500 bg-white">
+                <select id="cert-matrix-level-filter" onchange="renderProductCertificationMatrix()" class="border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold outline-none bg-white">
+                    <option value="">All Levels</option>
+                </select>
+                <select id="cert-matrix-project-filter" onchange="renderProductCertificationMatrix()" class="border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold outline-none bg-white">
+                    <option value="">All Project Applicability</option>
+                </select>
+                <select id="cert-matrix-evidence-filter" onchange="renderProductCertificationMatrix()" class="border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold outline-none bg-white">
+                    <option value="">All Evidence Types</option>
+                </select>
+                <div id="cert-matrix-summary" class="text-[11px] font-bold text-slate-400 xl:ml-auto">0 selected</div>
+            </div>
+            <div class="overflow-auto p-6">
+                <div id="cert-matrix-list" class="space-y-3">
+                    <div class="rounded-2xl border border-dashed border-slate-200 p-8 text-center text-sm text-slate-400">No matrix rows loaded.</div>
+                </div>
+            </div>
+            <div class="p-5 border-t border-slate-100 bg-white flex justify-end gap-3">
+                <button onclick="closeProductCertificationMatrix()" class="px-4 py-2 rounded-xl border border-slate-200 text-slate-500 text-sm font-bold hover:bg-slate-50">Cancel</button>
+                <button onclick="saveProductCertificationMatrix()" class="px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-black">Save Matrix Evidence</button>
             </div>
         </div>
     </div>
@@ -5360,6 +5450,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         let transportRecords = [];
         let fileDeleteLogs = [];
         let compatibilityRules = [];
+        let certificationStandardsCatalog = [];
+        let certificationClassProfiles = [];
+        let productCertificationEvidence = [];
         let inventorySummaryMode = false;
         let inventoryFullHeadHtml = '';
         let selectedInventoryForTransport = new Set();
@@ -6179,78 +6272,6 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const supplier = getProductSupplier(product);
             return getSupplierDisplayNameForLang(supplier, lang) || String(product?.vendor || '').trim() || '-';
         }
-        const CERTIFICATION_COUNTRIES = [
-            { code: 'MY', label: 'Malaysia' },
-            { code: 'US', label: 'United States' },
-            { code: 'EU', label: 'European Union' },
-            { code: 'UK', label: 'United Kingdom' },
-            { code: 'AU', label: 'Australia' }
-        ];
-        const CERTIFICATION_DEFAULTS_FALLBACK = {
-            v: 1,
-            updatedAt: '2026-05-15',
-            rules: {
-                pvModule: {
-                    match: ['光伏Module', 'pv module', 'solar panel', 'module'],
-                    common: ['IEC 61215', 'IEC 61730'],
-                    countries: {
-                        MY: ['SIRIM / MS IEC 61215', 'SIRIM / MS IEC 61730', 'IEC TS 62804-1 (PID, when applicable)'],
-                        US: ['UL 61730-1', 'UL 61730-2', 'IEC/UL 61215 series'],
-                        EU: ['CE declaration', 'EN IEC 61215', 'EN IEC 61730', 'RoHS'],
-                        UK: ['UKCA declaration', 'BS EN IEC 61215', 'BS EN IEC 61730'],
-                        AU: ['CEC Approved PV Modules list', 'IEC 61215', 'IEC 61730']
-                    }
-                },
-                inverter: {
-                    match: ['Inverter', 'inverter', 'pcs', 'converter'],
-                    common: ['IEC 62109-1', 'IEC 62109-2', 'IEC 62477 (when applicable)'],
-                    countries: {
-                        MY: ['IEC 62109-1/2', 'SIRIM / local utility requirements where applicable'],
-                        US: ['UL 1741', 'IEEE 1547 / 1547.1', 'UL 1699B where applicable'],
-                        EU: ['CE declaration', 'Low Voltage Directive 2014/35/EU', 'EMC Directive 2014/30/EU', 'EN IEC 62109-1/2'],
-                        UK: ['UKCA declaration', 'Electrical Equipment (Safety) Regulations 2016', 'EMC Regulations 2016', 'ENA G98/G99 where grid-tied'],
-                        AU: ['CEC Approved Inverters/PCE list', 'AS/NZS 4777.2', 'IEC 62109-1/2']
-                    }
-                },
-                battery: {
-                    match: ['Battery', 'battery', '储能', 'energy storage', 'ess'],
-                    common: ['IEC 62619', 'UN 38.3', 'MSDS'],
-                    countries: {
-                        MY: ['IEC 62619', 'UN 38.3', 'MSDS', 'SIRIM / local battery requirements where applicable'],
-                        US: ['UL 1973', 'UL 9540', 'UL 9540A', 'UN 38.3'],
-                        EU: ['CE declaration', 'EN IEC 62619', 'UN 38.3', 'RoHS'],
-                        UK: ['UKCA declaration', 'EN IEC 62619', 'UN 38.3'],
-                        AU: ['CEC Approved Batteries list', 'IEC 62619', 'UN 38.3']
-                    }
-                },
-                accessory: {
-                    match: ['Accessory', 'accessory', 'mounting', 'bracket', 'cable'],
-                    common: ['Project-specific electrical/import compliance review'],
-                    countries: {
-                        MY: ['SIRIM / local import compliance where applicable'],
-                        US: ['NRTL listing where applicable'],
-                        EU: ['CE/RoHS where applicable'],
-                        UK: ['UKCA where applicable'],
-                        AU: ['AS/NZS compliance where applicable']
-                    }
-                }
-            }
-        };
-        let certificationDefaultsCatalog = CERTIFICATION_DEFAULTS_FALLBACK;
-        function certificationCategoryKey(product = {}) {
-            const text = `${product.category || ''} ${product.scenario || ''} ${product.name || ''}`.toLowerCase();
-            const rules = certificationDefaultsCatalog?.rules || CERTIFICATION_DEFAULTS_FALLBACK.rules;
-            for (const [key, rule] of Object.entries(rules)) {
-                const matches = Array.isArray(rule?.match) ? rule.match : [];
-                if (matches.some(m => text.includes(String(m || '').toLowerCase()))) return key;
-            }
-            return 'accessory';
-        }
-        function certificationCountriesFromUi() {
-            const checks = Array.from(document.querySelectorAll('.m-cert-country'));
-            const selected = checks.filter(el => el.checked).map(el => String(el.value || '').trim()).filter(Boolean);
-            return selected.length ? selected : CERTIFICATION_COUNTRIES.map(c => c.code);
-        }
         function uniqueCertList(list) {
             const seen = new Set();
             const out = [];
@@ -6263,43 +6284,27 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             });
             return out;
         }
-        function defaultCertificationRequirementsForProduct(product = {}, countries = CERTIFICATION_COUNTRIES.map(c => c.code)) {
-            const rules = certificationDefaultsCatalog?.rules || CERTIFICATION_DEFAULTS_FALLBACK.rules;
-            const rule = rules[certificationCategoryKey(product)] || rules.accessory || {};
-            const standards = [];
-            standards.push(...(Array.isArray(rule.common) ? rule.common : []));
-            countries.forEach(code => standards.push(...(Array.isArray(rule.countries?.[code]) ? rule.countries[code] : [])));
-            return {
-                countries: countries.slice(),
-                standards: uniqueCertList(standards),
-                source: certificationDefaultsCatalog === CERTIFICATION_DEFAULTS_FALLBACK ? 'embedded-defaults' : 'online-catalog',
-                updatedAt: certificationDefaultsCatalog?.updatedAt || ''
-            };
-        }
         function normalizeCertificationRequirements(value, product = {}) {
             if (value && typeof value === 'object') {
-                const countries = Array.isArray(value.countries) && value.countries.length
-                    ? value.countries.map(v => String(v || '').trim()).filter(Boolean)
-                    : CERTIFICATION_COUNTRIES.map(c => c.code);
                 const standards = Array.isArray(value.standards)
                     ? value.standards
                     : String(value.standards || value.text || '').split(/[\n;,]+/);
                 return {
-                    countries,
+                    countries: Array.isArray(value.countries) ? value.countries.map(v => String(v || '').trim()).filter(Boolean) : [],
                     standards: uniqueCertList(standards),
-                    source: String(value.source || ''),
+                    source: String(value.source || 'legacy'),
                     updatedAt: String(value.updatedAt || '')
                 };
             }
             if (typeof value === 'string' && value.trim()) {
                 return {
-                    countries: CERTIFICATION_COUNTRIES.map(c => c.code),
+                    countries: [],
                     standards: uniqueCertList(value.split(/[\n;,]+/)),
                     source: 'manual',
                     updatedAt: ''
                 };
             }
-            return defaultCertificationRequirementsForProduct(product);
+            return { countries: [], standards: [], source: 'matrix', updatedAt: '' };
         }
         function certificationText(req) {
             return uniqueCertList(req?.standards || []).join('\n');
@@ -6307,67 +6312,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         function getProductCertificationRequirements(product = {}) {
             return normalizeCertificationRequirements(product.certificationRequirements, product);
         }
-        function renderCertificationCountryChoices(selected = CERTIFICATION_COUNTRIES.map(c => c.code)) {
-            const box = document.getElementById('m-cert-country-list');
-            if (!box) return;
-            const chosen = new Set((Array.isArray(selected) ? selected : []).map(v => String(v || '').trim()));
-            box.innerHTML = CERTIFICATION_COUNTRIES.map(c => `
-                <label class="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-600">
-                    <input type="checkbox" class="m-cert-country h-4 w-4 accent-purple-700" value="${c.code}" ${chosen.has(c.code) ? 'checked' : ''} onchange="onCertificationCountryChange()">
-                    <span>${c.label}</span>
-                </label>
-            `).join('');
-        }
         function readProductCertificationRequirementsFromModal() {
-            const text = String(document.getElementById('m-cert-requirements')?.value || '').trim();
-            return {
-                countries: certificationCountriesFromUi(),
-                standards: uniqueCertList(text.split(/[\n;,]+/)),
-                source: window.__certificationAutoFilled ? (certificationDefaultsCatalog === CERTIFICATION_DEFAULTS_FALLBACK ? 'embedded-defaults' : 'online-catalog') : 'manual',
-                updatedAt: certificationDefaultsCatalog?.updatedAt || ''
-            };
-        }
-        window.applyDefaultProductCertifications = () => {
-            const product = {
-                name: document.getElementById('m-name')?.value || '',
-                category: document.getElementById('m-category')?.value || '',
-                scenario: document.getElementById('m-scenario')?.value || ''
-            };
-            const req = defaultCertificationRequirementsForProduct(product, certificationCountriesFromUi());
-            const textarea = document.getElementById('m-cert-requirements');
-            if (textarea) textarea.value = certificationText(req);
-            const note = document.getElementById('m-cert-source-note');
-            if (note) note.textContent = `Defaults loaded from ${req.source === 'online-catalog' ? 'online catalog' : 'embedded fallback'}${req.updatedAt ? ` (${req.updatedAt})` : ''}. Edit as needed.`;
-            window.__certificationAutoFilled = true;
-        };
-        window.maybeFillProductCertificationDefaults = () => {
-            const textarea = document.getElementById('m-cert-requirements');
-            if (!textarea) return;
-            if (String(textarea.value || '').trim() && !window.__certificationAutoFilled) return;
-            window.applyDefaultProductCertifications?.();
-        };
-        window.onCertificationCountryChange = () => {
-            if (window.__certificationAutoFilled || !String(document.getElementById('m-cert-requirements')?.value || '').trim()) {
-                window.applyDefaultProductCertifications?.();
-            }
-        };
-        window.refreshCertificationDefaults = async () => {
-            const note = document.getElementById('m-cert-source-note');
-            try {
-                const url = new URL('minova-data/certification-defaults.json', window.location.href);
-                url.searchParams.set('v', String(Date.now()));
-                const res = await fetch(url.toString(), { cache: 'no-store' });
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const data = await res.json();
-                if (!data?.rules) throw new Error('Invalid catalog');
-                certificationDefaultsCatalog = data;
-                if (note) note.textContent = `Online certification defaults loaded${data.updatedAt ? ` (${data.updatedAt})` : ''}.`;
-                window.applyDefaultProductCertifications?.();
-            } catch (e) {
-                certificationDefaultsCatalog = CERTIFICATION_DEFAULTS_FALLBACK;
-                if (note) note.textContent = 'Online catalog unavailable; embedded fallback defaults are in use.';
-                window.applyDefaultProductCertifications?.();
-            }
+            return { countries: [], standards: [], source: 'matrix', updatedAt: '' };
         };
         function renderSupplierOptions(selectedCode = '') {
             ensureSupplierData();
@@ -6867,7 +6813,15 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     transportRecords = Array.isArray(embedded.data.transportRecords) ? embedded.data.transportRecords : [];
                     fileDeleteLogs = Array.isArray(embedded.data.fileDeleteLogs) ? embedded.data.fileDeleteLogs : [];
                     compatibilityRules = Array.isArray(embedded.data.compatibilityRules) ? embedded.data.compatibilityRules : [];
+                    certificationStandardsCatalog = Array.isArray(embedded.data.certificationStandardsCatalog) ? embedded.data.certificationStandardsCatalog : [];
+                    certificationClassProfiles = Array.isArray(embedded.data.certificationClassProfiles) ? embedded.data.certificationClassProfiles : [];
+                    productCertificationEvidence = Array.isArray(embedded.data.productCertificationEvidence) ? embedded.data.productCertificationEvidence : [];
                     try { localStorage.setItem('minova_compatibility_rules_v1', JSON.stringify(compatibilityRules)); } catch (e) {}
+                    try {
+                        localStorage.setItem('minova_certification_standards_v1', JSON.stringify(certificationStandardsCatalog));
+                        localStorage.setItem('minova_certification_class_profiles_v1', JSON.stringify(certificationClassProfiles));
+                        localStorage.setItem('minova_product_certification_evidence_v1', JSON.stringify(productCertificationEvidence));
+                    } catch (e) {}
                 }
             }
         } catch (e) {}
@@ -6893,6 +6847,18 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         try {
             const raw = localStorage.getItem('minova_channel_partners_v1');
             if (raw) channelPartners = Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : channelPartners;
+        } catch (e) {}
+        try {
+            const raw = localStorage.getItem('minova_certification_standards_v1');
+            if (raw) certificationStandardsCatalog = Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : certificationStandardsCatalog;
+        } catch (e) {}
+        try {
+            const raw = localStorage.getItem('minova_certification_class_profiles_v1');
+            if (raw) certificationClassProfiles = Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : certificationClassProfiles;
+        } catch (e) {}
+        try {
+            const raw = localStorage.getItem('minova_product_certification_evidence_v1');
+            if (raw) productCertificationEvidence = Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : productCertificationEvidence;
         } catch (e) {}
         try {
             const raw = localStorage.getItem('minova_market_prices_v1');
@@ -6949,7 +6915,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         normalizeProductClassificationData();
         saveSubcategoryIndex();
 
-        const TOP_LEVEL_TABS = ['quotation', 'database', 'pricelist', 'pvcalc', 'costcalc', 'inventory', 'transport', 'admin'];
+        const TOP_LEVEL_TABS = ['quotation', 'database', 'engineering', 'pricelist', 'pvcalc', 'costcalc', 'inventory', 'transport', 'admin'];
 
         function getActiveTopLevelTab() {
             for (const tab of TOP_LEVEL_TABS) {
@@ -6969,6 +6935,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     renderChannelPartners();
                     renderDb();
                     updateDatalists();
+                } else if (key === 'engineering') {
+                    renderCertificationClassWorkspace();
                 } else if (key === 'inventory') {
                     renderInventory();
                     renderNonStockPricingStrategies();
@@ -7048,6 +7016,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             ensureSupplierData();
             channelPartners = normalizeChannelPartners(data?.channelPartners);
             compatibilityRules = normalizeCompatibilityRules(data?.compatibilityRules);
+            certificationStandardsCatalog = normalizeCertificationStandardsCatalog(data?.certificationStandardsCatalog);
+            certificationClassProfiles = normalizeCertificationClassProfiles(data?.certificationClassProfiles);
+            productCertificationEvidence = normalizeProductCertificationEvidenceList(data?.productCertificationEvidence);
             subcategoriesByCategory = data?.subcategoriesByCategory && typeof data.subcategoriesByCategory === 'object' ? data.subcategoriesByCategory : {};
             profitSettings = normalizeProfitSettings(data?.profitSettings || profitSettings || null);
             installerProfitSettings = normalizeInstallerProfitSettings(data?.installerProfitSettings || installerProfitSettings || null);
@@ -7065,6 +7036,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 localStorage.setItem('minova_suppliers_v1', JSON.stringify(suppliers));
                 localStorage.setItem('minova_channel_partners_v1', JSON.stringify(channelPartners));
                 localStorage.setItem('minova_compatibility_rules_v1', JSON.stringify(compatibilityRules));
+                localStorage.setItem('minova_certification_standards_v1', JSON.stringify(certificationStandardsCatalog));
+                localStorage.setItem('minova_certification_class_profiles_v1', JSON.stringify(certificationClassProfiles));
+                localStorage.setItem('minova_product_certification_evidence_v1', JSON.stringify(productCertificationEvidence));
                 localStorage.setItem('minova_subcategories_v1', JSON.stringify(subcategoriesByCategory));
                 localStorage.setItem('minova_profit_settings_v1', JSON.stringify(profitSettings));
                 localStorage.setItem('minova_installer_profit_v1', JSON.stringify(installerProfitSettings));
@@ -7148,6 +7122,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             localStorage.setItem('minova_company_certs', JSON.stringify(companyCerts));
             compatibilityRules = normalizeCompatibilityRules(compatibilityRules);
             try { localStorage.setItem('minova_compatibility_rules_v1', JSON.stringify(compatibilityRules)); } catch (e) {}
+            ensureCertificationV4Data();
+            try {
+                localStorage.setItem('minova_certification_standards_v1', JSON.stringify(certificationStandardsCatalog));
+                localStorage.setItem('minova_certification_class_profiles_v1', JSON.stringify(certificationClassProfiles));
+                localStorage.setItem('minova_product_certification_evidence_v1', JSON.stringify(productCertificationEvidence));
+            } catch (e) {}
             try { localStorage.setItem('minova_transport_records_v1', JSON.stringify(transportRecords)); } catch (e) {}
             try { localStorage.setItem('minova_file_delete_logs_v1', JSON.stringify(fileDeleteLogs)); } catch (e) {}
             rebuildSubcategoryIndexFromProducts();
@@ -7176,6 +7156,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 historicalInventory,
                 transportRecords,
                 compatibilityRules,
+                certificationStandardsCatalog,
+                certificationClassProfiles,
+                productCertificationEvidence,
                 subcategoriesByCategory,
                 profitSettings,
                 installerProfitSettings,
@@ -7570,7 +7553,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const localFileMode = window.location.protocol === 'file:';
             const connected = !!window.__minovaSync?.getStatus?.()?.connected;
             const authMode = !!window.__minovaAuth?.state?.user || document.body.classList.contains('minova-authenticated');
-            const restrictedTabs = ['quotation', 'costcalc', 'database', 'pricelist', 'inventory', 'transport'];
+            const restrictedTabs = ['quotation', 'costcalc', 'database', 'engineering', 'pricelist', 'inventory', 'transport'];
             if (restrictedTabs.includes(tab) && !connected && !localFileMode && !authMode) {
                 tab = 'pvcalc';
             }
@@ -9293,15 +9276,89 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         ];
         const PRODUCT_ROLE_VIEWS = [
             { id: 'sales', label: 'Sales', columns: ['id', 'name', 'quoteReadiness', 'supplyRoute', 'certificationReadiness', 'application', 'warranty', 'leadTime', 'quotePrice', 'actions'] },
-            { id: 'engineering', label: 'Engineering / Technical', columns: ['id', 'name', 'category', 'technicalSummary', 'compatibilityStatus', 'technicalFit', 'efficiencyCapacity', 'dimensions', 'weight', 'attachedSpecs', 'certificationRequirements', 'actions'] },
+            { id: 'engineering', label: 'Engineering / Technical', columns: ['id', 'name', 'category', 'classFit', 'technicalSummary', 'compatibilityStatus', 'certificationV4Status', 'missingEvidence', 'technicalFit', 'actions'] },
             { id: 'procurement', label: 'Procurement', columns: ['id', 'name', 'category', 'sourceType', 'commercialSupplier', 'factoryBrandOwner', 'authorizationStatus', 'moq', 'leadTime', 'cost', 'priceBasis', 'contact', 'actions'] },
             { id: 'commercial', label: 'Commercial / Audit', columns: ['id', 'name', 'category', 'supplier', 'cost', 'price', 'margin', 'priceBasis', 'marketAlignment', 'sourceRisk', 'certificationGap', 'actions'] },
-            { id: 'full', label: 'Full', columns: ['id', 'image', 'name', 'model', 'brand', 'series', 'category', 'subcategory', 'application', 'status', 'quoteReadiness', 'supplyRoute', 'sourceType', 'commercialSupplier', 'factoryBrandOwner', 'authorizationStatus', 'technicalSummary', 'compatibilityStatus', 'efficiencyCapacity', 'dimensions', 'weight', 'warranty', 'leadTime', 'datasheet', 'certificationRequirements', 'externalCertificateLink', 'attachedCerts', 'attachedSpecs', 'cost', 'price', 'margin', 'marketAlignment', 'remark', 'actions'] }
+            { id: 'full', label: 'Full', columns: ['id', 'image', 'name', 'model', 'brand', 'series', 'category', 'subcategory', 'application', 'status', 'quoteReadiness', 'supplyRoute', 'sourceType', 'commercialSupplier', 'factoryBrandOwner', 'authorizationStatus', 'technicalSummary', 'compatibilityStatus', 'efficiencyCapacity', 'dimensions', 'weight', 'warranty', 'leadTime', 'datasheet', 'certificationV4Status', 'missingEvidence', 'evidenceCount', 'externalCertificateLink', 'attachedCerts', 'attachedSpecs', 'cost', 'price', 'margin', 'marketAlignment', 'remark', 'actions'] }
         ];
         const PRODUCT_SOURCE_TYPES = ['Unknown', 'Direct Factory', 'Authorized Distributor', 'Dealer', 'EPC Partner'];
         const PRODUCT_AUTHORIZATION_STATUS = ['', 'Authorized', 'Pending', 'Expired', 'Not Required', 'Unknown'];
         const COMPATIBILITY_RELATION_TYPES = ['PV ↔ Inverter', 'Inverter ↔ Battery', 'ESS ↔ Battery/PCS', 'BOS Required', 'System Bundle'];
         const COMPATIBILITY_STATUS_TYPES = ['Approved', 'Pending', 'Conditional', 'Blocked', 'Unknown'];
+        const CERTIFICATION_LEVELS = ['Mandatory', 'Utility Preferred', 'International Finance Preferred', 'Optional'];
+        const CERTIFICATION_EVIDENCE_STATUS = ['Ready', 'Gap', 'Conditional', 'N/A', 'Expired', 'Needs Review'];
+        const CERTIFICATION_STANDARDS_CATALOG_DEFAULTS = [
+            { matrixRecordId: 'PV-001', matrixSheet: 'PV_Module_Cert', matrixType: 'PV Module', productCategory: 'PV Module', standardRequirement: 'IEC 61215 series', requirementLevel: 'Mandatory', applicabilityCondition: 'Grid-connected PV module; select the technology-specific part and current edition.', evidenceType: 'Certificate', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.sirim-qas.com.my/service/photovoltaic-pv-module/', projectApplicability: 'All', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'PV-002', matrixSheet: 'PV_Module_Cert', matrixType: 'PV Module', productCategory: 'PV Module', standardRequirement: 'IEC 61730-1', requirementLevel: 'Mandatory', applicabilityCondition: 'PV module construction safety qualification.', evidenceType: 'Certificate', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.sirim-qas.com.my/service/photovoltaic-pv-module/', projectApplicability: 'All', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'PV-003', matrixSheet: 'PV_Module_Cert', matrixType: 'PV Module', productCategory: 'PV Module', standardRequirement: 'IEC 61730-2', requirementLevel: 'Mandatory', applicabilityCondition: 'PV module safety testing.', evidenceType: 'Certificate', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.sirim-qas.com.my/service/photovoltaic-pv-module/', projectApplicability: 'All', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'PV-004', matrixSheet: 'PV_Module_Cert', matrixType: 'PV Module', productCategory: 'PV Module', standardRequirement: 'MS IEC 61215 / MS IEC 61730', requirementLevel: 'Mandatory', applicabilityCondition: 'Only when Malaysian Standard, government procurement or tender documentation explicitly requires MS adoption.', evidenceType: 'Certificate', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.sirim-qas.com.my/service/photovoltaic-pv-module/', projectApplicability: 'Project-specific', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'PV-005', matrixSheet: 'PV_Module_Cert', matrixType: 'PV Module', productCategory: 'PV Module', standardRequirement: 'IEC 60904 series', requirementLevel: 'Utility Preferred', applicabilityCondition: 'PV device measurement and performance verification for utility/LSS review.', evidenceType: 'Test Report', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://webstore.iec.ch/', projectApplicability: 'Utility', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'PV-006', matrixSheet: 'PV_Module_Cert', matrixType: 'PV Module', productCategory: 'PV Module', standardRequirement: 'IEC 61853 series', requirementLevel: 'Utility Preferred', applicabilityCondition: 'Energy rating and performance over irradiance/temperature range.', evidenceType: 'Test Report', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://webstore.iec.ch/', projectApplicability: 'Utility', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'PV-007', matrixSheet: 'PV_Module_Cert', matrixType: 'PV Module', productCategory: 'PV Module', standardRequirement: 'IEC 61701', requirementLevel: 'Optional', applicabilityCondition: 'Salt-mist exposure; condition-specific for coastal or marine sites.', evidenceType: 'Test Report', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://webstore.iec.ch/', projectApplicability: 'Project-specific', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'PV-008', matrixSheet: 'PV_Module_Cert', matrixType: 'PV Module', productCategory: 'PV Module', standardRequirement: 'IEC 62716', requirementLevel: 'Optional', applicabilityCondition: 'Ammonia corrosion; condition-specific for agricultural/industrial sites.', evidenceType: 'Test Report', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://webstore.iec.ch/', projectApplicability: 'Project-specific', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'PV-009', matrixSheet: 'PV_Module_Cert', matrixType: 'PV Module', productCategory: 'PV Module', standardRequirement: 'IEC TS 62804 series', requirementLevel: 'Utility Preferred', applicabilityCondition: 'PID resistance, especially for 1500 V and humid/high-temperature projects.', evidenceType: 'Test Report', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://webstore.iec.ch/', projectApplicability: 'Utility', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'PV-010', matrixSheet: 'PV_Module_Cert', matrixType: 'PV Module', productCategory: 'PV Module', standardRequirement: 'IEC 62782', requirementLevel: 'Utility Preferred', applicabilityCondition: 'Dynamic mechanical load; utility-scale and tracker/high-wind applications.', evidenceType: 'Test Report', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://webstore.iec.ch/', projectApplicability: 'Utility', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'PV-011', matrixSheet: 'PV_Module_Cert', matrixType: 'PV Module', productCategory: 'PV Module', standardRequirement: 'IEC 62941', requirementLevel: 'International Finance Preferred', applicabilityCondition: 'PV module manufacturing quality system and ongoing product consistency.', evidenceType: 'Certificate', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://webstore.iec.ch/', projectApplicability: 'Utility', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'PV-012', matrixSheet: 'PV_Module_Cert', matrixType: 'PV Module', productCategory: 'PV Module', standardRequirement: 'IEC TS 62915', requirementLevel: 'International Finance Preferred', applicabilityCondition: 'Retesting and type approval after design, BOM or factory changes.', evidenceType: 'Test Report', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://webstore.iec.ch/', projectApplicability: 'Utility', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'PV-013', matrixSheet: 'PV_Module_Cert', matrixType: 'PV Module', productCategory: 'PV Module', standardRequirement: 'IEC 62759-1', requirementLevel: 'Optional', applicabilityCondition: 'Transportation packaging qualification for PV modules.', evidenceType: 'Test Report', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://webstore.iec.ch/', projectApplicability: 'Project-specific', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'PV-014', matrixSheet: 'PV_Module_Cert', matrixType: 'PV Module', productCategory: 'PV Module', standardRequirement: 'IEC TS 63126', requirementLevel: 'Optional', applicabilityCondition: 'High-temperature module qualification for hot roofs or poorly ventilated installation.', evidenceType: 'Test Report', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://webstore.iec.ch/', projectApplicability: 'Project-specific', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'PV-015', matrixSheet: 'PV_Module_Cert', matrixType: 'PV Module', productCategory: 'PV Module', standardRequirement: 'SIRIM Product Certification', requirementLevel: 'Utility Preferred', applicabilityCondition: 'Tender/programme-specific; do not treat as universally mandatory without an official product-specific order.', evidenceType: 'Product Listing / License', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.sirim-qas.com.my/service/photovoltaic-pv-module/', projectApplicability: 'Project-specific', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'INV-001', matrixSheet: 'Inverter_PCS_Cert', matrixType: 'Inverter / PCS', productCategory: 'PV Inverter', standardRequirement: 'IEC 62109-1', requirementLevel: 'Mandatory', applicabilityCondition: 'Grid-connected PV inverter safety — general requirements.', evidenceType: 'Certificate', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://efit.seda.gov.my/?id=3588&omaneg=00010100000001010101000100001000000010100001000110', projectApplicability: 'Grid-connected only', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'INV-002', matrixSheet: 'Inverter_PCS_Cert', matrixType: 'Inverter / PCS', productCategory: 'PV Inverter', standardRequirement: 'IEC 62109-2', requirementLevel: 'Mandatory', applicabilityCondition: 'PV inverter safety — particular requirements.', evidenceType: 'Certificate', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://efit.seda.gov.my/?id=3588&omaneg=00010100000001010101000100001000000010100001000110', projectApplicability: 'Grid-connected only', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'INV-003', matrixSheet: 'Inverter_PCS_Cert', matrixType: 'Inverter / PCS', productCategory: 'PV Inverter', standardRequirement: 'IEC 61727', requirementLevel: 'Mandatory', applicabilityCondition: 'Grid interface characteristics for applicable Malaysian PV interconnection programme/project.', evidenceType: 'Test Report', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://efit.seda.gov.my/?id=3588&omaneg=00010100000001010101000100001000000010100001000110', projectApplicability: 'Grid-connected only', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'INV-004', matrixSheet: 'Inverter_PCS_Cert', matrixType: 'Inverter / PCS', productCategory: 'PV Inverter', standardRequirement: 'IEC 62116', requirementLevel: 'Mandatory', applicabilityCondition: 'Anti-islanding test for grid-connected inverter/PCS; not applicable to standalone off-grid operation.', evidenceType: 'Test Report', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://efit.seda.gov.my/?id=3588&omaneg=00010100000001010101000100001000000010100001000110', projectApplicability: 'Grid-connected only', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'INV-005', matrixSheet: 'Inverter_PCS_Cert', matrixType: 'Inverter / PCS', productCategory: 'PV Inverter', standardRequirement: 'IEC 61683', requirementLevel: 'Mandatory', applicabilityCondition: 'Efficiency measurement report for applicable SEDA/TNB equipment approval or project submission; not a safety certificate.', evidenceType: 'Test Report', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://efit.seda.gov.my/?id=3588&omaneg=00010100000001010101000100001000000010100001000110', projectApplicability: 'Grid-connected only', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'INV-006', matrixSheet: 'Inverter_PCS_Cert', matrixType: 'Inverter / PCS', productCategory: 'BESS PCS', standardRequirement: 'IEC 62477-1', requirementLevel: 'Mandatory', applicabilityCondition: 'BESS power conversion system safety evaluation under ST BESS Guidelines.', evidenceType: 'Certificate', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.st.gov.my/resources/guidelines-battery-energy-storage-system-bess-safety', projectApplicability: 'All', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'INV-007', matrixSheet: 'Inverter_PCS_Cert', matrixType: 'Inverter / PCS', productCategory: 'PV Inverter', standardRequirement: 'IEC 61000-3-2 / IEC 61000-3-12', requirementLevel: 'Utility Preferred', applicabilityCondition: 'LV harmonic-current limits; choose the applicable part by rated current.', evidenceType: 'Test Report', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://webstore.iec.ch/', projectApplicability: 'Project-specific', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'INV-008', matrixSheet: 'Inverter_PCS_Cert', matrixType: 'Inverter / PCS', productCategory: 'PV Inverter', standardRequirement: 'IEC 61000-3-3 / IEC 61000-3-11', requirementLevel: 'Utility Preferred', applicabilityCondition: 'Voltage fluctuation and flicker; choose the applicable part.', evidenceType: 'Test Report', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://webstore.iec.ch/', projectApplicability: 'Project-specific', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'INV-009', matrixSheet: 'Inverter_PCS_Cert', matrixType: 'Inverter / PCS', productCategory: 'BESS PCS', standardRequirement: 'IEC 61000-6-2', requirementLevel: 'Utility Preferred', applicabilityCondition: 'Industrial-environment EMC immunity.', evidenceType: 'Test Report', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://webstore.iec.ch/', projectApplicability: 'C&I', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'INV-010', matrixSheet: 'Inverter_PCS_Cert', matrixType: 'Inverter / PCS', productCategory: 'BESS PCS', standardRequirement: 'IEC 61000-6-4', requirementLevel: 'Utility Preferred', applicabilityCondition: 'Industrial-environment EMC emission.', evidenceType: 'Test Report', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://webstore.iec.ch/', projectApplicability: 'C&I', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'INV-011', matrixSheet: 'Inverter_PCS_Cert', matrixType: 'Inverter / PCS', productCategory: 'PV Inverter', standardRequirement: 'EN 50530', requirementLevel: 'International Finance Preferred', applicabilityCondition: 'MPPT and conversion-efficiency performance assessment.', evidenceType: 'Test Report', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://webstore.iec.ch/', projectApplicability: 'Utility', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'INV-012', matrixSheet: 'Inverter_PCS_Cert', matrixType: 'Inverter / PCS', productCategory: 'PV Inverter', standardRequirement: 'IEC 62891', requirementLevel: 'International Finance Preferred', applicabilityCondition: 'IEC MPPT efficiency measurement.', evidenceType: 'Test Report', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://webstore.iec.ch/', projectApplicability: 'Utility', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'INV-013', matrixSheet: 'Inverter_PCS_Cert', matrixType: 'Inverter / PCS', productCategory: 'PV Inverter', standardRequirement: 'IEEE 1547 / IEEE 1547.1', requirementLevel: 'Utility Preferred', applicabilityCondition: 'Only when specified by TNB, utility tender, microgrid or project grid-code requirements.', evidenceType: 'Certificate', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.mytnb.com.my/renewable-energy/solar-accelerated-transition-action-programme', projectApplicability: 'Project-specific', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'INV-014', matrixSheet: 'Inverter_PCS_Cert', matrixType: 'Inverter / PCS', productCategory: 'BESS PCS', standardRequirement: 'IEC 61850 communication', requirementLevel: 'Utility Preferred', applicabilityCondition: 'Utility PCS/SCADA/plant-controller integration; verify implemented logical nodes and files.', evidenceType: 'Functional Test', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.st.gov.my/resources/guidelines-battery-energy-storage-system-bess-safety', projectApplicability: 'Utility', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'INV-015', matrixSheet: 'Inverter_PCS_Cert', matrixType: 'Inverter / PCS', productCategory: 'BESS PCS', standardRequirement: 'LVRT / HVRT / FRT', requirementLevel: 'Utility Preferred', applicabilityCondition: 'Utility or MV/HV projects; test against project Grid Code settings.', evidenceType: 'Test Report', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.mytnb.com.my/renewable-energy/solar-accelerated-transition-action-programme', projectApplicability: 'Utility', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'INV-016', matrixSheet: 'Inverter_PCS_Cert', matrixType: 'Inverter / PCS', productCategory: 'PV Inverter', standardRequirement: 'P-Q / Volt-VAR / Volt-Watt / Frequency-Watt', requirementLevel: 'Utility Preferred', applicabilityCondition: 'Advanced grid-support functions where required by current utility connection documents.', evidenceType: 'Functional Test', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.mytnb.com.my/renewable-energy/solar-accelerated-transition-action-programme', projectApplicability: 'Utility', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'INV-017', matrixSheet: 'Inverter_PCS_Cert', matrixType: 'Inverter / PCS', productCategory: 'Hybrid Inverter', standardRequirement: 'Export Limitation / Zero Export', requirementLevel: 'Mandatory', applicabilityCondition: 'Only where SELCO, zero-export or project approval requires export limitation.', evidenceType: 'Functional Test', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.st.gov.my/resources/guidelines-battery-energy-storage-system-bess-safety', projectApplicability: 'Project-specific', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'INV-018', matrixSheet: 'Inverter_PCS_Cert', matrixType: 'Inverter / PCS', productCategory: 'BESS PCS', standardRequirement: 'IEC 60529 / IP rating', requirementLevel: 'Mandatory', applicabilityCondition: 'Outdoor BESS PCS/enclosure: ST requires IP54 or higher depending on site conditions.', evidenceType: 'Test Report', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.st.gov.my/resources/guidelines-battery-energy-storage-system-bess-safety', projectApplicability: 'Project-specific', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'INV-019', matrixSheet: 'Inverter_PCS_Cert', matrixType: 'Inverter / PCS', productCategory: 'PV Inverter', standardRequirement: 'SIRIM Product Certification / Listing', requirementLevel: 'Utility Preferred', applicabilityCondition: 'Tender/programme-specific; verify exact model and active license/listing.', evidenceType: 'Product Listing / License', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.sirim-qas.com.my/service/photovoltaic-pv-module/', projectApplicability: 'Project-specific', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'BESS-001', matrixSheet: 'Battery_BESS_Cert', matrixType: 'Battery / BESS', productCategory: 'Battery Pack / System', standardRequirement: 'IEC 62619', requirementLevel: 'Mandatory', applicabilityCondition: 'Battery pack/system and BMS technical evaluation for industrial/stationary lithium battery applications.', evidenceType: 'Certificate', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.st.gov.my/resources/guidelines-battery-energy-storage-system-bess-safety', projectApplicability: 'All', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'BESS-002', matrixSheet: 'Battery_BESS_Cert', matrixType: 'Battery / BESS', productCategory: 'Battery Pack / System', standardRequirement: 'IEC 63056', requirementLevel: 'Mandatory', applicabilityCondition: 'Battery pack/system and BMS technical evaluation for electrical energy storage applications.', evidenceType: 'Certificate', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.st.gov.my/resources/guidelines-battery-energy-storage-system-bess-safety', projectApplicability: 'All', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'BESS-003', matrixSheet: 'Battery_BESS_Cert', matrixType: 'Battery / BESS', productCategory: 'BMS', standardRequirement: 'IEC 61508 — BMS', requirementLevel: 'Mandatory', applicabilityCondition: 'Functional-safety evidence for safety-related BMS functions under ST technical evaluation.', evidenceType: 'Certificate', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.st.gov.my/resources/guidelines-battery-energy-storage-system-bess-safety', projectApplicability: 'All', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'BESS-004', matrixSheet: 'Battery_BESS_Cert', matrixType: 'Battery / BESS', productCategory: 'EMS', standardRequirement: 'IEC 61508 — EMS', requirementLevel: 'Mandatory', applicabilityCondition: 'Functional-safety evidence for safety-related EMS functions where applicable.', evidenceType: 'Certificate', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.st.gov.my/resources/guidelines-battery-energy-storage-system-bess-safety', projectApplicability: 'Project-specific', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'BESS-005', matrixSheet: 'Battery_BESS_Cert', matrixType: 'Battery / BESS', productCategory: 'BESS PCS', standardRequirement: 'IEC 62477-1 — PCS', requirementLevel: 'Mandatory', applicabilityCondition: 'Power conversion system safety.', evidenceType: 'Certificate', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.st.gov.my/resources/guidelines-battery-energy-storage-system-bess-safety', projectApplicability: 'All', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'BESS-006', matrixSheet: 'Battery_BESS_Cert', matrixType: 'Battery / BESS', productCategory: 'BESS PCS', standardRequirement: 'IEC 62116 — PCS', requirementLevel: 'Mandatory', applicabilityCondition: 'Grid-connected PCS anti-islanding; mark N/A for standalone off-grid BESS.', evidenceType: 'Test Report', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.st.gov.my/resources/guidelines-battery-energy-storage-system-bess-safety', projectApplicability: 'Grid-connected only', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'BESS-007', matrixSheet: 'Battery_BESS_Cert', matrixType: 'Battery / BESS', productCategory: 'EMS', standardRequirement: 'IEC 61850 — EMS', requirementLevel: 'Mandatory', applicabilityCondition: 'ST component evaluation reference for EMS; applicability depends on the supplied EMS/utility interface scope.', evidenceType: 'Functional Test', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.st.gov.my/resources/guidelines-battery-energy-storage-system-bess-safety', projectApplicability: 'Project-specific', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'BESS-008', matrixSheet: 'Battery_BESS_Cert', matrixType: 'Battery / BESS', productCategory: 'Battery Pack / System', standardRequirement: 'UN 38.3', requirementLevel: 'Mandatory', applicabilityCondition: 'Required before transport; verify test summary/report matches cell/module/pack transported configuration.', evidenceType: 'Test Summary', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.st.gov.my/resources/guidelines-battery-energy-storage-system-bess-safety', projectApplicability: 'All', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'BESS-009', matrixSheet: 'Battery_BESS_Cert', matrixType: 'Battery / BESS', productCategory: 'BESS System', standardRequirement: 'IEC 62933-5-1', requirementLevel: 'Mandatory', applicabilityCondition: 'System hazard identification, risk assessment and mitigation strategy.', evidenceType: 'Risk Assessment', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.st.gov.my/resources/guidelines-battery-energy-storage-system-bess-safety', projectApplicability: 'All', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'BESS-010', matrixSheet: 'Battery_BESS_Cert', matrixType: 'Battery / BESS', productCategory: 'BESS System', standardRequirement: 'IEC 62933-5-2', requirementLevel: 'Mandatory', applicabilityCondition: 'Electrical and electrochemical BESS system safety requirements.', evidenceType: 'Design Document', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.st.gov.my/resources/guidelines-battery-energy-storage-system-bess-safety', projectApplicability: 'All', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'BESS-011', matrixSheet: 'Battery_BESS_Cert', matrixType: 'Battery / BESS', productCategory: 'BESS System', standardRequirement: 'IEC 60529 / Outdoor IP54+', requirementLevel: 'Mandatory', applicabilityCondition: 'Outdoor BESS enclosures, cabinets and electrical equipment; minimum IP54 unless site requires higher.', evidenceType: 'Test Report', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.st.gov.my/resources/guidelines-battery-energy-storage-system-bess-safety', projectApplicability: 'Project-specific', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'BESS-012', matrixSheet: 'Battery_BESS_Cert', matrixType: 'Battery / BESS', productCategory: 'BESS System', standardRequirement: 'UL 9540A or authority-accepted fire test path', requirementLevel: 'Mandatory', applicabilityCondition: 'ST requires thermal-runaway protection design/testing to UL 9540A or relevant fire/safety authority requirements.', evidenceType: 'Test Report', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.st.gov.my/resources/guidelines-battery-energy-storage-system-bess-safety', projectApplicability: 'All', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'BESS-013', matrixSheet: 'Battery_BESS_Cert', matrixType: 'Battery / BESS', productCategory: 'BESS System', standardRequirement: 'MS IEC 62305', requirementLevel: 'Mandatory', applicabilityCondition: 'Lightning protection for applicable grid-connected and standalone BESS applications.', evidenceType: 'Design Document', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.st.gov.my/resources/guidelines-battery-energy-storage-system-bess-safety', projectApplicability: 'Project-specific', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'BESS-014', matrixSheet: 'Battery_BESS_Cert', matrixType: 'Battery / BESS', productCategory: 'BESS System', standardRequirement: 'Factory Acceptance Test (FAT)', requirementLevel: 'Mandatory', applicabilityCondition: 'FAT certificate listing tested components before installation.', evidenceType: 'FAT', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.st.gov.my/resources/guidelines-battery-energy-storage-system-bess-safety', projectApplicability: 'All', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'BESS-015', matrixSheet: 'Battery_BESS_Cert', matrixType: 'Battery / BESS', productCategory: 'BESS System', standardRequirement: 'Site Acceptance Test (SAT)', requirementLevel: 'Mandatory', applicabilityCondition: 'Post-installation electrical safety, protection, isolation and anti-islanding tests as applicable.', evidenceType: 'SAT', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.st.gov.my/resources/guidelines-battery-energy-storage-system-bess-safety', projectApplicability: 'All', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'BESS-016', matrixSheet: 'Battery_BESS_Cert', matrixType: 'Battery / BESS', productCategory: 'BESS System', standardRequirement: 'Form G — Supervision and Completion Certificate', requirementLevel: 'Mandatory', applicabilityCondition: 'Statutory Malaysian installation completion document signed by the competent person.', evidenceType: 'Statutory Form', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.st.gov.my/resources/guidelines-battery-energy-storage-system-bess-safety', projectApplicability: 'All', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'BESS-017', matrixSheet: 'Battery_BESS_Cert', matrixType: 'Battery / BESS', productCategory: 'BESS System', standardRequirement: 'Form H — Test Certificate', requirementLevel: 'Mandatory', applicabilityCondition: 'Statutory Malaysian installation test document signed by the competent person.', evidenceType: 'Statutory Form', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.st.gov.my/resources/guidelines-battery-energy-storage-system-bess-safety', projectApplicability: 'All', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'BESS-018', matrixSheet: 'Battery_BESS_Cert', matrixType: 'Battery / BESS', productCategory: 'Battery Pack / System', standardRequirement: 'IEC 62620', requirementLevel: 'International Finance Preferred', applicabilityCondition: 'Industrial secondary-cell/battery performance and endurance evaluation; does not replace IEC 62619/63056.', evidenceType: 'Test Report', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://webstore.iec.ch/', projectApplicability: 'Utility', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'BESS-019', matrixSheet: 'Battery_BESS_Cert', matrixType: 'Battery / BESS', productCategory: 'Battery Pack / System', standardRequirement: 'UL 1973', requirementLevel: 'International Finance Preferred', applicabilityCondition: 'Stationary battery safety listing for lender/insurer or international project requirements.', evidenceType: 'Certificate', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.ul.com/services/energy-storage-system-testing-and-certification', projectApplicability: 'Utility', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'BESS-020', matrixSheet: 'Battery_BESS_Cert', matrixType: 'Battery / BESS', productCategory: 'BESS System', standardRequirement: 'UL 9540', requirementLevel: 'International Finance Preferred', applicabilityCondition: 'Complete ESS system certification; not interchangeable with UL 9540A.', evidenceType: 'Certificate', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.ul.com/services/energy-storage-system-testing-and-certification', projectApplicability: 'Utility', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'BESS-021', matrixSheet: 'Battery_BESS_Cert', matrixType: 'Battery / BESS', productCategory: 'BESS System', standardRequirement: 'NFPA 855', requirementLevel: 'International Finance Preferred', applicabilityCondition: 'Stationary ESS installation/fire protection where required by insurer, lender or contract.', evidenceType: 'Design Document', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.nfpa.org/codes-and-standards/nfpa-855-standard-development/855', projectApplicability: 'Utility', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'BESS-022', matrixSheet: 'Battery_BESS_Cert', matrixType: 'Battery / BESS', productCategory: 'BESS System', standardRequirement: 'NFPA 70', requirementLevel: 'Optional', applicabilityCondition: 'Reference for working clearances only where local authority requirements are absent, as stated by ST.', evidenceType: 'Design Document', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.st.gov.my/resources/guidelines-battery-energy-storage-system-bess-safety', projectApplicability: 'Project-specific', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'BESS-023', matrixSheet: 'Battery_BESS_Cert', matrixType: 'Battery / BESS', productCategory: 'BESS System', standardRequirement: 'IEC 62933-2-1', requirementLevel: 'International Finance Preferred', applicabilityCondition: 'BESS performance parameters and test methods.', evidenceType: 'Test Report', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://webstore.iec.ch/', projectApplicability: 'Utility', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'BESS-024', matrixSheet: 'Battery_BESS_Cert', matrixType: 'Battery / BESS', productCategory: 'BESS System', standardRequirement: 'IEC 62933-3 series', requirementLevel: 'Utility Preferred', applicabilityCondition: 'Utility-scale planning, installation and system integration.', evidenceType: 'Design Document', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://webstore.iec.ch/', projectApplicability: 'Utility', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'BESS-025', matrixSheet: 'Battery_BESS_Cert', matrixType: 'Battery / BESS', productCategory: 'BESS System', standardRequirement: 'IEC 62933-4 series', requirementLevel: 'International Finance Preferred', applicabilityCondition: 'Environmental and lifecycle considerations.', evidenceType: 'Design Document', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://webstore.iec.ch/', projectApplicability: 'Utility', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'BESS-026', matrixSheet: 'Battery_BESS_Cert', matrixType: 'Battery / BESS', productCategory: 'Battery Pack / System', standardRequirement: 'ISO 9001', requirementLevel: 'International Finance Preferred', applicabilityCondition: 'Manufacturer quality management system; verify scope and production site.', evidenceType: 'Certificate', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.iso.org/iso-9001-quality-management.html', projectApplicability: 'All', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'BESS-027', matrixSheet: 'Battery_BESS_Cert', matrixType: 'Battery / BESS', productCategory: 'Battery Pack / System', standardRequirement: 'ISO 14001', requirementLevel: 'International Finance Preferred', applicabilityCondition: 'Manufacturer environmental management system.', evidenceType: 'Certificate', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.iso.org/iso-14001-environmental-management.html', projectApplicability: 'All', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'BESS-028', matrixSheet: 'Battery_BESS_Cert', matrixType: 'Battery / BESS', productCategory: 'Battery Pack / System', standardRequirement: 'ISO 45001', requirementLevel: 'International Finance Preferred', applicabilityCondition: 'Manufacturer occupational health and safety management system.', evidenceType: 'Certificate', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.iso.org/iso-45001-occupational-health-and-safety.html', projectApplicability: 'All', remarks: '', autoCompletenessCheck: 'Action Required' },
+            { matrixRecordId: 'BESS-029', matrixSheet: 'Battery_BESS_Cert', matrixType: 'Battery / BESS', productCategory: 'Battery Pack / System', standardRequirement: 'SIRIM Battery / BESS Certification', requirementLevel: 'Utility Preferred', applicabilityCondition: 'Project/tender-specific unless an official mandatory order covers the exact product and scope.', evidenceType: 'Product Listing / License', isApplicable: 'Conditional', evidenceAvailable: 'No', expiryStatus: 'No Expiry', modelCoverageStatus: 'Not Checked', factoryCoverageStatus: 'Not Checked', bomCoverageStatus: 'Not Checked', verificationStatus: 'Not Reviewed', officialRegistryVerified: 'Not Checked', officialRegistrySourceUrl: 'https://www.sirim-qas.com.my/', projectApplicability: 'Project-specific', remarks: '', autoCompletenessCheck: 'Action Required' }
+        ];
+        const CERTIFICATION_CLASS_PROFILES_DEFAULTS = [
+            { id: 'class_a', label: 'Class A Grid-Tied PV', title: 'Grid-Tied PV / Solar ATAP', examples: ['Solar ATAP', 'Factory Rooftop', 'Warehouse Rooftop', 'Commercial Building'], gridConnected: true, bessRequired: false, gridFormingRequired: false, gensetIntegrationRequired: false, utilityComplianceRequired: false, productGroups: ['PV Module', 'Inverter / PCS', 'BOS'], mandatoryStandards: ['IEC 61215', 'IEC 61730', 'IEC 62109', 'IEC 61727', 'IEC 62116', 'IEC 61683'], preferredStandards: ['IEC 61000 EMC', 'IEC 61853', 'IEC 62941', 'SIRIM Product Certification'], notApplicableStandards: [] },
+            { id: 'class_b', label: 'Class B Hybrid PV+BESS', title: 'Hybrid PV + BESS', examples: ['Factory Peak Shaving', 'Data Center', 'Mall', 'Hospital'], gridConnected: true, bessRequired: true, gridFormingRequired: false, gensetIntegrationRequired: false, utilityComplianceRequired: true, productGroups: ['PV Module', 'Inverter / PCS', 'Battery', 'ESS', 'BOS'], mandatoryStandards: ['IEC 61215', 'IEC 61730', 'IEC 62109', 'IEC 61727', 'IEC 62116', 'IEC 61683', 'IEC 62477-1', 'IEC 62619', 'IEC 63056', 'UN 38.3', 'IEC 62933-5-1', 'IEC 62933-5-2'], preferredStandards: ['IEC 61508', 'IEC 61850', 'UL 9540A', 'IEC 60529'], notApplicableStandards: [] },
+            { id: 'class_c', label: 'Class C Off-Grid', title: 'Off-Grid PV + BESS + Genset', examples: ['Palm Oil Estate', 'Remote Plantation', 'Mining', 'Telecom Tower', 'Island Resort'], gridConnected: false, bessRequired: true, gridFormingRequired: true, gensetIntegrationRequired: true, utilityComplianceRequired: false, productGroups: ['PV Module', 'Inverter / PCS', 'Battery', 'ESS', 'BOS'], mandatoryStandards: ['IEC 61215', 'IEC 61730', 'IEC 62109', 'IEC 62477-1', 'IEC 62619', 'IEC 63056', 'UN 38.3', 'IEC 62933-5-1', 'IEC 62933-5-2', 'FAT', 'SAT'], preferredStandards: ['IEC 61508', 'UL 9540A'], notApplicableStandards: ['IEC 61727', 'IEC 62116', 'IEEE 1547'] },
+            { id: 'class_d', label: 'Class D Utility Solar', title: 'Utility Scale Solar', examples: ['LSS', 'CGPP', 'Solar Farm'], gridConnected: true, bessRequired: false, gridFormingRequired: false, gensetIntegrationRequired: false, utilityComplianceRequired: true, productGroups: ['PV Module', 'Inverter / PCS', 'BOS'], mandatoryStandards: ['IEC 61215', 'IEC 61730', 'IEC 62109', 'IEC 61727', 'IEC 62116', 'IEC 61683'], preferredStandards: ['IEC 61000 EMC', 'IEC 61853', 'IEC 62941', 'IEEE 1547'], notApplicableStandards: [] },
+            { id: 'class_e', label: 'Class E Utility BESS', title: 'Utility Scale BESS', examples: ['MyBEST', 'TNB BESS', 'Sabah BESS'], gridConnected: true, bessRequired: true, gridFormingRequired: true, gensetIntegrationRequired: false, utilityComplianceRequired: true, productGroups: ['Inverter / PCS', 'Battery', 'ESS', 'BOS'], mandatoryStandards: ['IEC 62619', 'IEC 63056', 'IEC 61508', 'IEC 61850', 'IEC 62477-1', 'IEC 62116', 'IEC 62933-5-1', 'IEC 62933-5-2', 'UN 38.3', 'FAT', 'SAT'], preferredStandards: ['UL 9540A', 'UL 9540', 'UL 1973', 'NFPA 855', 'IEC 60529'], notApplicableStandards: [] }
+        ];
         const PRODUCT_ROLE_TO_DEFAULT_VIEW = {
             sales: 'sales',
             sales_management: 'sales',
@@ -9919,9 +9976,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             }
             return `<th class="py-4 px-4${align}">${label}</th>`;
         }
+        function safeDomId(value) {
+            return String(value || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+        }
         function productMasterActionsHtml(product) {
             const id = htmlSafe(product?.id || '');
             return `<div class="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                <button onclick="openProductCertificationMatrix('${id}')" class="text-amber-600 hover:bg-amber-50 p-1 rounded" title="Certification Matrix">✓</button>
                 <button onclick="editProduct('${id}')" class="text-purple-700 hover:bg-purple-50 p-1 rounded">✎</button>
                 <button onclick="deleteProduct('${id}')" class="text-red-300 hover:text-red-500 p-1 rounded">🗑</button>
             </div>`;
@@ -9949,6 +10010,481 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return [
                 ...(Array.isArray(product?.certifications?.specSheets) ? product.certifications.specSheets : [])
             ].map(file => file?.name || file?.fileName || file?.path || file?.url || '').filter(Boolean);
+        }
+        function certificationMatrixRecordKey(record = {}) {
+            return String(record.matrixRecordId || record.recordId || record.id || record.code || record.standardCode || '').trim();
+        }
+        function normalizeCertificationStandard(record = {}) {
+            const matrixRecordId = certificationMatrixRecordKey(record);
+            const standardRequirement = String(record.standardRequirement || record.standard || record.standardCode || record.code || record.name || '').trim();
+            if (!matrixRecordId && !standardRequirement) return null;
+            const requirementLevel = CERTIFICATION_LEVELS.includes(record.requirementLevel) ? record.requirementLevel : (CERTIFICATION_LEVELS.includes(record.level) ? record.level : 'Optional');
+            const evidenceType = String(record.evidenceType || record.documentType || 'Certificate / Report').trim();
+            return {
+                matrixRecordId: matrixRecordId || standardRequirement,
+                matrixSheet: String(record.matrixSheet || '').trim(),
+                matrixType: String(record.matrixType || record.productType || '').trim(),
+                productCategory: String(record.productCategory || record.productType || '').trim(),
+                standardRequirement,
+                requirementLevel,
+                applicabilityCondition: String(record.applicabilityCondition || '').trim(),
+                evidenceType,
+                isApplicable: String(record.isApplicable || 'Conditional').trim(),
+                evidenceAvailable: String(record.evidenceAvailable || 'No').trim(),
+                expiryStatus: String(record.expiryStatus || '').trim(),
+                modelCoverageStatus: String(record.modelCoverageStatus || '').trim(),
+                factoryCoverageStatus: String(record.factoryCoverageStatus || '').trim(),
+                bomCoverageStatus: String(record.bomCoverageStatus || '').trim(),
+                verificationStatus: String(record.verificationStatus || 'Not Reviewed').trim(),
+                officialRegistryVerified: String(record.officialRegistryVerified || '').trim(),
+                officialRegistrySourceUrl: String(record.officialRegistrySourceUrl || record.officialUrl || '').trim(),
+                projectApplicability: String(record.projectApplicability || '').trim(),
+                remarks: String(record.remarks || record.remark || '').trim(),
+                autoCompletenessCheck: String(record.autoCompletenessCheck || '').trim(),
+                code: standardRequirement,
+                name: standardRequirement,
+                level: requirementLevel,
+                productType: String(record.matrixType || record.productType || '').trim(),
+                documentType: evidenceType,
+                requiredEvidence: String(record.requiredEvidence || record.evidenceType || '').trim()
+            };
+        }
+        function normalizeCertificationStandardsCatalog(records = []) {
+            const map = new Map();
+            [...CERTIFICATION_STANDARDS_CATALOG_DEFAULTS, ...(Array.isArray(records) ? records : [])].forEach(record => {
+                const normalized = normalizeCertificationStandard(record);
+                if (normalized) map.set(normalized.matrixRecordId, normalized);
+            });
+            return Array.from(map.values());
+        }
+        function normalizeCertificationClassProfile(profile = {}) {
+            const id = String(profile.id || '').trim();
+            if (!id) return null;
+            return {
+                id,
+                label: String(profile.label || id).trim(),
+                title: String(profile.title || profile.label || id).trim(),
+                examples: Array.isArray(profile.examples) ? profile.examples.map(v => String(v || '').trim()).filter(Boolean) : [],
+                gridConnected: !!profile.gridConnected,
+                bessRequired: !!profile.bessRequired,
+                gridFormingRequired: !!profile.gridFormingRequired,
+                gensetIntegrationRequired: !!profile.gensetIntegrationRequired,
+                utilityComplianceRequired: !!profile.utilityComplianceRequired,
+                productGroups: Array.isArray(profile.productGroups) ? profile.productGroups.map(v => String(v || '').trim()).filter(Boolean) : [],
+                mandatoryStandards: Array.isArray(profile.mandatoryStandards) ? profile.mandatoryStandards.map(v => String(v || '').trim()).filter(Boolean) : [],
+                preferredStandards: Array.isArray(profile.preferredStandards) ? profile.preferredStandards.map(v => String(v || '').trim()).filter(Boolean) : [],
+                notApplicableStandards: Array.isArray(profile.notApplicableStandards) ? profile.notApplicableStandards.map(v => String(v || '').trim()).filter(Boolean) : []
+            };
+        }
+        function normalizeCertificationClassProfiles(records = []) {
+            const map = new Map();
+            [...CERTIFICATION_CLASS_PROFILES_DEFAULTS, ...(Array.isArray(records) ? records : [])].forEach(record => {
+                const normalized = normalizeCertificationClassProfile(record);
+                if (normalized) map.set(normalized.id, normalized);
+            });
+            return Array.from(map.values());
+        }
+        function normalizeProductCertificationEvidence(record = {}) {
+            const productId = String(record.productId || record.productID || record.sku || '').trim();
+            const matrixRecordId = certificationMatrixRecordKey(record);
+            const lookupKey = String(matrixRecordId || record.standardRequirement || record.standardCode || record.code || '').trim();
+            const standard = (Array.isArray(certificationStandardsCatalog) ? certificationStandardsCatalog : [])
+                .find(item => item?.matrixRecordId === lookupKey || item?.standardRequirement === lookupKey || item?.code === lookupKey);
+            const standardRequirement = String(record.standardRequirement || standard?.standardRequirement || record.standardCode || record.code || '').trim();
+            const id = String(record.id || [productId, matrixRecordId || standardRequirement].filter(Boolean).join('_')).trim();
+            if (!productId && !matrixRecordId && !standardRequirement) return null;
+            const verificationStatus = String(record.verificationStatus || record.status || record.evidenceStatus || 'Not Reviewed').trim();
+            return {
+                id,
+                productId,
+                matrixRecordId: matrixRecordId || standard?.matrixRecordId || standardRequirement,
+                standardRequirement,
+                requirementLevel: String(record.requirementLevel || standard?.requirementLevel || '').trim(),
+                evidenceType: String(record.evidenceType || record.documentType || standard?.evidenceType || '').trim(),
+                isApplicable: String(record.isApplicable || standard?.isApplicable || 'Conditional').trim(),
+                evidenceAvailable: String(record.evidenceAvailable || '').trim(),
+                certificateNo: String(record.certificateNo || '').trim(),
+                reportNo: String(record.reportNo || record.reportNumber || '').trim(),
+                certificationListingBody: String(record.certificationListingBody || record.certificationBody || '').trim(),
+                testingLaboratory: String(record.testingLaboratory || record.testLab || record.laboratory || '').trim(),
+                laboratoryAccreditationScope: String(record.laboratoryAccreditationScope || '').trim(),
+                standardEditionVersion: String(record.standardEditionVersion || '').trim(),
+                issueDate: String(record.issueDate || '').trim(),
+                expiryDate: String(record.expiryDate || record.expiry || '').trim(),
+                expiryStatus: String(record.expiryStatus || '').trim(),
+                modelCoverageStatus: String(record.modelCoverageStatus || '').trim(),
+                modelCoverageDetails: String(record.modelCoverageDetails || record.applicableModels || '').trim(),
+                factoryCoverageStatus: String(record.factoryCoverageStatus || '').trim(),
+                factoryProductionSite: String(record.factoryProductionSite || record.factoryScope || '').trim(),
+                bomCoverageStatus: String(record.bomCoverageStatus || '').trim(),
+                bomRevisionCriticalComponents: String(record.bomRevisionCriticalComponents || '').trim(),
+                reportScopeKeyResult: String(record.reportScopeKeyResult || '').trim(),
+                verificationStatus,
+                verifiedBy: String(record.verifiedBy || '').trim(),
+                lastValidationDate: String(record.lastValidationDate || '').trim(),
+                nextReviewDate: String(record.nextReviewDate || '').trim(),
+                officialRegistryVerified: String(record.officialRegistryVerified || '').trim(),
+                officialRegistrySourceUrl: String(record.officialRegistrySourceUrl || standard?.officialRegistrySourceUrl || '').trim(),
+                documentLink: String(record.documentLink || record.evidenceLink || record.link || record.url || '').trim(),
+                projectApplicability: String(record.projectApplicability || standard?.projectApplicability || '').trim(),
+                linkedProjectId: String(record.linkedProjectId || '').trim(),
+                deviationNcr: String(record.deviationNcr || '').trim(),
+                remarks: String(record.remarks || record.remark || '').trim(),
+                status: verificationStatus === 'Verified' ? 'Ready' : (verificationStatus === 'Expired' ? 'Expired' : (verificationStatus === 'Conditional Acceptance' ? 'Conditional' : 'Needs Review')),
+                ts: record.ts || Date.now()
+            };
+        }
+        function normalizeProductCertificationEvidenceList(records = []) {
+            return (Array.isArray(records) ? records : []).map(normalizeProductCertificationEvidence).filter(Boolean);
+        }
+        function ensureCertificationV4Data() {
+            certificationStandardsCatalog = normalizeCertificationStandardsCatalog(certificationStandardsCatalog);
+            certificationClassProfiles = normalizeCertificationClassProfiles(certificationClassProfiles);
+            productCertificationEvidence = normalizeProductCertificationEvidenceList(productCertificationEvidence);
+        }
+        function getCertificationClassProfile(classId = '') {
+            ensureCertificationV4Data();
+            const id = String(classId || getSelectedCertificationClassId()).trim();
+            return certificationClassProfiles.find(profile => profile.id === id) || certificationClassProfiles[0] || normalizeCertificationClassProfile(CERTIFICATION_CLASS_PROFILES_DEFAULTS[0]);
+        }
+        function getCertificationStandard(code = '') {
+            ensureCertificationV4Data();
+            const q = String(code || '').trim();
+            return certificationStandardsCatalog.find(standard => standard.matrixRecordId === q || standard.standardRequirement === q || standard.code === q) || null;
+        }
+        function isCertificationStandardApplicableToClass(standard, profile) {
+            const code = String(standard?.standardRequirement || standard?.code || standard || '').trim();
+            const project = String(standard?.projectApplicability || '').toLowerCase();
+            const condition = String(standard?.applicabilityCondition || '').toLowerCase();
+            if (!code || !profile) return true;
+            if ((profile.notApplicableStandards || []).includes(code)) return false;
+            if (!profile.gridConnected && (project.includes('grid-connected') || condition.includes('grid-connected') || condition.includes('anti-islanding'))) return false;
+            if (profile.gridConnected && project.includes('off-grid only')) return false;
+            return true;
+        }
+        function certificationMatrixTypesForClass(profile = {}) {
+            const groups = new Set(profile.productGroups || []);
+            const out = [];
+            if (groups.has('PV Module')) out.push('PV Module');
+            if (groups.has('Inverter / PCS')) out.push('Inverter / PCS');
+            if (groups.has('Battery') || groups.has('ESS')) out.push('Battery / BESS');
+            return out;
+        }
+        function getCertificationChecklistForClass(classId) {
+            const profile = getCertificationClassProfile(classId);
+            const matrixTypes = certificationMatrixTypesForClass(profile);
+            return certificationStandardsCatalog.filter(standard => matrixTypes.includes(standard.matrixType)).map(standard => {
+                const notApplicable = !isCertificationStandardApplicableToClass(standard, profile);
+                const preferred = ['Utility Preferred', 'International Finance Preferred', 'Optional'].includes(standard.requirementLevel);
+                const mandatory = standard.requirementLevel === 'Mandatory';
+                return {
+                    ...standard,
+                    level: notApplicable ? 'N/A' : (mandatory ? 'Mandatory' : (preferred ? standard.level : standard.level)),
+                    status: notApplicable ? 'N/A' : 'Needs Review',
+                    notApplicable,
+                    reason: notApplicable ? `${profile.label}: ${standard.projectApplicability || 'condition'} not applicable` : ''
+                };
+            });
+        }
+        function getProductCertificationEvidence(productId) {
+            const id = String(productId || '').trim();
+            if (!id) return [];
+            ensureCertificationV4Data();
+            return productCertificationEvidence.filter(record => record.productId === id);
+        }
+        function certificationMatrixTypesForProduct(product = {}) {
+            const group = getProductTypeGroup(product).id;
+            if (group === 'pv') return ['PV Module'];
+            if (group === 'inverter') return ['Inverter / PCS'];
+            if (group === 'battery') return ['Battery / BESS'];
+            if (group === 'ess') return ['Inverter / PCS', 'Battery / BESS'];
+            return [];
+        }
+        function getCertificationMatrixRowsForProduct(product = {}) {
+            ensureCertificationV4Data();
+            const types = certificationMatrixTypesForProduct(product);
+            return certificationStandardsCatalog.filter(record => types.includes(record.matrixType));
+        }
+        function renderProductCertificationMatrixSummary(productOrId = '') {
+            const product = typeof productOrId === 'string'
+                ? products.find(p => String(p.id || '') === String(productOrId || ''))
+                : productOrId;
+            const box = document.getElementById('m-cert-matrix-summary');
+            if (!box || !product) return;
+            const rows = getCertificationMatrixRowsForProduct(product);
+            const evidence = getProductCertificationEvidence(product.id);
+            const selected = evidence.filter(item => rows.some(row => row.matrixRecordId === item.matrixRecordId));
+            const verified = selected.filter(item => item.verificationStatus === 'Verified' || item.status === 'Ready').length;
+            const mandatory = rows.filter(row => row.requirementLevel === 'Mandatory').length;
+            box.innerHTML = `<div class="flex flex-wrap items-center gap-2">
+                ${productMasterStatusPill(`${selected.length} selected`, selected.length ? 'purple' : 'slate')}
+                ${productMasterStatusPill(`${verified} verified`, verified ? 'green' : 'slate')}
+                ${productMasterStatusPill(`${mandatory} mandatory`, 'amber')}
+                <button type="button" onclick="openProductCertificationMatrix('${htmlSafe(product.id || '')}')" class="ml-auto text-xs font-black text-purple-700 hover:underline">Edit matrix evidence</button>
+            </div>`;
+        }
+        function updateCertificationMatrixFilters(rows = []) {
+            const configs = [
+                ['cert-matrix-level-filter', 'requirementLevel', 'All Levels'],
+                ['cert-matrix-project-filter', 'projectApplicability', 'All Project Applicability'],
+                ['cert-matrix-evidence-filter', 'evidenceType', 'All Evidence Types']
+            ];
+            configs.forEach(([id, key, label]) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                const keep = el.value;
+                const values = [...new Set(rows.map(row => row[key]).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+                el.innerHTML = `<option value="">${label}</option>` + values.map(value => `<option value="${htmlSafe(value)}">${htmlSafe(value)}</option>`).join('');
+                if (keep && values.includes(keep)) el.value = keep;
+            });
+        }
+        function certificationMatrixEvidenceInput(row, evidence, key, label, type = 'text') {
+            const rid = safeDomId(row.matrixRecordId);
+            const value = evidence?.[key] || '';
+            return `<label class="block">
+                <span class="block text-[9px] font-black text-slate-400 uppercase mb-1">${htmlSafe(label)}</span>
+                <input id="cert-matrix-${rid}-${key}" type="${type}" value="${htmlSafe(value)}" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:border-purple-500 bg-white">
+            </label>`;
+        }
+        function renderProductCertificationMatrix() {
+            const productId = String(window.__certMatrixProductId || window.editId || '').trim();
+            const product = products.find(p => String(p.id || '') === productId) || (window.editId ? products.find(p => p.id === window.editId) : null) || {
+                id: productId,
+                category: document.getElementById('m-category')?.value || '',
+                name: document.getElementById('m-name')?.value || ''
+            };
+            const list = document.getElementById('cert-matrix-list');
+            if (!list) return;
+            const allRows = getCertificationMatrixRowsForProduct(product);
+            updateCertificationMatrixFilters(allRows);
+            const q = String(document.getElementById('cert-matrix-search')?.value || '').trim().toLowerCase();
+            const level = String(document.getElementById('cert-matrix-level-filter')?.value || '').trim();
+            const project = String(document.getElementById('cert-matrix-project-filter')?.value || '').trim();
+            const evidenceType = String(document.getElementById('cert-matrix-evidence-filter')?.value || '').trim();
+            const evidence = new Map(getProductCertificationEvidence(product.id).map(item => [item.matrixRecordId, item]));
+            const rows = allRows.filter(row => {
+                const text = `${row.matrixRecordId} ${row.productCategory} ${row.standardRequirement} ${row.requirementLevel} ${row.applicabilityCondition} ${row.evidenceType} ${row.projectApplicability}`.toLowerCase();
+                if (q && !text.includes(q)) return false;
+                if (level && row.requirementLevel !== level) return false;
+                if (project && row.projectApplicability !== project) return false;
+                if (evidenceType && row.evidenceType !== evidenceType) return false;
+                return true;
+            });
+            const summary = document.getElementById('cert-matrix-summary');
+            const selectedCount = [...evidence.keys()].filter(id => allRows.some(row => row.matrixRecordId === id)).length;
+            if (summary) summary.textContent = `${selectedCount} selected / ${rows.length} visible`;
+            list.innerHTML = rows.length ? rows.map(row => {
+                const ev = evidence.get(row.matrixRecordId);
+                const rid = safeDomId(row.matrixRecordId);
+                const checked = !!ev;
+                return `<div class="rounded-2xl border ${checked ? 'border-purple-200 bg-purple-50/30' : 'border-slate-200 bg-white'} p-4">
+                    <div class="flex flex-col lg:flex-row lg:items-start gap-3">
+                        <label class="flex items-start gap-3 min-w-0 flex-1">
+                            <input id="cert-matrix-${rid}-checked" data-matrix-record-id="${htmlSafe(row.matrixRecordId)}" type="checkbox" class="cert-matrix-row-check mt-1 h-4 w-4 accent-purple-700" ${checked ? 'checked' : ''}>
+                            <span class="min-w-0">
+                                <span class="block text-xs font-black text-slate-800">${htmlSafe(row.matrixRecordId)} · ${htmlSafe(row.standardRequirement)}</span>
+                                <span class="block text-[10px] text-slate-500 mt-1">${htmlSafe(row.productCategory)} · ${htmlSafe(row.evidenceType)} · ${htmlSafe(row.projectApplicability || 'Project-specific')}</span>
+                                <span class="block text-[10px] text-slate-400 mt-1">${htmlSafe(row.applicabilityCondition || '-')}</span>
+                            </span>
+                        </label>
+                        <div class="flex flex-wrap gap-1.5">
+                            ${productMasterStatusPill(row.requirementLevel, certificationLevelTone(row.requirementLevel))}
+                            ${productMasterStatusPill(ev?.verificationStatus || row.verificationStatus || 'Not Reviewed', ev?.verificationStatus === 'Verified' ? 'green' : 'slate')}
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-4 xl:grid-cols-6 gap-2 mt-3">
+                        <label class="block">
+                            <span class="block text-[9px] font-black text-slate-400 uppercase mb-1">Applicable</span>
+                            <select id="cert-matrix-${rid}-isApplicable" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs bg-white">
+                                ${['Conditional', 'Yes', 'No', 'Not Applicable'].map(value => `<option value="${value}" ${(ev?.isApplicable || row.isApplicable) === value ? 'selected' : ''}>${value}</option>`).join('')}
+                            </select>
+                        </label>
+                        <label class="block">
+                            <span class="block text-[9px] font-black text-slate-400 uppercase mb-1">Evidence</span>
+                            <select id="cert-matrix-${rid}-evidenceAvailable" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs bg-white">
+                                ${['No', 'Yes', 'Partial'].map(value => `<option value="${value}" ${(ev?.evidenceAvailable || row.evidenceAvailable) === value ? 'selected' : ''}>${value}</option>`).join('')}
+                            </select>
+                        </label>
+                        <label class="block">
+                            <span class="block text-[9px] font-black text-slate-400 uppercase mb-1">Verification</span>
+                            <select id="cert-matrix-${rid}-verificationStatus" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs bg-white">
+                                ${['Not Reviewed', 'Pending Evidence', 'Under Review', 'Verified', 'Conditional Acceptance', 'Rejected', 'Expired'].map(value => `<option value="${value}" ${(ev?.verificationStatus || row.verificationStatus) === value ? 'selected' : ''}>${value}</option>`).join('')}
+                            </select>
+                        </label>
+                        ${certificationMatrixEvidenceInput(row, ev, 'certificateNo', 'Certificate No.')}
+                        ${certificationMatrixEvidenceInput(row, ev, 'reportNo', 'Report No.')}
+                        ${certificationMatrixEvidenceInput(row, ev, 'expiryDate', 'Expiry Date', 'date')}
+                        ${certificationMatrixEvidenceInput(row, ev, 'certificationListingBody', 'Body')}
+                        ${certificationMatrixEvidenceInput(row, ev, 'testingLaboratory', 'Testing Lab')}
+                        ${certificationMatrixEvidenceInput(row, ev, 'standardEditionVersion', 'Version')}
+                        ${certificationMatrixEvidenceInput(row, ev, 'officialRegistrySourceUrl', 'Registry URL')}
+                        ${certificationMatrixEvidenceInput(row, ev, 'documentLink', 'Document Link')}
+                        ${certificationMatrixEvidenceInput(row, ev, 'remarks', 'Remarks')}
+                    </div>
+                </div>`;
+            }).join('') : '<div class="rounded-2xl border border-dashed border-slate-200 p-8 text-center text-sm text-slate-400">No certification matrix rows match this product or filter.</div>';
+        }
+        window.renderProductCertificationMatrix = renderProductCertificationMatrix;
+        window.openProductCertificationMatrix = (productId = '') => {
+            const id = String(productId || window.editId || '').trim();
+            if (!id && !document.getElementById('m-category')?.value) return alert('Please select a product category before opening the certification matrix.');
+            window.__certMatrixProductId = id;
+            const product = products.find(p => String(p.id || '') === id) || { id, name: document.getElementById('m-name')?.value || 'New Product', category: document.getElementById('m-category')?.value || '' };
+            const title = document.getElementById('cert-matrix-title');
+            const subtitle = document.getElementById('cert-matrix-subtitle');
+            if (title) title.textContent = `${product.id || 'New Product'} · ${productListDisplayText(product.name || '')}`;
+            if (subtitle) subtitle.textContent = `${productListDisplayText(product.category || '')} certification evidence matrix`;
+            document.getElementById('certification-matrix-modal')?.classList.remove('hidden');
+            renderProductCertificationMatrix();
+        };
+        window.closeProductCertificationMatrix = () => {
+            document.getElementById('certification-matrix-modal')?.classList.add('hidden');
+        };
+        window.saveProductCertificationMatrix = () => {
+            const productId = String(window.__certMatrixProductId || window.editId || '').trim();
+            if (!productId) return alert('Please save the product record before saving certification evidence.');
+            ensureCertificationV4Data();
+            const rows = getCertificationMatrixRowsForProduct(products.find(p => String(p.id || '') === productId) || { id: productId, category: document.getElementById('m-category')?.value || '' });
+            const rowIds = new Set(rows.map(row => row.matrixRecordId));
+            const previousEvidenceIds = productCertificationEvidence
+                .filter(item => item.productId === productId && rowIds.has(item.matrixRecordId))
+                .map(item => item.id);
+            productCertificationEvidence = productCertificationEvidence.filter(item => item.productId !== productId || !rowIds.has(item.matrixRecordId));
+            Array.from(document.querySelectorAll('.cert-matrix-row-check')).forEach(check => {
+                if (!check.checked) return;
+                const matrixRecordId = String(check.dataset.matrixRecordId || '').trim();
+                const row = rows.find(item => item.matrixRecordId === matrixRecordId);
+                if (!row) return;
+                const rid = safeDomId(matrixRecordId);
+                const read = key => document.getElementById(`cert-matrix-${rid}-${key}`)?.value || '';
+                productCertificationEvidence.push(normalizeProductCertificationEvidence({
+                    id: `${productId}_${matrixRecordId}`,
+                    productId,
+                    matrixRecordId,
+                    standardRequirement: row.standardRequirement,
+                    requirementLevel: row.requirementLevel,
+                    evidenceType: row.evidenceType,
+                    isApplicable: read('isApplicable') || row.isApplicable,
+                    evidenceAvailable: read('evidenceAvailable') || row.evidenceAvailable,
+                    certificateNo: read('certificateNo'),
+                    reportNo: read('reportNo'),
+                    certificationListingBody: read('certificationListingBody'),
+                    testingLaboratory: read('testingLaboratory'),
+                    standardEditionVersion: read('standardEditionVersion'),
+                    expiryDate: read('expiryDate'),
+                    verificationStatus: read('verificationStatus') || 'Not Reviewed',
+                    officialRegistrySourceUrl: read('officialRegistrySourceUrl') || row.officialRegistrySourceUrl,
+                    documentLink: read('documentLink'),
+                    projectApplicability: row.projectApplicability,
+                    remarks: read('remarks')
+                }));
+            });
+            saveToLocal();
+            const currentEvidence = getProductCertificationEvidence(productId);
+            const currentIds = new Set(currentEvidence.map(record => record.id));
+            previousEvidenceIds.filter(id => !currentIds.has(id)).forEach(id => deleteEntityFromD1('certification_evidence', id));
+            currentEvidence.forEach(record => {
+                persistEntityToD1('certification_evidence', record.id, record);
+            });
+            renderProductCertificationMatrixSummary(productId);
+            try { renderDb(); } catch (e) {}
+            try { renderCertificationClassWorkspace(); } catch (e) {}
+            window.closeProductCertificationMatrix();
+        };
+        function certificationTextIncludes(product, code) {
+            const q = String(code || '').toLowerCase();
+            if (!q) return false;
+            const req = getProductCertificationRequirements(product);
+            const md = getProductMasterData(product);
+            const attached = [...productMasterAttachedCertFiles(product), ...productMasterAttachedSpecFiles(product)];
+            const haystack = [
+                ...(req.standards || []),
+                ...(req.countries || []),
+                md.certificateLink,
+                ...attached
+            ].map(v => String(v || '').toLowerCase()).join(' ');
+            return haystack.includes(q);
+        }
+        function standardMatchesProductType(standard, product) {
+            const category = normalizeProductCategory(product?.category || '');
+            const group = getProductTypeGroup(product).id;
+            const type = String(standard?.productType || '').toLowerCase();
+            if (!type) return true;
+            if (group === 'pv') return type.includes('pv');
+            if (group === 'inverter') return type.includes('inverter') || type.includes('pcs');
+            if (group === 'battery') return type.includes('battery') || type.includes('bess');
+            if (group === 'ess') return type.includes('battery') || type.includes('bess') || type.includes('pcs') || type.includes('ems');
+            if (category === 'Accessory') return type.includes('bos') || type.includes('project') || type.includes('site');
+            return true;
+        }
+        function getProductCertificationV4Status(product, classId = '') {
+            const profile = getCertificationClassProfile(classId);
+            const checklist = getCertificationChecklistForClass(profile.id)
+                .filter(item => item.level === 'Mandatory')
+                .filter(item => standardMatchesProductType(item, product));
+            if (!checklist.length) return { status: 'N/A', tone: 'slate', missing: [], label: `${profile.label}: no mandatory product evidence`, checklist: [] };
+            const evidence = getProductCertificationEvidence(product?.id || '');
+            const missing = [];
+            let conditional = false;
+            let expired = false;
+            checklist.forEach(item => {
+                if (!isCertificationStandardApplicableToClass(item, profile)) return;
+                const match = evidence.find(record => record.matrixRecordId === item.matrixRecordId);
+                if (match) {
+                    if (match.status === 'Expired' || match.verificationStatus === 'Expired') expired = true;
+                    if (match.status === 'Conditional' || match.status === 'Needs Review' || match.verificationStatus === 'Not Reviewed') conditional = true;
+                    if (match.status === 'Gap' || match.evidenceAvailable === 'No') missing.push(item.standardRequirement);
+                    return;
+                }
+                if (certificationTextIncludes(product, item.standardRequirement)) {
+                    conditional = true;
+                    return;
+                }
+                missing.push(item.standardRequirement);
+            });
+            if (expired) return { status: 'Expired', tone: 'red', missing, label: `${missing.length} missing / expired`, checklist };
+            if (missing.length) return { status: 'Gap', tone: 'amber', missing, label: `${missing.length} missing`, checklist };
+            if (conditional) return { status: 'Conditional', tone: 'amber', missing: [], label: 'Legacy evidence needs review', checklist };
+            return { status: 'Ready', tone: 'green', missing: [], label: 'Mandatory evidence ready', checklist };
+        }
+        function getSelectedCertificationClassId() {
+            try {
+                const stored = localStorage.getItem('minova_certification_class_view_v1') || '';
+                if (stored) return stored;
+            } catch (e) {}
+            return 'class_a';
+        }
+        window.setCertificationClassSelection = (classId) => {
+            const id = String(classId || 'class_a').trim();
+            try { localStorage.setItem('minova_certification_class_view_v1', id); } catch (e) {}
+            renderCertificationClassWorkspace();
+            try { renderDb(); } catch (e) {}
+        };
+        function certificationLevelTone(level, status = '') {
+            if (status === 'Ready') return 'green';
+            if (status === 'Gap' || status === 'Conditional' || status === 'Needs Review') return 'amber';
+            if (status === 'Expired') return 'red';
+            if (level === 'Mandatory') return 'purple';
+            return 'slate';
+        }
+        function productMasterMissingEvidenceHtml(product) {
+            const status = getProductCertificationV4Status(product, getSelectedCertificationClassId());
+            const text = status.missing?.length ? status.missing.slice(0, 3).join(', ') : status.label;
+            return `<span class="text-xs text-slate-600 max-w-[220px] block truncate" title="${htmlSafe(status.missing?.join(', ') || status.label)}">${htmlSafe(text || '-')}</span>`;
+        }
+        function productMasterClassFitHtml(product) {
+            const profile = getCertificationClassProfile(getSelectedCertificationClassId());
+            const groupLabel = getProductTypeGroup(product).label;
+            const expected = (profile.productGroups || []).some(group => groupLabel.includes(group.split(' ')[0]) || group.includes(groupLabel) || (group === 'Inverter / PCS' && groupLabel === 'Inverter') || (group === 'ESS' && groupLabel.includes('ESS')));
+            return productMasterStatusPill(expected ? profile.label.replace(/^Class\s+/i, '') : 'Not Primary', expected ? 'purple' : 'slate');
+        }
+        function productMasterCertificationV4StatusHtml(product) {
+            const status = getProductCertificationV4Status(product, getSelectedCertificationClassId());
+            return `${productMasterStatusPill(status.status, status.tone)}<div class="text-[10px] text-slate-400 mt-1">${htmlSafe(status.label)}</div>`;
+        }
+        function productMasterEvidenceCountHtml(product) {
+            const count = getProductCertificationEvidence(product?.id || '').length;
+            return `<button type="button" onclick="openProductCertificationMatrix('${htmlSafe(product?.id || '')}')" class="text-xs font-black text-purple-700 hover:underline">${count}</button><div class="text-[10px] text-slate-400">matrix rows</div>`;
         }
         function productMasterCertificationStatus(product) {
             const req = getProductCertificationRequirements(product);
@@ -10078,7 +10614,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const technicalSpecs = getProductTechnicalSpecs(product);
             const sourcing = getProductSourcing(product);
             const channelPartner = getProductChannelPartner(product);
-            const certStatus = productMasterCertificationStatus(product);
+            const certStatusV4 = getProductCertificationV4Status(product, getSelectedCertificationClassId());
+            const certStatus = {
+                status: certStatusV4.status,
+                label: certStatusV4.label,
+                gap: certStatusV4.missing?.length ? certStatusV4.missing.join(', ') : ''
+            };
             const compatibility = getProductCompatibilitySummary(product);
             const quoteReadiness = productMasterQuoteReadiness(product);
             const sourceRisk = productMasterSourceRisk(product);
@@ -10103,6 +10644,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             quoteReadiness: { key: 'quoteReadiness', label: 'Quote Readiness', render: (p, ctx) => `${productMasterStatusPill(ctx.quoteReadiness.status, ctx.quoteReadiness.tone)}<div class="text-[10px] text-slate-400 mt-1">${htmlSafe(ctx.quoteReadiness.note)}</div>` },
             supplyRoute: { key: 'supplyRoute', label: 'Supply Route', render: (p, ctx) => productMasterSupplyRouteHtml(ctx) },
             certificationReadiness: { key: 'certificationReadiness', label: 'Certification Status', render: (p, ctx) => `${productMasterStatusPill(ctx.certStatus.status, ctx.certStatus.status === 'Ready' ? 'green' : (ctx.certStatus.status === 'Gap' ? 'amber' : 'slate'))}<div class="text-[10px] text-slate-400 mt-1">${htmlSafe(ctx.certStatus.label)}</div>` },
+            classFit: { key: 'classFit', label: 'Class Fit', render: p => productMasterClassFitHtml(p) },
+            certificationV4Status: { key: 'certificationV4Status', label: 'Certification Status', render: p => productMasterCertificationV4StatusHtml(p) },
+            missingEvidence: { key: 'missingEvidence', label: 'Missing Evidence', render: p => productMasterMissingEvidenceHtml(p) },
+            evidenceCount: { key: 'evidenceCount', label: 'Evidence Count', align: 'text-center', render: p => productMasterEvidenceCountHtml(p) },
             technicalSummary: { key: 'technicalSummary', label: 'Technical Summary', render: p => `<span class="text-xs text-slate-600 max-w-[260px] block truncate" title="${htmlSafe(productMasterTechnicalSummary(p))}">${productMasterValueHtml(productMasterTechnicalSummary(p))}</span>` },
             dimensions: { key: 'dimensions', label: 'Dimensions', render: (p, ctx) => `<span class="text-xs text-slate-600">${productMasterValueHtml(ctx.technicalSpecs.dimensionsMm)}</span>` },
             weight: { key: 'weight', label: 'Weight', render: (p, ctx) => `<span class="text-xs text-slate-600">${productMasterValueHtml(ctx.technicalSpecs.weightKg ? `${ctx.technicalSpecs.weightKg} kg` : '')}</span>` },
@@ -10113,7 +10658,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             contact: { key: 'contact', label: 'Contact', sensitiveField: 'supplierContact', render: (p, ctx) => `<span class="text-xs">${ctx.contactHtml}</span>` },
             certification: { key: 'certification', label: 'Certification', render: (p, ctx) => `<span class="text-xs text-slate-500 max-w-[220px] block truncate">${productMasterCertificationHtml(ctx)}</span>` },
             certificationRequirements: { key: 'certificationRequirements', label: 'Certification Requirements', render: (p, ctx) => `<span class="text-xs text-slate-500 max-w-[240px] block truncate" title="${htmlSafe(ctx.certTitle)}">${productMasterCertificationHtml(ctx)}</span>` },
-            externalCertificateLink: { key: 'externalCertificateLink', label: 'External Certificate Link', render: (p, ctx) => productMasterLinkHtml(ctx.masterData.certificateLink, 'Certificate') },
+            externalCertificateLink: { key: 'externalCertificateLink', label: 'External Evidence Link', render: (p, ctx) => productMasterLinkHtml(ctx.masterData.certificateLink, 'Evidence') },
             attachedCerts: { key: 'attachedCerts', label: 'Attached Certs', render: p => `<span class="text-xs font-bold text-slate-600">${productMasterAttachedCertFiles(p).length}</span><div class="text-[10px] text-slate-400">cert files</div>` },
             attachedSpecs: { key: 'attachedSpecs', label: 'Attached Specs', render: p => `<span class="text-xs font-bold text-slate-600">${productMasterAttachedSpecFiles(p).length}</span><div class="text-[10px] text-slate-400">spec sheets</div>` },
             cost: { key: 'cost', label: 'Base Cost', align: 'text-right', sensitiveField: 'cost', render: (p, ctx) => `<div class="text-sm font-mono text-slate-400">${formatProductBaseAmount(p, 'cost')}</div><div class="text-[10px] font-bold text-slate-300">/${htmlSafe(ctx.pricingMeta.priceBasisUnit)}</div>` },
@@ -10135,10 +10680,138 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             remark: { key: 'remark', label: 'Remark', render: (p, ctx) => `<span class="text-xs text-slate-500 max-w-[240px] block truncate" title="${htmlSafe(ctx.masterData.remark || '')}">${productMasterValueHtml(ctx.masterData.remark)}</span>` },
             actions: { key: 'actions', label: 'Actions', align: 'text-center', render: p => productMasterActionsHtml(p) }
         };
+        function certificationClassConditionHtml(profile) {
+            const rows = [
+                ['Grid Connected', profile.gridConnected],
+                ['BESS Required', profile.bessRequired],
+                ['Grid Forming Required', profile.gridFormingRequired],
+                ['Genset Integration Required', profile.gensetIntegrationRequired],
+                ['Utility Compliance Required', profile.utilityComplianceRequired]
+            ];
+            return `<div>
+                <div class="text-[10px] font-black text-purple-700 uppercase tracking-widest mb-1">${htmlSafe(profile.id.replace('_', ' ').toUpperCase())}</div>
+                <h3 class="text-lg font-black text-slate-800">${htmlSafe(profile.title)}</h3>
+                <p class="text-xs text-slate-400 mt-1">${htmlSafe((profile.examples || []).join(' / '))}</p>
+                <div class="mt-4 space-y-2">
+                    ${rows.map(([label, on]) => `<div class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2">
+                        <span class="text-xs font-bold text-slate-500">${htmlSafe(label)}</span>
+                        ${productMasterStatusPill(on ? 'Yes' : 'No', on ? 'purple' : 'slate')}
+                    </div>`).join('')}
+                </div>
+            </div>`;
+        }
+        function productMatchesCertificationClass(product, profile) {
+            const groupLabel = getProductTypeGroup(product).label;
+            return (profile.productGroups || []).some(group => {
+                if (group === 'Inverter / PCS') return groupLabel === 'Inverter';
+                if (group === 'ESS') return groupLabel.includes('ESS');
+                if (group === 'BOS') return groupLabel.includes('BOS');
+                return group.includes(groupLabel) || groupLabel.includes(group);
+            });
+        }
+        function productPassesCertificationClassFilters(product) {
+            const outdoor = document.getElementById('cert-class-outdoor-filter')?.value || 'all';
+            const gridDischarge = document.getElementById('cert-class-grid-discharge-filter')?.value || 'all';
+            const capacity = parseFloat(document.getElementById('cert-class-capacity-filter')?.value || '');
+            const text = flattenProductMasterValues([product.masterData, product.technicalSpecs, product.spec, product.scenario]).join(' ').toLowerCase();
+            if (outdoor === 'outdoor' && !text.includes('outdoor') && !text.includes('ip')) return false;
+            if (outdoor === 'indoor' && text.includes('outdoor')) return false;
+            if (gridDischarge === 'yes' && !text.includes('grid') && !text.includes('pcs') && !text.includes('hybrid')) return false;
+            if (gridDischarge === 'no' && text.includes('grid discharge')) return false;
+            if (Number.isFinite(capacity) && capacity > 0) {
+                const summary = [productMasterTechnicalSummary(product), productMasterEfficiencyCapacity(product), product.spec].join(' ');
+                const nums = summary.match(/\d+(?:\.\d+)?/g)?.map(Number) || [];
+                if (nums.length && Math.max(...nums) < capacity * 0.5) return false;
+            }
+            return true;
+        }
+        function certificationProductCardHtml(product, profile) {
+            const status = getProductCertificationV4Status(product, profile.id);
+            const compat = getProductCompatibilitySummary(product);
+            return `<div class="rounded-xl border border-slate-200 bg-white px-3 py-3">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="text-xs font-black text-slate-800 truncate">${htmlSafe(product.id || '')} · ${htmlSafe(productListDisplayText(product.name))}</div>
+                        <div class="text-[10px] text-slate-400 mt-1 truncate">${htmlSafe(productMasterTechnicalSummary(product) || getProductDisplaySpec(product) || '-')}</div>
+                    </div>
+                    ${productMasterStatusPill(status.status, status.tone)}
+                </div>
+                <div class="mt-2 flex flex-wrap gap-1.5">
+                    ${productMasterStatusPill(`Compatibility: ${compat.label}`, compat.status === 'Approved' ? 'green' : (compat.status === 'Blocked' ? 'red' : 'slate'))}
+                    ${productMasterStatusPill(getProductSourcing(product).sourceType || 'Unknown', 'slate')}
+                </div>
+            </div>`;
+        }
+        function renderCertificationClassProductStack(profile) {
+            const stack = document.getElementById('cert-class-product-stack');
+            const summary = document.getElementById('cert-class-stack-summary');
+            if (!stack) return;
+            const groups = [
+                ['PV Module', p => getProductTypeGroup(p).id === 'pv'],
+                ['Inverter / PCS', p => getProductTypeGroup(p).id === 'inverter'],
+                ['Battery', p => getProductTypeGroup(p).id === 'battery'],
+                ['ESS', p => getProductTypeGroup(p).id === 'ess'],
+                ['BOS', p => getProductTypeGroup(p).id === 'bos']
+            ].filter(([label]) => (profile.productGroups || []).includes(label) || (label === 'Inverter / PCS' && (profile.productGroups || []).includes('Inverter / PCS')));
+            let total = 0;
+            stack.innerHTML = groups.map(([label, predicate]) => {
+                const rows = products.filter(p => predicate(p) && productMatchesCertificationClass(p, profile) && productPassesCertificationClassFilters(p)).slice(0, 8);
+                total += rows.length;
+                return `<div class="rounded-2xl border border-slate-200 bg-slate-50/60 p-3">
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="text-xs font-black text-slate-700 uppercase tracking-widest">${htmlSafe(label)}</h4>
+                        <span class="text-[10px] font-black text-slate-400">${rows.length}</span>
+                    </div>
+                    <div class="space-y-2">${rows.length ? rows.map(p => certificationProductCardHtml(p, profile)).join('') : '<div class="rounded-xl border border-dashed border-slate-200 bg-white p-3 text-xs text-slate-400">No matching products.</div>'}</div>
+                </div>`;
+            }).join('');
+            if (summary) summary.textContent = `${total} products`;
+        }
+        function renderCertificationClassChecklist(profile) {
+            const box = document.getElementById('cert-class-checklist');
+            const summary = document.getElementById('cert-class-checklist-summary');
+            if (!box) return;
+            const items = getCertificationChecklistForClass(profile.id);
+            if (summary) summary.textContent = `${items.length} items`;
+            box.innerHTML = items.map(item => {
+                const status = item.notApplicable ? 'N/A' : (item.level === 'Mandatory' ? 'Needs Review' : item.level);
+                return `<div class="rounded-xl border border-slate-200 bg-white p-3">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <div class="text-xs font-black text-slate-800">${htmlSafe(item.code)}</div>
+                            <div class="text-[10px] text-slate-500 mt-1">${htmlSafe(item.documentType)}</div>
+                        </div>
+                        ${productMasterStatusPill(status, certificationLevelTone(item.level, status))}
+                    </div>
+                    <div class="mt-2 text-[10px] text-slate-400 leading-relaxed">${htmlSafe(item.notApplicable ? item.reason : item.applicabilityCondition || item.requiredEvidence || '-')}</div>
+                </div>`;
+            }).join('');
+        }
+        function updateCertificationClassTabs(activeId) {
+            certificationClassProfiles.forEach(profile => {
+                const btn = document.getElementById(`cert-class-tab-${profile.id}`);
+                if (!btn) return;
+                const active = profile.id === activeId;
+                btn.className = active
+                    ? 'px-3 py-2 rounded-xl border border-purple-200 bg-white text-xs font-black text-purple-800 shadow-sm'
+                    : 'px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-black text-slate-500 hover:bg-slate-50';
+            });
+        }
+        function renderCertificationClassWorkspace() {
+            ensureCertificationV4Data();
+            const profile = getCertificationClassProfile(getSelectedCertificationClassId());
+            updateCertificationClassTabs(profile.id);
+            const condition = document.getElementById('cert-class-condition-card');
+            if (condition) condition.innerHTML = certificationClassConditionHtml(profile);
+            renderCertificationClassProductStack(profile);
+            renderCertificationClassChecklist(profile);
+        }
+        window.renderCertificationClassWorkspace = renderCertificationClassWorkspace;
         window.renderDb = () => {
             const list = document.getElementById('db-list');
             const head = document.getElementById('product-master-head-row');
             ensureSupplierData();
+            ensureCertificationV4Data();
             const typeView = getProductMasterTypeView();
             const typeGroup = PRODUCT_TYPE_GROUPS.find(group => group.id === typeView) || PRODUCT_TYPE_GROUPS[0];
             const filteredProducts = typeGroup.id === 'all'
@@ -10176,6 +10849,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             }).join('');
             window.applyFrozenColumns('product-list');
             try { renderCompatibilityMatrix(); } catch (e) {}
+            try { renderCertificationClassWorkspace(); } catch (e) {}
         };
         document.addEventListener('minova-auth-changed', () => {
             try { renderDb(); } catch (e) {}
@@ -12784,8 +13458,26 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 <div class="text-[10px] text-slate-400">${formatCurrencyFromCny(valueCny, secondary, digits)}${suffix}</div>
             `;
         }
-        function priceListCountryLabel(code) {
-            return CERTIFICATION_COUNTRIES.find(c => c.code === code)?.label || code;
+        function getProductCertificationMatrixPriceListMeta(product) {
+            ensureCertificationV4Data();
+            const evidence = getProductCertificationEvidence(product?.id || '');
+            const rows = getCertificationMatrixRowsForProduct(product || {});
+            const projectSet = new Set();
+            const standardSet = new Set();
+            evidence.forEach(record => {
+                if (record.projectApplicability) projectSet.add(record.projectApplicability);
+                if (record.standardRequirement) standardSet.add(record.standardRequirement);
+            });
+            rows.forEach(record => {
+                if (record.projectApplicability) projectSet.add(record.projectApplicability);
+                if (record.standardRequirement) standardSet.add(record.standardRequirement);
+            });
+            const legacy = getProductCertificationRequirements(product || {});
+            (legacy.standards || []).forEach(item => standardSet.add(item));
+            return {
+                projects: Array.from(projectSet).filter(Boolean),
+                standards: Array.from(standardSet).filter(Boolean)
+            };
         }
         function renderPriceListFilters() {
             const catSel = document.getElementById('price-list-category-filter');
@@ -12801,22 +13493,24 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             };
             const cats = [...new Set(products.map(p => normalizeProductCategory(p.category)).filter(Boolean))].sort((a, b) => a.localeCompare(b));
             const brands = [...new Set(products.map(p => getProductSupplierDisplay(p)).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-            const countryOptions = CERTIFICATION_COUNTRIES.map(c => ({ value: c.code, label: c.label }));
+            const projectOptions = new Set();
             const certSet = new Set();
             products.forEach(p => {
-                const req = getProductCertificationRequirements(p);
-                const country = keep.country;
-                if (country && !(req.countries || []).includes(country)) return;
-                (req.standards || []).forEach(s => certSet.add(s));
+                const meta = getProductCertificationMatrixPriceListMeta(p);
+                meta.projects.forEach(project => projectOptions.add(project));
+                const project = keep.country;
+                if (project && !meta.projects.includes(project)) return;
+                meta.standards.forEach(s => certSet.add(s));
             });
+            const projects = Array.from(projectOptions).sort((a, b) => a.localeCompare(b));
             const certs = [...certSet].sort((a, b) => a.localeCompare(b));
             catSel.innerHTML = `<option value="">All Categories</option>` + cats.map(v => `<option value="${htmlSafe(v)}">${htmlSafe(v)}</option>`).join('');
             brandSel.innerHTML = `<option value="">All Brands</option>` + brands.map(v => `<option value="${htmlSafe(v)}">${htmlSafe(v)}</option>`).join('');
-            countrySel.innerHTML = `<option value="">All Countries</option>` + countryOptions.map(c => `<option value="${c.value}">${c.label}</option>`).join('');
+            countrySel.innerHTML = `<option value="">All Project Applicability</option>` + projects.map(v => `<option value="${htmlSafe(v)}">${htmlSafe(v)}</option>`).join('');
             certSel.innerHTML = `<option value="">All Certifications</option>` + certs.map(v => `<option value="${htmlSafe(v)}">${htmlSafe(v)}</option>`).join('');
             if (keep.cat && cats.includes(keep.cat)) catSel.value = keep.cat;
             if (keep.brand && brands.includes(keep.brand)) brandSel.value = keep.brand;
-            if (keep.country && countryOptions.some(c => c.value === keep.country)) countrySel.value = keep.country;
+            if (keep.country && projects.includes(keep.country)) countrySel.value = keep.country;
             if (keep.cert && certs.includes(keep.cert)) certSel.value = keep.cert;
         }
         function getFilteredPriceListProducts() {
@@ -12824,16 +13518,16 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const rawCategory = String(document.getElementById('price-list-category-filter')?.value || '').trim();
             const category = rawCategory ? normalizeProductCategory(rawCategory) : '';
             const brand = String(document.getElementById('price-list-brand-filter')?.value || '').trim();
-            const country = String(document.getElementById('price-list-country-filter')?.value || '').trim();
+            const project = String(document.getElementById('price-list-country-filter')?.value || '').trim();
             const cert = String(document.getElementById('price-list-cert-filter')?.value || '').trim();
             return products.filter(p => {
-                const req = getProductCertificationRequirements(p);
-                const text = `${p.id || ''} ${p.name || ''} ${p.spec || ''} ${p.category || ''} ${p.scenario || ''} ${getProductSupplierDisplay(p)} ${(req.standards || []).join(' ')}`.toLowerCase();
+                const meta = getProductCertificationMatrixPriceListMeta(p);
+                const text = `${p.id || ''} ${p.name || ''} ${p.spec || ''} ${p.category || ''} ${p.scenario || ''} ${getProductSupplierDisplay(p)} ${meta.standards.join(' ')} ${meta.projects.join(' ')}`.toLowerCase();
                 if (q && !text.includes(q)) return false;
                 if (category && normalizeProductCategory(p.category) !== category) return false;
                 if (brand && getProductSupplierDisplay(p) !== brand) return false;
-                if (country && !(req.countries || []).includes(country)) return false;
-                if (cert && !(req.standards || []).includes(cert)) return false;
+                if (project && !meta.projects.includes(project)) return false;
+                if (cert && !meta.standards.includes(cert)) return false;
                 return true;
             }).sort((a, b) => String(a.category || '').localeCompare(String(b.category || '')) || String(a.name || '').localeCompare(String(b.name || '')));
         }
@@ -13181,13 +13875,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 return;
             }
             body.innerHTML = rows.map(p => {
-                const req = getProductCertificationRequirements(p);
+                const certMeta = getProductCertificationMatrixPriceListMeta(p);
                 const pricing = priceListProductPricing(p);
                 const homeProfit = Number.isFinite(parseFloat(pricing.homeProfitPct)) ? parseFloat(pricing.homeProfitPct) : ((pricing.cnHomePct || 0) + (pricing.myHomePct || 0));
                 const bizProfit = Number.isFinite(parseFloat(pricing.bizProfitPct)) ? parseFloat(pricing.bizProfitPct) : ((pricing.cnBizPct || 0) + (pricing.myBizPct || 0));
-                const countries = (req.countries || []).map(priceListCountryLabel).join(', ');
-                const certBrief = (req.standards || []).slice(0, 3).join(', ');
-                const certTitle = `${countries}\n${(req.standards || []).join('\n')}`;
+                const projects = certMeta.projects.slice(0, 2).join(', ');
+                const certBrief = certMeta.standards.slice(0, 3).join(', ');
+                const certTitle = `${certMeta.projects.join(', ')}\n${certMeta.standards.join('\n')}`;
                 const checked = selectedPriceListProductIds.has(p.id) ? 'checked' : '';
                 const selectedPcsPrice = getPriceListSelectedPcsPrice(pricing);
                 return `
@@ -13209,7 +13903,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <td class="py-4 px-4 text-right">${renderPriceCell(pricing.clearanceBizPrice, pricing.clearanceCost, pricing.costUnit)}</td>
                         <td class="py-4 px-4 text-right">${renderPriceCell(pricing.grayHomePrice, pricing.grayCost, pricing.costUnit)}</td>
                         <td class="py-4 px-4 text-right">${renderPriceCell(pricing.grayBizPrice, pricing.grayCost, pricing.costUnit)}</td>
-                        <td class="py-4 px-4 text-xs text-slate-500 max-w-[220px] truncate" title="${htmlSafe(certTitle)}">${htmlSafe(certBrief || '-')}<div class="text-[10px] text-slate-400">${htmlSafe(countries || '-')}</div></td>
+                        <td class="py-4 px-4 text-xs text-slate-500 max-w-[220px] truncate" title="${htmlSafe(certTitle)}">${htmlSafe(certBrief || '-')}<div class="text-[10px] text-slate-400">${htmlSafe(projects || '-')}</div></td>
                     </tr>
                 `;
             }).join('');
@@ -13346,7 +14040,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (!selected.length) return alert('Please select at least one product to export.');
             const rows = selected.map(p => {
                 const r = priceListProductPricing(p);
-                const req = getProductCertificationRequirements(p);
+                const certMeta = getProductCertificationMatrixPriceListMeta(p);
                 const market = getMarketPriceSummary(p.category || '', { days: 30 });
                 const homeProfit = Number.isFinite(parseFloat(r.homeProfitPct)) ? parseFloat(r.homeProfitPct) : ((r.cnHomePct || 0) + (r.myHomePct || 0));
                 const bizProfit = Number.isFinite(parseFloat(r.bizProfitPct)) ? parseFloat(r.bizProfitPct) : ((r.cnBizPct || 0) + (r.myBizPct || 0));
@@ -13384,8 +14078,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     'Grey C&I CNY': r.grayBizPrice || 0,
                     'Grey C&I MYR': (r.grayBizPrice || 0) / getSalesOutRateCnyPerMyr(),
                     'Formula Note': `Clearance cost = Avg Cost * (1 + duty ${r.dutyPct}% + SST ${r.sstPct}%); Grey cost = Avg Cost * (1 + grey tax ${r.grayPct}%); RESI profit = ${(r.homeProfitPct || 0).toFixed(2)}%; C&I profit = ${(r.bizProfitPct || 0).toFixed(2)}%; FX 1 MYR = ${getSalesOutRateCnyPerMyr().toFixed(4)} CNY`,
-                    'Certification Countries': (req.countries || []).map(priceListCountryLabel).join(', '),
-                    'Certification Standards': (req.standards || []).join('; ')
+                    'Project Applicability': certMeta.projects.join('; '),
+                    'Certification Standards': certMeta.standards.join('; ')
                 };
                 return out;
             });
@@ -13830,18 +14524,14 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 });
                 window.__productImageDraft = '';
                 renderProductImagePreview();
-                renderCertificationCountryChoices();
-                const textarea = document.getElementById('m-cert-requirements');
-                if (textarea) textarea.value = '';
-                window.__certificationAutoFilled = true;
-                window.applyDefaultProductCertifications?.();
+                renderProductCertificationMatrixSummary({ id: '', name: '', category: document.getElementById('m-category')?.value || '' });
             }
             document.getElementById('modal').classList.remove('hidden');
         };
         window.closeModal = () => {
             document.getElementById('modal').classList.add('hidden');
             window.editId = null;
-            ['m-name', 'm-category', 'm-supplier-code', 'm-spec', 'm-inverter-kw', 'm-battery-kwh', 'm-scenario', 'm-warranty-years', 'm-warranty-cycles', 'm-lead-time', 'm-contact', 'm-contact-info', 'm-price-basis-unit', 'm-unit-qty-per-pcs', 'm-cost', 'm-price', 'm-cert-requirements', 'm-source-type', 'm-commercial-supplier-code', 'm-factory-supplier-code', 'm-brand-owner-supplier-code', 'm-authorization-status', 'm-authorization-expiry', 'm-source-remark', ...PRODUCT_MASTER_COMMON_FIELD_KEYS.map(key => `m-master-${key}`)].forEach(id => {
+            ['m-name', 'm-category', 'm-supplier-code', 'm-spec', 'm-inverter-kw', 'm-battery-kwh', 'm-scenario', 'm-warranty-years', 'm-warranty-cycles', 'm-lead-time', 'm-contact', 'm-contact-info', 'm-price-basis-unit', 'm-unit-qty-per-pcs', 'm-cost', 'm-price', 'm-source-type', 'm-commercial-supplier-code', 'm-factory-supplier-code', 'm-brand-owner-supplier-code', 'm-authorization-status', 'm-authorization-expiry', 'm-source-remark', ...PRODUCT_MASTER_COMMON_FIELD_KEYS.map(key => `m-master-${key}`)].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.value = '';
             });
@@ -13850,8 +14540,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const currencyEl = document.getElementById('m-price-currency');
             if (currencyEl) currencyEl.value = 'CNY';
             updateProductPriceCurrencyUi();
-            renderCertificationCountryChoices();
-            window.__certificationAutoFilled = false;
+            const summary = document.getElementById('m-cert-matrix-summary');
+            if (summary) summary.textContent = 'No certification evidence selected yet.';
             window.__productImageDraft = '';
             const fileEl = document.getElementById('m-product-image-file');
             if (fileEl) fileEl.value = '';
@@ -13898,7 +14588,6 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 sourcing: readProductSourcingFromModal(supplier.code),
                 masterData: readProductMasterDataFromModal(),
                 technicalSpecs: readProductTechnicalSpecsFromModal(category),
-                certificationRequirements: readProductCertificationRequirementsFromModal(),
                 productImageDataUrl: String(window.__productImageDraft || ''),
                 ts: Date.now()
             };
@@ -13907,6 +14596,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 const existing = products.find(p => p.id === window.editId);
                 if (existing?.certifications) {
                     data.certifications = existing.certifications;
+                }
+                if (existing?.certificationRequirements) {
+                    data.certificationRequirements = existing.certificationRequirements;
                 }
             }
             // Ensure the certifications field exists.
@@ -13964,13 +14656,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (qtyEl) qtyEl.value = p.unitQtyPerPcs ? pricingMeta.unitQtyPerPcs : '';
             if (document.getElementById('m-price-currency')) document.getElementById('m-price-currency').value = getProductCurrency(p, 'cost');
             updateProductPriceCurrencyUi();
-            const certReq = getProductCertificationRequirements(p);
-            renderCertificationCountryChoices(certReq.countries);
-            const certTextarea = document.getElementById('m-cert-requirements');
-            if (certTextarea) certTextarea.value = certificationText(certReq);
-            const certNote = document.getElementById('m-cert-source-note');
-            if (certNote) certNote.textContent = certReq.source === 'manual' ? 'Manual product certification requirements.' : `Defaults loaded from ${certReq.source === 'online-catalog' ? 'online catalog' : 'embedded fallback'}${certReq.updatedAt ? ` (${certReq.updatedAt})` : ''}.`;
-            window.__certificationAutoFilled = !p.certificationRequirements;
+            renderProductCertificationMatrixSummary(p);
             window.__productImageDraft = String(p.productImageDataUrl || p.imageDataUrl || '');
             renderProductImagePreview();
             openModal();
@@ -13986,6 +14672,94 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         let importHeaders = [];
         let importCompatibilityData = [];
         let importChannelPartnerData = [];
+        let importCertificationStandardsData = [];
+        let importCertificationEvidenceData = [];
+        const CERTIFICATION_MATRIX_HEADERS = [
+            'Record ID',
+            'Product ID',
+            'Manufacturer',
+            'Brand',
+            'Product Category',
+            'Product Model',
+            'Standard / Requirement',
+            'Requirement Level',
+            'Applicability Condition',
+            'Evidence Type',
+            'Is Applicable',
+            'Evidence Available',
+            'Certificate No.',
+            'Report No.',
+            'Certification / Listing Body',
+            'Testing Laboratory',
+            'Laboratory Accreditation / Scope',
+            'Standard Edition / Version',
+            'Issue Date',
+            'Expiry Date',
+            'Days to Expiry',
+            'Expiry Status',
+            'Model Coverage Status',
+            'Model Coverage Details',
+            'Factory Coverage Status',
+            'Factory / Production Site',
+            'BOM Coverage Status',
+            'BOM Revision / Critical Components',
+            'Report Scope / Key Result',
+            'Verification Status',
+            'Verified By',
+            'Last Validation Date',
+            'Next Review Date',
+            'Official Registry Verified',
+            'Official / Registry Source URL',
+            'Document Link',
+            'Project Applicability',
+            'Linked Project ID',
+            'Deviation / NCR',
+            'Remarks',
+            'Auto Completeness Check'
+        ];
+        const CERTIFICATION_MATRIX_HEADER_KEYS = {
+            'Record ID': 'matrixRecordId',
+            'Product ID': 'productId',
+            'Manufacturer': 'manufacturer',
+            'Brand': 'brand',
+            'Product Category': 'productCategory',
+            'Product Model': 'productModel',
+            'Standard / Requirement': 'standardRequirement',
+            'Requirement Level': 'requirementLevel',
+            'Applicability Condition': 'applicabilityCondition',
+            'Evidence Type': 'evidenceType',
+            'Is Applicable': 'isApplicable',
+            'Evidence Available': 'evidenceAvailable',
+            'Certificate No.': 'certificateNo',
+            'Report No.': 'reportNo',
+            'Certification / Listing Body': 'certificationListingBody',
+            'Testing Laboratory': 'testingLaboratory',
+            'Laboratory Accreditation / Scope': 'laboratoryAccreditationScope',
+            'Standard Edition / Version': 'standardEditionVersion',
+            'Issue Date': 'issueDate',
+            'Expiry Date': 'expiryDate',
+            'Days to Expiry': 'daysToExpiry',
+            'Expiry Status': 'expiryStatus',
+            'Model Coverage Status': 'modelCoverageStatus',
+            'Model Coverage Details': 'modelCoverageDetails',
+            'Factory Coverage Status': 'factoryCoverageStatus',
+            'Factory / Production Site': 'factoryProductionSite',
+            'BOM Coverage Status': 'bomCoverageStatus',
+            'BOM Revision / Critical Components': 'bomRevisionCriticalComponents',
+            'Report Scope / Key Result': 'reportScopeKeyResult',
+            'Verification Status': 'verificationStatus',
+            'Verified By': 'verifiedBy',
+            'Last Validation Date': 'lastValidationDate',
+            'Next Review Date': 'nextReviewDate',
+            'Official Registry Verified': 'officialRegistryVerified',
+            'Official / Registry Source URL': 'officialRegistrySourceUrl',
+            'Document Link': 'documentLink',
+            'Project Applicability': 'projectApplicability',
+            'Linked Project ID': 'linkedProjectId',
+            'Deviation / NCR': 'deviationNcr',
+            'Remarks': 'remarks',
+            'Auto Completeness Check': 'autoCompletenessCheck'
+        };
         const systemFields = {
             id: '产品编号',
             name: '产品全称',
@@ -14022,7 +14796,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             leadTime: 'Lead Time',
             contact: 'Contact',
             contactInfo: 'Contact Info',
-            certificationCountries: 'Certification Countries',
+            certificationCountries: 'Legacy Certification Markets',
             certificationStandards: 'Certification Standards',
             costCurrency: 'Base Currency',
             priceBasisUnit: 'Price Basis Unit',
@@ -14111,6 +14885,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             document.getElementById('file-name-display').textContent = '';
             importCompatibilityData = [];
             importChannelPartnerData = [];
+            importCertificationStandardsData = [];
+            importCertificationEvidenceData = [];
         };
 
         window.goToStep = (step, isReset = false) => {
@@ -14162,6 +14938,43 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return true;
         }
 
+        function sheetRowsByDetectedHeader(worksheet, requiredHeader = 'Record ID') {
+            if (!worksheet) return [];
+            const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+            const headerIndex = rows.findIndex(row => row.map(cell => String(cell || '').trim()).includes(requiredHeader));
+            if (headerIndex < 0) return XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+            const headers = rows[headerIndex].map(cell => String(cell || '').trim());
+            return rows.slice(headerIndex + 1)
+                .filter(row => row.some(cell => String(cell || '').trim()))
+                .map(row => {
+                    const obj = {};
+                    headers.forEach((header, index) => {
+                        if (header) obj[header] = row[index] ?? '';
+                    });
+                    return obj;
+                });
+        }
+
+        function certificationMatrixObjectFromRow(row, opts = {}) {
+            const out = {};
+            CERTIFICATION_MATRIX_HEADERS.forEach(header => {
+                const key = CERTIFICATION_MATRIX_HEADER_KEYS[header];
+                if (!key) return;
+                out[key] = row?.[header] ?? '';
+            });
+            out.matrixRecordId = out.matrixRecordId || row?.['Standard Code'] || row?.Code || row?.code || '';
+            out.standardRequirement = out.standardRequirement || row?.Name || row?.name || row?.['Standard / Requirement'] || '';
+            out.requirementLevel = out.requirementLevel || row?.Level || row?.level || '';
+            out.evidenceType = out.evidenceType || row?.['Document Type'] || row?.['Evidence Type'] || row?.documentType || '';
+            out.applicabilityCondition = out.applicabilityCondition || row?.['Applicability Condition'] || '';
+            out.projectApplicability = out.projectApplicability || row?.['Project Applicability'] || '';
+            out.officialRegistrySourceUrl = out.officialRegistrySourceUrl || row?.['Official / Registry Source URL'] || '';
+            out.remarks = out.remarks || row?.Remarks || row?.Remark || '';
+            if (opts.matrixSheet) out.matrixSheet = opts.matrixSheet;
+            if (opts.matrixType) out.matrixType = opts.matrixType;
+            return out;
+        }
+
         function parseExcel(file) {
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -14173,6 +14986,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 const compatibilitySheet = workbook.Sheets['Compatibility Matrix'];
                 importCompatibilityData = [];
                 importChannelPartnerData = [];
+                importCertificationStandardsData = [];
+                importCertificationEvidenceData = [];
                 const channelPartnerSheet = workbook.Sheets['Channel Partners'];
                 if (channelPartnerSheet) {
                     const channelRows = XLSX.utils.sheet_to_json(channelPartnerSheet, { defval: '' });
@@ -14205,6 +15020,20 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         remark: row.Remark
                     })).filter(rule => rule.sourceProductId && rule.targetProductId);
                 }
+                const evidenceSheet = workbook.Sheets['Certification Evidence'];
+                const standardsSheet = workbook.Sheets['Certification Standards'];
+                if (standardsSheet) {
+                    const standardRows = sheetRowsByDetectedHeader(standardsSheet, 'Record ID');
+                    importCertificationStandardsData = standardRows
+                        .map(row => normalizeCertificationStandard(certificationMatrixObjectFromRow(row)))
+                        .filter(record => record.matrixRecordId && record.standardRequirement);
+                }
+                if (evidenceSheet) {
+                    const evidenceRows = sheetRowsByDetectedHeader(evidenceSheet, 'Record ID');
+                    importCertificationEvidenceData = evidenceRows
+                        .map(row => normalizeProductCertificationEvidence(certificationMatrixObjectFromRow(row)))
+                        .filter(record => record.productId && record.matrixRecordId);
+                }
 
                 if (json.length < 2) {
                     alert('The Excel file is empty or has no data.');
@@ -14236,7 +15065,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 inverterKw: ['逆变器kW', 'Inverter kW', 'Inverter Capacity', 'Inverter Capacity kW'],
                 batteryKwh: ['电池kWh', 'Battery kWh', 'Battery Capacity', 'Battery Capacity kWh'],
                 scenario: ['应用场景', 'Subcategory', 'Application Scenario'],
-                certificationCountries: ['产品认证国家', '认证国家', 'Certification Countries'],
+                certificationCountries: ['产品认证国家', '认证国家', 'Legacy Certification Markets'],
                 certificationStandards: ['产品认证标准', '产品认证', 'Certification Standards', 'Product Certification'],
                 costCurrency: ['基准币种', 'Base Currency', 'Currency', 'Cost Currency', 'Price Currency'],
                 priceBasisUnit: ['计价单位', 'Price Basis Unit', 'Pricing Unit', 'Unit'],
@@ -14393,12 +15222,25 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 if (newProduct.certificationCountries || newProduct.certificationStandards) {
                     const countries = uniqueCertList(String(newProduct.certificationCountries || '').split(/[\n;,/]+/)).map(v => v.toUpperCase());
                     const standards = uniqueCertList(String(newProduct.certificationStandards || '').split(/[\n;,]+/));
-                    newProduct.certificationRequirements = {
-                        countries: countries.length ? countries : CERTIFICATION_COUNTRIES.map(c => c.code),
-                        standards,
-                        source: 'import',
-                        updatedAt: ''
-                    };
+                    standards.forEach(standardText => {
+                        const standard = getCertificationStandard(standardText)
+                            || certificationStandardsCatalog.find(item => String(item.standardRequirement || '').toLowerCase() === String(standardText || '').toLowerCase())
+                            || certificationStandardsCatalog.find(item => String(item.standardRequirement || '').toLowerCase().includes(String(standardText || '').toLowerCase()));
+                        if (!standard?.matrixRecordId) return;
+                        const evidence = normalizeProductCertificationEvidence({
+                            productId: newProduct.id,
+                            matrixRecordId: standard.matrixRecordId,
+                            standardRequirement: standard.standardRequirement,
+                            requirementLevel: standard.requirementLevel,
+                            evidenceType: standard.evidenceType,
+                            isApplicable: standard.isApplicable || 'Conditional',
+                            evidenceAvailable: 'No',
+                            verificationStatus: 'Not Reviewed',
+                            projectApplicability: standard.projectApplicability,
+                            remarks: `Imported from legacy Product List certification columns${countries.length ? `; legacy markets: ${countries.join(', ')}` : ''}`
+                        });
+                        if (evidence) importCertificationEvidenceData.push(evidence);
+                    });
                     delete newProduct.certificationCountries;
                     delete newProduct.certificationStandards;
                 }
@@ -14413,6 +15255,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
             const channelPartnerCount = processChannelPartnerImport();
             const compatibilityCount = processCompatibilityImport();
+            const certificationStandardCount = processCertificationStandardsImport();
+            const certificationEvidenceCount = processCertificationEvidenceImport();
 
             saveToLocal();
             try {
@@ -14420,13 +15264,18 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     ...products.map(record => ({ domain: 'product', recordId: record.id, payload: cloneForD1(record) })),
                     ...channelPartners.map(record => ({ domain: 'channel_partner', recordId: record.id, payload: cloneForD1(record) })),
                     ...suppliers.map(record => ({ domain: 'supplier', recordId: record.id || record.code, payload: cloneForD1(record) })),
-                    ...compatibilityRules.map(record => ({ domain: 'compatibility_rule', recordId: record.id, payload: cloneForD1(record) }))
+                    ...compatibilityRules.map(record => ({ domain: 'compatibility_rule', recordId: record.id, payload: cloneForD1(record) })),
+                    ...certificationStandardsCatalog.map(record => ({ domain: 'certification_standard', recordId: record.matrixRecordId || record.code, payload: cloneForD1(record) })),
+                    ...certificationClassProfiles.map(record => ({ domain: 'certification_class_profile', recordId: record.id, payload: cloneForD1(record) })),
+                    ...productCertificationEvidence.map(record => ({ domain: 'certification_evidence', recordId: record.id, payload: cloneForD1(record) }))
                 ]);
             } catch (e) {
                 console.warn('D1 product import save queued/failed:', e);
             }
             if (channelPartnerCount) log.push(`<p class="text-green-600">Channel Partners imported: ${channelPartnerCount} records.</p>`);
             if (compatibilityCount) log.push(`<p class="text-green-600">Compatibility Matrix imported: ${compatibilityCount} rules.</p>`);
+            if (certificationStandardCount) log.push(`<p class="text-green-600">Certification Standards imported: ${certificationStandardCount} records.</p>`);
+            if (certificationEvidenceCount) log.push(`<p class="text-green-600">Certification Evidence imported: ${certificationEvidenceCount} records.</p>`);
             renderImportLog(successCount, failCount, log);
             goToStep(3);
         }
@@ -14442,6 +15291,36 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 count += 1;
             });
             compatibilityRules = normalizeCompatibilityRules(compatibilityRules);
+            return count;
+        }
+
+        function processCertificationStandardsImport() {
+            if (!Array.isArray(importCertificationStandardsData) || !importCertificationStandardsData.length) return 0;
+            let count = 0;
+            const map = new Map(normalizeCertificationStandardsCatalog(certificationStandardsCatalog).map(record => [record.matrixRecordId || record.code, record]));
+            importCertificationStandardsData.forEach(record => {
+                const standard = normalizeCertificationStandard(record);
+                const key = standard?.matrixRecordId || standard?.code || '';
+                if (!key) return;
+                map.set(key, standard);
+                count += 1;
+            });
+            certificationStandardsCatalog = Array.from(map.values());
+            return count;
+        }
+
+        function processCertificationEvidenceImport() {
+            if (!Array.isArray(importCertificationEvidenceData) || !importCertificationEvidenceData.length) return 0;
+            let count = 0;
+            importCertificationEvidenceData.forEach(record => {
+                const evidence = normalizeProductCertificationEvidence(record);
+                if (!evidence || !evidence.productId || !evidence.matrixRecordId) return;
+                const idx = productCertificationEvidence.findIndex(item => item.id === evidence.id);
+                if (idx >= 0) productCertificationEvidence[idx] = evidence;
+                else productCertificationEvidence.push(evidence);
+                count += 1;
+            });
+            productCertificationEvidence = normalizeProductCertificationEvidenceList(productCertificationEvidence);
             return count;
         }
 
@@ -14471,7 +15350,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const masterHeaders = ['SKU / Model', 'Brand', 'Series', 'Application', 'Voltage Class', 'Phase', 'Status', 'Country Available', 'Datasheet Link', 'External Certificate Link', 'Remark'];
             const sourcingHeaders = ['Source Type', 'Channel Partner ID', 'Brand Supplier Code', 'Commercial Supplier Code', 'Factory Supplier Code', 'Brand Owner Supplier Code', 'Authorization Status', 'Authorization Expiry', 'Source Remark'];
             const technicalHeaders = PRODUCT_MASTER_TECHNICAL_IMPORT_KEYS.map(key => PRODUCT_MASTER_TECHNICAL_LABEL_BY_KEY[key]);
-            const headers = ['Product ID', 'Product Name', 'Category', 'Supplier', 'Spec Model', 'Inverter kW', 'Battery kWh', 'Subcategory', 'Warranty Years', 'Cycle Count', 'Lead Time', 'Contact', 'Contact Method', 'Product Certification Countries', 'Product Certification Standards', 'Base Currency', 'Price Basis Unit', 'Qty per PCS', 'Base Cost', 'Base Price', ...masterHeaders, ...sourcingHeaders, ...technicalHeaders];
+            const headers = ['Product ID', 'Product Name', 'Category', 'Supplier', 'Spec Model', 'Inverter kW', 'Battery kWh', 'Subcategory', 'Warranty Years', 'Cycle Count', 'Lead Time', 'Contact', 'Contact Method', 'Legacy Certification Standards', 'Base Currency', 'Price Basis Unit', 'Qty per PCS', 'Base Cost', 'Base Price', ...masterHeaders, ...sourcingHeaders, ...technicalHeaders];
             const data = products.map(p => {
                 const pricingMeta = getProductPricingMeta(p);
                 const hybridSpec = isHybridStorageCategory(p.category) ? parseHybridStorageSpec(p) : { inverterKw: '', batteryKwh: '' };
@@ -14492,7 +15371,6 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 p.leadTime || '',
                 p.contact || '',
                 p.contactInfo || '',
-                (getProductCertificationRequirements(p).countries || []).join(', '),
                 (getProductCertificationRequirements(p).standards || []).join('; '),
                 getProductCurrency(p, 'cost'),
                 pricingMeta.priceBasisUnit,
@@ -14525,7 +15403,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
             // 如果没数据，加一行示例
             if (data.length === 0) {
-                data.push(['PROD001', 'Sample All-in-One', 'All-in-One System', 'Generic Supplier', '5.5 kW / 10 kWh', 5.5, 10, 'Single-Phase All-in-One', '10', '0', '15 days', 'Sales Manager', 'sales@example.com', 'MY, US, EU', 'IEC 62619; IEC 62109-1/2', 'CNY', 'set', 1, 5000, 6500, 'AIO-5.5-10', 'Generic Brand', 'Hybrid Series', 'Residential', 'LV', 'Single', 'Active', 'MY', '', '', 'Sample V3 Product Master row', 'Direct Factory', '', 'SUP001', 'SUP001', 'SUP001', 'SUP001', 'Authorized', '', 'Factory source confirmed', ...PRODUCT_MASTER_TECHNICAL_IMPORT_KEYS.map(key => key === 'nominalEnergyKwh' ? 10 : (key === 'pcsRatedPowerKw' ? 5.5 : ''))]);
+                data.push(['PROD001', 'Sample All-in-One', 'All-in-One System', 'Generic Supplier', '5.5 kW / 10 kWh', 5.5, 10, 'Single-Phase All-in-One', '10', '0', '15 days', 'Sales Manager', 'sales@example.com', 'IEC 62619; IEC 62109-1/2', 'CNY', 'set', 1, 5000, 6500, 'AIO-5.5-10', 'Generic Brand', 'Hybrid Series', 'Residential', 'LV', 'Single', 'Active', 'MY', '', '', 'Sample V3 Product Master row', 'Direct Factory', '', 'SUP001', 'SUP001', 'SUP001', 'SUP001', 'Authorized', '', 'Factory source confirmed', ...PRODUCT_MASTER_TECHNICAL_IMPORT_KEYS.map(key => key === 'nominalEnergyKwh' ? 10 : (key === 'pcsRatedPowerKw' ? 5.5 : ''))]);
             }
 
             const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
@@ -14560,10 +15438,79 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             ]);
             if (!channelPartnerRows.length) channelPartnerRows.push(['channel_001', 'SUP001', 'Authorized Distributor', 'Sample Distributor', 'MY', 'Authorized', '', 'Sales Manager', 'sales@example.com', 'Sample channel partner row']);
             const channelPartnerWorksheet = XLSX.utils.aoa_to_sheet([channelPartnerHeaders, ...channelPartnerRows]);
+            ensureCertificationV4Data();
+            const certificationRowForExport = (record, opts = {}) => {
+                const standard = record?.matrixRecordId ? getCertificationStandard(record.matrixRecordId) : null;
+                const source = { ...(standard || {}), ...(record || {}) };
+                const out = {
+                    'Record ID': source.matrixRecordId || source.code || '',
+                    'Product ID': opts.includeProductId ? (source.productId || '') : '',
+                    'Manufacturer': source.manufacturer || '',
+                    'Brand': source.brand || '',
+                    'Product Category': source.productCategory || source.productType || '',
+                    'Product Model': source.productModel || '',
+                    'Standard / Requirement': source.standardRequirement || source.name || '',
+                    'Requirement Level': source.requirementLevel || source.level || '',
+                    'Applicability Condition': source.applicabilityCondition || '',
+                    'Evidence Type': source.evidenceType || source.documentType || '',
+                    'Is Applicable': source.isApplicable || '',
+                    'Evidence Available': source.evidenceAvailable || '',
+                    'Certificate No.': source.certificateNo || '',
+                    'Report No.': source.reportNo || '',
+                    'Certification / Listing Body': source.certificationListingBody || '',
+                    'Testing Laboratory': source.testingLaboratory || '',
+                    'Laboratory Accreditation / Scope': source.laboratoryAccreditationScope || '',
+                    'Standard Edition / Version': source.standardEditionVersion || '',
+                    'Issue Date': source.issueDate || '',
+                    'Expiry Date': source.expiryDate || '',
+                    'Days to Expiry': source.daysToExpiry || '',
+                    'Expiry Status': source.expiryStatus || '',
+                    'Model Coverage Status': source.modelCoverageStatus || '',
+                    'Model Coverage Details': source.modelCoverageDetails || '',
+                    'Factory Coverage Status': source.factoryCoverageStatus || '',
+                    'Factory / Production Site': source.factoryProductionSite || '',
+                    'BOM Coverage Status': source.bomCoverageStatus || '',
+                    'BOM Revision / Critical Components': source.bomRevisionCriticalComponents || '',
+                    'Report Scope / Key Result': source.reportScopeKeyResult || '',
+                    'Verification Status': source.verificationStatus || '',
+                    'Verified By': source.verifiedBy || '',
+                    'Last Validation Date': source.lastValidationDate || '',
+                    'Next Review Date': source.nextReviewDate || '',
+                    'Official Registry Verified': source.officialRegistryVerified || '',
+                    'Official / Registry Source URL': source.officialRegistrySourceUrl || '',
+                    'Document Link': source.documentLink || '',
+                    'Project Applicability': source.projectApplicability || '',
+                    'Linked Project ID': source.linkedProjectId || '',
+                    'Deviation / NCR': source.deviationNcr || '',
+                    'Remarks': source.remarks || source.remark || '',
+                    'Auto Completeness Check': source.autoCompletenessCheck || ''
+                };
+                return CERTIFICATION_MATRIX_HEADERS.map(header => out[header] ?? '');
+            };
+            const standardsHeaders = CERTIFICATION_MATRIX_HEADERS;
+            const standardsRows = certificationStandardsCatalog.map(record => certificationRowForExport(record));
+            const standardsWorksheet = XLSX.utils.aoa_to_sheet([standardsHeaders, ...standardsRows]);
+            const evidenceHeaders = CERTIFICATION_MATRIX_HEADERS;
+            const evidenceRows = productCertificationEvidence.map(record => certificationRowForExport(record, { includeProductId: true }));
+            if (!evidenceRows.length) evidenceRows.push(certificationRowForExport({
+                productId: 'PROD001',
+                matrixRecordId: 'INV-005',
+                standardRequirement: 'IEC 61683',
+                requirementLevel: 'Mandatory',
+                evidenceType: 'Test Report',
+                evidenceAvailable: 'No',
+                verificationStatus: 'Not Reviewed',
+                documentLink: '',
+                projectApplicability: 'Grid-connected only',
+                remarks: 'Sample certification evidence row'
+            }, { includeProductId: true }));
+            const evidenceWorksheet = XLSX.utils.aoa_to_sheet([evidenceHeaders, ...evidenceRows]);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, 'Product List');
             XLSX.utils.book_append_sheet(workbook, channelPartnerWorksheet, 'Channel Partners');
             XLSX.utils.book_append_sheet(workbook, compatibilityWorksheet, 'Compatibility Matrix');
+            XLSX.utils.book_append_sheet(workbook, standardsWorksheet, 'Certification Standards');
+            XLSX.utils.book_append_sheet(workbook, evidenceWorksheet, 'Certification Evidence');
             XLSX.writeFile(workbook, 'product-master-list.xlsx');
         };
 
@@ -15856,6 +16803,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 transportRecords,
                 fileDeleteLogs,
                 compatibilityRules,
+                certificationStandardsCatalog,
+                certificationClassProfiles,
+                productCertificationEvidence,
                 subcategoriesByCategory,
                 profitSettings,
                 installerProfitSettings,
@@ -15884,6 +16834,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     transportRecords,
                     fileDeleteLogs,
                     compatibilityRules,
+                    certificationStandardsCatalog,
+                    certificationClassProfiles,
+                    productCertificationEvidence,
                     subcategoriesByCategory,
                     profitSettings,
                     installerProfitSettings,

@@ -100,6 +100,7 @@ const TAB_LABELS = {
   pvcalc: 'PV + ESS Calculator',
   costcalc: 'Quote Settings',
   database: 'Product List',
+  engineering: 'Engineering Workspace',
   pricelist: 'Price List',
   inventory: 'Inventory Mgmt',
   transport: 'Transport Mgmt',
@@ -148,6 +149,9 @@ const BUSINESS_DOMAIN_LABELS = {
   product: 'Products',
   channel_partner: 'Channel Partners',
   compatibility_rule: 'Compatibility Matrix',
+  certification_standard: 'Certification Standards',
+  certification_class_profile: 'Certification Class Profiles',
+  certification_evidence: 'Certification Evidence',
   market_price: 'Price List',
   inventory: 'Inventory',
   inventory_history: 'Inventory History',
@@ -342,6 +346,9 @@ const BUSINESS_RESOURCE_BY_DOMAIN = {
   transport: 'transport',
   market_price: 'priceList',
   compatibility_rule: 'products',
+  certification_standard: 'products',
+  certification_class_profile: 'products',
+  certification_evidence: 'products',
   saved_quote: 'quotes'
 };
 
@@ -383,7 +390,10 @@ function businessSnapshotToPayload(snapshot = {}) {
     ...arr(data.historicalInventory).map((record, index) => ({ domain: 'historical_inventory', recordId: businessRecordIdFor(record, index), payload: record })),
     ...arr(data.transportRecords).map((record, index) => ({ domain: 'transport', recordId: businessRecordIdFor(record, index), payload: record })),
     ...arr(data.marketPrices?.records).map((record, index) => ({ domain: 'market_price', recordId: businessRecordIdFor(record, index), payload: record })),
-    ...arr(data.compatibilityRules).map((record, index) => ({ domain: 'compatibility_rule', recordId: businessRecordIdFor(record, index), payload: record }))
+    ...arr(data.compatibilityRules).map((record, index) => ({ domain: 'compatibility_rule', recordId: businessRecordIdFor(record, index), payload: record })),
+    ...arr(data.certificationStandardsCatalog).map((record, index) => ({ domain: 'certification_standard', recordId: record.matrixRecordId || record.code || businessRecordIdFor(record, index), payload: record })),
+    ...arr(data.certificationClassProfiles).map((record, index) => ({ domain: 'certification_class_profile', recordId: record.id || businessRecordIdFor(record, index), payload: record })),
+    ...arr(data.productCertificationEvidence).map((record, index) => ({ domain: 'certification_evidence', recordId: businessRecordIdFor(record, index), payload: record }))
   ].filter(item => item.recordId && item.payload && typeof item.payload === 'object');
   const settings = {
     market_price_settings: {
@@ -1331,6 +1341,7 @@ function applyPermissions() {
   if (pdfBtn) pdfBtn.style.display = canPerformAction(state.permission, 'quotes', 'download') ? '' : 'none';
   lockResourceView('view-quotation', 'quotes');
   lockResourceView('view-database', 'products');
+  lockResourceView('view-engineering', 'products');
   lockResourceView('view-inventory', 'inventory');
   lockResourceView('view-transport', 'transport');
   lockResourceView('view-costcalc', 'quoteSettings');

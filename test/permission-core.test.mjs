@@ -33,11 +33,16 @@ test('tab permissions follow the responsibility-based matrix', () => {
   const visitor = getDefaultPermissionSnapshot('read_only');
 
   assert.equal(canAccessTab(admin, 'admin'), true);
+  assert.equal(canAccessTab(admin, 'engineering'), true);
   assert.equal(canAccessTab(sales, 'quotation'), true);
+  assert.equal(canAccessTab(sales, 'engineering'), false);
   assert.equal(canAccessTab(sales, 'inventory'), false);
   assert.equal(canAccessTab(supply, 'inventory'), true);
+  assert.equal(canAccessTab(supply, 'engineering'), false);
   assert.equal(canAccessTab(supply, 'quotation'), false);
+  assert.equal(canAccessTab(getDefaultPermissionSnapshot('operation_management'), 'engineering'), true);
   assert.equal(canAccessTab(auditor, 'costcalc'), true);
+  assert.equal(canAccessTab(auditor, 'engineering'), false);
   assert.equal(canAccessTab(visitor, 'quotation'), true);
 });
 

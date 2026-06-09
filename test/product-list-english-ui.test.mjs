@@ -406,6 +406,185 @@ test('product master v3 import export includes sourcing and compatibility matrix
   });
 });
 
+test('product certification v4 defines class profiles standards catalog and evidence helpers', () => {
+  [
+    'let certificationStandardsCatalog = []',
+    'let certificationClassProfiles = []',
+    'let productCertificationEvidence = []',
+    'CERTIFICATION_STANDARDS_CATALOG_DEFAULTS',
+    'CERTIFICATION_CLASS_PROFILES_DEFAULTS',
+    'function normalizeCertificationStandard(record = {})',
+    'function normalizeCertificationClassProfile(profile = {})',
+    'function normalizeProductCertificationEvidence(record = {})',
+    'function getCertificationChecklistForClass(classId)',
+    'function getProductCertificationEvidence(productId)',
+    'function getProductCertificationV4Status(product, classId',
+    "matrixRecordId: 'INV-005'",
+    "standardRequirement: 'IEC 61683'",
+    "evidenceType: 'Test Report'",
+    "matrixRecordId: 'BESS-020'",
+    "standardRequirement: 'UL 9540'",
+    "matrixRecordId: 'BESS-012'",
+    "standardRequirement: 'UL 9540A or authority-accepted fire test path'",
+    "standardRequirement: 'SIRIM Product Certification'",
+    "requirementLevel: 'Utility Preferred'"
+  ].forEach((text) => {
+    assert.equal(html.includes(text), true, `Missing Product Certification V4 catalog/evidence logic: ${text}`);
+  });
+});
+
+test('product certification v4 class profiles encode class A-E conditions and class C grid N/A rules', () => {
+  [
+    "id: 'class_a'",
+    "label: 'Class A Grid-Tied PV'",
+    "id: 'class_b'",
+    "label: 'Class B Hybrid PV+BESS'",
+    "id: 'class_c'",
+    "label: 'Class C Off-Grid'",
+    "id: 'class_d'",
+    "label: 'Class D Utility Solar'",
+    "id: 'class_e'",
+    "label: 'Class E Utility BESS'",
+    'gridConnected: false',
+    'gridFormingRequired: true',
+    'gensetIntegrationRequired: true',
+    "notApplicableStandards: ['IEC 61727', 'IEC 62116', 'IEEE 1547']",
+    'isCertificationStandardApplicableToClass'
+  ].forEach((text) => {
+    assert.equal(html.includes(text), true, `Missing V4 class profile condition: ${text}`);
+  });
+});
+
+test('product certification matrix selector replaces legacy country requirements UI', () => {
+  const productModal = snippetBetween('<div id="modal"', '<div id="inventory-modal"');
+  [
+    'Apply Default',
+    'Refresh Defaults',
+    'id="m-cert-country-list"',
+    'm-cert-country',
+    'Malaysia',
+    'United States',
+    'European Union',
+    'United Kingdom',
+    'Australia',
+    'onCertificationCountryChange',
+    'renderCertificationCountryChoices',
+    'CERTIFICATION_COUNTRIES'
+  ].forEach((text) => {
+    assert.equal(productModal.includes(text) || html.includes(`const ${text}`), false, `Legacy certification country UI still exists: ${text}`);
+  });
+
+  [
+    'Certification Matrix',
+    'id="m-cert-matrix-summary"',
+    'openProductCertificationMatrix',
+    'id="certification-matrix-modal"',
+    'id="cert-matrix-search"',
+    'id="cert-matrix-level-filter"',
+    'id="cert-matrix-project-filter"',
+    'id="cert-matrix-evidence-filter"',
+    'id="cert-matrix-list"',
+    'saveProductCertificationMatrix'
+  ].forEach((text) => {
+    assert.equal(productModal.includes(text) || html.includes(text), true, `Missing certification matrix selector surface: ${text}`);
+  });
+});
+
+test('product certification matrix catalog uses xlsx record ids and evidence fields', () => {
+  [
+    "matrixRecordId: 'PV-001'",
+    "standardRequirement: 'IEC 61215 series'",
+    "matrixRecordId: 'INV-005'",
+    "standardRequirement: 'IEC 61683'",
+    "evidenceType: 'Test Report'",
+    "matrixRecordId: 'BESS-020'",
+    "standardRequirement: 'UL 9540'",
+    "matrixRecordId: 'BESS-012'",
+    "standardRequirement: 'UL 9540A or authority-accepted fire test path'",
+    "matrixRecordId: 'PV-015'",
+    "requirementLevel: 'Utility Preferred'",
+    'productCertificationEvidence',
+    'matrixRecordId',
+    'certificateNo',
+    'reportNo',
+    'testingLaboratory',
+    'officialRegistrySourceUrl',
+    'documentLink',
+    'verificationStatus'
+  ].forEach((text) => {
+    assert.equal(html.includes(text), true, `Missing xlsx certification matrix field: ${text}`);
+  });
+});
+
+test('engineering workspace is a top-level tab instead of a database panel', () => {
+  const nav = snippetBetween('<nav class="app-shell-nav flex">', '</nav>');
+  const databaseTab = mainSnippet('<main id="view-database"');
+  const engineeringTab = mainSnippet('<main id="view-engineering"');
+  [
+    'id="tab-engineering"',
+    "switchTab('engineering')",
+    'Engineering Workspace'
+  ].forEach((text) => {
+    assert.equal(nav.includes(text) || html.includes(text), true, `Missing Engineering top-level navigation: ${text}`);
+  });
+  assert.equal(databaseTab.includes('id="class-selection-panel"'), false, 'Class Product Selection should not remain inside Database tab');
+  [
+    'Class Product Selection',
+    'id="class-selection-panel"',
+    'id="cert-class-tabs"',
+    'id="cert-class-condition-card"',
+    'id="cert-class-product-stack"',
+    'id="cert-class-checklist"',
+    'id="cert-class-capacity-filter"',
+    'id="cert-class-outdoor-filter"',
+    'id="cert-class-grid-discharge-filter"',
+    'setCertificationClassSelection',
+    'renderCertificationClassWorkspace',
+    'PV Module',
+    'Inverter / PCS',
+    'Battery',
+    'ESS',
+    'BOS'
+  ].forEach((text) => {
+    assert.equal(engineeringTab.includes(text) || html.includes(text), true, `Missing Engineering Class Selection UI: ${text}`);
+  });
+});
+
+test('product certification v4 updates product master role columns to status and gap summaries', () => {
+  [
+    "classFit",
+    "missingEvidence",
+    "certificationV4Status",
+    "columns: ['id', 'name', 'category', 'classFit', 'technicalSummary', 'compatibilityStatus', 'certificationV4Status', 'missingEvidence', 'technicalFit', 'actions']",
+    "certificationV4Status: { key: 'certificationV4Status', label: 'Certification Status'",
+    "missingEvidence: { key: 'missingEvidence', label: 'Missing Evidence'",
+    "classFit: { key: 'classFit', label: 'Class Fit'"
+  ].forEach((text) => {
+    assert.equal(html.includes(text), true, `Missing V4 Product Master certification role column: ${text}`);
+  });
+});
+
+test('product certification v4 import export includes standards and evidence sheets', () => {
+  [
+    "'Certification Standards'",
+    "'Certification Evidence'",
+    "'Record ID'",
+    "'Standard / Requirement'",
+    "'Evidence Type'",
+    "'Applicability Condition'",
+    "'Official / Registry Source URL'",
+    "'Document Link'",
+    "'Product ID'",
+    "'Verification Status'",
+    'importCertificationEvidenceData',
+    'processCertificationEvidenceImport()',
+    "XLSX.utils.book_append_sheet(workbook, standardsWorksheet, 'Certification Standards')",
+    "XLSX.utils.book_append_sheet(workbook, evidenceWorksheet, 'Certification Evidence')"
+  ].forEach((text) => {
+    assert.equal(html.includes(text), true, `Missing V4 certification import/export surface: ${text}`);
+  });
+});
+
 test('supplier master v4 exposes brand channel partners and a channel partner table', () => {
   const databaseTab = mainSnippet('<main id="view-database"');
   const supplierModal = snippetBetween('<div id="supplier-modal"', '<div id="modal"');

@@ -26,6 +26,9 @@ const BUSINESS_DOMAIN_PERMISSIONS = {
   transport: 'transport',
   market_price: 'priceList',
   compatibility_rule: 'products',
+  certification_standard: 'products',
+  certification_class_profile: 'products',
+  certification_evidence: 'products',
   saved_quote: 'quotes'
 };
 const BUSINESS_SETTINGS_KEYS = new Set([
@@ -1169,6 +1172,9 @@ export function businessSnapshotToItems(data = {}, quotes = []) {
     ...arr(data.transportRecords).map(record => ({ domain: 'transport', recordId: recordIdFor(record), payload: record })),
     ...arr(data.marketPrices?.records).map(record => ({ domain: 'market_price', recordId: recordIdFor(record), payload: record })),
     ...arr(data.compatibilityRules).map(record => ({ domain: 'compatibility_rule', recordId: recordIdFor(record), payload: record })),
+    ...arr(data.certificationStandardsCatalog).map(record => ({ domain: 'certification_standard', recordId: record.matrixRecordId || record.code || recordIdFor(record), payload: record })),
+    ...arr(data.certificationClassProfiles).map(record => ({ domain: 'certification_class_profile', recordId: recordIdFor(record), payload: record })),
+    ...arr(data.productCertificationEvidence).map(record => ({ domain: 'certification_evidence', recordId: recordIdFor(record), payload: record })),
     ...arr(quotes).map(record => ({ domain: 'saved_quote', recordId: recordIdFor(record), payload: record }))
   ].filter(item => item.recordId);
   const settings = {
@@ -1197,6 +1203,9 @@ export function buildBusinessBootstrapPayload(rows = [], settings = {}) {
     transport: [],
     market_price: [],
     compatibility_rule: [],
+    certification_standard: [],
+    certification_class_profile: [],
+    certification_evidence: [],
     saved_quote: []
   };
   const updatedAt = {};
@@ -1236,6 +1245,9 @@ export function buildBusinessBootstrapPayload(rows = [], settings = {}) {
       historicalInventory: bucket.historical_inventory,
       transportRecords: bucket.transport,
       compatibilityRules: bucket.compatibility_rule,
+      certificationStandardsCatalog: bucket.certification_standard,
+      certificationClassProfiles: bucket.certification_class_profile,
+      productCertificationEvidence: bucket.certification_evidence,
       marketPrices: {
         records: bucket.market_price,
         categoryUnits: settings.market_price_settings?.categoryUnits || {},

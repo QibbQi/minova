@@ -93,6 +93,14 @@ export function mergeState(remote, local) {
     inventoryHistory: [],
     suppliers: mergeByKey(rData.suppliers, lData.suppliers, supplierMergeKey),
     compatibilityRules: mergeByKey(rData.compatibilityRules, lData.compatibilityRules, stableRecordKey),
+    certificationStandardsCatalog: mergeByKey(rData.certificationStandardsCatalog, lData.certificationStandardsCatalog, (record, index) => {
+      const matrixRecordId = String(record?.matrixRecordId || '').trim()
+      if (matrixRecordId) return `matrix:${matrixRecordId}`
+      const code = String(record?.code || '').trim()
+      return code ? `code:${code}` : stableRecordKey(record, index)
+    }),
+    certificationClassProfiles: mergeByKey(rData.certificationClassProfiles, lData.certificationClassProfiles, stableRecordKey),
+    productCertificationEvidence: mergeByKey(rData.productCertificationEvidence, lData.productCertificationEvidence, stableRecordKey),
     marketPrices: mergeMarketPrices(rData.marketPrices, lData.marketPrices),
     salesRecords: mergeByKey(rData.salesRecords, lData.salesRecords, stableRecordKey),
     historicalInventory: mergeByKey(rData.historicalInventory, lData.historicalInventory, stableRecordKey),

@@ -50,6 +50,7 @@ export const ALL_TABS = [
   'pvcalc',
   'costcalc',
   'database',
+  'engineering',
   'pricelist',
   'inventory',
   'transport',
@@ -88,7 +89,7 @@ const ROLE_TABS = {
   sales: ['quotation', 'pvcalc', 'pricelist'],
   sales_management: ['quotation', 'pvcalc', 'pricelist', 'admin'],
   supply_chain: ['database', 'inventory', 'transport', 'pricelist'],
-  operation_management: ['database', 'inventory', 'transport'],
+  operation_management: ['database', 'engineering', 'inventory', 'transport'],
   price_auditor: ['quotation', 'costcalc', 'pricelist', 'admin'],
   read_only: ['quotation', 'pvcalc', 'pricelist']
 };

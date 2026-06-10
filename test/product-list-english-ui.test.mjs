@@ -375,6 +375,9 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'id="engineering-detail-template-add-product"',
     'id="engineering-detail-template-reuse-product"',
     'id="engineering-detail-template-preview-save"',
+    'mt-5 grid grid-cols-1 gap-4',
+    'sm:grid-cols-[minmax(0,1fr)_auto_auto]',
+    'whitespace-nowrap min-w-[96px]',
     'Product mode',
     'Detail mode'
   ].forEach((text) => {
@@ -515,6 +518,7 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'Search Product',
     'data-engineering-detail-value-options',
     'list="${htmlSafe(datalistId)}"',
+    'renderEngineeringProductMasterDetailBulkList(template);',
     "products.filter(product => normalizeProductCategory(product.category, '') === category)",
     'Choose a product and fill the current data range.',
     'Select existing field',
@@ -538,6 +542,7 @@ test('engineering workspace exposes certification matrix filters and seeded cata
   assert.equal(html.includes('Save Edit'), false, 'Edit Field should expose Save Name instead of a generic replacement save');
   assert.equal(html.includes('Import Excel Preview'), false, 'Detail mode should not expose the Excel preview button');
   assert.equal(html.includes('id="engineering-detail-import-file"'), false, 'Detail mode should not keep the Excel preview file input');
+  assert.equal(html.includes('xl:grid-cols-[0.9fr_1.5fr]'), false, 'Detail mode should stack Field Template above Bulk Product Maintenance to avoid squeezed controls');
 });
 
 test('engineering product master detail mode keeps template state and import preview separate from product schema', () => {

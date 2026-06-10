@@ -2732,20 +2732,20 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             </select>
                         </div>
                     </div>
-                    <div class="mt-5 grid grid-cols-1 xl:grid-cols-[0.9fr_1.5fr] gap-4">
+                    <div class="mt-5 grid grid-cols-1 gap-4">
                         <div class="rounded-2xl border border-slate-200 overflow-hidden">
-                            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 border-b border-slate-100 px-4 py-3">
+                            <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3 border-b border-slate-100 px-4 py-3">
                                 <div>
                                     <div class="text-sm font-black text-slate-700">Field Template</div>
                                     <div class="text-[11px] text-slate-400">Add / Edit / Delete selected details.</div>
                                 </div>
-                                <div class="flex flex-col sm:flex-row gap-2 sm:items-center">
-                                    <select id="engineering-detail-template-field-picker" class="min-w-[210px] border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none bg-white focus:border-purple-500">
+                                <div class="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_auto] gap-2 sm:items-center w-full xl:max-w-3xl">
+                                    <select id="engineering-detail-template-field-picker" class="min-w-0 w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none bg-white focus:border-purple-500">
                                         <option value="">Select existing field</option>
                                     </select>
-                                    <input id="engineering-detail-template-field-label-editor" type="text" placeholder="Field display name" class="hidden min-w-[210px] border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none bg-white focus:border-purple-500">
-                                    <button id="engineering-detail-template-add-field" type="button" data-engineering-action="edit" onclick="addProductMasterDetailTemplateField()" class="rounded-xl bg-purple-700 px-3 py-2 text-xs font-black text-white hover:bg-purple-800">Add Field</button>
-                                    <button id="engineering-detail-template-cancel-edit" type="button" onclick="cancelProductMasterDetailTemplateFieldEdit()" class="hidden rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-500 hover:bg-slate-50">Cancel</button>
+                                    <input id="engineering-detail-template-field-label-editor" type="text" placeholder="Field display name" class="hidden min-w-0 w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none bg-white focus:border-purple-500">
+                                    <button id="engineering-detail-template-add-field" type="button" data-engineering-action="edit" onclick="addProductMasterDetailTemplateField()" class="rounded-xl bg-purple-700 px-3 py-2 text-xs font-black text-white hover:bg-purple-800 whitespace-nowrap min-w-[96px]">Add Field</button>
+                                    <button id="engineering-detail-template-cancel-edit" type="button" onclick="cancelProductMasterDetailTemplateFieldEdit()" class="hidden rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-500 hover:bg-slate-50 whitespace-nowrap min-w-[96px]">Cancel</button>
                                 </div>
                             </div>
                             <div id="engineering-detail-template-fields" class="divide-y divide-slate-50">
@@ -7447,6 +7447,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             labelEditor.select();
             if (button) button.textContent = 'Save Name';
             if (cancel) cancel.classList.remove('hidden');
+            renderEngineeringProductMasterDetailBulkList(template);
         }
         window.beginProductMasterDetailTemplateFieldEdit = beginProductMasterDetailTemplateFieldEdit;
         function renderEngineeringProductMasterDetailFields(template) {

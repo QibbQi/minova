@@ -2680,6 +2680,7 @@
             labelEditor.select();
             if (button) button.textContent = 'Save Name';
             if (cancel) cancel.classList.remove('hidden');
+            renderEngineeringProductMasterDetailBulkList(template);
         }
         window.beginProductMasterDetailTemplateFieldEdit = beginProductMasterDetailTemplateFieldEdit;
         function renderEngineeringProductMasterDetailFields(template) {

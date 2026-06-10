@@ -2742,24 +2742,35 @@
             const choices = Array.from(new Set([...options, value].map(option => String(option ?? '').trim()).filter(Boolean)));
             const inputId = `engineering-detail-bulk-${productMasterDetailSafeDomId(`${template.id || 'template'}-${product.id || 'product'}-${fieldKey}`)}`;
             const commonAttrs = `data-engineering-detail-product="${htmlSafe(product.id || '')}" data-engineering-detail-field="${htmlSafe(fieldKey)}" data-engineering-detail-template-field="${htmlSafe(fieldKey)}" data-engineering-detail-value-options="${htmlSafe(datalistId)}"`;
-            const input = `<input id="${htmlSafe(inputId)}" ${commonAttrs} list="${htmlSafe(datalistId)}" value="${htmlSafe(value)}" ${disabled ? 'disabled' : ''} class="w-full min-w-[160px] border border-slate-200 rounded-lg px-2 py-2 text-xs outline-none focus:border-purple-500 ${disabled ? 'bg-slate-50 text-slate-400' : 'bg-white'}">`;
+            const input = `<input id="${htmlSafe(inputId)}" ${commonAttrs} list="${htmlSafe(datalistId)}" value="${htmlSafe(value)}" ${disabled ? 'disabled' : ''} class="w-full min-w-[160px] border border-slate-200 rounded-lg px-2 py-2 ${choices.length && !disabled ? 'pr-8' : ''} text-xs outline-none focus:border-purple-500 ${disabled ? 'bg-slate-50 text-slate-400' : 'bg-white'}">`;
             if (!disabled && choices.length) {
-                return `<div class="flex min-w-[220px] gap-2">
+                return `<div class="relative min-w-[220px]">
                     ${input}
-                    <select data-engineering-detail-history-target="${htmlSafe(inputId)}" onchange="applyProductMasterDetailBulkHistoryValue(this)" class="w-24 shrink-0 border border-slate-200 rounded-lg px-2 py-2 text-xs font-bold outline-none focus:border-purple-500 bg-white">
-                        <option value="">History</option>
-                        ${choices.map(choice => `<option value="${htmlSafe(choice)}">${htmlSafe(choice)}</option>`).join('')}
-                    </select>
+                    <button type="button" data-engineering-detail-history-target="${htmlSafe(inputId)}" onclick="toggleProductMasterDetailBulkHistoryMenu(this)" title="Show history values" class="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 rounded-md text-[10px] font-black text-slate-500 hover:bg-slate-100">v</button>
+                    <div data-engineering-detail-history-menu="${htmlSafe(inputId)}" class="hidden absolute right-0 top-full z-30 mt-1 max-h-44 min-w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl">
+                        ${choices.map(choice => `<button type="button" data-engineering-detail-history-target="${htmlSafe(inputId)}" data-engineering-detail-history-value="${htmlSafe(choice)}" onclick="applyProductMasterDetailBulkHistoryValue(this)" class="block w-full px-3 py-2 text-left text-xs font-bold text-slate-600 hover:bg-slate-50">${htmlSafe(choice)}</button>`).join('')}
+                    </div>
                 </div>`;
             }
             return input;
         }
-        function applyProductMasterDetailBulkHistoryValue(select) {
-            const target = document.getElementById(select?.dataset?.engineeringDetailHistoryTarget || '');
-            if (!target || !select?.value) return;
-            target.value = select.value;
+        function toggleProductMasterDetailBulkHistoryMenu(button) {
+            const targetId = button?.dataset?.engineeringDetailHistoryTarget || '';
+            const menu = document.querySelector(`[data-engineering-detail-history-menu="${CSS.escape(targetId)}"]`);
+            if (!menu) return;
+            document.querySelectorAll('[data-engineering-detail-history-menu]').forEach(item => {
+                if (item !== menu) item.classList.add('hidden');
+            });
+            menu.classList.toggle('hidden');
+        }
+        window.toggleProductMasterDetailBulkHistoryMenu = toggleProductMasterDetailBulkHistoryMenu;
+        function applyProductMasterDetailBulkHistoryValue(button) {
+            const target = document.getElementById(button?.dataset?.engineeringDetailHistoryTarget || '');
+            const value = button?.dataset?.engineeringDetailHistoryValue || '';
+            if (!target || !value) return;
+            target.value = value;
             try { target.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) {}
-            select.value = '';
+            document.querySelectorAll('[data-engineering-detail-history-menu]').forEach(item => item.classList.add('hidden'));
         }
         window.applyProductMasterDetailBulkHistoryValue = applyProductMasterDetailBulkHistoryValue;
         function renderEngineeringProductMasterDetailBulkList(template) {

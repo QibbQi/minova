@@ -2082,6 +2082,19 @@
             documents: { label: 'Documents', master: ['datasheetLink', 'certificateLink'], technical: [], extra: ['documents'] }
         };
         const PRODUCT_MASTER_DETAIL_TEMPLATE_STORAGE_KEY = 'minova_product_master_detail_templates_v1';
+        const PRODUCT_MASTER_DETAIL_MASTER_FIELD_LABELS = {
+            model: 'Model',
+            brand: 'Brand',
+            series: 'Series',
+            application: 'Application',
+            voltageClass: 'Voltage Class',
+            phase: 'Phase',
+            status: 'Status',
+            countryAvailable: 'Country Available',
+            datasheetLink: 'Datasheet Link',
+            certificateLink: 'Certificate Link',
+            remark: 'Remark'
+        };
         function productMasterDetailTemplateId(category = '', detailGroup = '') {
             const cat = normalizeProductCategory(category || 'PV Module', 'PV Module');
             const group = String(detailGroup || 'basic').trim() || 'basic';
@@ -2133,10 +2146,26 @@
         function productMasterDetailFieldLabel(key = '') {
             const fieldKey = String(key || '').trim();
             try {
-                if (PRODUCT_MASTER_COMMON_FIELDS?.[fieldKey]?.label) return PRODUCT_MASTER_COMMON_FIELDS[fieldKey].label;
+                if (PRODUCT_MASTER_DETAIL_MASTER_FIELD_LABELS[fieldKey]) return PRODUCT_MASTER_DETAIL_MASTER_FIELD_LABELS[fieldKey];
                 if (PRODUCT_MASTER_TECHNICAL_LABEL_BY_KEY?.[fieldKey]) return PRODUCT_MASTER_TECHNICAL_LABEL_BY_KEY[fieldKey];
             } catch (e) {}
             return fieldKey;
+        }
+        function productMasterDetailFieldOptions(category = '') {
+            const masterKeys = Object.keys(PRODUCT_MASTER_DETAIL_MASTER_FIELD_LABELS);
+            const techFields = (() => {
+                try { return getProductTechnicalSpecFieldsForCategory(category); } catch (e) { return []; }
+            })();
+            const rows = [
+                ...masterKeys.map(key => ({ key, label: PRODUCT_MASTER_DETAIL_MASTER_FIELD_LABELS[key], kind: 'masterData' })),
+                ...techFields.map(field => ({ key: field.id, label: field.label || field.id, kind: 'technicalSpecs' }))
+            ];
+            const seen = new Set();
+            return rows.filter(row => {
+                if (!row.key || seen.has(row.key)) return false;
+                seen.add(row.key);
+                return true;
+            });
         }
         function productMasterDetailFieldKind(category = '', key = '') {
             const fieldKey = String(key || '').trim();
@@ -2534,9 +2563,43 @@
             const detailGroup = document.getElementById('engineering-detail-template-group')?.value || 'basic';
             return getProductMasterDetailTemplate(category, detailGroup);
         }
+        function resetProductMasterDetailFieldPicker(template = currentProductMasterDetailTemplate()) {
+            const picker = document.getElementById('engineering-detail-template-field-picker');
+            const button = document.getElementById('engineering-detail-template-add-field');
+            const cancel = document.getElementById('engineering-detail-template-cancel-edit');
+            if (!picker) return;
+            picker.dataset.editFieldKey = '';
+            const selected = new Set(template.fieldKeys || []);
+            const options = productMasterDetailFieldOptions(template.category);
+            picker.innerHTML = '<option value="">Select existing field</option>' + options
+                .map(option => `<option value="${htmlSafe(option.key)}" ${selected.has(option.key) ? 'disabled' : ''}>${htmlSafe(option.label)} · ${htmlSafe(option.kind)}</option>`)
+                .join('');
+            picker.value = '';
+            if (button) button.textContent = 'Add Field';
+            if (cancel) cancel.classList.add('hidden');
+        }
+        window.cancelProductMasterDetailTemplateFieldEdit = () => resetProductMasterDetailFieldPicker();
+        function beginProductMasterDetailTemplateFieldEdit(fieldKey = '') {
+            if (!canManageEngineeringRecord('edit')) return alert('No engineering edit permission.');
+            const template = currentProductMasterDetailTemplate();
+            const picker = document.getElementById('engineering-detail-template-field-picker');
+            const button = document.getElementById('engineering-detail-template-add-field');
+            const cancel = document.getElementById('engineering-detail-template-cancel-edit');
+            if (!picker) return;
+            const options = productMasterDetailFieldOptions(template.category);
+            picker.innerHTML = '<option value="">Choose replacement field</option>' + options
+                .map(option => `<option value="${htmlSafe(option.key)}">${htmlSafe(option.label)} · ${htmlSafe(option.kind)}</option>`)
+                .join('');
+            picker.value = fieldKey;
+            picker.dataset.editFieldKey = fieldKey;
+            if (button) button.textContent = 'Save Edit';
+            if (cancel) cancel.classList.remove('hidden');
+        }
+        window.beginProductMasterDetailTemplateFieldEdit = beginProductMasterDetailTemplateFieldEdit;
         function renderEngineeringProductMasterDetailFields(template) {
             const box = document.getElementById('engineering-detail-template-fields');
             if (!box) return;
+            resetProductMasterDetailFieldPicker(template);
             const required = new Set(template.requiredFieldKeys || []);
             box.innerHTML = (template.fieldKeys || []).map(key => {
                 const kind = productMasterDetailFieldKind(template.category, key);
@@ -2549,7 +2612,7 @@
                         <label class="inline-flex items-center gap-1 text-[10px] font-black text-slate-500">
                             <input type="checkbox" ${required.has(key) ? 'checked' : ''} onchange="toggleProductMasterDetailTemplateRequired('${htmlSafe(key)}', this.checked)" class="h-4 w-4 accent-purple-700"> Required
                         </label>
-                        <button type="button" data-engineering-action="edit" onclick="editProductMasterDetailTemplateField('${htmlSafe(key)}')" class="text-xs font-black text-purple-700 hover:underline">Edit</button>
+                        <button type="button" data-engineering-action="edit" onclick="beginProductMasterDetailTemplateFieldEdit('${htmlSafe(key)}')" class="text-xs font-black text-purple-700 hover:underline">Edit</button>
                         <button type="button" data-engineering-action="delete" onclick="deleteProductMasterDetailTemplateField('${htmlSafe(key)}')" class="text-xs font-black text-red-600 hover:underline">Delete</button>
                     </div>
                 </div>`;
@@ -2596,25 +2659,23 @@
         function addProductMasterDetailTemplateField() {
             if (!canManageEngineeringRecord('edit')) return alert('No engineering edit permission.');
             const template = currentProductMasterDetailTemplate();
-            const fieldKey = String(prompt('Enter an existing field key to add to this template:', '') || '').trim();
+            const picker = document.getElementById('engineering-detail-template-field-picker');
+            const editFieldKey = String(picker?.dataset?.editFieldKey || '').trim();
+            const fieldKey = String(picker?.value || '').trim();
             if (!fieldKey) return;
-            if ((template.fieldKeys || []).includes(fieldKey)) return alert('This field is already in the template.');
-            const next = saveProductMasterDetailTemplate({ ...template, fieldKeys: [...(template.fieldKeys || []), fieldKey], updatedAt: new Date().toISOString() });
+            if (!editFieldKey && (template.fieldKeys || []).includes(fieldKey)) return alert('This field is already in the template.');
+            const fieldKeys = editFieldKey
+                ? (template.fieldKeys || []).map(key => key === editFieldKey ? fieldKey : key)
+                : [...(template.fieldKeys || []), fieldKey];
+            const requiredFieldKeys = editFieldKey
+                ? (template.requiredFieldKeys || []).map(key => key === editFieldKey ? fieldKey : key)
+                : template.requiredFieldKeys || [];
+            const next = saveProductMasterDetailTemplate({ ...template, fieldKeys, requiredFieldKeys, updatedAt: new Date().toISOString() });
             renderEngineeringProductMasterDetailMode();
             return next;
         }
         window.addProductMasterDetailTemplateField = addProductMasterDetailTemplateField;
-        function editProductMasterDetailTemplateField(fieldKey = '') {
-            if (!canManageEngineeringRecord('edit')) return alert('No engineering edit permission.');
-            const template = currentProductMasterDetailTemplate();
-            const nextKey = String(prompt('Edit field key. Use an existing masterData or technicalSpecs key:', fieldKey) || '').trim();
-            if (!nextKey || nextKey === fieldKey) return;
-            const fieldKeys = (template.fieldKeys || []).map(key => key === fieldKey ? nextKey : key);
-            const requiredFieldKeys = (template.requiredFieldKeys || []).map(key => key === fieldKey ? nextKey : key);
-            saveProductMasterDetailTemplate({ ...template, fieldKeys, requiredFieldKeys, updatedAt: new Date().toISOString() });
-            renderEngineeringProductMasterDetailMode();
-        }
-        window.editProductMasterDetailTemplateField = editProductMasterDetailTemplateField;
+        window.editProductMasterDetailTemplateField = beginProductMasterDetailTemplateFieldEdit;
         function toggleProductMasterDetailTemplateRequired(fieldKey = '', checked = false) {
             if (!canManageEngineeringRecord('edit')) return;
             const template = currentProductMasterDetailTemplate();

@@ -367,7 +367,9 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'id="engineering-detail-template-category"',
     'id="engineering-detail-template-group"',
     'id="engineering-detail-template-fields"',
+    'id="engineering-detail-template-field-picker"',
     'id="engineering-detail-template-add-field"',
+    'id="engineering-detail-template-cancel-edit"',
     'id="engineering-detail-template-bulk-list"',
     'id="engineering-detail-template-add-product"',
     'id="engineering-detail-template-reuse-product"',
@@ -435,6 +437,8 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'function setEngineeringProductMasterMode',
     'function renderEngineeringProductMasterDetailMode',
     'function saveProductMasterDetailTemplate',
+    'function resetProductMasterDetailFieldPicker',
+    'function beginProductMasterDetailTemplateFieldEdit',
     'function deleteProductMasterDetailTemplateField',
     'function openEngineeringDetailImportPreview',
     'function previewEngineeringProductMasterBulkSave',
@@ -480,10 +484,15 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     "persistEntityToD1('product_master_detail_template'",
     "deleteEntityFromD1('product_master_detail_template'",
     "localStorage.setItem('minova_product_master_detail_templates_v1'",
+    'Select existing field',
+    'Save Edit',
     'minova-data/certifications/products/${pid}/${safeRecordId}/${file.name}'
   ].forEach((text) => {
     assert.equal(html.includes(text), true, `Missing engineering workspace behavior: ${text}`);
   });
+
+  assert.equal(html.includes('Enter an existing field key to add to this template'), false, 'Add Field should not use the old prompt flow');
+  assert.equal(html.includes('Edit field key. Use an existing masterData or technicalSpecs key'), false, 'Edit Field should not use the old prompt flow');
 });
 
 test('engineering product master detail mode keeps template state and import preview separate from product schema', () => {

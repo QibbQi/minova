@@ -425,7 +425,7 @@ test('engineering workspace exposes certification matrix filters and seeded cata
   assert.equal(html.includes('id="engineering-detail-product-search-modal"'), true, 'Missing engineering detail product search modal');
   assert.equal(html.includes('id="engineering-detail-product-search-category"'), true, 'Missing engineering detail product search category filter');
   assert.equal(html.includes('id="engineering-detail-product-search-group"'), true, 'Missing engineering detail product search group filter');
-  assert.equal(html.includes('id="engineering-detail-product-search-query"'), true, 'Missing engineering detail product search query input');
+  assert.equal(html.includes('id="engineering-detail-product-search-criteria"'), true, 'Missing engineering detail product search criteria');
   assert.equal(html.includes('id="engineering-detail-product-search-results"'), true, 'Missing engineering detail product search results');
 
   ['A1', 'A2', 'B', 'C', 'D', 'E', 'Mandatory', 'Utility Preferred', 'International Finance Preferred', 'Optional', 'PV_MODULE', 'INVERTER', 'BATTERY'].forEach((text) => {
@@ -454,8 +454,12 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'function productMasterDetailFieldValueOptions',
     'function productMasterDetailFieldDatalistId',
     'function openEngineeringDetailProductSearch',
+    'function renderEngineeringDetailProductSearchCriteria',
+    'function readEngineeringDetailProductSearchFilters',
+    'function parseEngineeringDetailNumber',
+    'function productMatchesEngineeringDetailFilters',
+    'function searchEngineeringDetailProducts',
     'function renderEngineeringDetailProductSearchResults',
-    'function applyEngineeringDetailProductSearchSelection',
     'function closeEngineeringDetailProductSearch',
     'function deleteProductMasterDetailTemplateField',
     'function previewEngineeringProductMasterBulkSave',
@@ -527,8 +531,22 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'renderEngineeringProductMasterDetailBulkList(template);',
     "input.dataset.engineeringDetailProduct",
     "input.dataset.engineeringDetailTemplateField || input.dataset.engineeringDetailField",
-    "products.filter(product => normalizeProductCategory(product.category, '') === category)",
-    'Choose a product and fill the current data range.',
+    ".filter(product => normalizeProductCategory(product.category, '') === template.category)",
+    'Find products by selected detail fields, then add a match to Quotation Builder.',
+    'Matched Products',
+    'data-engineering-detail-search-field',
+    'data-engineering-detail-search-kind="number"',
+    'data-engineering-detail-search-min',
+    'data-engineering-detail-search-max',
+    'data-engineering-detail-search-value',
+    'Search Products',
+    'Add to Quotation Builder',
+    "productMatchesEngineeringDetailFilters(product, template, filters)",
+    "addEngineeringProductToQuote('${htmlSafe(product.id || '')}')",
+    "const match = String(value ?? '').replace(/,/g, '').match(/-?\\d+(?:\\.\\d+)?/)",
+    "if (min !== null && max !== null && min > max)",
+    "return filters.every(filter =>",
+    "filter.exact ? productText === target : productText.includes(target)",
     'Select existing field',
     '+ New Field',
     'customDetail',
@@ -548,6 +566,8 @@ test('engineering workspace exposes certification matrix filters and seeded cata
   assert.equal(html.includes('Edit field key. Use an existing masterData or technicalSpecs key'), false, 'Edit Field should not use the old prompt flow');
   assert.equal(html.includes('Choose replacement field'), false, 'Edit Field should rename the field label instead of replacing the field key');
   assert.equal(html.includes('Save Edit'), false, 'Edit Field should expose Save Name instead of a generic replacement save');
+  assert.equal(html.includes('Use Product Data'), false, 'Detail Search should not reuse product data into the bulk table');
+  assert.equal(html.includes('applyEngineeringDetailProductSearchSelection'), false, 'Detail Search should remove the old product reuse copy flow');
   assert.equal(html.includes('Import Excel Preview'), false, 'Detail mode should not expose the Excel preview button');
   assert.equal(html.includes('id="engineering-detail-import-file"'), false, 'Detail mode should not keep the Excel preview file input');
   assert.equal(html.includes('xl:grid-cols-[0.9fr_1.5fr]'), false, 'Detail mode should stack Field Template above Bulk Product Maintenance to avoid squeezed controls');

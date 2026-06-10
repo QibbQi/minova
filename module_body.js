@@ -2261,13 +2261,24 @@
             const defaults = getEngineeringQuoteDefaults();
             const source = document.getElementById('engineering-quote-source-default');
             const price = document.getElementById('engineering-quote-price-default');
+            const detailSource = document.getElementById('engineering-detail-quote-source-default');
+            const detailPrice = document.getElementById('engineering-detail-quote-price-default');
             if (source) source.value = defaults.source;
             if (price) price.value = defaults.priceType;
+            if (detailSource) detailSource.value = defaults.source;
+            if (detailPrice) detailPrice.value = defaults.priceType;
         }
         window.saveEngineeringQuoteDefaults = () => {
             const source = document.getElementById('engineering-quote-source-default')?.value === 'priceList' ? 'priceList' : 'inventory';
             const priceType = document.getElementById('engineering-quote-price-default')?.value || 'clearance_home';
             try { localStorage.setItem(MINOVA_ENGINEERING_QUOTE_DEFAULTS_KEY, JSON.stringify({ source, priceType })); } catch (e) {}
+            loadEngineeringQuoteDefaultsToUi();
+        };
+        window.saveEngineeringDetailQuoteDefaults = () => {
+            const source = document.getElementById('engineering-detail-quote-source-default')?.value === 'priceList' ? 'priceList' : 'inventory';
+            const priceType = document.getElementById('engineering-detail-quote-price-default')?.value || 'clearance_home';
+            try { localStorage.setItem(MINOVA_ENGINEERING_QUOTE_DEFAULTS_KEY, JSON.stringify({ source, priceType })); } catch (e) {}
+            loadEngineeringQuoteDefaultsToUi();
         };
         function syncEngineeringCertificationModeVisibility() {
             const standard = document.getElementById('engineering-standard-panel');
@@ -2878,15 +2889,14 @@
             const modal = document.getElementById('engineering-detail-product-search-modal');
             const categorySelect = document.getElementById('engineering-detail-product-search-category');
             const groupSelect = document.getElementById('engineering-detail-product-search-group');
-            const query = document.getElementById('engineering-detail-product-search-query');
             if (categorySelect) categorySelect.value = document.getElementById('engineering-detail-template-category')?.value || 'PV Module';
             if (groupSelect) groupSelect.value = document.getElementById('engineering-detail-template-group')?.value || 'basic';
-            if (query) query.value = '';
             if (modal) {
                 modal.classList.remove('hidden');
                 modal.classList.add('flex');
             }
-            renderEngineeringDetailProductSearchResults();
+            loadEngineeringQuoteDefaultsToUi();
+            renderEngineeringDetailProductSearchCriteria();
         }
         window.openEngineeringDetailProductSearch = openEngineeringDetailProductSearch;
         function closeEngineeringDetailProductSearch() {
@@ -2901,69 +2911,153 @@
             const detailGroup = document.getElementById('engineering-detail-product-search-group')?.value || 'basic';
             return getProductMasterDetailTemplate(category, detailGroup);
         }
-        function renderEngineeringDetailProductSearchResults() {
+        window.engineeringDetailProductSearchTemplate = engineeringDetailProductSearchTemplate;
+        function parseEngineeringDetailNumber(value = '') {
+            const match = String(value ?? '').replace(/,/g, '').match(/-?\d+(?:\.\d+)?/);
+            return match ? Number(match[0]) : NaN;
+        }
+        window.parseEngineeringDetailNumber = parseEngineeringDetailNumber;
+        function isEngineeringDetailNumberField(template = {}, fieldKey = '') {
+            const label = productMasterDetailTemplateFieldLabel(fieldKey, template);
+            const token = `${fieldKey} ${label}`.toLowerCase();
+            if (/\b(phase|status|country|brand|series|model|cooling|mounting|installation|indoor|outdoor|certificate|datasheet|remark)\b/.test(token)) return false;
+            if (/(kw|kwh|power|capacity|energy|efficiency|voltage|current|range|qty|quantity|weight|dimension|temperature|temp|mm|kg|%|\bw\b|\bv\b|\ba\b)/i.test(token)) return true;
+            const options = productMasterDetailFieldValueOptions(template, fieldKey);
+            return options.length > 0 && options.every(value => Number.isFinite(parseEngineeringDetailNumber(value)));
+        }
+        function renderEngineeringDetailProductSearchCriteria(template = engineeringDetailProductSearchTemplate()) {
+            const box = document.getElementById('engineering-detail-product-search-criteria');
+            const results = document.getElementById('engineering-detail-product-search-results');
+            if (!box) return;
+            const fields = template.fieldKeys || [];
+            box.innerHTML = fields.map(fieldKey => {
+                const label = productMasterDetailTemplateFieldLabel(fieldKey, template);
+                const safeKey = htmlSafe(fieldKey);
+                if (isEngineeringDetailNumberField(template, fieldKey)) {
+                    return `<div data-engineering-detail-search-field="${safeKey}" data-engineering-detail-search-kind="number" class="rounded-2xl border border-slate-200 p-3">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">${htmlSafe(label)}</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <input data-engineering-detail-search-min="${safeKey}" type="number" step="any" placeholder="Min" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-purple-500">
+                            <input data-engineering-detail-search-max="${safeKey}" type="number" step="any" placeholder="Max" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-purple-500">
+                        </div>
+                    </div>`;
+                }
+                const datalistId = `engineering-detail-search-options-${productMasterDetailSafeDomId(`${template.id || 'template'}-${fieldKey}`)}`;
+                const options = productMasterDetailFieldValueOptions(template, fieldKey);
+                return `<div data-engineering-detail-search-field="${safeKey}" data-engineering-detail-search-kind="text" class="rounded-2xl border border-slate-200 p-3">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">${htmlSafe(label)}</label>
+                    <input data-engineering-detail-search-value="${safeKey}" list="${htmlSafe(datalistId)}" placeholder="Any" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-purple-500">
+                    <datalist id="${htmlSafe(datalistId)}">${options.map(value => `<option value="${htmlSafe(value)}"></option>`).join('')}</datalist>
+                </div>`;
+            }).join('') || '<div class="md:col-span-2 rounded-2xl border border-dashed border-slate-200 p-4 text-center text-xs text-slate-400">No fields in this template yet.</div>';
+            if (results) results.innerHTML = '<div class="p-6 text-center text-xs text-slate-400">Fill detail conditions, then search products.</div>';
+        }
+        window.renderEngineeringDetailProductSearchCriteria = renderEngineeringDetailProductSearchCriteria;
+        function readEngineeringDetailProductSearchFilters() {
+            const filters = [];
+            let invalidMessage = '';
+            document.querySelectorAll('#engineering-detail-product-search-criteria [data-engineering-detail-search-field]').forEach(row => {
+                const fieldKey = row.dataset.engineeringDetailSearchField || '';
+                const kind = row.dataset.engineeringDetailSearchKind || 'text';
+                if (!fieldKey) return;
+                if (kind === 'number') {
+                    const minText = row.querySelector('[data-engineering-detail-search-min]')?.value || '';
+                    const maxText = row.querySelector('[data-engineering-detail-search-max]')?.value || '';
+                    if (!minText && !maxText) return;
+                    const min = minText ? Number(minText) : null;
+                    const max = maxText ? Number(maxText) : null;
+                    if ((minText && !Number.isFinite(min)) || (maxText && !Number.isFinite(max))) {
+                        invalidMessage = 'Please enter valid numeric ranges.';
+                        return;
+                    }
+                    if (min !== null && max !== null && min > max) {
+                        invalidMessage = 'Min value cannot be greater than Max value.';
+                        return;
+                    }
+                    filters.push({ fieldKey, kind, min, max });
+                    return;
+                }
+                const input = row.querySelector('[data-engineering-detail-search-value]');
+                const value = String(input?.value || '').trim();
+                if (!value) return;
+                const options = Array.from(row.querySelectorAll('datalist option')).map(option => String(option.value || '').trim().toLowerCase()).filter(Boolean);
+                filters.push({ fieldKey, kind: 'text', value, exact: options.includes(value.toLowerCase()) });
+            });
+            return { filters, invalidMessage };
+        }
+        window.readEngineeringDetailProductSearchFilters = readEngineeringDetailProductSearchFilters;
+        function productMatchesEngineeringDetailFilters(product = {}, template = {}, filters = []) {
+            return filters.every(filter => {
+                const raw = productMasterDetailValue(product, template.category, filter.fieldKey);
+                if (filter.kind === 'number') {
+                    const value = parseEngineeringDetailNumber(raw);
+                    if (!Number.isFinite(value)) return false;
+                    if (filter.min !== null && value < filter.min) return false;
+                    if (filter.max !== null && value > filter.max) return false;
+                    return true;
+                }
+                const productText = String(raw ?? '').trim().toLowerCase();
+                const target = String(filter.value ?? '').trim().toLowerCase();
+                if (!target || !productText) return false;
+                return filter.exact ? productText === target : productText.includes(target);
+            });
+        }
+        window.productMatchesEngineeringDetailFilters = productMatchesEngineeringDetailFilters;
+        function renderEngineeringDetailProductSearchResults(matches = [], template = engineeringDetailProductSearchTemplate(), filters = []) {
             const box = document.getElementById('engineering-detail-product-search-results');
             if (!box) return;
-            const template = engineeringDetailProductSearchTemplate();
-            const category = template.category;
-            const query = String(document.getElementById('engineering-detail-product-search-query')?.value || '').trim().toLowerCase();
             const fields = template.fieldKeys || [];
-            const rows = products.filter(product => normalizeProductCategory(product.category, '') === category)
-                .filter(product => {
-                    if (!query) return true;
-                    const haystack = [
-                        product.id,
-                        product.name,
-                        product.vendor,
-                        product.supplierCode,
-                        ...fields.map(fieldKey => productMasterDetailValue(product, category, fieldKey))
-                    ].join(' ').toLowerCase();
-                    return haystack.includes(query);
-                });
-            if (!rows.length) {
-                box.innerHTML = '<div class="p-6 text-center text-xs text-slate-400">No matching products for this category and data range.</div>';
+            if (!filters.length) {
+                box.innerHTML = '<div class="p-6 text-center text-xs text-slate-400">Fill at least one detail condition, then search products.</div>';
                 return;
             }
-            box.innerHTML = rows.map(product => {
-                const filled = fields.filter(fieldKey => productMasterDetailValuePresent(productMasterDetailValue(product, category, fieldKey))).length;
-                const preview = fields.slice(0, 4).map(fieldKey => {
-                    const value = productMasterDetailValue(product, category, fieldKey);
+            if (!matches.length) {
+                box.innerHTML = '<div class="p-8 text-center"><div class="text-sm font-black text-slate-700">Unable to find products matching every selected detail condition.</div><div class="mt-2 text-xs text-slate-400">Adjust category, details group, or numeric range.</div></div>';
+                return;
+            }
+            box.innerHTML = matches.map(product => {
+                const stock = getTotalStockQty(product.id);
+                const firstBatch = getFifoBatchesForProduct(product.id)[0];
+                const supplier = getProductSupplierDisplay(product);
+                const previewFields = filters.map(filter => filter.fieldKey).concat(fields).filter((fieldKey, index, list) => list.indexOf(fieldKey) === index).slice(0, 5);
+                const preview = previewFields.map(fieldKey => {
+                    const value = productMasterDetailValue(product, template.category, fieldKey);
                     return value ? `${productMasterDetailTemplateFieldLabel(fieldKey, template)}: ${value}` : '';
                 }).filter(Boolean).join(' · ');
-                return `<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-4">
+                return `<div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 p-4">
                     <div class="min-w-0">
-                        <div class="text-sm font-black text-slate-800">${htmlSafe(product.id || '-')} <span class="text-xs text-slate-400">${htmlSafe(productListDisplayText(product.name))}</span></div>
-                        <div class="text-[11px] text-slate-400 mt-1">${filled}/${fields.length} fields filled${preview ? ` · ${htmlSafe(preview)}` : ''}</div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="font-black text-slate-800">${htmlSafe(product.id || '-')}</span>
+                            <span class="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black text-slate-500">${htmlSafe(normalizeProductCategory(product.category || '-'))}</span>
+                            <span class="rounded-full ${stock > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'} px-2 py-1 text-[10px] font-black">Stock ${formatNumberAuto(stock, 4)}</span>
+                        </div>
+                        <div class="mt-1 text-sm font-bold text-slate-700 truncate">${htmlSafe(productListDisplayText(product.name))}</div>
+                        <div class="text-[11px] text-slate-400 truncate">${htmlSafe(supplier)} · ${firstBatch ? `FIFO ${htmlSafe(firstBatch.batchNo || '-')}` : 'No active batch'}${preview ? ` · ${htmlSafe(preview)}` : ''}</div>
                     </div>
-                    <button type="button" data-engineering-action="edit" onclick="applyEngineeringDetailProductSearchSelection('${htmlSafe(product.id || '')}')" class="rounded-xl bg-purple-700 px-3 py-2 text-xs font-black text-white hover:bg-purple-800">Use Product Data</button>
+                    <button type="button" data-engineering-action="quote-add" onclick="addEngineeringProductToQuote('${htmlSafe(product.id || '')}')" class="rounded-xl bg-purple-700 px-4 py-2 text-xs font-black text-white hover:bg-purple-800">Add to Quotation Builder</button>
                 </div>`;
             }).join('');
             applyEngineeringPermissions();
         }
         window.renderEngineeringDetailProductSearchResults = renderEngineeringDetailProductSearchResults;
-        function applyEngineeringDetailProductSearchSelection(productId = '') {
-            if (!canManageEngineeringRecord('edit')) return alert('No engineering edit permission.');
+        function searchEngineeringDetailProducts() {
             const template = engineeringDetailProductSearchTemplate();
-            const categorySelect = document.getElementById('engineering-detail-template-category');
-            const groupSelect = document.getElementById('engineering-detail-template-group');
-            if (categorySelect) categorySelect.value = template.category;
-            if (groupSelect) groupSelect.value = template.detailGroup;
-            renderEngineeringProductMasterDetailMode();
-            const sourceId = String(productId || '').trim();
-            const source = products.find(product => String(product.id || '') === sourceId && normalizeProductCategory(product.category, '') === template.category);
-            if (!source) return alert('Source product not found.');
-            document.querySelectorAll('#engineering-detail-template-bulk-list input[data-engineering-detail-product]').forEach(input => {
-                if (input.disabled || input.dataset.engineeringDetailProduct === sourceId) return;
-                const fieldKey = input.dataset.engineeringDetailTemplateField || input.dataset.engineeringDetailField || '';
-                input.value = productMasterDetailValue(source, template.category, fieldKey);
-            });
-            closeEngineeringDetailProductSearch();
+            const { filters, invalidMessage } = readEngineeringDetailProductSearchFilters();
+            const box = document.getElementById('engineering-detail-product-search-results');
+            if (invalidMessage) {
+                if (box) box.innerHTML = `<div class="p-6 text-center text-xs font-black text-red-500">${htmlSafe(invalidMessage)}</div>`;
+                return;
+            }
+            const matches = products
+                .filter(product => normalizeProductCategory(product.category, '') === template.category)
+                .filter(product => productMatchesEngineeringDetailFilters(product, template, filters));
+            renderEngineeringDetailProductSearchResults(matches, template, filters);
         }
-        window.applyEngineeringDetailProductSearchSelection = applyEngineeringDetailProductSearchSelection;
-        function reuseEngineeringDetailProductData() {
-            openEngineeringDetailProductSearch();
+        window.searchEngineeringDetailProducts = searchEngineeringDetailProducts;
+        function clearEngineeringDetailProductSearch() {
+            renderEngineeringDetailProductSearchCriteria();
         }
-        window.reuseEngineeringDetailProductData = reuseEngineeringDetailProductData;
+        window.clearEngineeringDetailProductSearch = clearEngineeringDetailProductSearch;
         async function openEngineeringDetailImportPreview(file) {
             const box = document.getElementById('engineering-detail-import-preview');
             if (!box) return;

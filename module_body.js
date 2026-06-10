@@ -2228,10 +2228,7 @@
         function renderEngineeringStandardList(rows = []) {
             const list = document.getElementById('engineering-standard-list');
             if (!list) return;
-            const visibleIds = new Set(rows.map(record => record.id));
-            Array.from(engineeringStandardSelectedIds).forEach(id => {
-                if (!getCertificationRequirementById(id)) engineeringStandardSelectedIds.delete(id);
-            });
+            pruneEngineeringStandardSelectionToRows(rows);
             const allVisibleSelected = rows.length > 0 && rows.every(record => engineeringStandardSelectedIds.has(record.id));
             const selectAll = document.getElementById('engineering-standard-select-all');
             if (selectAll) selectAll.checked = allVisibleSelected;
@@ -2257,6 +2254,13 @@
             }).join('') || '<tr><td colspan="7" class="py-12 text-center text-slate-400 text-sm">No certification records match the current search.</td></tr>';
             const selectedNote = document.getElementById('engineering-standard-selection-note');
             if (selectedNote) selectedNote.textContent = `${engineeringStandardSelectedIds.size} records selected`;
+        }
+        function pruneEngineeringStandardSelectionToRows(rows = []) {
+            const visibleIds = new Set(rows.map(record => String(record.id || '').trim()).filter(Boolean));
+            Array.from(engineeringStandardSelectedIds).forEach(id => {
+                if (!visibleIds.has(id) || !getCertificationRequirementById(id)) engineeringStandardSelectedIds.delete(id);
+            });
+            return visibleIds;
         }
         function renderEngineeringMatrixList(rows = []) {
             const list = document.getElementById('engineering-cert-list');
@@ -2399,6 +2403,7 @@
         }
         window.closeEngineeringStandardProductModal = closeEngineeringStandardProductModal;
         function searchEngineeringStandardProducts() {
+            pruneEngineeringStandardSelectionToRows(engineeringVisibleRecords());
             const ids = engineeringSelectedStandardIds();
             const box = document.getElementById('engineering-standard-product-results');
             if (!ids.length) {

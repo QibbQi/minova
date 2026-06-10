@@ -2120,10 +2120,16 @@
             engineeringWorkspaceMode = mode === 'matrix' ? 'matrix' : 'standard';
             const standard = document.getElementById('engineering-standard-panel');
             const matrix = document.getElementById('engineering-matrix-panel');
+            const standardSearchFilters = document.getElementById('engineering-standard-search-filters');
+            const standardMatchCard = document.getElementById('engineering-standard-match-card');
+            const searchProductBtn = document.getElementById('engineering-search-products-primary');
             const standardBtn = document.getElementById('engineering-mode-standard');
             const matrixBtn = document.getElementById('engineering-mode-matrix');
             if (standard) standard.classList.toggle('hidden', engineeringWorkspaceMode !== 'standard');
             if (matrix) matrix.classList.toggle('hidden', engineeringWorkspaceMode !== 'matrix');
+            if (standardSearchFilters) standardSearchFilters.classList.toggle('hidden', engineeringWorkspaceMode !== 'standard');
+            if (standardMatchCard) standardMatchCard.classList.toggle('hidden', engineeringWorkspaceMode !== 'standard');
+            if (searchProductBtn) searchProductBtn.classList.toggle('hidden', engineeringWorkspaceMode !== 'standard');
             if (standardBtn) standardBtn.className = engineeringWorkspaceMode === 'standard' ? 'px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white' : 'px-4 py-2 rounded-lg text-xs font-black text-slate-500';
             if (matrixBtn) matrixBtn.className = engineeringWorkspaceMode === 'matrix' ? 'px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white' : 'px-4 py-2 rounded-lg text-xs font-black text-slate-500';
             renderEngineeringWorkspace();

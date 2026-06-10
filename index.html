@@ -2469,28 +2469,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     </div>
                     <button id="engineering-add-record-button" type="button" data-engineering-action="edit" onclick="openEngineeringRequirementEditor()" class="rounded-xl bg-purple-700 px-4 py-2.5 text-xs font-black text-white hover:bg-purple-800">Add Record</button>
                 </div>
-                <div class="flex flex-col md:flex-row gap-3 md:items-end">
-                    <div>
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Default Source</label>
-                        <select id="engineering-quote-source-default" onchange="saveEngineeringQuoteDefaults()" class="w-full md:w-44 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none bg-white focus:border-purple-500">
-                            <option value="inventory">Inventory First</option>
-                            <option value="priceList">Price List</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Default Price</label>
-                        <select id="engineering-quote-price-default" onchange="saveEngineeringQuoteDefaults()" class="w-full md:w-44 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none bg-white focus:border-purple-500">
-                            <option value="clearance_home">Clearance RESI</option>
-                            <option value="clearance_biz">Clearance C&I</option>
-                            <option value="gray_home">Grey RESI</option>
-                            <option value="gray_biz">Grey C&I</option>
-                        </select>
-                    </div>
-                    <button id="engineering-search-products-primary" type="button" onclick="searchEngineeringStandardProducts()" class="rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-black text-white hover:bg-slate-800">Search Product</button>
-                </div>
             </div>
             <div class="mt-4 flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
-                <input id="engineering-search" type="search" oninput="renderEngineeringWorkspace()" placeholder="Search record ID, standard, applicability..." class="w-full md:max-w-md border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-purple-500 bg-white">
+                <div class="flex flex-col md:flex-row gap-3 md:items-center w-full md:max-w-3xl">
+                    <input id="engineering-search" type="search" oninput="renderEngineeringWorkspace()" placeholder="Search record ID, standard, applicability..." class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-purple-500 bg-white">
+                    <button id="engineering-search-products-primary" type="button" onclick="searchEngineeringStandardProducts()" class="rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-black text-white hover:bg-slate-800 md:w-40">Search Product</button>
+                </div>
                 <div id="engineering-filter-note" class="text-[11px] font-bold text-slate-400">Standard mode | select records and search products</div>
             </div>
             <div id="engineering-standard-search-filters" class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -2503,13 +2487,29 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     <div id="engineering-standard-category-filters" class="flex flex-wrap gap-2"></div>
                 </div>
             </div>
-            <div class="mt-4 bg-white rounded-2xl border border-slate-200 overflow-hidden">
+            <div id="engineering-standard-match-card" class="mt-4 bg-white rounded-2xl border border-slate-200 overflow-hidden">
                 <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 border-b border-slate-100 px-4 py-3">
                     <div>
                         <div class="text-sm font-black text-slate-700">Matched Products</div>
                         <div class="text-[11px] text-slate-400">Products must contain every selected record ID.</div>
                     </div>
-                    <div class="flex flex-wrap gap-2">
+                    <div class="flex flex-col lg:flex-row gap-3 lg:items-end">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Default Source</label>
+                            <select id="engineering-quote-source-default" onchange="saveEngineeringQuoteDefaults()" class="w-full lg:w-40 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none bg-white focus:border-purple-500">
+                                <option value="inventory">Inventory First</option>
+                                <option value="priceList">Price List</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Default Price</label>
+                            <select id="engineering-quote-price-default" onchange="saveEngineeringQuoteDefaults()" class="w-full lg:w-40 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none bg-white focus:border-purple-500">
+                                <option value="clearance_home">Clearance RESI</option>
+                                <option value="clearance_biz">Clearance C&I</option>
+                                <option value="gray_home">Grey RESI</option>
+                                <option value="gray_biz">Grey C&I</option>
+                            </select>
+                        </div>
                         <button id="engineering-refresh-product-results" type="button" onclick="refreshEngineeringProductResults()" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-500 hover:bg-slate-50">Refresh</button>
                         <button type="button" onclick="switchTab('quotation')" class="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-50">Open Quotation</button>
                     </div>
@@ -6669,10 +6669,16 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             engineeringWorkspaceMode = mode === 'matrix' ? 'matrix' : 'standard';
             const standard = document.getElementById('engineering-standard-panel');
             const matrix = document.getElementById('engineering-matrix-panel');
+            const standardSearchFilters = document.getElementById('engineering-standard-search-filters');
+            const standardMatchCard = document.getElementById('engineering-standard-match-card');
+            const searchProductBtn = document.getElementById('engineering-search-products-primary');
             const standardBtn = document.getElementById('engineering-mode-standard');
             const matrixBtn = document.getElementById('engineering-mode-matrix');
             if (standard) standard.classList.toggle('hidden', engineeringWorkspaceMode !== 'standard');
             if (matrix) matrix.classList.toggle('hidden', engineeringWorkspaceMode !== 'matrix');
+            if (standardSearchFilters) standardSearchFilters.classList.toggle('hidden', engineeringWorkspaceMode !== 'standard');
+            if (standardMatchCard) standardMatchCard.classList.toggle('hidden', engineeringWorkspaceMode !== 'standard');
+            if (searchProductBtn) searchProductBtn.classList.toggle('hidden', engineeringWorkspaceMode !== 'standard');
             if (standardBtn) standardBtn.className = engineeringWorkspaceMode === 'standard' ? 'px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white' : 'px-4 py-2 rounded-lg text-xs font-black text-slate-500';
             if (matrixBtn) matrixBtn.className = engineeringWorkspaceMode === 'matrix' ? 'px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white' : 'px-4 py-2 rounded-lg text-xs font-black text-slate-500';
             renderEngineeringWorkspace();

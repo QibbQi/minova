@@ -339,6 +339,7 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'id="engineering-standard-search-filters"',
     'id="engineering-standard-level-filters"',
     'id="engineering-standard-category-filters"',
+    'id="engineering-standard-match-card"',
     'id="engineering-refresh-product-results"',
     'id="engineering-standard-panel"',
     'id="engineering-matrix-panel"',
@@ -357,9 +358,14 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'Add Record should sit beside the mode selector before quote defaults'
   );
   assert.ok(
-    engineeringTab.indexOf('id="engineering-search-products-primary"') > engineeringTab.indexOf('id="engineering-quote-price-default"')
-      && engineeringTab.indexOf('id="engineering-search-products-primary"') < engineeringTab.indexOf('id="engineering-search"'),
-    'Primary Search Product button should replace the old Add Record position beside quote defaults'
+    engineeringTab.indexOf('id="engineering-search-products-primary"') > engineeringTab.indexOf('id="engineering-search"')
+      && engineeringTab.indexOf('id="engineering-search-products-primary"') < engineeringTab.indexOf('id="engineering-filter-note"'),
+    'Primary Search Product button should sit beside the record search box'
+  );
+  assert.ok(
+    engineeringTab.indexOf('id="engineering-quote-source-default"') > engineeringTab.indexOf('id="engineering-standard-match-card"')
+      && engineeringTab.indexOf('id="engineering-quote-price-default"') > engineeringTab.indexOf('id="engineering-standard-match-card"'),
+    'Default Source and Default Price should live inside the Matched Products card'
   );
   assert.ok(
     engineeringTab.indexOf('id="engineering-standard-product-results"') > engineeringTab.indexOf('id="engineering-search-products-primary"')
@@ -400,6 +406,10 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     "ids.every(id => selected.has(id))",
     "querySelectorAll('#engineering-standard-level-filters input[data-engineering-level]:checked')",
     "querySelectorAll('#engineering-standard-category-filters input[data-engineering-category]:checked')",
+    "document.getElementById('engineering-standard-search-filters')",
+    "document.getElementById('engineering-standard-match-card')",
+    "document.getElementById('engineering-search-products-primary')",
+    "classList.toggle('hidden', engineeringWorkspaceMode !== 'standard')",
     'Unable to find products containing every selected standard record.',
     'nextCertificationCatalog.length || !certificationRequirementsCatalog.length',
     "persistEntityToD1('certification_requirement'",

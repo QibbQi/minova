@@ -375,8 +375,6 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'id="engineering-detail-template-add-product"',
     'id="engineering-detail-template-reuse-product"',
     'id="engineering-detail-template-preview-save"',
-    'id="engineering-detail-import-file"',
-    'id="engineering-detail-import-preview"',
     'Product mode',
     'Detail mode'
   ].forEach((text) => {
@@ -420,6 +418,11 @@ test('engineering workspace exposes certification matrix filters and seeded cata
   assert.equal(html.includes('id="engineering-cert-detail-modal"'), true, 'Missing engineering detail modal');
   assert.equal(html.includes('id="engineering-standard-product-modal"'), true, 'Missing engineering product result modal');
   assert.equal(html.includes('id="engineering-standard-product-modal-body"'), true, 'Missing engineering product result modal body');
+  assert.equal(html.includes('id="engineering-detail-product-search-modal"'), true, 'Missing engineering detail product search modal');
+  assert.equal(html.includes('id="engineering-detail-product-search-category"'), true, 'Missing engineering detail product search category filter');
+  assert.equal(html.includes('id="engineering-detail-product-search-group"'), true, 'Missing engineering detail product search group filter');
+  assert.equal(html.includes('id="engineering-detail-product-search-query"'), true, 'Missing engineering detail product search query input');
+  assert.equal(html.includes('id="engineering-detail-product-search-results"'), true, 'Missing engineering detail product search results');
 
   ['A1', 'A2', 'B', 'C', 'D', 'E', 'Mandatory', 'Utility Preferred', 'International Finance Preferred', 'Optional', 'PV_MODULE', 'INVERTER', 'BATTERY'].forEach((text) => {
     assert.equal(engineeringTab.includes(text) || html.includes(text), true, `Missing engineering filter value: ${text}`);
@@ -443,8 +446,13 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'function nextProductMasterDetailCustomFieldKey',
     'function productMasterDetailTemplateFieldLabel',
     'function saveProductMasterDetailTemplateFieldLabel',
+    'function productMasterDetailFieldValueOptions',
+    'function productMasterDetailFieldDatalistId',
+    'function openEngineeringDetailProductSearch',
+    'function renderEngineeringDetailProductSearchResults',
+    'function applyEngineeringDetailProductSearchSelection',
+    'function closeEngineeringDetailProductSearch',
     'function deleteProductMasterDetailTemplateField',
-    'function openEngineeringDetailImportPreview',
     'function previewEngineeringProductMasterBulkSave',
     'function normalizeCertificationRequirement',
     'function certificationProductCategoryOptions',
@@ -504,6 +512,11 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     "persistEntityToD1('product_master_detail_template'",
     "deleteEntityFromD1('product_master_detail_template'",
     "localStorage.setItem('minova_product_master_detail_templates_v1'",
+    'Search Product',
+    'data-engineering-detail-value-options',
+    'list="${htmlSafe(datalistId)}"',
+    "products.filter(product => normalizeProductCategory(product.category, '') === category)",
+    'Choose a product and fill the current data range.',
     'Select existing field',
     '+ New Field',
     'customDetail',
@@ -523,6 +536,8 @@ test('engineering workspace exposes certification matrix filters and seeded cata
   assert.equal(html.includes('Edit field key. Use an existing masterData or technicalSpecs key'), false, 'Edit Field should not use the old prompt flow');
   assert.equal(html.includes('Choose replacement field'), false, 'Edit Field should rename the field label instead of replacing the field key');
   assert.equal(html.includes('Save Edit'), false, 'Edit Field should expose Save Name instead of a generic replacement save');
+  assert.equal(html.includes('Import Excel Preview'), false, 'Detail mode should not expose the Excel preview button');
+  assert.equal(html.includes('id="engineering-detail-import-file"'), false, 'Detail mode should not keep the Excel preview file input');
 });
 
 test('engineering product master detail mode keeps template state and import preview separate from product schema', () => {

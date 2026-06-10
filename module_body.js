@@ -2707,6 +2707,14 @@
         function productsForProductMasterDetailTemplate(template) {
             return products.filter(product => normalizeProductCategory(product.category, '') === template.category);
         }
+        function productMasterDetailFieldDatalistId(template = {}, fieldKey = '') {
+            return `engineering-detail-values-${slugify(`${template.id || 'template'}-${fieldKey}`)}`;
+        }
+        function productMasterDetailFieldValueOptions(template = {}, fieldKey = '') {
+            return uniqueCertList(productsForProductMasterDetailTemplate(template)
+                .map(product => productMasterDetailValue(product, template.category, fieldKey))
+                .filter(productMasterDetailValuePresent));
+        }
         function renderEngineeringProductMasterDetailBulkList(template) {
             const box = document.getElementById('engineering-detail-template-bulk-list');
             if (!box) return;
@@ -2716,6 +2724,11 @@
                 box.innerHTML = '<div class="p-6 text-center text-xs text-slate-400">No products in this category. Use Add Product to create one.</div>';
                 return;
             }
+            const datalists = fields.map(key => {
+                const datalistId = productMasterDetailFieldDatalistId(template, key);
+                const options = productMasterDetailFieldValueOptions(template, key);
+                return `<datalist id="${htmlSafe(datalistId)}">${options.map(value => `<option value="${htmlSafe(value)}"></option>`).join('')}</datalist>`;
+            }).join('');
             const head = ['Product', ...fields.map(key => productMasterDetailTemplateFieldLabel(key, template))].map(label => `<th class="py-3 px-3">${htmlSafe(label)}</th>`).join('');
             const body = rows.map(product => `<tr class="hover:bg-slate-50 transition-colors">
                 <td class="py-3 px-3 align-top">
@@ -2725,12 +2738,13 @@
                 ${fields.map(key => {
                     const value = productMasterDetailValue(product, template.category, key);
                     const disabled = productMasterDetailFieldKind(template.category, key) === 'previewOnly';
+                    const datalistId = productMasterDetailFieldDatalistId(template, key);
                     return `<td class="py-3 px-3 align-top">
-                        <input data-engineering-detail-product="${htmlSafe(product.id || '')}" data-engineering-detail-field="${htmlSafe(key)}" value="${htmlSafe(value)}" ${disabled ? 'disabled' : ''} class="min-w-[150px] border border-slate-200 rounded-lg px-2 py-2 text-xs outline-none focus:border-purple-500 ${disabled ? 'bg-slate-50 text-slate-400' : 'bg-white'}">
+                        <input data-engineering-detail-product="${htmlSafe(product.id || '')}" data-engineering-detail-field="${htmlSafe(key)}" data-engineering-detail-value-options="${htmlSafe(datalistId)}" list="${htmlSafe(datalistId)}" value="${htmlSafe(value)}" ${disabled ? 'disabled' : ''} class="min-w-[150px] border border-slate-200 rounded-lg px-2 py-2 text-xs outline-none focus:border-purple-500 ${disabled ? 'bg-slate-50 text-slate-400' : 'bg-white'}">
                     </td>`;
                 }).join('')}
             </tr>`).join('');
-            box.innerHTML = `<table class="w-full text-left whitespace-nowrap">
+            box.innerHTML = `${datalists}<table class="w-full text-left whitespace-nowrap">
                 <thead class="bg-slate-50/70"><tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">${head}</tr></thead>
                 <tbody class="divide-y divide-slate-50">${body}</tbody>
             </table>`;
@@ -2847,19 +2861,95 @@
             }, 0);
         }
         window.addEngineeringDetailModeProduct = addEngineeringDetailModeProduct;
-        function reuseEngineeringDetailProductData() {
+        function openEngineeringDetailProductSearch() {
             if (!canManageEngineeringRecord('edit')) return alert('No engineering edit permission.');
-            const template = currentProductMasterDetailTemplate();
-            const rows = productsForProductMasterDetailTemplate(template);
-            if (rows.length < 2) return alert('Need at least two products in this category to reuse data.');
-            const sourceId = String(prompt(`Reuse data from product ID:\n${rows.map(p => p.id).join(', ')}`, rows[0]?.id || '') || '').trim();
-            const source = rows.find(product => String(product.id || '') === sourceId);
+            const modal = document.getElementById('engineering-detail-product-search-modal');
+            const categorySelect = document.getElementById('engineering-detail-product-search-category');
+            const groupSelect = document.getElementById('engineering-detail-product-search-group');
+            const query = document.getElementById('engineering-detail-product-search-query');
+            if (categorySelect) categorySelect.value = document.getElementById('engineering-detail-template-category')?.value || 'PV Module';
+            if (groupSelect) groupSelect.value = document.getElementById('engineering-detail-template-group')?.value || 'basic';
+            if (query) query.value = '';
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+            renderEngineeringDetailProductSearchResults();
+        }
+        window.openEngineeringDetailProductSearch = openEngineeringDetailProductSearch;
+        function closeEngineeringDetailProductSearch() {
+            const modal = document.getElementById('engineering-detail-product-search-modal');
+            if (!modal) return;
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+        window.closeEngineeringDetailProductSearch = closeEngineeringDetailProductSearch;
+        function engineeringDetailProductSearchTemplate() {
+            const category = document.getElementById('engineering-detail-product-search-category')?.value || 'PV Module';
+            const detailGroup = document.getElementById('engineering-detail-product-search-group')?.value || 'basic';
+            return getProductMasterDetailTemplate(category, detailGroup);
+        }
+        function renderEngineeringDetailProductSearchResults() {
+            const box = document.getElementById('engineering-detail-product-search-results');
+            if (!box) return;
+            const template = engineeringDetailProductSearchTemplate();
+            const category = template.category;
+            const query = String(document.getElementById('engineering-detail-product-search-query')?.value || '').trim().toLowerCase();
+            const fields = template.fieldKeys || [];
+            const rows = products.filter(product => normalizeProductCategory(product.category, '') === category)
+                .filter(product => {
+                    if (!query) return true;
+                    const haystack = [
+                        product.id,
+                        product.name,
+                        product.vendor,
+                        product.supplierCode,
+                        ...fields.map(fieldKey => productMasterDetailValue(product, category, fieldKey))
+                    ].join(' ').toLowerCase();
+                    return haystack.includes(query);
+                });
+            if (!rows.length) {
+                box.innerHTML = '<div class="p-6 text-center text-xs text-slate-400">No matching products for this category and data range.</div>';
+                return;
+            }
+            box.innerHTML = rows.map(product => {
+                const filled = fields.filter(fieldKey => productMasterDetailValuePresent(productMasterDetailValue(product, category, fieldKey))).length;
+                const preview = fields.slice(0, 4).map(fieldKey => {
+                    const value = productMasterDetailValue(product, category, fieldKey);
+                    return value ? `${productMasterDetailTemplateFieldLabel(fieldKey, template)}: ${value}` : '';
+                }).filter(Boolean).join(' · ');
+                return `<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-4">
+                    <div class="min-w-0">
+                        <div class="text-sm font-black text-slate-800">${htmlSafe(product.id || '-')} <span class="text-xs text-slate-400">${htmlSafe(productListDisplayText(product.name))}</span></div>
+                        <div class="text-[11px] text-slate-400 mt-1">${filled}/${fields.length} fields filled${preview ? ` · ${htmlSafe(preview)}` : ''}</div>
+                    </div>
+                    <button type="button" data-engineering-action="edit" onclick="applyEngineeringDetailProductSearchSelection('${htmlSafe(product.id || '')}')" class="rounded-xl bg-purple-700 px-3 py-2 text-xs font-black text-white hover:bg-purple-800">Use Product Data</button>
+                </div>`;
+            }).join('');
+            applyEngineeringPermissions();
+        }
+        window.renderEngineeringDetailProductSearchResults = renderEngineeringDetailProductSearchResults;
+        function applyEngineeringDetailProductSearchSelection(productId = '') {
+            if (!canManageEngineeringRecord('edit')) return alert('No engineering edit permission.');
+            const template = engineeringDetailProductSearchTemplate();
+            const categorySelect = document.getElementById('engineering-detail-template-category');
+            const groupSelect = document.getElementById('engineering-detail-template-group');
+            if (categorySelect) categorySelect.value = template.category;
+            if (groupSelect) groupSelect.value = template.detailGroup;
+            renderEngineeringProductMasterDetailMode();
+            const sourceId = String(productId || '').trim();
+            const source = products.find(product => String(product.id || '') === sourceId && normalizeProductCategory(product.category, '') === template.category);
             if (!source) return alert('Source product not found.');
             document.querySelectorAll('#engineering-detail-template-bulk-list input[data-engineering-detail-product]').forEach(input => {
                 if (input.disabled || input.dataset.engineeringDetailProduct === sourceId) return;
                 const fieldKey = input.dataset.engineeringDetailField || '';
                 input.value = productMasterDetailValue(source, template.category, fieldKey);
             });
+            closeEngineeringDetailProductSearch();
+        }
+        window.applyEngineeringDetailProductSearchSelection = applyEngineeringDetailProductSearchSelection;
+        function reuseEngineeringDetailProductData() {
+            openEngineeringDetailProductSearch();
         }
         window.reuseEngineeringDetailProductData = reuseEngineeringDetailProductData;
         async function openEngineeringDetailImportPreview(file) {

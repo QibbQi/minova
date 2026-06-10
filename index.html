@@ -6564,6 +6564,11 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             'All-in-One System': ['INVERTER', 'BATTERY'],
             'C&I Storage': ['INVERTER', 'BATTERY']
         };
+        const CERTIFICATION_PRODUCT_CATEGORY_DEFAULTS = {
+            PV_MODULE: ['PV Module', 'PV Junction Box', 'PV Cable / Connector', 'PV Mounting / Tracker', 'PV Packaging'],
+            INVERTER: ['PV Inverter', 'Hybrid Inverter', 'BESS PCS', 'Grid Interface', 'EMS'],
+            BATTERY: ['Battery Pack / System', 'BMS', 'EMS', 'BESS PCS', 'BESS System']
+        };
         function uniqueCertList(list) {
             const seen = new Set();
             const out = [];
@@ -7035,6 +7040,59 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             }, 0);
             return `${prefix}-${String(max + 1).padStart(3, '0')}`;
         }
+        window.nextCertificationRequirementIdForCategory = nextCertificationRequirementIdForCategory;
+        function certificationProductCategoryOptions(sourceCategory = 'PV_MODULE', selected = '') {
+            const source = normalizeCertificationSourceCategory(sourceCategory);
+            const existing = certificationRequirementsCatalog
+                .filter(record => record.sourceCategory === source)
+                .map(record => record.productCategory);
+            return uniqueCertList([...(CERTIFICATION_PRODUCT_CATEGORY_DEFAULTS[source] || []), ...existing, selected]);
+        }
+        function renderCertificationProductCategoryOptions(sourceCategory = 'PV_MODULE', selected = '') {
+            const normalizedSelected = String(selected || '').trim();
+            const options = certificationProductCategoryOptions(sourceCategory, normalizedSelected);
+            const selectedIsKnown = !normalizedSelected || options.some(option => option.toLowerCase() === normalizedSelected.toLowerCase());
+            return [
+                ...options.map(option => `<option value="${htmlSafe(option)}" ${option === normalizedSelected ? 'selected' : ''}>${htmlSafe(option)}</option>`),
+                `<option value="__custom__" ${selectedIsKnown ? '' : 'selected'}>+ Add custom category</option>`
+            ].join('');
+        }
+        function readEngineeringDetailProductCategory() {
+            const select = document.getElementById('engineering-detail-product-category-select');
+            if (!select) return String(document.getElementById('engineering-detail-product-category')?.value || '').trim();
+            if (select.value === '__custom__') {
+                return String(document.getElementById('engineering-detail-product-category-custom')?.value || '').trim();
+            }
+            return String(select.value || '').trim();
+        }
+        function syncEngineeringProductCategoryInput() {
+            const select = document.getElementById('engineering-detail-product-category-select');
+            const custom = document.getElementById('engineering-detail-product-category-custom');
+            if (!select || !custom) return;
+            const isCustom = select.value === '__custom__';
+            custom.classList.toggle('hidden', !isCustom);
+            if (isCustom && !custom.value) custom.focus();
+        }
+        window.syncEngineeringProductCategoryInput = syncEngineeringProductCategoryInput;
+        function syncEngineeringRequirementEditorSourceCategory() {
+            const source = document.getElementById('engineering-detail-source-category')?.value || 'PV_MODULE';
+            const isNew = document.getElementById('engineering-detail-is-new')?.value === '1';
+            const idInput = document.getElementById('engineering-detail-id');
+            if (isNew && idInput) idInput.value = nextCertificationRequirementIdForCategory(source);
+            const productCategorySelect = document.getElementById('engineering-detail-product-category-select');
+            const productCategoryCustom = document.getElementById('engineering-detail-product-category-custom');
+            if (!productCategorySelect) return;
+            const previousValue = readEngineeringDetailProductCategory();
+            const sourceOptions = certificationProductCategoryOptions(source);
+            const nextValue = sourceOptions.some(option => option.toLowerCase() === previousValue.toLowerCase()) && previousValue
+                ? previousValue
+                : (sourceOptions[0] || '');
+            productCategorySelect.innerHTML = renderCertificationProductCategoryOptions(source, nextValue);
+            productCategorySelect.value = nextValue;
+            if (productCategoryCustom) productCategoryCustom.value = '';
+            syncEngineeringProductCategoryInput();
+        }
+        window.syncEngineeringRequirementEditorSourceCategory = syncEngineeringRequirementEditorSourceCategory;
         function getEngineeringRequirementLinkedProducts(recordId) {
             const id = String(recordId || '').trim();
             if (!id) return [];
@@ -7736,8 +7794,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 <input id="engineering-detail-is-new" type="hidden" value="${isNew ? '1' : '0'}">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div><label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Record ID</label><input id="engineering-detail-id" value="${htmlSafe(record.id)}" readonly class="w-full border border-slate-200 rounded-xl p-3 text-sm bg-slate-50 font-black text-slate-700"></div>
-                    <div><label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Source Category</label><select id="engineering-detail-source-category" ${disabled} onchange="if(document.getElementById('engineering-detail-is-new')?.value==='1') document.getElementById('engineering-detail-id').value = nextCertificationRequirementIdForCategory(this.value)" class="w-full border border-slate-200 rounded-xl p-3 text-sm bg-white">${CERTIFICATION_SOURCE_CATEGORIES.map(category => `<option value="${htmlSafe(category)}" ${record.sourceCategory === category ? 'selected' : ''}>${htmlSafe(category)}</option>`).join('')}</select></div>
-                    <div><label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Product Category</label><input id="engineering-detail-product-category" ${disabled} value="${htmlSafe(record.productCategory)}" class="w-full border border-slate-200 rounded-xl p-3 text-sm"></div>
+                    <div><label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Source Category</label><select id="engineering-detail-source-category" ${disabled} onchange="syncEngineeringRequirementEditorSourceCategory()" class="w-full border border-slate-200 rounded-xl p-3 text-sm bg-white">${CERTIFICATION_SOURCE_CATEGORIES.map(category => `<option value="${htmlSafe(category)}" ${record.sourceCategory === category ? 'selected' : ''}>${htmlSafe(category)}</option>`).join('')}</select></div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Product Category</label>
+                        <select id="engineering-detail-product-category-select" ${disabled} onchange="syncEngineeringProductCategoryInput()" class="w-full border border-slate-200 rounded-xl p-3 text-sm bg-white">${renderCertificationProductCategoryOptions(record.sourceCategory, record.productCategory)}</select>
+                        <input id="engineering-detail-product-category-custom" ${disabled} value="" placeholder="Add custom product category" class="hidden mt-2 w-full border border-slate-200 rounded-xl p-3 text-sm">
+                    </div>
                     <div><label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Requirement Level</label><select id="engineering-detail-level" ${disabled} class="w-full border border-slate-200 rounded-xl p-3 text-sm bg-white">${CERTIFICATION_REQUIREMENT_LEVELS.map(level => `<option value="${htmlSafe(level)}" ${record.requirementLevel === level ? 'selected' : ''}>${htmlSafe(level)}</option>`).join('')}</select></div>
                     <div class="md:col-span-2"><label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Standard</label><input id="engineering-detail-standard" ${disabled} value="${htmlSafe(record.standard)}" class="w-full border border-slate-200 rounded-xl p-3 text-sm"></div>
                     <div><label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Evidence Type</label><input id="engineering-detail-evidence-type" ${disabled} value="${htmlSafe(record.evidenceType)}" class="w-full border border-slate-200 rounded-xl p-3 text-sm"></div>
@@ -7761,6 +7823,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             `;
             modal.classList.remove('hidden');
             modal.classList.add('flex');
+            syncEngineeringProductCategoryInput();
             applyEngineeringPermissions();
         }
         window.openEngineeringRequirementEditor = openEngineeringRequirementEditor;
@@ -7782,7 +7845,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 ...(idx >= 0 ? certificationRequirementsCatalog[idx] : {}),
                 id: recordId,
                 sourceCategory: document.getElementById('engineering-detail-source-category')?.value || 'PV_MODULE',
-                productCategory: document.getElementById('engineering-detail-product-category')?.value || '',
+                productCategory: readEngineeringDetailProductCategory(),
                 standard: document.getElementById('engineering-detail-standard')?.value || '',
                 requirementLevel: document.getElementById('engineering-detail-level')?.value || '',
                 evidenceType: document.getElementById('engineering-detail-evidence-type')?.value || '',

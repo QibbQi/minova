@@ -358,6 +358,8 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'Primary Search Product button should replace the old Add Record position beside quote defaults'
   );
   assert.equal(html.includes('id="engineering-cert-detail-modal"'), true, 'Missing engineering detail modal');
+  assert.equal(html.includes('id="engineering-standard-product-modal"'), true, 'Missing engineering product result modal');
+  assert.equal(html.includes('id="engineering-standard-product-modal-body"'), true, 'Missing engineering product result modal body');
 
   ['A1', 'A2', 'B', 'C', 'D', 'E', 'Mandatory', 'Utility Preferred', 'International Finance Preferred', 'Optional', 'PV_MODULE', 'INVERTER', 'BATTERY'].forEach((text) => {
     assert.equal(engineeringTab.includes(text) || html.includes(text), true, `Missing engineering filter value: ${text}`);
@@ -377,11 +379,16 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'function saveEngineeringRequirementEditor',
     'function deleteEngineeringRequirementRecord',
     'function searchEngineeringStandardProducts',
+    'function renderEngineeringMatchedProductRows',
+    'function openEngineeringStandardProductModal',
+    'function closeEngineeringStandardProductModal',
     'function addEngineeringProductToQuote',
     'function getEngineeringRequirementLinkedProducts',
     'function canManageEngineeringRecord',
     'MINOVA_ENGINEERING_QUOTE_DEFAULTS_KEY',
     "getFifoBatchesForProduct(productId)[0]",
+    "ids.every(id => selected.has(id))",
+    'Unable to find products containing every selected standard record.',
     'nextCertificationCatalog.length || !certificationRequirementsCatalog.length',
     "persistEntityToD1('certification_requirement'",
     "deleteEntityFromD1('certification_requirement'",

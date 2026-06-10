@@ -2311,6 +2311,7 @@
             renderEngineeringWorkspace();
             const results = document.getElementById('engineering-standard-product-results');
             if (results) results.innerHTML = '<div class="p-8 text-center text-xs text-slate-400">Select standards, then search products.</div>';
+            closeEngineeringStandardProductModal();
         };
         function engineeringSelectedStandardIds() {
             return Array.from(engineeringStandardSelectedIds).filter(id => getCertificationRequirementById(id));
@@ -2325,19 +2326,16 @@
             const text = prompt('Price type: clearance_home / clearance_biz / gray_home / gray_biz', defaultType);
             return ['clearance_home', 'clearance_biz', 'gray_home', 'gray_biz'].includes(text) ? text : defaultType;
         }
-        function searchEngineeringStandardProducts() {
-            const ids = engineeringSelectedStandardIds();
-            const box = document.getElementById('engineering-standard-product-results');
-            if (!box) return;
-            if (!ids.length) {
-                box.innerHTML = '<div class="p-8 text-center text-xs text-slate-400">Select at least one standard record.</div>';
-                return;
+        function renderEngineeringMatchedProductRows(matches = [], ids = []) {
+            if (!matches.length) {
+                return `
+                    <div class="p-8 text-center">
+                        <div class="text-sm font-black text-slate-700">Unable to find products containing every selected standard record.</div>
+                        <div class="mt-2 text-xs text-slate-400">${ids.length ? `Selected: ${htmlSafe(ids.join(', '))}` : 'Select at least one standard record.'}</div>
+                    </div>
+                `;
             }
-            const matches = products.filter(product => {
-                const selected = new Set(getProductCertificationRequirements(product).recordIds || []);
-                return ids.every(id => selected.has(id));
-            });
-            box.innerHTML = matches.map(product => {
+            return matches.map(product => {
                 const stock = getTotalStockQty(product.id);
                 const firstBatch = getFifoBatchesForProduct(product.id)[0];
                 const supplier = getProductSupplierDisplay(product);
@@ -2355,7 +2353,49 @@
                         <button data-engineering-action="quote-add" onclick="addEngineeringProductToQuote('${htmlSafe(product.id || '')}')" class="rounded-xl bg-purple-700 px-4 py-2 text-xs font-black text-white hover:bg-purple-800">Add to Quotation Builder</button>
                     </div>
                 `;
-            }).join('') || '<div class="p-8 text-center text-xs text-slate-400">No products contain every selected standard record.</div>';
+            }).join('');
+        }
+        function openEngineeringStandardProductModal(ids = [], matches = [], message = '') {
+            const modal = document.getElementById('engineering-standard-product-modal');
+            const subtitle = document.getElementById('engineering-standard-product-modal-subtitle');
+            const body = document.getElementById('engineering-standard-product-modal-body');
+            if (!modal || !body) return;
+            if (subtitle) {
+                subtitle.textContent = ids.length
+                    ? `${ids.length} selected record${ids.length > 1 ? 's' : ''}: ${ids.join(', ')}`
+                    : 'Select standards, then search products.';
+            }
+            body.innerHTML = message
+                ? `<div class="p-8 text-center"><div class="text-sm font-black text-slate-700">${htmlSafe(message)}</div><div class="mt-2 text-xs text-slate-400">${ids.length ? `Selected: ${htmlSafe(ids.join(', '))}` : 'No standard record selected.'}</div></div>`
+                : renderEngineeringMatchedProductRows(matches, ids);
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            applyEngineeringPermissions();
+        }
+        window.openEngineeringStandardProductModal = openEngineeringStandardProductModal;
+        function closeEngineeringStandardProductModal() {
+            const modal = document.getElementById('engineering-standard-product-modal');
+            if (!modal) return;
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+        window.closeEngineeringStandardProductModal = closeEngineeringStandardProductModal;
+        function searchEngineeringStandardProducts() {
+            const ids = engineeringSelectedStandardIds();
+            const box = document.getElementById('engineering-standard-product-results');
+            if (!ids.length) {
+                const message = 'Select at least one standard record.';
+                if (box) box.innerHTML = `<div class="p-8 text-center text-xs text-slate-400">${message}</div>`;
+                openEngineeringStandardProductModal(ids, [], message);
+                return;
+            }
+            const matches = products.filter(product => {
+                const selected = new Set(getProductCertificationRequirements(product).recordIds || []);
+                return ids.every(id => selected.has(id));
+            });
+            const content = renderEngineeringMatchedProductRows(matches, ids);
+            if (box) box.innerHTML = content;
+            openEngineeringStandardProductModal(ids, matches, matches.length ? '' : 'Unable to find products containing every selected standard record.');
             applyEngineeringPermissions();
         }
         window.searchEngineeringStandardProducts = searchEngineeringStandardProducts;

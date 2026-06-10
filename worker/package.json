@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "backup:d1": "bash ./scripts/backup-d1.sh",
     "deploy": "wrangler deploy",
     "migrate:remote": "wrangler d1 migrations apply minova-auth-db --remote",
     "migrate:local": "wrangler d1 migrations apply minova-auth-db --local",

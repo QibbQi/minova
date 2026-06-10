@@ -4,16 +4,32 @@
 
 ## 项目定位
 
-Minova 是一个纯静态、前端优先的 GitHub Pages 业务工具，用于新能源产品报价、光储测算、成本与利润设置、供应商评级、产品与库存、运输、认证附件、已保存报价和报价 PDF 输出。项目没有传统后端和构建流程，仓库本身承担数据、附件、报价快照与发布载体。
+Minova 是一个前端优先的新能源业务工具。GitHub Pages 承载主界面，Cloudflare Worker + D1 承载登录、权限、审批、审计和业务主数据。仓库仍承担前端代码、静态数据副本、附件、报价快照与发布载体，没有传统的本地构建流程。
 
 核心运行方式：
 
 - `index.html` 是生产入口，也是主要 UI、样式、状态和浏览器逻辑所在。
-- `minova-data/state.json` 是主业务状态的 JSON 副本，结构为 `{ v, updatedAt, data }`。
+- `worker/` 是 Cloudflare 后端，远程 D1 `minova-auth-db` 是当前业务主数据和权限数据的主要持久化层。
+- `auth/minova-auth-ui.mjs` 连接前端、Worker API、D1 写入队列和管理后台。
+- `minova-data/state.json` 是主业务状态的静态备份副本，结构为 `{ v, updatedAt, data }`。
 - `index.html` 内的 `<script id="minova-embedded-state" type="application/json">` 保存首屏可用的内嵌状态。
 - `minova-data/quotes/` 保存独立报价快照，`index.json` 是报价索引，每个 `<id>.json` 保存 `captureQuoteSnapshot()` 生成的报价页面状态。
 - `github-sync/` 提供浏览器到 GitHub 仓库的同步、发布、加密 token、冲突合并和批量提交逻辑。
 - `.github/workflows/pages.yml` 和 `.github/workflows/redeploy.yml` 将整个仓库部署到 GitHub Pages。
+
+## 强制变更门禁：D1 备份与回滚 Hash
+
+在本仓库中，每个“完整、可验证的逻辑改动任务”都必须独立执行以下流程。文件保存次数不作为任务粒度。
+
+1. 修改任何仓库文件前，运行 `npm run backup:d1 -- <task-slug>`，导出远程 `minova-auth-db`。
+2. 备份必须保存到 `/Users/jqz/Documents/MINOVA PROFILE/01-Projects/MINOVA QUOTATION WEBSITE/backup`，不得提交进 Git。
+3. 先导出到本机临时目录，再一次性复制到目标目录。确认 SQL 非空、首尾结构完整、关键语句存在，并记录源文件 SHA-256、字节数、创建时间和修改前 Git SHA。若目标目录哈希因同步机制波动，则以内容结构、大小和记录时间验证。脚本会同时生成 `.manifest.txt`。
+4. 完成最小范围修改，运行受影响测试；涉及共享状态、D1、权限或主页面时运行完整 Node 测试。
+5. 一个逻辑任务对应一个独立 Git commit。最终回复必须提供完整 commit SHA，作为代码回滚地址。
+6. 代码回滚优先使用 `git revert <commit-sha>`，不要用会丢失历史的 `git reset --hard`。
+7. D1 恢复属于破坏性线上操作。只有用户明确批准并确认目标备份后，才可执行恢复；恢复前还要再次导出当时的 D1。
+
+如果 D1 备份失败、备份校验失败、测试失败或无法产生独立 commit SHA，不得宣称该逻辑改动任务已完成。
 
 ## 根目录文件
 
@@ -65,6 +81,15 @@ Minova 是一个纯静态、前端优先的 GitHub Pages 业务工具，用于�
 - `minova_github_sync_queue_v1`
 - `minova_github_sync_audit_v1`
 
+### `worker/` 与 `auth/`
+
+- `worker/src/index.mjs`：Cloudflare Worker API，处理认证、会话、RBAC、用户管理、审批、审计、业务实体、设置与已保存报价。
+- `worker/wrangler.jsonc`：Worker 与 D1 配置。D1 名称为 `minova-auth-db`，binding 为 `minova_auth_db`。
+- `worker/migrations/`：D1 schema migration；远程 migration 前必须先完成 D1 备份。
+- `auth/permission-core.mjs`：前后端共享的角色、权限、敏感字段和报价审批规则。
+- `auth/minova-auth-ui.mjs`：登录与管理后台 UI、D1 bootstrap、写入重试队列和业务数据 API。
+- `worker/scripts/backup-d1.sh`：标准远程 D1 备份入口，由 `worker/package.json` 的 `backup:d1` 调用。
+
 ### `minova-data/`
 
 业务数据、报价快照和认证附件目录。
@@ -103,13 +128,12 @@ Minova 是一个纯静态、前端优先的 GitHub Pages 业务工具，用于�
 
 ## 关键数据流
 
-1. 页面打开时优先读取 `index.html` 内的 `minova-embedded-state`。
-2. 若通过 HTTP 打开，页面会轮询 `minova-data/state.json`；未连接 GitHub 同步时可用已发布状态刷新本地数据。
-3. 业务操作修改浏览器内存中的产品、库存、市场价、销售、运输、认证、供应商、报价设置等状态。
-4. `saveToLocal()` 写入 localStorage，并触发或排队 GitHub 同步。
-5. `window.buildUpdatedHtml()` 将当前主业务状态重新序列化进 `index.html`。
-6. GitHub 发布流程会同时提交更新后的 `index.html` 和 `minova-data/state.json`。
-7. 已保存报价走独立路径：`saveQuoteInternal()` 生成报价快照并写入 `minova-data/quotes/`，不是写入主 `state.json`。
+1. 页面打开时先用 `index.html` 内的 `minova-embedded-state` 或静态状态建立可用界面。
+2. 登录后，`auth/minova-auth-ui.mjs` 从 Worker bootstrap D1 业务数据，并将其应用到页面状态；D1 是主数据优先来源。
+3. 业务操作修改浏览器内存，并通过 `window.__minovaBusiness` 写入 D1；暂时失败的写入进入本地 D1 retry queue。
+4. `saveToLocal()` 与 localStorage 保留浏览器 fallback；GitHub Sync 主要用于静态备份、发布和附件维护。
+5. `window.buildUpdatedHtml()` 将当前状态重新序列化进 `index.html`，GitHub 发布流程可同时更新 `index.html` 和 `minova-data/state.json`。
+6. 已保存报价优先写入 D1，同时保留 `minova-data/quotes/` 与 IndexedDB 等兼容/备份路径。
 
 修改持久化字段时，通常要同时检查：
 
@@ -121,6 +145,9 @@ Minova 是一个纯静态、前端优先的 GitHub Pages 业务工具，用于�
 - `github-sync/merge.js`
 - `minova-data/state.json` 的 shape
 - localStorage fallback key
+- `auth/minova-auth-ui.mjs` 的 business snapshot、D1 domain/settings mapping 与 retry queue
+- `worker/src/index.mjs` 的 payload normalization、权限检查、bootstrap shape 与 SQL 写入
+- `worker/migrations/` 是否需要 schema migration
 
 ## 报价与 PDF
 

@@ -20,6 +20,14 @@ npx wrangler d1 execute minova-auth-db --remote --file=./sql/seed-roles.sql
 npx wrangler deploy
 ```
 
+Before every complete logical change task, create a remote D1 backup:
+
+```bash
+npm run backup:d1 -- task-slug
+```
+
+The script writes the SQL export and a SHA-256 manifest to the external Minova backup directory. Database restoration is a destructive production operation and requires explicit approval plus another fresh backup immediately before restore.
+
 The initial admin account is seeded only when `MINOVA_INITIAL_ADMIN_PASSWORD` is available and no `admin` user exists:
 
 - username: `admin`

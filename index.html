@@ -182,6 +182,11 @@
         .border-brand-purple { border-color: #582C83; }
         .text-brand-yellow { color: #FFC107; }
         .bg-brand-yellow { background-color: #FFC107; }
+        .border-brand-yellow { border-color: #FFC107; }
+        .brand-yellow-surface { background-color: #FFC107; border-color: #FFC107; }
+        .brand-yellow-action { background-color: #FFC107; border-color: #FFC107; color: #582C83; }
+        .brand-yellow-action:hover { filter: brightness(0.96); }
+        .brand-yellow-inactive:hover { background-color: rgba(255, 255, 255, 0.3); }
 
         @media print {
             input, textarea { border: none !important; outline: none !important; resize: none !important; }
@@ -2453,9 +2458,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 </div>
                 <div class="md:ml-auto md:text-right">
                     <label class="block text-[10px] font-black text-purple-700 uppercase tracking-widest mb-1">Workspace</label>
-                    <div id="engineering-workspace-switch" class="inline-flex rounded-xl border border-yellow-200 bg-yellow-50 p-1">
+                    <div id="engineering-workspace-switch" class="inline-flex rounded-xl border brand-yellow-surface p-1">
                         <button id="engineering-workspace-certification" type="button" onclick="setEngineeringWorkspaceView('certification')" class="px-4 py-2 rounded-lg text-xs font-black bg-purple-700 text-white shadow-sm">Certification Standards</button>
-                        <button id="engineering-workspace-product-master" type="button" onclick="setEngineeringWorkspaceView('productMaster')" class="px-4 py-2 rounded-lg text-xs font-black text-purple-700 hover:bg-yellow-100">Product Master</button>
+                        <button id="engineering-workspace-product-master" type="button" onclick="setEngineeringWorkspaceView('productMaster')" class="px-4 py-2 rounded-lg text-xs font-black text-purple-700 brand-yellow-inactive">Product Master</button>
                     </div>
                 </div>
             </div>
@@ -2700,7 +2705,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         </div>
                         <div class="flex flex-wrap gap-2">
                             <button id="engineering-detail-template-add-product" type="button" data-engineering-action="edit" onclick="addEngineeringDetailModeProduct()" class="rounded-xl bg-purple-700 px-3 py-2 text-xs font-black text-white hover:bg-purple-800">Add Product</button>
-                            <button id="engineering-detail-template-reuse-product" type="button" data-engineering-action="edit" onclick="reuseEngineeringDetailProductData()" class="rounded-xl border border-yellow-200 bg-yellow-50 px-3 py-2 text-xs font-black text-purple-700 hover:bg-yellow-100">Reuse from Product</button>
+                            <button id="engineering-detail-template-reuse-product" type="button" data-engineering-action="edit" onclick="reuseEngineeringDetailProductData()" class="rounded-xl border brand-yellow-action px-3 py-2 text-xs font-black">Reuse from Product</button>
                             <label class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-50 cursor-pointer" data-engineering-action="upload">
                                 Import Excel Preview
                                 <input id="engineering-detail-import-file" type="file" accept=".xlsx,.xls" class="hidden" onchange="openEngineeringDetailImportPreview(this.files?.[0])">
@@ -6966,8 +6971,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (subtitle) subtitle.textContent = inProductMaster
                 ? 'Maintain engineering product master details by category, readiness, and technical data.'
                 : 'Maintain Malaysia product certification requirements, product evidence, and class-based engineering readiness.';
-            if (certBtn) certBtn.className = !inProductMaster ? 'px-4 py-2 rounded-lg text-xs font-black bg-purple-700 text-white shadow-sm' : 'px-4 py-2 rounded-lg text-xs font-black text-purple-700 hover:bg-yellow-100';
-            if (productBtn) productBtn.className = inProductMaster ? 'px-4 py-2 rounded-lg text-xs font-black bg-purple-700 text-white shadow-sm' : 'px-4 py-2 rounded-lg text-xs font-black text-purple-700 hover:bg-yellow-100';
+            if (certBtn) certBtn.className = !inProductMaster ? 'px-4 py-2 rounded-lg text-xs font-black bg-purple-700 text-white shadow-sm' : 'px-4 py-2 rounded-lg text-xs font-black text-purple-700 brand-yellow-inactive';
+            if (productBtn) productBtn.className = inProductMaster ? 'px-4 py-2 rounded-lg text-xs font-black bg-purple-700 text-white shadow-sm' : 'px-4 py-2 rounded-lg text-xs font-black text-purple-700 brand-yellow-inactive';
             syncEngineeringCertificationModeVisibility();
         }
         function setEngineeringWorkspaceView(view = 'certification') {

@@ -386,9 +386,11 @@ test('engineering workspace exposes certification matrix filters and seeded cata
   [
     'md:flex-row md:items-start md:justify-between',
     'md:ml-auto md:text-right',
-    'border-yellow-200 bg-yellow-50',
+    'brand-yellow-surface',
+    'brand-yellow-action',
+    'brand-yellow-inactive',
     'bg-purple-700 text-white shadow-sm',
-    'text-purple-700 hover:bg-yellow-100'
+    'text-purple-700 brand-yellow-inactive'
   ].forEach((text) => {
     assert.equal(engineeringTab.includes(text), true, `Missing engineering workspace switch layout/color: ${text}`);
   });

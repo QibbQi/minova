@@ -2708,8 +2708,15 @@
         function productsForProductMasterDetailTemplate(template) {
             return products.filter(product => normalizeProductCategory(product.category, '') === template.category);
         }
+        function productMasterDetailSafeDomId(value = '') {
+            return String(value || 'detail')
+                .toLowerCase()
+                .replace(/[^a-z0-9_-]+/g, '-')
+                .replace(/^-+|-+$/g, '')
+                .slice(0, 80) || 'detail';
+        }
         function productMasterDetailFieldDatalistId(template = {}, fieldKey = '') {
-            return `engineering-detail-values-${slugify(`${template.id || 'template'}-${fieldKey}`)}`;
+            return `engineering-detail-values-${productMasterDetailSafeDomId(`${template.id || 'template'}-${fieldKey}`)}`;
         }
         function productMasterDetailFieldValueOptions(template = {}, fieldKey = '') {
             return uniqueCertList(productsForProductMasterDetailTemplate(template)

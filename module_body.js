@@ -2718,11 +2718,15 @@
         }
         function renderEngineeringProductMasterDetailBulkList(template) {
             const box = document.getElementById('engineering-detail-template-bulk-list');
+            const scope = document.getElementById('engineering-detail-template-bulk-scope');
             if (!box) return;
             const rows = productsForProductMasterDetailTemplate(template);
             const fields = template.fieldKeys || [];
+            if (scope) {
+                scope.textContent = `Bulk Product Maintenance is editing ${template.category} / ${ENGINEERING_PRODUCT_MASTER_DETAIL_GROUPS[template.detailGroup]?.label || template.detailGroup} for ${rows.length} product${rows.length === 1 ? '' : 's'}.`;
+            }
             if (!rows.length) {
-                box.innerHTML = '<div class="p-6 text-center text-xs text-slate-400">No products in this category. Use Add Product to create one.</div>';
+                box.innerHTML = `<div class="p-6 text-center text-xs text-slate-400">No products found for ${htmlSafe(template.category)}. Use Add Product to create one.</div>`;
                 return;
             }
             const datalists = fields.map(key => {
@@ -2731,7 +2735,7 @@
                 return `<datalist id="${htmlSafe(datalistId)}">${options.map(value => `<option value="${htmlSafe(value)}"></option>`).join('')}</datalist>`;
             }).join('');
             const head = ['Product', ...fields.map(key => productMasterDetailTemplateFieldLabel(key, template))].map(label => `<th class="py-3 px-3">${htmlSafe(label)}</th>`).join('');
-            const body = rows.map(product => `<tr class="hover:bg-slate-50 transition-colors">
+            const body = rows.map(product => `<tr data-engineering-detail-product-row="${htmlSafe(product.id || '')}" class="hover:bg-slate-50 transition-colors">
                 <td class="py-3 px-3 align-top">
                     <div class="font-black text-slate-700">${htmlSafe(product.id || '-')}</div>
                     <div class="text-[10px] text-slate-400 max-w-[180px] truncate" title="${htmlSafe(productListDisplayText(product.name))}">${htmlSafe(productListDisplayText(product.name))}</div>
@@ -2741,11 +2745,11 @@
                     const disabled = productMasterDetailFieldKind(template.category, key) === 'previewOnly';
                     const datalistId = productMasterDetailFieldDatalistId(template, key);
                     return `<td class="py-3 px-3 align-top">
-                        <input data-engineering-detail-product="${htmlSafe(product.id || '')}" data-engineering-detail-field="${htmlSafe(key)}" data-engineering-detail-value-options="${htmlSafe(datalistId)}" list="${htmlSafe(datalistId)}" value="${htmlSafe(value)}" ${disabled ? 'disabled' : ''} class="min-w-[150px] border border-slate-200 rounded-lg px-2 py-2 text-xs outline-none focus:border-purple-500 ${disabled ? 'bg-slate-50 text-slate-400' : 'bg-white'}">
+                        <input data-engineering-detail-product="${htmlSafe(product.id || '')}" data-engineering-detail-field="${htmlSafe(key)}" data-engineering-detail-template-field="${htmlSafe(key)}" data-engineering-detail-value-options="${htmlSafe(datalistId)}" list="${htmlSafe(datalistId)}" value="${htmlSafe(value)}" ${disabled ? 'disabled' : ''} class="w-full min-w-[180px] border border-slate-200 rounded-lg px-2 py-2 text-xs outline-none focus:border-purple-500 ${disabled ? 'bg-slate-50 text-slate-400' : 'bg-white'}">
                     </td>`;
                 }).join('')}
             </tr>`).join('');
-            box.innerHTML = `${datalists}<table class="w-full text-left whitespace-nowrap">
+            box.innerHTML = `${datalists}<table class="w-full min-w-[980px] text-left whitespace-nowrap">
                 <thead class="bg-slate-50/70"><tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">${head}</tr></thead>
                 <tbody class="divide-y divide-slate-50">${body}</tbody>
             </table>`;
@@ -2830,7 +2834,7 @@
             document.querySelectorAll('#engineering-detail-template-bulk-list input[data-engineering-detail-product]').forEach(input => {
                 if (input.disabled) return;
                 const product = products.find(item => String(item.id || '') === input.dataset.engineeringDetailProduct);
-                const fieldKey = input.dataset.engineeringDetailField || '';
+                const fieldKey = input.dataset.engineeringDetailTemplateField || input.dataset.engineeringDetailField || '';
                 if (!product || !fieldKey) return;
                 const before = String(productMasterDetailValue(product, template.category, fieldKey) ?? '');
                 const after = String(input.value ?? '').trim();
@@ -2943,7 +2947,7 @@
             if (!source) return alert('Source product not found.');
             document.querySelectorAll('#engineering-detail-template-bulk-list input[data-engineering-detail-product]').forEach(input => {
                 if (input.disabled || input.dataset.engineeringDetailProduct === sourceId) return;
-                const fieldKey = input.dataset.engineeringDetailField || '';
+                const fieldKey = input.dataset.engineeringDetailTemplateField || input.dataset.engineeringDetailField || '';
                 input.value = productMasterDetailValue(source, template.category, fieldKey);
             });
             closeEngineeringDetailProductSearch();

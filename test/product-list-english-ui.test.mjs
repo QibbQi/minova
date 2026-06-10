@@ -375,6 +375,7 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'id="engineering-detail-template-add-product"',
     'id="engineering-detail-template-reuse-product"',
     'id="engineering-detail-template-preview-save"',
+    'id="engineering-detail-template-bulk-scope"',
     'mt-5 grid grid-cols-1 gap-4',
     'sm:grid-cols-[minmax(0,1fr)_auto_auto]',
     'whitespace-nowrap min-w-[96px]',
@@ -517,8 +518,13 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     "localStorage.setItem('minova_product_master_detail_templates_v1'",
     'Search Product',
     'data-engineering-detail-value-options',
+    'data-engineering-detail-product-row',
+    'data-engineering-detail-template-field',
+    'Bulk Product Maintenance is editing',
     'list="${htmlSafe(datalistId)}"',
     'renderEngineeringProductMasterDetailBulkList(template);',
+    "input.dataset.engineeringDetailProduct",
+    "input.dataset.engineeringDetailTemplateField || input.dataset.engineeringDetailField",
     "products.filter(product => normalizeProductCategory(product.category, '') === category)",
     'Choose a product and fill the current data range.',
     'Select existing field',
@@ -543,6 +549,7 @@ test('engineering workspace exposes certification matrix filters and seeded cata
   assert.equal(html.includes('Import Excel Preview'), false, 'Detail mode should not expose the Excel preview button');
   assert.equal(html.includes('id="engineering-detail-import-file"'), false, 'Detail mode should not keep the Excel preview file input');
   assert.equal(html.includes('xl:grid-cols-[0.9fr_1.5fr]'), false, 'Detail mode should stack Field Template above Bulk Product Maintenance to avoid squeezed controls');
+  assert.equal(html.includes('No products loaded.'), false, 'Bulk Product Maintenance should not ship a stale static no-products placeholder');
 });
 
 test('engineering product master detail mode keeps template state and import preview separate from product schema', () => {

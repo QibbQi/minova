@@ -149,6 +149,14 @@ Minova 是一个前端优先的新能源业务工具。GitHub Pages 承载主界
 - `worker/src/index.mjs` 的 payload normalization、权限检查、bootstrap shape 与 SQL 写入
 - `worker/migrations/` 是否需要 schema migration
 
+新增顶层页面必须同步权限维护，不能只增加导航按钮或页面 DOM：
+
+- 在 `auth/permission-core.mjs` 同步 `ALL_TABS`、`PERMISSION_RESOURCES`、角色默认权限、权限 schema version 和旧权限快照迁移。
+- 在 `auth/minova-auth-ui.mjs` 确保管理员权限编辑器能展示、收集、保存并重新读取新 tab/resource。
+- 在 `worker/src/index.mjs` 同步业务 domain 到 resource 的映射、bootstrap 权限过滤、写入/删除权限检查。
+- 添加 round-trip 测试，验证旧 D1 permission JSON 不会丢掉新页面权限，保存后仍能保留该 tab/resource。
+- 如涉及线上权限保存，测试通过后部署 Worker；否则前端会显示新复选框但旧 backend 仍可能丢弃未知资源。
+
 ## 报价与 PDF
 
 报价模块当前是五页结构：

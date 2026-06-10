@@ -3,8 +3,10 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import {
+  PERMISSION_SCHEMA_VERSION,
   canAccessDataSync,
   canManageQuoteApprovals,
+  mergePermissionSnapshot,
   sanitizePermissionSnapshot,
   canAccessTab,
   canPerformAction
@@ -14,6 +16,7 @@ import {
   buildBusinessBootstrapPayload,
   businessSnapshotToItems,
   buildHealthPayload,
+  certificationRequirementReferenceSummary,
   canSoftDeleteUser,
   domainPermission,
   normalizeAdminBusinessEntitiesQuery,
@@ -66,6 +69,33 @@ test('admin permission sanitization preserves backend access and admin actions',
   assert.equal(canPerformAction(permission, 'admin', 'edit'), true);
   assert.equal(canPerformAction(permission, 'admin', 'delete'), true);
   assert.equal(permission.quote.priceAdjustPctLimit, null);
+});
+
+test('legacy role permissions migrate engineering access into the current schema', () => {
+  const legacyOperationPermission = {
+    role: 'operation_management',
+    roleName: 'Operation management',
+    tabs: ['database', 'inventory', 'transport'],
+    actions: {
+      quotes: ['read', 'edit', 'download', 'approvalRequest'],
+      products: ['read', 'edit', 'delete'],
+      priceList: ['read'],
+      inventory: ['read', 'edit', 'delete'],
+      transport: ['read', 'edit', 'delete'],
+      suppliers: ['read'],
+      quoteSettings: [],
+      admin: []
+    },
+    sensitiveFields: ['margin']
+  };
+
+  const migrated = mergePermissionSnapshot({ role: 'operation_management' }, legacyOperationPermission);
+
+  assert.equal(migrated.schemaVersion, PERMISSION_SCHEMA_VERSION);
+  assert.equal(canAccessTab(migrated, 'engineering'), true);
+  for (const action of ['read', 'edit', 'delete', 'upload']) {
+    assert.equal(canPerformAction(migrated, 'engineering', action), true, `Missing migrated engineering.${action}`);
+  }
 });
 
 test('password change request requires matching confirmation', () => {
@@ -249,6 +279,37 @@ test('business entity payloads normalize single and batch writes', () => {
     domain: 'transport',
     recordId: 'T-1'
   });
+
+  assert.equal(normalizeBusinessEntityUpsertPayload({
+    domain: 'certification_requirement',
+    recordId: 'PV-016',
+    createOnly: true,
+    payload: { id: 'PV-016', standard: 'IEC 61730' }
+  }).items[0].createOnly, true);
+});
+
+test('certification requirement delete guard reports linked products and evidence', () => {
+  const summary = certificationRequirementReferenceSummary('PV-001', [
+    {
+      domain: 'product',
+      recordId: 'P1',
+      payload: { id: 'P1', certificationRequirementIds: ['PV-001', 'INV-001'] }
+    },
+    {
+      domain: 'product_certification_evidence',
+      recordId: 'P1:PV-001',
+      payload: { id: 'P1:PV-001', productId: 'P1', requirementRecordId: 'PV-001' }
+    },
+    {
+      domain: 'product_certification_evidence',
+      recordId: 'P2:INV-001',
+      payload: { id: 'P2:INV-001', productId: 'P2', requirementRecordId: 'INV-001' }
+    }
+  ]);
+
+  assert.equal(summary.inUse, true);
+  assert.deepEqual(summary.productIds, ['P1']);
+  assert.deepEqual(summary.evidenceIds, ['P1:PV-001']);
 });
 
 test('business settings and quote CRUD payloads normalize expected shapes', () => {

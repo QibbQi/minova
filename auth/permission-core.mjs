@@ -1,4 +1,5 @@
 export const DEFAULT_API_BASE_URL = 'https://minova-backend.qibbqi00.workers.dev';
+export const PERMISSION_SCHEMA_VERSION = 2;
 
 export const ROLE_DEFINITIONS = {
   admin: {
@@ -219,6 +220,7 @@ export function getDefaultPermissionSnapshot(roleId = 'read_only', overrides = {
   const sensitiveFields = overrides.sensitiveFields || ROLE_SENSITIVE_FIELDS[role] || [];
 
   return {
+    schemaVersion: PERMISSION_SCHEMA_VERSION,
     role,
     roleName: definition.displayName,
     tabs: [...listToSet(tabs)],
@@ -330,15 +332,16 @@ function boundedPercentage(value, fallback = 0) {
 export function sanitizePermissionSnapshot(roleId = 'read_only', raw = {}) {
   const role = normalizeRoleId(roleId || raw?.role || 'read_only');
   const base = getDefaultPermissionSnapshot(role);
+  const source = migratePermissionSnapshot(role, raw, base);
   const validTabs = listToSet(ALL_TABS);
-  const tabs = (Array.isArray(raw?.tabs) ? raw.tabs : base.tabs)
+  const tabs = (Array.isArray(source?.tabs) ? source.tabs : base.tabs)
     .map(tab => String(tab || '').trim())
     .filter(tab => validTabs.has(tab));
 
   const validResources = listToSet(PERMISSION_RESOURCES);
   const validActions = listToSet(PERMISSION_ACTIONS);
   const actions = {};
-  const rawActions = raw?.actions && typeof raw.actions === 'object' ? raw.actions : base.actions;
+  const rawActions = source?.actions && typeof source.actions === 'object' ? source.actions : base.actions;
   Object.entries(rawActions || {}).forEach(([resource, values]) => {
     if (!validResources.has(resource)) return;
     actions[resource] = [...listToSet(values)].filter(action => validActions.has(action));
@@ -348,13 +351,14 @@ export function sanitizePermissionSnapshot(roleId = 'read_only', raw = {}) {
   });
 
   const validSensitiveFields = listToSet(SENSITIVE_FIELDS);
-  const sensitiveFields = (Array.isArray(raw?.sensitiveFields) ? raw.sensitiveFields : base.sensitiveFields)
+  const sensitiveFields = (Array.isArray(source?.sensitiveFields) ? source.sensitiveFields : base.sensitiveFields)
     .map(field => String(field || '').trim())
     .filter(field => validSensitiveFields.has(field));
 
-  const quoteLimit = raw?.quote?.priceAdjustPctLimit ?? raw?.priceAdjustPctLimit ?? base.quote.priceAdjustPctLimit;
+  const quoteLimit = source?.quote?.priceAdjustPctLimit ?? source?.priceAdjustPctLimit ?? base.quote.priceAdjustPctLimit;
   const sanitized = {
     ...base,
+    schemaVersion: PERMISSION_SCHEMA_VERSION,
     role,
     roleName: base.roleName,
     tabs: [...listToSet(tabs)],
@@ -362,13 +366,13 @@ export function sanitizePermissionSnapshot(roleId = 'read_only', raw = {}) {
     sensitiveFields: [...listToSet(sensitiveFields)],
     quote: {
       ...base.quote,
-      ...(raw?.quote && typeof raw.quote === 'object' ? raw.quote : {}),
+      ...(source?.quote && typeof source.quote === 'object' ? source.quote : {}),
       priceAdjustPctLimit: quoteLimit === null ? null : boundedPercentage(quoteLimit, base.quote.priceAdjustPctLimit || 0)
     },
     watermark: {
       ...base.watermark,
-      ...(raw?.watermark && typeof raw.watermark === 'object' ? raw.watermark : {}),
-      enabled: raw?.watermark?.enabled !== false
+      ...(source?.watermark && typeof source.watermark === 'object' ? source.watermark : {}),
+      enabled: source?.watermark?.enabled !== false
     }
   };
 
@@ -381,18 +385,42 @@ export function sanitizePermissionSnapshot(roleId = 'read_only', raw = {}) {
   return sanitized;
 }
 
+function migratePermissionSnapshot(role, raw = {}, base = getDefaultPermissionSnapshot(role)) {
+  const source = raw && typeof raw === 'object' ? raw : {};
+  const version = Number(source.schemaVersion || 1);
+  if (version >= PERMISSION_SCHEMA_VERSION) return source;
+  const migrated = {
+    ...source,
+    tabs: Array.isArray(source.tabs) ? [...source.tabs] : base.tabs,
+    actions: source.actions && typeof source.actions === 'object' ? cloneActions(source.actions) : cloneActions(base.actions)
+  };
+
+  if (version < 2) {
+    if ((base.tabs || []).includes('engineering') && !listToSet(migrated.tabs).has('engineering')) {
+      migrated.tabs = [...migrated.tabs, 'engineering'];
+    }
+    if (!Object.prototype.hasOwnProperty.call(migrated.actions, 'engineering')) {
+      migrated.actions.engineering = [...listToSet(base.actions?.engineering || [])];
+    }
+  }
+  migrated.schemaVersion = PERMISSION_SCHEMA_VERSION;
+  return migrated;
+}
+
 export function mergePermissionSnapshot(user = {}, permission = {}) {
   const role = normalizeRoleId(user.role || permission.role || 'read_only');
   const base = getDefaultPermissionSnapshot(role);
+  const saved = permission && typeof permission === 'object' ? permission : {};
   return sanitizePermissionSnapshot(role, {
     ...base,
-    ...permission,
+    ...saved,
+    schemaVersion: saved.schemaVersion,
     role,
-    roleName: permission.roleName || base.roleName,
-    tabs: Array.isArray(permission.tabs) ? permission.tabs : base.tabs,
-    actions: permission.actions && typeof permission.actions === 'object' ? permission.actions : base.actions,
-    sensitiveFields: Array.isArray(permission.sensitiveFields) ? permission.sensitiveFields : base.sensitiveFields,
-    quote: { ...base.quote, ...(permission.quote || {}) },
-    watermark: { ...base.watermark, ...(permission.watermark || {}) }
+    roleName: saved.roleName || base.roleName,
+    tabs: Array.isArray(saved.tabs) ? saved.tabs : base.tabs,
+    actions: saved.actions && typeof saved.actions === 'object' ? saved.actions : base.actions,
+    sensitiveFields: Array.isArray(saved.sensitiveFields) ? saved.sensitiveFields : base.sensitiveFields,
+    quote: { ...base.quote, ...(saved.quote || {}) },
+    watermark: { ...base.watermark, ...(saved.watermark || {}) }
   });
 }

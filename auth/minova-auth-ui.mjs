@@ -150,6 +150,8 @@ const BUSINESS_DOMAIN_LABELS = {
   product: 'Products',
   channel_partner: 'Channel Partners',
   compatibility_rule: 'Compatibility Matrix',
+  certification_requirement: 'Certification Requirements',
+  product_certification_evidence: 'Product Certification Evidence',
   market_price: 'Price List',
   inventory: 'Inventory',
   inventory_history: 'Inventory History',
@@ -183,9 +185,9 @@ function publishBusinessApi() {
   Object.assign(api, {
     state: businessState,
     bootstrap: bootstrapBusinessData,
-    upsertEntity: (domain, recordId, payload) => {
+    upsertEntity: (domain, recordId, payload, options = {}) => {
       if (!canWriteBusinessDomain(domain)) return Promise.resolve({ skipped: true, forbidden: true });
-      return queueBusinessWrite('/business/entity/upsert', { domain, recordId, payload }, `Save ${domain}`);
+      return queueBusinessWrite('/business/entity/upsert', { domain, recordId, payload, createOnly: options.createOnly === true }, `Save ${domain}`);
     },
     upsertEntities: (items) => {
       const allowedItems = (Array.isArray(items) ? items : []).filter(item => canWriteBusinessDomain(item?.domain));
@@ -1341,6 +1343,7 @@ function applyPermissions() {
   lockResourceView('view-inventory', 'inventory');
   lockResourceView('view-transport', 'transport');
   lockResourceView('view-costcalc', 'quoteSettings');
+  window.applyEngineeringPermissions?.();
   applySensitiveFieldMasks();
   if (isAdminViewVisible()) loadAdminPanel();
 }

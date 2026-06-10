@@ -1,4 +1,8 @@
 import {
+  ALL_TABS,
+  PERMISSION_SCHEMA_VERSION,
+  PERMISSION_ACTIONS,
+  PERMISSION_RESOURCES,
   ROLE_DEFINITIONS,
   getDefaultPermissionSnapshot,
   mergePermissionSnapshot,
@@ -487,12 +491,24 @@ async function adminPermissions(request, env) {
     LEFT JOIN roles r ON r.id = p.role_id
     ORDER BY p.role_id
   `).all();
-  const permissions = (rows.results || []).map(row => ({
-    role: roleKeyFromName(row.role_name),
-    permission: safeParse(row.permission_json, getDefaultPermissionSnapshot(roleKeyFromName(row.role_name))),
-    updatedAt: row.created_at
-  }));
-  return json(request, env, { ok: true, permissions });
+  const permissions = (rows.results || []).map(row => {
+    const role = roleKeyFromName(row.role_name);
+    return {
+      role,
+      permission: mergePermissionSnapshot({ role }, safeParse(row.permission_json, {})),
+      updatedAt: row.created_at
+    };
+  });
+  return json(request, env, {
+    ok: true,
+    schema: {
+      version: PERMISSION_SCHEMA_VERSION,
+      tabs: ALL_TABS,
+      resources: PERMISSION_RESOURCES,
+      actions: PERMISSION_ACTIONS
+    },
+    permissions
+  });
 }
 
 async function adminSavePermission(request, env) {
@@ -713,7 +729,8 @@ async function adminBusinessEntityUpsert(request, env) {
   if (gate.response) return gate.response;
   const payload = normalizeAdminBusinessEntityMutation(await readJson(request));
   if (!payload.ok) return json(request, env, { error: payload.error }, 400);
-  await upsertBusinessEntities(env, [payload], gate.user.id);
+  const result = await upsertBusinessEntities(env, [payload], gate.user.id);
+  if (result.conflicts.length) return json(request, env, { error: 'business_entity_exists', conflicts: result.conflicts }, 409);
   await writeAudit(env, gate.user.id, gate.user.username, 'admin_business_entity_upsert', payload.domain, payload.recordId, {});
   return json(request, env, { ok: true });
 }
@@ -723,6 +740,10 @@ async function adminBusinessEntityDelete(request, env) {
   if (gate.response) return gate.response;
   const payload = normalizeAdminBusinessEntityMutation(await readJson(request), { payloadRequired: false });
   if (!payload.ok) return json(request, env, { error: payload.error }, 400);
+  if (payload.domain === 'certification_requirement') {
+    const references = await certificationRequirementReferenceSummaryFromD1(env, payload.recordId);
+    if (references.inUse) return json(request, env, { error: 'certification_requirement_in_use', references }, 409);
+  }
   await env.minova_auth_db.prepare(`
     UPDATE business_entities
     SET status = 'deleted', updated_at = CURRENT_TIMESTAMP, updated_by = ?
@@ -818,7 +839,8 @@ async function businessEntityUpsert(request, env) {
   for (const item of payload.items) {
     if (!canWriteBusinessDomain(permission, item.domain)) return json(request, env, { error: 'forbidden', domain: item.domain }, 403);
   }
-  await upsertBusinessEntities(env, payload.items, gate.user.id);
+  const result = await upsertBusinessEntities(env, payload.items, gate.user.id);
+  if (result.conflicts.length) return json(request, env, { error: 'business_entity_exists', conflicts: result.conflicts }, 409);
   await writeAudit(env, gate.user.id, gate.user.username, 'business_entity_upsert', 'business', String(payload.items.length), {
     domains: [...new Set(payload.items.map(item => item.domain))]
   });
@@ -832,6 +854,10 @@ async function businessEntityDelete(request, env) {
   const payload = normalizeBusinessEntityDeletePayload(await readJson(request));
   if (!payload.ok) return json(request, env, { error: payload.error }, 400);
   if (!canDeleteBusinessDomain(permission, payload.domain)) return json(request, env, { error: 'forbidden' }, 403);
+  if (payload.domain === 'certification_requirement') {
+    const references = await certificationRequirementReferenceSummaryFromD1(env, payload.recordId);
+    if (references.inUse) return json(request, env, { error: 'certification_requirement_in_use', references }, 409);
+  }
   await env.minova_auth_db.prepare(`
     UPDATE business_entities
     SET status = 'deleted', updated_at = CURRENT_TIMESTAMP, updated_by = ?
@@ -1095,7 +1121,7 @@ export function normalizeAdminBusinessEntityMutation(body = {}, { payloadRequire
   if (!recordId) return { ok: false, error: 'missing_record_id' };
   const payload = body.payload && typeof body.payload === 'object' ? body.payload : {};
   if (payloadRequired && (!payload || typeof payload !== 'object')) return { ok: false, error: 'missing_payload' };
-  return { ok: true, domain, recordId, payload };
+  return { ok: true, domain, recordId, payload, ...(body.createOnly === true ? { createOnly: true } : {}) };
 }
 
 export function normalizeAdminBusinessSettingsPayload(body = {}) {
@@ -1111,10 +1137,51 @@ export function normalizeBusinessEntityUpsertPayload(body = {}) {
     if (!domainPermission(domain)) return { ok: false, error: 'invalid_business_domain' };
     if (!recordId) return { ok: false, error: 'missing_record_id' };
     const payload = raw?.payload && typeof raw.payload === 'object' ? raw.payload : {};
-    items.push({ domain, recordId, payload });
+    items.push({ domain, recordId, payload, ...(raw?.createOnly === true ? { createOnly: true } : {}) });
   }
   if (!items.length) return { ok: false, error: 'empty_business_payload' };
   return { ok: true, items };
+}
+
+export function certificationRequirementReferenceSummary(recordId, rows = []) {
+  const id = String(recordId || '').trim();
+  const productIds = [];
+  const evidenceIds = [];
+  const seenProducts = new Set();
+  const seenEvidence = new Set();
+  if (!id) return { inUse: false, productIds, evidenceIds };
+  for (const row of Array.isArray(rows) ? rows : []) {
+    const domain = String(row?.domain || '').trim();
+    const payload = row?.payload && typeof row.payload === 'object'
+      ? row.payload
+      : safeParse(row?.payload_json, {});
+    if (domain === 'product') {
+      const ids = Array.isArray(payload?.certificationRequirementIds)
+        ? payload.certificationRequirementIds
+        : Array.isArray(payload?.certificationRequirements?.recordIds)
+          ? payload.certificationRequirements.recordIds
+          : [];
+      if (ids.map(v => String(v || '').trim()).includes(id)) {
+        const productId = String(payload.id || row.recordId || row.record_id || '').trim();
+        if (productId && !seenProducts.has(productId)) {
+          seenProducts.add(productId);
+          productIds.push(productId);
+        }
+      }
+    }
+    if (domain === 'product_certification_evidence' && String(payload?.requirementRecordId || '').trim() === id) {
+      const evidenceId = String(payload.id || row.recordId || row.record_id || '').trim();
+      if (evidenceId && !seenEvidence.has(evidenceId)) {
+        seenEvidence.add(evidenceId);
+        evidenceIds.push(evidenceId);
+      }
+    }
+  }
+  return {
+    inUse: productIds.length > 0 || evidenceIds.length > 0,
+    productIds,
+    evidenceIds
+  };
 }
 
 export function normalizeBusinessEntityDeletePayload(body = {}) {
@@ -1290,7 +1357,17 @@ function canDeleteBusinessDomain(permission, domain) {
 }
 
 async function upsertBusinessEntities(env, items, userId) {
+  const conflicts = [];
   for (const item of items || []) {
+    if (item.createOnly) {
+      const result = await env.minova_auth_db.prepare(`
+        INSERT INTO business_entities (domain, record_id, payload_json, status, updated_by)
+        VALUES (?, ?, ?, 'active', ?)
+        ON CONFLICT(domain, record_id) DO NOTHING
+      `).bind(item.domain, item.recordId, JSON.stringify(item.payload || {}), userId || null).run();
+      if (!result.meta?.changes) conflicts.push({ domain: item.domain, recordId: item.recordId });
+      continue;
+    }
     await env.minova_auth_db.prepare(`
       INSERT INTO business_entities (domain, record_id, payload_json, status, updated_by)
       VALUES (?, ?, ?, 'active', ?)
@@ -1301,6 +1378,16 @@ async function upsertBusinessEntities(env, items, userId) {
         updated_by = excluded.updated_by
     `).bind(item.domain, item.recordId, JSON.stringify(item.payload || {}), userId || null).run();
   }
+  return { conflicts };
+}
+
+async function certificationRequirementReferenceSummaryFromD1(env, recordId) {
+  const rows = await env.minova_auth_db.prepare(`
+    SELECT domain, record_id, payload_json
+    FROM business_entities
+    WHERE status != 'deleted' AND domain IN ('product', 'product_certification_evidence')
+  `).all();
+  return certificationRequirementReferenceSummary(recordId, rows.results || []);
 }
 
 async function upsertBusinessSettings(env, settings, userId) {

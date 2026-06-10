@@ -332,6 +332,12 @@ test('engineering workspace exposes certification matrix filters and seeded cata
 
   [
     'Engineering Workspace',
+    'id="engineering-mode-standard"',
+    'id="engineering-mode-matrix"',
+    'id="engineering-standard-panel"',
+    'id="engineering-matrix-panel"',
+    'id="engineering-standard-list"',
+    'id="engineering-standard-product-results"',
     'id="engineering-class-filter"',
     'id="engineering-level-filters"',
     'id="engineering-category-filters"',
@@ -354,13 +360,40 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'let productCertificationEvidence = []',
     'function normalizeCertificationRequirement',
     'function renderEngineeringWorkspace',
+    'function setEngineeringWorkspaceMode',
+    'function openEngineeringRequirementEditor',
+    'function saveEngineeringRequirementEditor',
+    'function deleteEngineeringRequirementRecord',
+    'function searchEngineeringStandardProducts',
+    'function addEngineeringProductToQuote',
+    'function getEngineeringRequirementLinkedProducts',
+    'function canManageEngineeringRecord',
+    'MINOVA_ENGINEERING_QUOTE_DEFAULTS_KEY',
+    "getFifoBatchesForProduct(productId)[0]",
     'nextCertificationCatalog.length || !certificationRequirementsCatalog.length',
     "persistEntityToD1('certification_requirement'",
+    "deleteEntityFromD1('certification_requirement'",
     "persistEntityToD1('product_certification_evidence'",
     'minova-data/certifications/products/${pid}/${safeRecordId}/${file.name}'
   ].forEach((text) => {
     assert.equal(html.includes(text), true, `Missing engineering workspace behavior: ${text}`);
   });
+});
+
+test('engineering permissions are enforced in UI and documented for future tabs', () => {
+  const guide = readFileSync(new URL('../agents.md', import.meta.url), 'utf8');
+
+  [
+    "applyEngineeringPermissions()",
+    "window.__minovaAuth?.canPerformAction?.('engineering', 'edit')",
+    "window.__minovaAuth?.canPerformAction?.('engineering', 'delete')",
+    "window.__minovaAuth?.canPerformAction?.('engineering', 'upload')",
+    "window.__minovaAuth?.canPerformAction?.('quotes', 'edit')"
+  ].forEach((text) => {
+    assert.equal(html.includes(text), true, `Missing engineering permission guard: ${text}`);
+  });
+
+  assert.equal(guide.includes('新增顶层页面必须同步权限维护'), true, 'Agent guide should remember new tabs need savable role permissions');
 });
 
 test('product master v3 adds supply route fields without replacing canonical supplier', () => {

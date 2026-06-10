@@ -336,6 +336,10 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'id="engineering-mode-matrix"',
     'id="engineering-add-record-button"',
     'id="engineering-search-products-primary"',
+    'id="engineering-standard-search-filters"',
+    'id="engineering-standard-level-filters"',
+    'id="engineering-standard-category-filters"',
+    'id="engineering-refresh-product-results"',
     'id="engineering-standard-panel"',
     'id="engineering-matrix-panel"',
     'id="engineering-standard-list"',
@@ -356,6 +360,11 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     engineeringTab.indexOf('id="engineering-search-products-primary"') > engineeringTab.indexOf('id="engineering-quote-price-default"')
       && engineeringTab.indexOf('id="engineering-search-products-primary"') < engineeringTab.indexOf('id="engineering-search"'),
     'Primary Search Product button should replace the old Add Record position beside quote defaults'
+  );
+  assert.ok(
+    engineeringTab.indexOf('id="engineering-standard-product-results"') > engineeringTab.indexOf('id="engineering-search-products-primary"')
+      && engineeringTab.indexOf('id="engineering-standard-product-results"') < engineeringTab.indexOf('id="engineering-standard-list"'),
+    'Matched Products should sit below Search Product and above the standard record list'
   );
   assert.equal(html.includes('id="engineering-cert-detail-modal"'), true, 'Missing engineering detail modal');
   assert.equal(html.includes('id="engineering-standard-product-modal"'), true, 'Missing engineering product result modal');
@@ -382,12 +391,15 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'function renderEngineeringMatchedProductRows',
     'function openEngineeringStandardProductModal',
     'function closeEngineeringStandardProductModal',
+    'function refreshEngineeringProductResults',
     'function addEngineeringProductToQuote',
     'function getEngineeringRequirementLinkedProducts',
     'function canManageEngineeringRecord',
     'MINOVA_ENGINEERING_QUOTE_DEFAULTS_KEY',
     "getFifoBatchesForProduct(productId)[0]",
     "ids.every(id => selected.has(id))",
+    "querySelectorAll('#engineering-standard-level-filters input[data-engineering-level]:checked')",
+    "querySelectorAll('#engineering-standard-category-filters input[data-engineering-category]:checked')",
     'Unable to find products containing every selected standard record.',
     'nextCertificationCatalog.length || !certificationRequirementsCatalog.length',
     "persistEntityToD1('certification_requirement'",

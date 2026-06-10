@@ -2156,17 +2156,20 @@
             return productCertificationEvidence.filter(item => item.requirementRecordId === id);
         }
         function engineeringSelectedLevels() {
-            const checks = Array.from(document.querySelectorAll('#engineering-level-filters input[data-engineering-level]:checked'));
+            const checks = engineeringWorkspaceMode === 'standard'
+                ? Array.from(document.querySelectorAll('#engineering-standard-level-filters input[data-engineering-level]:checked'))
+                : Array.from(document.querySelectorAll('#engineering-level-filters input[data-engineering-level]:checked'));
             return checks.map(input => input.value).filter(Boolean);
         }
         function engineeringSelectedCategories() {
-            const checks = Array.from(document.querySelectorAll('#engineering-category-filters input[data-engineering-category]:checked'));
+            const checks = engineeringWorkspaceMode === 'standard'
+                ? Array.from(document.querySelectorAll('#engineering-standard-category-filters input[data-engineering-category]:checked'))
+                : Array.from(document.querySelectorAll('#engineering-category-filters input[data-engineering-category]:checked'));
             return checks.map(input => input.value).filter(Boolean);
         }
         function renderEngineeringFilterChips() {
-            const levelBox = document.getElementById('engineering-level-filters');
-            const catBox = document.getElementById('engineering-category-filters');
-            if (levelBox && !levelBox.dataset.ready) {
+            const renderLevelBox = (levelBox) => {
+                if (!levelBox || levelBox.dataset.ready) return;
                 levelBox.innerHTML = CERTIFICATION_REQUIREMENT_LEVELS.map(level => `
                     <label class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600">
                         <input type="checkbox" data-engineering-level value="${htmlSafe(level)}" checked onchange="renderEngineeringWorkspace()" class="h-4 w-4 accent-purple-700">
@@ -2174,8 +2177,9 @@
                     </label>
                 `).join('');
                 levelBox.dataset.ready = '1';
-            }
-            if (catBox && !catBox.dataset.ready) {
+            };
+            const renderCategoryBox = (catBox) => {
+                if (!catBox || catBox.dataset.ready) return;
                 catBox.innerHTML = CERTIFICATION_SOURCE_CATEGORIES.map(category => `
                     <label class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600">
                         <input type="checkbox" data-engineering-category value="${htmlSafe(category)}" checked onchange="renderEngineeringWorkspace()" class="h-4 w-4 accent-purple-700">
@@ -2183,7 +2187,11 @@
                     </label>
                 `).join('');
                 catBox.dataset.ready = '1';
-            }
+            };
+            renderLevelBox(document.getElementById('engineering-standard-level-filters'));
+            renderCategoryBox(document.getElementById('engineering-standard-category-filters'));
+            renderLevelBox(document.getElementById('engineering-level-filters'));
+            renderCategoryBox(document.getElementById('engineering-category-filters'));
         }
         function engineeringRecordMatchesClass(record, classId) {
             const cls = ENGINEERING_CLASS_DEFINITIONS[classId] || ENGINEERING_CLASS_DEFINITIONS.A1;
@@ -2203,9 +2211,9 @@
             return certificationRequirementsCatalog.filter(record => {
                 if (engineeringWorkspaceMode === 'matrix') {
                     if (!engineeringRecordMatchesClass(record, classId)) return false;
-                    if (levels.size && !levels.has(record.requirementLevel)) return false;
-                    if (categories.size && !categories.has(record.sourceCategory)) return false;
                 }
+                if (levels.size && !levels.has(record.requirementLevel)) return false;
+                if (categories.size && !categories.has(record.sourceCategory)) return false;
                 if (!search) return true;
                 const hay = [record.id, record.sourceCategory, record.productCategory, record.standard, record.requirementLevel, record.applicabilityCondition, record.evidenceType, record.projectApplicability].join(' ').toLowerCase();
                 return hay.includes(search);
@@ -2309,10 +2317,14 @@
         window.clearEngineeringStandardSelection = () => {
             engineeringStandardSelectedIds = new Set();
             renderEngineeringWorkspace();
+            refreshEngineeringProductResults();
+        };
+        function refreshEngineeringProductResults() {
             const results = document.getElementById('engineering-standard-product-results');
             if (results) results.innerHTML = '<div class="p-8 text-center text-xs text-slate-400">Select standards, then search products.</div>';
             closeEngineeringStandardProductModal();
-        };
+        }
+        window.refreshEngineeringProductResults = refreshEngineeringProductResults;
         function engineeringSelectedStandardIds() {
             return Array.from(engineeringStandardSelectedIds).filter(id => getCertificationRequirementById(id));
         }

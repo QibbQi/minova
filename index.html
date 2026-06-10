@@ -2493,6 +2493,31 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 <input id="engineering-search" type="search" oninput="renderEngineeringWorkspace()" placeholder="Search record ID, standard, applicability..." class="w-full md:max-w-md border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-purple-500 bg-white">
                 <div id="engineering-filter-note" class="text-[11px] font-bold text-slate-400">Standard mode | select records and search products</div>
             </div>
+            <div id="engineering-standard-search-filters" class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Requirement Level</label>
+                    <div id="engineering-standard-level-filters" class="flex flex-wrap gap-2"></div>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Category</label>
+                    <div id="engineering-standard-category-filters" class="flex flex-wrap gap-2"></div>
+                </div>
+            </div>
+            <div class="mt-4 bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 border-b border-slate-100 px-4 py-3">
+                    <div>
+                        <div class="text-sm font-black text-slate-700">Matched Products</div>
+                        <div class="text-[11px] text-slate-400">Products must contain every selected record ID.</div>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button id="engineering-refresh-product-results" type="button" onclick="refreshEngineeringProductResults()" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-500 hover:bg-slate-50">Refresh</button>
+                        <button type="button" onclick="switchTab('quotation')" class="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-50">Open Quotation</button>
+                    </div>
+                </div>
+                <div id="engineering-standard-product-results" class="divide-y divide-slate-50">
+                    <div class="p-8 text-center text-xs text-slate-400">Select standards, then search products.</div>
+                </div>
+            </div>
         </div>
         <div id="engineering-standard-panel" class="space-y-4">
             <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
@@ -2519,18 +2544,6 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     <div class="flex flex-wrap gap-2">
                         <button type="button" onclick="clearEngineeringStandardSelection()" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-500 hover:bg-slate-50">Clear</button>
                     </div>
-                </div>
-            </div>
-            <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
-                <div class="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
-                    <div>
-                        <div class="text-sm font-black text-slate-700">Matched Products</div>
-                        <div class="text-[11px] text-slate-400">Products must contain every selected record ID.</div>
-                    </div>
-                    <button type="button" onclick="switchTab('quotation')" class="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-50">Open Quotation</button>
-                </div>
-                <div id="engineering-standard-product-results" class="divide-y divide-slate-50">
-                    <div class="p-8 text-center text-xs text-slate-400">Select standards, then search products.</div>
                 </div>
             </div>
         </div>
@@ -6692,17 +6705,20 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return productCertificationEvidence.filter(item => item.requirementRecordId === id);
         }
         function engineeringSelectedLevels() {
-            const checks = Array.from(document.querySelectorAll('#engineering-level-filters input[data-engineering-level]:checked'));
+            const checks = engineeringWorkspaceMode === 'standard'
+                ? Array.from(document.querySelectorAll('#engineering-standard-level-filters input[data-engineering-level]:checked'))
+                : Array.from(document.querySelectorAll('#engineering-level-filters input[data-engineering-level]:checked'));
             return checks.map(input => input.value).filter(Boolean);
         }
         function engineeringSelectedCategories() {
-            const checks = Array.from(document.querySelectorAll('#engineering-category-filters input[data-engineering-category]:checked'));
+            const checks = engineeringWorkspaceMode === 'standard'
+                ? Array.from(document.querySelectorAll('#engineering-standard-category-filters input[data-engineering-category]:checked'))
+                : Array.from(document.querySelectorAll('#engineering-category-filters input[data-engineering-category]:checked'));
             return checks.map(input => input.value).filter(Boolean);
         }
         function renderEngineeringFilterChips() {
-            const levelBox = document.getElementById('engineering-level-filters');
-            const catBox = document.getElementById('engineering-category-filters');
-            if (levelBox && !levelBox.dataset.ready) {
+            const renderLevelBox = (levelBox) => {
+                if (!levelBox || levelBox.dataset.ready) return;
                 levelBox.innerHTML = CERTIFICATION_REQUIREMENT_LEVELS.map(level => `
                     <label class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600">
                         <input type="checkbox" data-engineering-level value="${htmlSafe(level)}" checked onchange="renderEngineeringWorkspace()" class="h-4 w-4 accent-purple-700">
@@ -6710,8 +6726,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     </label>
                 `).join('');
                 levelBox.dataset.ready = '1';
-            }
-            if (catBox && !catBox.dataset.ready) {
+            };
+            const renderCategoryBox = (catBox) => {
+                if (!catBox || catBox.dataset.ready) return;
                 catBox.innerHTML = CERTIFICATION_SOURCE_CATEGORIES.map(category => `
                     <label class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600">
                         <input type="checkbox" data-engineering-category value="${htmlSafe(category)}" checked onchange="renderEngineeringWorkspace()" class="h-4 w-4 accent-purple-700">
@@ -6719,7 +6736,11 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     </label>
                 `).join('');
                 catBox.dataset.ready = '1';
-            }
+            };
+            renderLevelBox(document.getElementById('engineering-standard-level-filters'));
+            renderCategoryBox(document.getElementById('engineering-standard-category-filters'));
+            renderLevelBox(document.getElementById('engineering-level-filters'));
+            renderCategoryBox(document.getElementById('engineering-category-filters'));
         }
         function engineeringRecordMatchesClass(record, classId) {
             const cls = ENGINEERING_CLASS_DEFINITIONS[classId] || ENGINEERING_CLASS_DEFINITIONS.A1;
@@ -6739,9 +6760,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return certificationRequirementsCatalog.filter(record => {
                 if (engineeringWorkspaceMode === 'matrix') {
                     if (!engineeringRecordMatchesClass(record, classId)) return false;
-                    if (levels.size && !levels.has(record.requirementLevel)) return false;
-                    if (categories.size && !categories.has(record.sourceCategory)) return false;
                 }
+                if (levels.size && !levels.has(record.requirementLevel)) return false;
+                if (categories.size && !categories.has(record.sourceCategory)) return false;
                 if (!search) return true;
                 const hay = [record.id, record.sourceCategory, record.productCategory, record.standard, record.requirementLevel, record.applicabilityCondition, record.evidenceType, record.projectApplicability].join(' ').toLowerCase();
                 return hay.includes(search);
@@ -6845,10 +6866,14 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         window.clearEngineeringStandardSelection = () => {
             engineeringStandardSelectedIds = new Set();
             renderEngineeringWorkspace();
+            refreshEngineeringProductResults();
+        };
+        function refreshEngineeringProductResults() {
             const results = document.getElementById('engineering-standard-product-results');
             if (results) results.innerHTML = '<div class="p-8 text-center text-xs text-slate-400">Select standards, then search products.</div>';
             closeEngineeringStandardProductModal();
-        };
+        }
+        window.refreshEngineeringProductResults = refreshEngineeringProductResults;
         function engineeringSelectedStandardIds() {
             return Array.from(engineeringStandardSelectedIds).filter(id => getCertificationRequirementById(id));
         }

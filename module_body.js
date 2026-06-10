@@ -2124,6 +2124,13 @@
             const defaultFields = defaultProductMasterDetailFieldKeys(category, detailGroup);
             const fieldKeys = uniqueProductMasterFieldKeys(record.fieldKeys?.length ? record.fieldKeys : defaultFields);
             const requiredSet = new Set(uniqueProductMasterFieldKeys(record.requiredFieldKeys));
+            const fieldLabels = {};
+            if (record.fieldLabels && typeof record.fieldLabels === 'object') {
+                fieldKeys.forEach(key => {
+                    const label = String(record.fieldLabels[key] || '').trim();
+                    if (label) fieldLabels[key] = label;
+                });
+            }
             const id = String(record.id || productMasterDetailTemplateId(category, detailGroup)).trim();
             return {
                 id,
@@ -2131,6 +2138,7 @@
                 detailGroup,
                 fieldKeys,
                 requiredFieldKeys: fieldKeys.filter(key => requiredSet.has(key)),
+                fieldLabels,
                 updatedAt: String(record.updatedAt || new Date().toISOString()),
                 remarks: String(record.remarks || '').trim()
             };
@@ -2155,6 +2163,11 @@
                 if (PRODUCT_MASTER_TECHNICAL_LABEL_BY_KEY?.[fieldKey]) return PRODUCT_MASTER_TECHNICAL_LABEL_BY_KEY[fieldKey];
             } catch (e) {}
             return fieldKey;
+        }
+        function productMasterDetailTemplateFieldLabel(key = '', template = {}) {
+            const fieldKey = String(key || '').trim();
+            const customLabel = String(template?.fieldLabels?.[fieldKey] || '').trim();
+            return customLabel || productMasterDetailFieldLabel(fieldKey);
         }
         function productMasterDetailFieldOptions(category = '') {
             const masterKeys = Object.keys(PRODUCT_MASTER_DETAIL_MASTER_FIELD_LABELS);
@@ -2623,10 +2636,16 @@
         }
         function resetProductMasterDetailFieldPicker(template = currentProductMasterDetailTemplate()) {
             const picker = document.getElementById('engineering-detail-template-field-picker');
+            const labelEditor = document.getElementById('engineering-detail-template-field-label-editor');
             const button = document.getElementById('engineering-detail-template-add-field');
             const cancel = document.getElementById('engineering-detail-template-cancel-edit');
             if (!picker) return;
             picker.dataset.editFieldKey = '';
+            picker.classList.remove('hidden');
+            if (labelEditor) {
+                labelEditor.value = '';
+                labelEditor.classList.add('hidden');
+            }
             const selected = new Set(template.fieldKeys || []);
             const options = productMasterDetailFieldOptions(template.category);
             picker.innerHTML = '<option value="">Select existing field</option>' + options
@@ -2641,16 +2660,17 @@
             if (!canManageEngineeringRecord('edit')) return alert('No engineering edit permission.');
             const template = currentProductMasterDetailTemplate();
             const picker = document.getElementById('engineering-detail-template-field-picker');
+            const labelEditor = document.getElementById('engineering-detail-template-field-label-editor');
             const button = document.getElementById('engineering-detail-template-add-field');
             const cancel = document.getElementById('engineering-detail-template-cancel-edit');
-            if (!picker) return;
-            const options = productMasterDetailFieldOptions(template.category);
-            picker.innerHTML = '<option value="">Choose replacement field</option>' + options
-                .map(option => `<option value="${htmlSafe(option.key)}">${htmlSafe(option.label)} · ${htmlSafe(option.kind)}</option>`)
-                .join('');
-            picker.value = fieldKey;
+            if (!picker || !labelEditor) return;
+            picker.classList.add('hidden');
             picker.dataset.editFieldKey = fieldKey;
-            if (button) button.textContent = 'Save Edit';
+            labelEditor.value = productMasterDetailTemplateFieldLabel(fieldKey, template);
+            labelEditor.classList.remove('hidden');
+            labelEditor.focus();
+            labelEditor.select();
+            if (button) button.textContent = 'Save Name';
             if (cancel) cancel.classList.remove('hidden');
         }
         window.beginProductMasterDetailTemplateFieldEdit = beginProductMasterDetailTemplateFieldEdit;
@@ -2663,7 +2683,7 @@
                 const kind = productMasterDetailFieldKind(template.category, key);
                 return `<div class="flex items-center justify-between gap-3 px-4 py-3">
                     <div class="min-w-0">
-                        <div class="text-xs font-black text-slate-700">${htmlSafe(productMasterDetailFieldLabel(key))}</div>
+                        <div class="text-xs font-black text-slate-700">${htmlSafe(productMasterDetailTemplateFieldLabel(key, template))}</div>
                         <div class="text-[10px] text-slate-400">${htmlSafe(key)} · ${htmlSafe(kind === 'previewOnly' ? 'preview only' : kind)}</div>
                     </div>
                     <div class="flex items-center gap-2">
@@ -2688,7 +2708,7 @@
                 box.innerHTML = '<div class="p-6 text-center text-xs text-slate-400">No products in this category. Use Add Product to create one.</div>';
                 return;
             }
-            const head = ['Product', ...fields.map(key => productMasterDetailFieldLabel(key))].map(label => `<th class="py-3 px-3">${htmlSafe(label)}</th>`).join('');
+            const head = ['Product', ...fields.map(key => productMasterDetailTemplateFieldLabel(key, template))].map(label => `<th class="py-3 px-3">${htmlSafe(label)}</th>`).join('');
             const body = rows.map(product => `<tr class="hover:bg-slate-50 transition-colors">
                 <td class="py-3 px-3 align-top">
                     <div class="font-black text-slate-700">${htmlSafe(product.id || '-')}</div>
@@ -2719,21 +2739,35 @@
             const template = currentProductMasterDetailTemplate();
             const picker = document.getElementById('engineering-detail-template-field-picker');
             const editFieldKey = String(picker?.dataset?.editFieldKey || '').trim();
+            if (editFieldKey) return saveProductMasterDetailTemplateFieldLabel(editFieldKey);
             const fieldKey = String(picker?.value || '').trim();
             if (!fieldKey) return;
             if (!editFieldKey && (template.fieldKeys || []).includes(fieldKey)) return alert('This field is already in the template.');
-            const fieldKeys = editFieldKey
-                ? (template.fieldKeys || []).map(key => key === editFieldKey ? fieldKey : key)
-                : [...(template.fieldKeys || []), fieldKey];
-            const requiredFieldKeys = editFieldKey
-                ? (template.requiredFieldKeys || []).map(key => key === editFieldKey ? fieldKey : key)
-                : template.requiredFieldKeys || [];
+            const fieldKeys = [...(template.fieldKeys || []), fieldKey];
+            const requiredFieldKeys = template.requiredFieldKeys || [];
             const next = saveProductMasterDetailTemplate({ ...template, fieldKeys, requiredFieldKeys, updatedAt: new Date().toISOString() });
             renderEngineeringProductMasterDetailMode();
             return next;
         }
         window.addProductMasterDetailTemplateField = addProductMasterDetailTemplateField;
         window.editProductMasterDetailTemplateField = beginProductMasterDetailTemplateFieldEdit;
+        function saveProductMasterDetailTemplateFieldLabel(fieldKey = '') {
+            if (!canManageEngineeringRecord('edit')) return alert('No engineering edit permission.');
+            const template = currentProductMasterDetailTemplate();
+            const key = String(fieldKey || '').trim();
+            if (!key || !(template.fieldKeys || []).includes(key)) return;
+            const labelEditor = document.getElementById('engineering-detail-template-field-label-editor');
+            const label = String(labelEditor?.value || '').trim();
+            if (!label) return alert('Field name is required.');
+            const defaultLabel = productMasterDetailFieldLabel(key);
+            const fieldLabels = { ...(template.fieldLabels || {}) };
+            if (label === defaultLabel) delete fieldLabels[key];
+            else fieldLabels[key] = label;
+            const next = saveProductMasterDetailTemplate({ ...template, fieldLabels, updatedAt: new Date().toISOString() });
+            renderEngineeringProductMasterDetailMode();
+            return next;
+        }
+        window.saveProductMasterDetailTemplateFieldLabel = saveProductMasterDetailTemplateFieldLabel;
         function toggleProductMasterDetailTemplateRequired(fieldKey = '', checked = false) {
             if (!canManageEngineeringRecord('edit')) return;
             const template = currentProductMasterDetailTemplate();
@@ -2750,12 +2784,14 @@
             if (!confirm(`Delete ${fieldKey} from this template?`)) return;
             const fieldKeys = (template.fieldKeys || []).filter(key => key !== fieldKey);
             const requiredFieldKeys = (template.requiredFieldKeys || []).filter(key => key !== fieldKey);
+            const fieldLabels = { ...(template.fieldLabels || {}) };
+            delete fieldLabels[fieldKey];
             if (!fieldKeys.length) {
                 productMasterDetailTemplates = productMasterDetailTemplates.filter(item => item.id !== template.id);
                 saveToLocal();
                 deleteEntityFromD1('product_master_detail_template', template.id);
             } else {
-                saveProductMasterDetailTemplate({ ...template, fieldKeys, requiredFieldKeys, updatedAt: new Date().toISOString() });
+                saveProductMasterDetailTemplate({ ...template, fieldKeys, requiredFieldKeys, fieldLabels, updatedAt: new Date().toISOString() });
             }
             renderEngineeringProductMasterDetailMode();
         }

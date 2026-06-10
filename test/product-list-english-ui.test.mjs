@@ -368,6 +368,7 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'id="engineering-detail-template-group"',
     'id="engineering-detail-template-fields"',
     'id="engineering-detail-template-field-picker"',
+    'id="engineering-detail-template-field-label-editor"',
     'id="engineering-detail-template-add-field"',
     'id="engineering-detail-template-cancel-edit"',
     'id="engineering-detail-template-bulk-list"',
@@ -439,6 +440,8 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'function saveProductMasterDetailTemplate',
     'function resetProductMasterDetailFieldPicker',
     'function beginProductMasterDetailTemplateFieldEdit',
+    'function productMasterDetailTemplateFieldLabel',
+    'function saveProductMasterDetailTemplateFieldLabel',
     'function deleteProductMasterDetailTemplateField',
     'function openEngineeringDetailImportPreview',
     'function previewEngineeringProductMasterBulkSave',
@@ -501,7 +504,10 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     "deleteEntityFromD1('product_master_detail_template'",
     "localStorage.setItem('minova_product_master_detail_templates_v1'",
     'Select existing field',
-    'Save Edit',
+    'Save Name',
+    'fieldLabels',
+    'productMasterDetailTemplateFieldLabel(key, template)',
+    "const fieldLabels = { ...(template.fieldLabels || {}) }",
     'minova-data/certifications/products/${pid}/${safeRecordId}/${file.name}'
   ].forEach((text) => {
     assert.equal(html.includes(text), true, `Missing engineering workspace behavior: ${text}`);
@@ -509,6 +515,8 @@ test('engineering workspace exposes certification matrix filters and seeded cata
 
   assert.equal(html.includes('Enter an existing field key to add to this template'), false, 'Add Field should not use the old prompt flow');
   assert.equal(html.includes('Edit field key. Use an existing masterData or technicalSpecs key'), false, 'Edit Field should not use the old prompt flow');
+  assert.equal(html.includes('Choose replacement field'), false, 'Edit Field should rename the field label instead of replacing the field key');
+  assert.equal(html.includes('Save Edit'), false, 'Edit Field should expose Save Name instead of a generic replacement save');
 });
 
 test('engineering product master detail mode keeps template state and import preview separate from product schema', () => {

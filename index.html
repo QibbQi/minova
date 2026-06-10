@@ -7527,6 +7527,21 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 .map(product => productMasterDetailValue(product, template.category, fieldKey))
                 .filter(productMasterDetailValuePresent));
         }
+        function renderProductMasterDetailBulkEditorControl(product = {}, template = {}, fieldKey = '') {
+            const value = String(productMasterDetailValue(product, template.category, fieldKey) ?? '');
+            const disabled = productMasterDetailFieldKind(template.category, fieldKey) === 'previewOnly';
+            const datalistId = productMasterDetailFieldDatalistId(template, fieldKey);
+            const options = productMasterDetailFieldValueOptions(template, fieldKey);
+            const choices = Array.from(new Set([...options, value].map(option => String(option ?? '').trim()).filter(Boolean)));
+            const commonAttrs = `data-engineering-detail-product="${htmlSafe(product.id || '')}" data-engineering-detail-field="${htmlSafe(fieldKey)}" data-engineering-detail-template-field="${htmlSafe(fieldKey)}" data-engineering-detail-value-options="${htmlSafe(datalistId)}"`;
+            if (!disabled && choices.length) {
+                return `<select ${commonAttrs} class="w-full min-w-[180px] border border-slate-200 rounded-lg px-2 py-2 text-xs outline-none focus:border-purple-500 bg-white">
+                    <option value="" ${value ? '' : 'selected'}></option>
+                    ${choices.map(choice => `<option value="${htmlSafe(choice)}" ${choice === value ? 'selected' : ''}>${htmlSafe(choice)}</option>`).join('')}
+                </select>`;
+            }
+            return `<input ${commonAttrs} list="${htmlSafe(datalistId)}" value="${htmlSafe(value)}" ${disabled ? 'disabled' : ''} class="w-full min-w-[180px] border border-slate-200 rounded-lg px-2 py-2 text-xs outline-none focus:border-purple-500 ${disabled ? 'bg-slate-50 text-slate-400' : 'bg-white'}">`;
+        }
         function renderEngineeringProductMasterDetailBulkList(template) {
             const box = document.getElementById('engineering-detail-template-bulk-list');
             const scope = document.getElementById('engineering-detail-template-bulk-scope');
@@ -7552,11 +7567,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     <div class="text-[10px] text-slate-400 max-w-[180px] truncate" title="${htmlSafe(productListDisplayText(product.name))}">${htmlSafe(productListDisplayText(product.name))}</div>
                 </td>
                 ${fields.map(key => {
-                    const value = productMasterDetailValue(product, template.category, key);
-                    const disabled = productMasterDetailFieldKind(template.category, key) === 'previewOnly';
-                    const datalistId = productMasterDetailFieldDatalistId(template, key);
                     return `<td class="py-3 px-3 align-top">
-                        <input data-engineering-detail-product="${htmlSafe(product.id || '')}" data-engineering-detail-field="${htmlSafe(key)}" data-engineering-detail-template-field="${htmlSafe(key)}" data-engineering-detail-value-options="${htmlSafe(datalistId)}" list="${htmlSafe(datalistId)}" value="${htmlSafe(value)}" ${disabled ? 'disabled' : ''} class="w-full min-w-[180px] border border-slate-200 rounded-lg px-2 py-2 text-xs outline-none focus:border-purple-500 ${disabled ? 'bg-slate-50 text-slate-400' : 'bg-white'}">
+                        ${renderProductMasterDetailBulkEditorControl(product, template, key)}
                     </td>`;
                 }).join('')}
             </tr>`).join('');
@@ -7642,7 +7654,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (!canManageEngineeringRecord('edit')) return alert('No engineering edit permission.');
             const template = currentProductMasterDetailTemplate();
             const changes = [];
-            document.querySelectorAll('#engineering-detail-template-bulk-list input[data-engineering-detail-product]').forEach(input => {
+            document.querySelectorAll('#engineering-detail-template-bulk-list input[data-engineering-detail-product], #engineering-detail-template-bulk-list select[data-engineering-detail-product]').forEach(input => {
                 if (input.disabled) return;
                 const product = products.find(item => String(item.id || '') === input.dataset.engineeringDetailProduct);
                 const fieldKey = input.dataset.engineeringDetailTemplateField || input.dataset.engineeringDetailField || '';

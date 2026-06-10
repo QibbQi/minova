@@ -2067,8 +2067,18 @@
             return 'bg-slate-50 text-slate-500 border-slate-100';
         }
         const MINOVA_ENGINEERING_QUOTE_DEFAULTS_KEY = 'minova_engineering_quote_defaults_v1';
+        let engineeringWorkspaceView = 'certification';
         let engineeringWorkspaceMode = 'standard';
         let engineeringStandardSelectedIds = new Set();
+        const ENGINEERING_PRODUCT_MASTER_DETAIL_GROUPS = {
+            all: { label: 'All Product Master Details', master: ['model', 'brand', 'series', 'application', 'voltageClass', 'phase', 'status', 'countryAvailable'], technical: [], extra: ['certification', 'commercial', 'documents'] },
+            basic: { label: 'Basic', master: ['model', 'brand', 'series', 'application', 'status', 'countryAvailable'], technical: [], extra: [] },
+            electrical: { label: 'Electrical', master: ['voltageClass', 'phase'], technical: ['powerW', 'ratedAcPowerKw', 'maxAcOutputPowerKw', 'nominalEnergyKwh', 'usableEnergyKwh', 'pcsRatedPowerKw', 'maxOutputPowerKw', 'moduleEfficiencyPct', 'mpptQty', 'batteryVoltageRangeV', 'gridVoltageV'], extra: [] },
+            mechanical: { label: 'Mechanical', master: [], technical: ['dimensionsMm', 'weightKg', 'ipRating', 'coolingType', 'mountingMethod', 'installationType', 'indoorOutdoor', 'operatingTemperature'], extra: [] },
+            certification: { label: 'Certification', master: ['certificateLink'], technical: ['certification', 'safetyStandard', 'gridCode'], extra: ['certification'] },
+            commercial: { label: 'Commercial / Source', master: ['remark'], technical: [], extra: ['commercial'] },
+            documents: { label: 'Documents', master: ['datasheetLink', 'certificateLink'], technical: [], extra: ['documents'] }
+        };
         function canManageEngineeringRecord(action = 'edit') {
             if (action === 'delete') return window.__minovaAuth?.canPerformAction?.('engineering', 'delete') ?? true;
             if (action === 'upload') return window.__minovaAuth?.canPerformAction?.('engineering', 'upload') ?? true;
@@ -2116,8 +2126,7 @@
             const priceType = document.getElementById('engineering-quote-price-default')?.value || 'clearance_home';
             try { localStorage.setItem(MINOVA_ENGINEERING_QUOTE_DEFAULTS_KEY, JSON.stringify({ source, priceType })); } catch (e) {}
         };
-        function setEngineeringWorkspaceMode(mode = 'standard') {
-            engineeringWorkspaceMode = mode === 'matrix' ? 'matrix' : 'standard';
+        function syncEngineeringCertificationModeVisibility() {
             const standard = document.getElementById('engineering-standard-panel');
             const matrix = document.getElementById('engineering-matrix-panel');
             const standardSearchFilters = document.getElementById('engineering-standard-search-filters');
@@ -2125,13 +2134,41 @@
             const searchProductBtn = document.getElementById('engineering-search-products-primary');
             const standardBtn = document.getElementById('engineering-mode-standard');
             const matrixBtn = document.getElementById('engineering-mode-matrix');
-            if (standard) standard.classList.toggle('hidden', engineeringWorkspaceMode !== 'standard');
-            if (matrix) matrix.classList.toggle('hidden', engineeringWorkspaceMode !== 'matrix');
-            if (standardSearchFilters) standardSearchFilters.classList.toggle('hidden', engineeringWorkspaceMode !== 'standard');
-            if (standardMatchCard) standardMatchCard.classList.toggle('hidden', engineeringWorkspaceMode !== 'standard');
-            if (searchProductBtn) searchProductBtn.classList.toggle('hidden', engineeringWorkspaceMode !== 'standard');
+            const inCertification = engineeringWorkspaceView === 'certification';
+            if (standard) standard.classList.toggle('hidden', !inCertification || engineeringWorkspaceMode !== 'standard');
+            if (matrix) matrix.classList.toggle('hidden', !inCertification || engineeringWorkspaceMode !== 'matrix');
+            if (standardSearchFilters) standardSearchFilters.classList.toggle('hidden', !inCertification || engineeringWorkspaceMode !== 'standard');
+            if (standardMatchCard) standardMatchCard.classList.toggle('hidden', !inCertification || engineeringWorkspaceMode !== 'standard');
+            if (searchProductBtn) searchProductBtn.classList.toggle('hidden', !inCertification || engineeringWorkspaceMode !== 'standard');
             if (standardBtn) standardBtn.className = engineeringWorkspaceMode === 'standard' ? 'px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white' : 'px-4 py-2 rounded-lg text-xs font-black text-slate-500';
             if (matrixBtn) matrixBtn.className = engineeringWorkspaceMode === 'matrix' ? 'px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white' : 'px-4 py-2 rounded-lg text-xs font-black text-slate-500';
+        }
+        function syncEngineeringWorkspaceViewChrome() {
+            const inProductMaster = engineeringWorkspaceView === 'productMaster';
+            const certPanel = document.getElementById('engineering-certification-workspace-panel');
+            const productPanel = document.getElementById('engineering-product-master-panel');
+            const title = document.getElementById('engineering-workspace-title');
+            const subtitle = document.getElementById('engineering-workspace-subtitle');
+            const certBtn = document.getElementById('engineering-workspace-certification');
+            const productBtn = document.getElementById('engineering-workspace-product-master');
+            if (certPanel) certPanel.classList.toggle('hidden', inProductMaster);
+            if (productPanel) productPanel.classList.toggle('hidden', !inProductMaster);
+            if (title) title.textContent = inProductMaster ? 'Product Master' : 'Certification Standards';
+            if (subtitle) subtitle.textContent = inProductMaster
+                ? 'Maintain engineering product master details by category, readiness, and technical data.'
+                : 'Maintain Malaysia product certification requirements, product evidence, and class-based engineering readiness.';
+            if (certBtn) certBtn.className = !inProductMaster ? 'px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white' : 'px-4 py-2 rounded-lg text-xs font-black text-slate-500';
+            if (productBtn) productBtn.className = inProductMaster ? 'px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white' : 'px-4 py-2 rounded-lg text-xs font-black text-slate-500';
+            syncEngineeringCertificationModeVisibility();
+        }
+        function setEngineeringWorkspaceView(view = 'certification') {
+            engineeringWorkspaceView = view === 'productMaster' ? 'productMaster' : 'certification';
+            renderEngineeringWorkspace();
+        }
+        window.setEngineeringWorkspaceView = setEngineeringWorkspaceView;
+        function setEngineeringWorkspaceMode(mode = 'standard') {
+            engineeringWorkspaceMode = mode === 'matrix' ? 'matrix' : 'standard';
+            syncEngineeringCertificationModeVisibility();
             renderEngineeringWorkspace();
         }
         window.setEngineeringWorkspaceMode = setEngineeringWorkspaceMode;
@@ -2282,10 +2319,146 @@
                 `;
             }).join('') || '<tr><td colspan="8" class="py-12 text-center text-slate-400 text-sm">No certification records match the current filters.</td></tr>';
         }
+        function engineeringProductMasterFilterValue(id, fallback = 'all') {
+            return String(document.getElementById(id)?.value || fallback).trim() || fallback;
+        }
+        function productMasterDetailValuePresent(value) {
+            if (Array.isArray(value)) return value.length > 0;
+            if (value && typeof value === 'object') return Object.keys(value).length > 0;
+            return String(value ?? '').trim() !== '';
+        }
+        function productMasterDetailGroupValues(product = {}, groupId = 'all') {
+            const group = ENGINEERING_PRODUCT_MASTER_DETAIL_GROUPS[groupId] || ENGINEERING_PRODUCT_MASTER_DETAIL_GROUPS.all;
+            const md = getProductMasterData(product);
+            const tech = getProductTechnicalSpecs(product);
+            const sourcing = getProductSourcing(product);
+            const certReq = getProductCertificationRequirements(product);
+            const values = [
+                ...(group.master || []).map(key => md[key]),
+                ...(group.technical || []).map(key => tech[key])
+            ];
+            if ((group.extra || []).includes('certification')) {
+                values.push(certReq.recordIds || [], certReq.standards || [], md.certificateLink);
+            }
+            if ((group.extra || []).includes('commercial')) {
+                values.push(sourcing.sourceType, sourcing.commercialSupplierCode, sourcing.factorySupplierCode, sourcing.authorizationStatus, product.leadTime, product.priceBasisUnit, product.cost, product.price);
+            }
+            if ((group.extra || []).includes('documents')) {
+                values.push(md.datasheetLink, md.certificateLink, productMasterAttachedCertFiles(product), productMasterAttachedSpecFiles(product));
+            }
+            if (groupId === 'all') {
+                values.push(product.name, product.category, product.supplierCode, product.spec);
+            }
+            return values;
+        }
+        function productMasterDetailGroupStatus(product = {}, groupId = 'all') {
+            const values = productMasterDetailGroupValues(product, groupId);
+            const total = values.length;
+            const filled = values.filter(productMasterDetailValuePresent).length;
+            const missing = Math.max(total - filled, 0);
+            const group = ENGINEERING_PRODUCT_MASTER_DETAIL_GROUPS[groupId] || ENGINEERING_PRODUCT_MASTER_DETAIL_GROUPS.all;
+            return {
+                label: group.label,
+                total,
+                filled,
+                missing,
+                complete: total > 0 && missing === 0
+            };
+        }
+        function engineeringProductMasterSearchHaystack(product = {}) {
+            const md = getProductMasterData(product);
+            const tech = getProductTechnicalSpecs(product);
+            const sourcing = getProductSourcing(product);
+            const certReq = getProductCertificationRequirements(product);
+            const certRecords = productCertificationSelectedRecords(product);
+            return [
+                product.id, product.name, product.category, product.scenario, product.spec, product.supplierCode, product.vendor,
+                ...Object.values(md), ...Object.values(tech), ...Object.values(sourcing),
+                ...(certReq.recordIds || []), ...(certReq.standards || []),
+                ...certRecords.flatMap(record => [record.id, record.standard, record.requirementLevel, record.sourceCategory])
+            ].join(' ').toLowerCase();
+        }
+        function engineeringProductMasterVisibleProducts() {
+            ensureSupplierData();
+            const typeView = engineeringProductMasterFilterValue('engineering-product-master-type-filter');
+            const detailGroup = engineeringProductMasterFilterValue('engineering-product-master-detail-group');
+            const detailState = engineeringProductMasterFilterValue('engineering-product-master-detail-state');
+            const certFilter = engineeringProductMasterFilterValue('engineering-product-master-cert-filter');
+            const query = String(document.getElementById('engineering-product-master-search')?.value || '').trim().toLowerCase();
+            const typeGroup = PRODUCT_TYPE_GROUPS.find(group => group.id === typeView) || PRODUCT_TYPE_GROUPS[0];
+            return products.filter(product => {
+                if (typeGroup.id !== 'all' && getProductTypeGroup(product).id !== typeGroup.id) return false;
+                const detailStatus = productMasterDetailGroupStatus(product, detailGroup);
+                if (detailState === 'missing' && detailStatus.missing === 0) return false;
+                if (detailState === 'complete' && detailStatus.missing > 0) return false;
+                const certStatus = productMasterCertificationStatus(product);
+                if (certFilter === 'ready' && certStatus.status !== 'Ready') return false;
+                if (certFilter === 'gap' && certStatus.status !== 'Gap') return false;
+                if (certFilter === 'none' && certStatus.status !== 'Not Set') return false;
+                if (query && !engineeringProductMasterSearchHaystack(product).includes(query)) return false;
+                return true;
+            });
+        }
+        function renderEngineeringProductMasterSummary(rows = []) {
+            const summary = document.getElementById('engineering-product-master-summary');
+            if (!summary) return;
+            const detailGroup = engineeringProductMasterFilterValue('engineering-product-master-detail-group');
+            const activeCount = rows.filter(product => String(getProductMasterData(product).status || product.status || '').toLowerCase() === 'active').length;
+            const missingCount = rows.filter(product => productMasterDetailGroupStatus(product, detailGroup).missing > 0).length;
+            const readyCount = rows.filter(product => productMasterCertificationStatus(product).status === 'Ready').length;
+            summary.innerHTML = [
+                ['Products', rows.length],
+                ['Active', activeCount],
+                ['Missing Details', missingCount],
+                ['Cert Ready', readyCount]
+            ].map(([label, value]) => `<div class="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2"><div class="text-[10px] font-black uppercase text-slate-400">${label}</div><div class="text-lg font-black text-slate-800">${value}</div></div>`).join('');
+        }
+        function renderEngineeringProductMasterWorkspace() {
+            const list = document.getElementById('engineering-product-master-list');
+            if (!list) return;
+            const rows = engineeringProductMasterVisibleProducts();
+            const detailGroup = engineeringProductMasterFilterValue('engineering-product-master-detail-group');
+            const detailLabel = (ENGINEERING_PRODUCT_MASTER_DETAIL_GROUPS[detailGroup] || ENGINEERING_PRODUCT_MASTER_DETAIL_GROUPS.all).label;
+            const note = document.getElementById('engineering-product-master-filter-note');
+            renderEngineeringProductMasterSummary(rows);
+            if (note) note.textContent = `${rows.length} products | ${detailLabel}`;
+            list.innerHTML = rows.map(product => {
+                const ctx = productMasterContext(product);
+                const detailStatus = productMasterDetailGroupStatus(product, detailGroup);
+                const certTone = ctx.certStatus.status === 'Ready' ? 'green' : (ctx.certStatus.status === 'Gap' ? 'amber' : 'slate');
+                return `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="py-4 px-4"><div class="font-black text-slate-700">${htmlSafe(product.id || '-')}</div><div class="text-xs font-bold text-slate-600 max-w-[240px] truncate" title="${htmlSafe(productListDisplayText(product.name))}">${htmlSafe(productListDisplayText(product.name))}</div></td>
+                        <td class="py-4 px-4"><div class="text-xs font-bold text-slate-600">${htmlSafe(productListDisplayText(product.category))}</div><div class="text-[10px] text-slate-400">${htmlSafe(getProductTypeGroup(product).label)}</div></td>
+                        <td class="py-4 px-4"><div class="text-xs font-bold text-slate-700">${htmlSafe(detailStatus.label)}</div><div class="text-[10px] text-slate-400">${detailStatus.filled}/${detailStatus.total} fields maintained${detailStatus.missing ? ` · ${detailStatus.missing} missing` : ''}</div></td>
+                        <td class="py-4 px-4">${productMasterStatusPill(ctx.certStatus.status, certTone)}<div class="text-[10px] text-slate-400 mt-1">${htmlSafe(ctx.certStatus.label)}</div></td>
+                        <td class="py-4 px-4"><div class="text-xs text-slate-600">${htmlSafe(ctx.supplierName)}</div><div class="text-[10px] text-slate-400">${htmlSafe(ctx.sourcing.sourceType || 'Unknown')}</div></td>
+                        <td class="py-4 px-4 text-center">
+                            <div class="inline-flex items-center gap-2">
+                                <button data-engineering-action="edit" onclick="editProduct('${htmlSafe(product.id || '')}')" class="rounded-xl bg-purple-700 px-3 py-2 text-xs font-black text-white hover:bg-purple-800">Details</button>
+                                <button onclick="openProductCertificationEvidence('${htmlSafe(product.id || '')}')" class="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-50">Evidence</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('') || '<tr><td colspan="6" class="py-12 text-center text-slate-400 text-sm">No products match the selected Product Master filters.</td></tr>';
+            applyEngineeringPermissions();
+        }
+        function setEngineeringProductMasterFilter() {
+            renderEngineeringWorkspace();
+        }
+        window.setEngineeringProductMasterFilter = setEngineeringProductMasterFilter;
         function renderEngineeringWorkspace() {
+            syncEngineeringWorkspaceViewChrome();
             renderEngineeringFilterChips();
             certificationRequirementsCatalog = normalizeCertificationRequirementsCatalog(certificationRequirementsCatalog);
             productCertificationEvidence = normalizeProductCertificationEvidenceList(productCertificationEvidence);
+            if (engineeringWorkspaceView === 'productMaster') {
+                renderEngineeringProductMasterWorkspace();
+                applyEngineeringPermissions();
+                return;
+            }
+            syncEngineeringCertificationModeVisibility();
             const classId = document.getElementById('engineering-class-filter')?.value || 'A1';
             const cls = ENGINEERING_CLASS_DEFINITIONS[classId] || ENGINEERING_CLASS_DEFINITIONS.A1;
             const rows = engineeringVisibleRecords();
@@ -12621,6 +12794,7 @@
         };
 
         window.openProductCertificationEvidenceUpload = (productId, recordId) => {
+            if (!canManageEngineeringRecord('upload')) return alert('No engineering upload permission.');
             const pid = String(productId || '').trim();
             const rid = String(recordId || '').trim();
             if (!pid || !rid) return;
@@ -12636,6 +12810,7 @@
         };
 
         window.uploadProductCertificationEvidence = async (productId, recordId, file) => {
+            if (!canManageEngineeringRecord('upload')) return alert('No engineering upload permission.');
             const pid = String(productId || '').trim();
             const rid = String(recordId || '').trim();
             if (!pid || !rid || !file) return;

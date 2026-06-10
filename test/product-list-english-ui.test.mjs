@@ -332,6 +332,8 @@ test('engineering workspace exposes certification matrix filters and seeded cata
 
   [
     'Engineering Workspace',
+    'id="engineering-workspace-certification"',
+    'id="engineering-workspace-product-master"',
     'id="engineering-mode-standard"',
     'id="engineering-mode-matrix"',
     'id="engineering-add-record-button"',
@@ -348,10 +350,23 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'id="engineering-class-filter"',
     'id="engineering-level-filters"',
     'id="engineering-category-filters"',
-    'id="engineering-cert-list"'
+    'id="engineering-cert-list"',
+    'id="engineering-certification-workspace-panel"',
+    'id="engineering-product-master-panel"',
+    'id="engineering-product-master-type-filter"',
+    'id="engineering-product-master-detail-group"',
+    'id="engineering-product-master-detail-state"',
+    'id="engineering-product-master-cert-filter"',
+    'id="engineering-product-master-search"',
+    'id="engineering-product-master-summary"',
+    'id="engineering-product-master-list"'
   ].forEach((text) => {
     assert.equal(engineeringTab.includes(text), true, `Missing engineering workspace UI: ${text}`);
   });
+  assert.ok(
+    engineeringTab.indexOf('id="engineering-workspace-certification"') < engineeringTab.indexOf('id="engineering-summary"'),
+    'Engineering workspace switch should sit above the summary cards'
+  );
   assert.ok(
     engineeringTab.indexOf('id="engineering-add-record-button"') > engineeringTab.indexOf('id="engineering-mode-matrix"')
       && engineeringTab.indexOf('id="engineering-add-record-button"') < engineeringTab.indexOf('id="engineering-quote-source-default"'),
@@ -389,7 +404,12 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'let productCertificationEvidence = []',
     'function normalizeCertificationRequirement',
     'function renderEngineeringWorkspace',
+    'function setEngineeringWorkspaceView',
     'function setEngineeringWorkspaceMode',
+    'function renderEngineeringProductMasterWorkspace',
+    'function engineeringProductMasterVisibleProducts',
+    'function productMasterDetailGroupStatus',
+    'function setEngineeringProductMasterFilter',
     'function pruneEngineeringStandardSelectionToRows',
     'function openEngineeringRequirementEditor',
     'function saveEngineeringRequirementEditor',
@@ -412,7 +432,8 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     "document.getElementById('engineering-standard-search-filters')",
     "document.getElementById('engineering-standard-match-card')",
     "document.getElementById('engineering-search-products-primary')",
-    "classList.toggle('hidden', engineeringWorkspaceMode !== 'standard')",
+    "classList.toggle('hidden', !inCertification || engineeringWorkspaceMode !== 'standard')",
+    "classList.toggle('hidden', inProductMaster)",
     'Unable to find products containing every selected standard record.',
     'nextCertificationCatalog.length || !certificationRequirementsCatalog.length',
     "persistEntityToD1('certification_requirement'",

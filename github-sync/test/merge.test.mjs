@@ -237,6 +237,10 @@ test('mergeState merges engineering certification records and evidence by stable
       ],
       productCertificationEvidence: [
         { id: 'P1:PV-001', productId: 'P1', requirementRecordId: 'PV-001', status: 'remote' }
+      ],
+      productMasterDetailTemplates: [
+        { id: 'PV Module:basic', category: 'PV Module', detailGroup: 'basic', fieldKeys: ['model'], remarks: 'remote' },
+        { id: 'Battery:electrical', category: 'Battery', detailGroup: 'electrical', fieldKeys: ['nominalEnergyKwh'] }
       ]
     }
   }
@@ -251,6 +255,10 @@ test('mergeState merges engineering certification records and evidence by stable
       productCertificationEvidence: [
         { id: 'P1:PV-001', productId: 'P1', requirementRecordId: 'PV-001', status: 'local' },
         { id: 'P2:BESS-001', productId: 'P2', requirementRecordId: 'BESS-001', status: 'Pending Evidence' }
+      ],
+      productMasterDetailTemplates: [
+        { id: 'PV Module:basic', category: 'PV Module', detailGroup: 'basic', fieldKeys: ['model', 'series'], remarks: 'local' },
+        { id: 'Inverter:commercial', category: 'Inverter', detailGroup: 'commercial', fieldKeys: ['remark'] }
       ]
     }
   }
@@ -261,6 +269,8 @@ test('mergeState merges engineering certification records and evidence by stable
   assert.equal(merged.data.certificationRequirementsCatalog.find((record) => record.id === 'PV-001').remarks, 'local')
   assert.deepEqual(merged.data.productCertificationEvidence.map((record) => record.id), ['P1:PV-001', 'P2:BESS-001'])
   assert.equal(merged.data.productCertificationEvidence.find((record) => record.id === 'P1:PV-001').status, 'local')
+  assert.deepEqual(merged.data.productMasterDetailTemplates.map((record) => record.id), ['PV Module:basic', 'Battery:electrical', 'Inverter:commercial'])
+  assert.equal(merged.data.productMasterDetailTemplates.find((record) => record.id === 'PV Module:basic').remarks, 'local')
 })
 
 test('mergeState merges channel partners and keeps local conflicts', () => {

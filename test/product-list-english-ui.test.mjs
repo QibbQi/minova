@@ -359,7 +359,23 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'id="engineering-product-master-cert-filter"',
     'id="engineering-product-master-search"',
     'id="engineering-product-master-summary"',
-    'id="engineering-product-master-list"'
+    'id="engineering-product-master-list"',
+    'id="engineering-product-master-mode-product"',
+    'id="engineering-product-master-mode-detail"',
+    'id="engineering-product-master-product-mode-panel"',
+    'id="engineering-product-master-detail-mode-panel"',
+    'id="engineering-detail-template-category"',
+    'id="engineering-detail-template-group"',
+    'id="engineering-detail-template-fields"',
+    'id="engineering-detail-template-add-field"',
+    'id="engineering-detail-template-bulk-list"',
+    'id="engineering-detail-template-add-product"',
+    'id="engineering-detail-template-reuse-product"',
+    'id="engineering-detail-template-preview-save"',
+    'id="engineering-detail-import-file"',
+    'id="engineering-detail-import-preview"',
+    'Product mode',
+    'Detail mode'
   ].forEach((text) => {
     assert.equal(engineeringTab.includes(text), true, `Missing engineering workspace UI: ${text}`);
   });
@@ -411,6 +427,15 @@ test('engineering workspace exposes certification matrix filters and seeded cata
   [
     'let certificationRequirementsCatalog = []',
     'let productCertificationEvidence = []',
+    'let productMasterDetailTemplates = []',
+    'function normalizeProductMasterDetailTemplate',
+    'function getProductMasterDetailTemplate',
+    'function setEngineeringProductMasterMode',
+    'function renderEngineeringProductMasterDetailMode',
+    'function saveProductMasterDetailTemplate',
+    'function deleteProductMasterDetailTemplateField',
+    'function openEngineeringDetailImportPreview',
+    'function previewEngineeringProductMasterBulkSave',
     'function normalizeCertificationRequirement',
     'function renderEngineeringWorkspace',
     'function setEngineeringWorkspaceView',
@@ -442,6 +467,7 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     "document.getElementById('engineering-standard-match-card')",
     "document.getElementById('engineering-search-products-primary')",
     "classList.toggle('hidden', !inCertification || engineeringWorkspaceMode !== 'standard')",
+    "summary?.classList.toggle('hidden', engineeringWorkspaceView !== 'certification')",
     "classList.toggle('hidden', inProductMaster)",
     "'px-4 py-2 rounded-lg text-xs font-black bg-purple-700 text-white shadow-sm'",
     'Unable to find products containing every selected standard record.',
@@ -449,9 +475,33 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     "persistEntityToD1('certification_requirement'",
     "deleteEntityFromD1('certification_requirement'",
     "persistEntityToD1('product_certification_evidence'",
+    "persistEntityToD1('product_master_detail_template'",
+    "deleteEntityFromD1('product_master_detail_template'",
+    "localStorage.setItem('minova_product_master_detail_templates_v1'",
     'minova-data/certifications/products/${pid}/${safeRecordId}/${file.name}'
   ].forEach((text) => {
     assert.equal(html.includes(text), true, `Missing engineering workspace behavior: ${text}`);
+  });
+});
+
+test('engineering product master detail mode keeps template state and import preview separate from product schema', () => {
+  const state = embeddedState();
+  const engineeringTab = mainSnippet('<main id="view-engineering"');
+
+  assert.ok(Array.isArray(state.data.productMasterDetailTemplates), 'Embedded state should include productMasterDetailTemplates');
+  [
+    'Basic',
+    'Electrical',
+    'Mechanical',
+    'Certification',
+    'Commercial',
+    'Documents',
+    'CESC vertical key-value preview',
+    'Midea model matrix preview',
+    'Unmatched fields stay in preview',
+    'No product fields are created automatically'
+  ].forEach((text) => {
+    assert.equal(engineeringTab.includes(text) || html.includes(text), true, `Missing Detail mode UX text: ${text}`);
   });
 });
 

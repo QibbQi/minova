@@ -1945,6 +1945,7 @@
         "seedVersion": "Minova_Master_Certification_Matrix_v1.0"
       }
     ],
-    "productCertificationEvidence": []
+    "productCertificationEvidence": [],
+    "productMasterDetailTemplates": []
   }
 }

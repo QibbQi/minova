@@ -50,6 +50,7 @@ export const ALL_TABS = [
   'pvcalc',
   'costcalc',
   'database',
+  'engineering',
   'pricelist',
   'inventory',
   'transport',
@@ -63,6 +64,7 @@ export const PERMISSION_RESOURCES = [
   'inventory',
   'transport',
   'suppliers',
+  'engineering',
   'quoteSettings',
   'admin'
 ];
@@ -87,9 +89,9 @@ const ROLE_TABS = {
   admin: ALL_TABS,
   sales: ['quotation', 'pvcalc', 'pricelist'],
   sales_management: ['quotation', 'pvcalc', 'pricelist', 'admin'],
-  supply_chain: ['database', 'inventory', 'transport', 'pricelist'],
-  operation_management: ['database', 'inventory', 'transport'],
-  price_auditor: ['quotation', 'costcalc', 'pricelist', 'admin'],
+  supply_chain: ['database', 'engineering', 'inventory', 'transport', 'pricelist'],
+  operation_management: ['database', 'engineering', 'inventory', 'transport'],
+  price_auditor: ['quotation', 'costcalc', 'pricelist', 'engineering', 'admin'],
   read_only: ['quotation', 'pvcalc', 'pricelist']
 };
 
@@ -100,6 +102,7 @@ const READ_ONLY_ACTIONS = {
   inventory: ['read'],
   transport: ['read'],
   suppliers: ['read'],
+  engineering: ['read'],
   quoteSettings: [],
   admin: []
 };
@@ -112,6 +115,7 @@ const ROLE_ACTIONS = {
     inventory: ['read', 'edit', 'delete'],
     transport: ['read', 'edit', 'delete', 'upload'],
     suppliers: ['read', 'edit', 'delete'],
+    engineering: ['read', 'edit', 'delete', 'upload'],
     quoteSettings: ['read', 'edit'],
     admin: ['read', 'edit', 'delete']
   },
@@ -122,6 +126,7 @@ const ROLE_ACTIONS = {
     inventory: [],
     transport: [],
     suppliers: [],
+    engineering: [],
     quoteSettings: [],
     admin: []
   },
@@ -132,6 +137,7 @@ const ROLE_ACTIONS = {
     inventory: [],
     transport: [],
     suppliers: [],
+    engineering: [],
     quoteSettings: [],
     admin: ['read']
   },
@@ -142,6 +148,7 @@ const ROLE_ACTIONS = {
     inventory: ['read', 'edit', 'delete'],
     transport: ['read', 'edit', 'delete', 'upload'],
     suppliers: ['read', 'edit', 'delete'],
+    engineering: ['read', 'edit', 'delete', 'upload'],
     quoteSettings: [],
     admin: []
   },
@@ -152,6 +159,7 @@ const ROLE_ACTIONS = {
     inventory: ['read', 'edit', 'delete'],
     transport: ['read', 'edit', 'delete'],
     suppliers: ['read'],
+    engineering: ['read', 'edit', 'delete', 'upload'],
     quoteSettings: [],
     admin: []
   },
@@ -162,6 +170,7 @@ const ROLE_ACTIONS = {
     inventory: ['read', 'delete'],
     transport: ['read', 'delete'],
     suppliers: ['read'],
+    engineering: ['read'],
     quoteSettings: ['read', 'edit'],
     admin: ['read']
   },

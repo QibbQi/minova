@@ -226,6 +226,43 @@ test('mergeState merges compatibility matrix rules and keeps local conflicts', (
   assert.equal(merged.data.compatibilityRules.find((rule) => rule.id === 'shared-rule').remark, 'local')
 })
 
+test('mergeState merges engineering certification records and evidence by stable id', () => {
+  const remote = {
+    data: {
+      products: [],
+      inventory: [],
+      certificationRequirementsCatalog: [
+        { id: 'PV-001', standard: 'IEC 61215 series', remarks: 'remote' },
+        { id: 'INV-001', standard: 'IEC 62109-1' }
+      ],
+      productCertificationEvidence: [
+        { id: 'P1:PV-001', productId: 'P1', requirementRecordId: 'PV-001', status: 'remote' }
+      ]
+    }
+  }
+  const local = {
+    data: {
+      products: [],
+      inventory: [],
+      certificationRequirementsCatalog: [
+        { id: 'PV-001', standard: 'IEC 61215 series', remarks: 'local' },
+        { id: 'BESS-001', standard: 'IEC 62619' }
+      ],
+      productCertificationEvidence: [
+        { id: 'P1:PV-001', productId: 'P1', requirementRecordId: 'PV-001', status: 'local' },
+        { id: 'P2:BESS-001', productId: 'P2', requirementRecordId: 'BESS-001', status: 'Pending Evidence' }
+      ]
+    }
+  }
+
+  const merged = mergeState(remote, local)
+
+  assert.deepEqual(merged.data.certificationRequirementsCatalog.map((record) => record.id), ['PV-001', 'INV-001', 'BESS-001'])
+  assert.equal(merged.data.certificationRequirementsCatalog.find((record) => record.id === 'PV-001').remarks, 'local')
+  assert.deepEqual(merged.data.productCertificationEvidence.map((record) => record.id), ['P1:PV-001', 'P2:BESS-001'])
+  assert.equal(merged.data.productCertificationEvidence.find((record) => record.id === 'P1:PV-001').status, 'local')
+})
+
 test('mergeState merges channel partners and keeps local conflicts', () => {
   const remote = {
     data: {

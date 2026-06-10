@@ -299,6 +299,10 @@ test('product master v3 separates certification requirements links and attached 
 
   [
     'Certification Requirements',
+    'id="m-cert-record-picker"',
+    'id="m-cert-selected-summary"',
+    'certificationRequirementIds',
+    'openProductCertificationEvidence',
     'External Certificate Link',
     'Product Certification Files',
     'Attached Certs',
@@ -307,6 +311,9 @@ test('product master v3 separates certification requirements links and attached 
     assert.equal(productModal.includes(text) || script.includes(text), true, `Missing V3 certification clarity UI: ${text}`);
   });
 
+  assert.equal(productModal.includes('id="m-cert-country-list"'), false, 'Product certification editor should not expose country checkbox requirements');
+  assert.equal(html.includes('function renderCertificationCountryChoices'), false, 'Country-based certification picker should be removed from product maintenance');
+
   [
     'productMasterAttachedCertFiles(product)',
     'productMasterCertificationStatus(product)',
@@ -314,6 +321,45 @@ test('product master v3 separates certification requirements links and attached 
     'flattenProductMasterValues(productMasterAttachedCertFiles(product))'
   ].forEach((text) => {
     assert.equal(script.includes(text), true, `Missing V3 certification clarity logic: ${text}`);
+  });
+});
+
+test('engineering workspace exposes certification matrix filters and seeded catalog state', () => {
+  const engineeringTab = mainSnippet('<main id="view-engineering"');
+  const script = snippetBetween('const PRODUCT_MASTER_TYPE_STORAGE_KEY', '// --- Select器逻辑 ---');
+  const state = embeddedState();
+  const catalog = state.data.certificationRequirementsCatalog || [];
+
+  [
+    'Engineering Workspace',
+    'id="engineering-class-filter"',
+    'id="engineering-level-filters"',
+    'id="engineering-category-filters"',
+    'id="engineering-cert-list"'
+  ].forEach((text) => {
+    assert.equal(engineeringTab.includes(text), true, `Missing engineering workspace UI: ${text}`);
+  });
+  assert.equal(html.includes('id="engineering-cert-detail-modal"'), true, 'Missing engineering detail modal');
+
+  ['A1', 'A2', 'B', 'C', 'D', 'E', 'Mandatory', 'Utility Preferred', 'International Finance Preferred', 'Optional', 'PV_MODULE', 'INVERTER', 'BATTERY'].forEach((text) => {
+    assert.equal(engineeringTab.includes(text) || html.includes(text), true, `Missing engineering filter value: ${text}`);
+  });
+
+  assert.equal(catalog.some(record => record.id === 'PV-001' && record.sourceCategory === 'PV_MODULE'), true, 'Missing seeded PV certification record');
+  assert.equal(catalog.some(record => record.id === 'INV-001' && record.sourceCategory === 'INVERTER'), true, 'Missing seeded inverter certification record');
+  assert.equal(catalog.some(record => record.id === 'BESS-001' && record.sourceCategory === 'BATTERY'), true, 'Missing seeded battery/BESS certification record');
+
+  [
+    'let certificationRequirementsCatalog = []',
+    'let productCertificationEvidence = []',
+    'function normalizeCertificationRequirement',
+    'function renderEngineeringWorkspace',
+    'nextCertificationCatalog.length || !certificationRequirementsCatalog.length',
+    "persistEntityToD1('certification_requirement'",
+    "persistEntityToD1('product_certification_evidence'",
+    'minova-data/certifications/products/${pid}/${safeRecordId}/${file.name}'
+  ].forEach((text) => {
+    assert.equal(html.includes(text), true, `Missing engineering workspace behavior: ${text}`);
   });
 });
 

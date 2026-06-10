@@ -100,6 +100,7 @@ const TAB_LABELS = {
   pvcalc: 'PV + ESS Calculator',
   costcalc: 'Quote Settings',
   database: 'Product List',
+  engineering: 'Engineering Workspace',
   pricelist: 'Price List',
   inventory: 'Inventory Mgmt',
   transport: 'Transport Mgmt',
@@ -113,6 +114,7 @@ const RESOURCE_LABELS = {
   inventory: 'Inventory',
   transport: 'Transport',
   suppliers: 'Suppliers',
+  engineering: 'Engineering',
   quoteSettings: 'Quote Settings',
   admin: 'Admin Backend'
 };
@@ -335,6 +337,8 @@ const BUSINESS_RESOURCE_BY_DOMAIN = {
   supplier: 'suppliers',
   product: 'products',
   channel_partner: 'suppliers',
+  certification_requirement: 'engineering',
+  product_certification_evidence: 'engineering',
   inventory: 'inventory',
   inventory_history: 'inventory',
   sales_record: 'inventory',
@@ -377,6 +381,8 @@ function businessSnapshotToPayload(snapshot = {}) {
     ...arr(data.suppliers).map((record, index) => ({ domain: 'supplier', recordId: businessRecordIdFor(record, index), payload: record })),
     ...arr(data.products).map((record, index) => ({ domain: 'product', recordId: businessRecordIdFor(record, index), payload: record })),
     ...arr(data.channelPartners).map((record, index) => ({ domain: 'channel_partner', recordId: businessRecordIdFor(record, index), payload: record })),
+    ...arr(data.certificationRequirementsCatalog).map((record, index) => ({ domain: 'certification_requirement', recordId: businessRecordIdFor(record, index), payload: record })),
+    ...arr(data.productCertificationEvidence).map((record, index) => ({ domain: 'product_certification_evidence', recordId: businessRecordIdFor(record, index), payload: record })),
     ...arr(data.inventory).map((record, index) => ({ domain: 'inventory', recordId: businessRecordIdFor(record, index), payload: record })),
     ...arr(data.inventoryHistory).map((record, index) => ({ domain: 'inventory_history', recordId: businessRecordIdFor(record, index), payload: record })),
     ...arr(data.salesRecords).map((record, index) => ({ domain: 'sales_record', recordId: businessRecordIdFor(record, index), payload: record })),
@@ -994,7 +1000,8 @@ async function logout() {
 
 function renderTabIcon(tab) {
   const icons = {
-    admin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7z"/><path d="M9 12l2 2 4-5"/></svg>'
+    admin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7z"/><path d="M9 12l2 2 4-5"/></svg>',
+    engineering: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 19h16"/><path d="M7 16l6-10 4 7"/><path d="M9 13h7"/><path d="M14 6l2-2 3 3-2 2"/></svg>'
   };
   return `<span class="tab-icon-wrap">${icons[tab] || icons.admin}</span>`;
 }

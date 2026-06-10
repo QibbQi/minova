@@ -573,7 +573,7 @@
                             ? 'Backup'
                             : 'Hidden';
                     btn.className = `${btnBaseClass} ${s.connected ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700' : syncAuthorized ? 'bg-purple-700 hover:bg-purple-800 text-white border-purple-800' : 'bg-red-600 hover:bg-red-700 text-white border-red-700'}`;
-                    const restrictedTabs = ['quotation', 'costcalc', 'database', 'pricelist', 'inventory', 'transport'];
+                    const restrictedTabs = ['quotation', 'costcalc', 'database', 'engineering', 'pricelist', 'inventory', 'transport'];
                     for (const t of restrictedTabs) {
                         const tabBtn = document.getElementById(`tab-${t}`);
                         if (tabBtn) tabBtn.style.display = dataUnlocked ? '' : 'none';
@@ -995,6 +995,8 @@
         let transportRecords = [];
         let fileDeleteLogs = [];
         let compatibilityRules = [];
+        let certificationRequirementsCatalog = [];
+        let productCertificationEvidence = [];
         let inventorySummaryMode = false;
         let inventoryFullHeadHtml = '';
         let selectedInventoryForTransport = new Set();
@@ -1814,78 +1816,23 @@
             const supplier = getProductSupplier(product);
             return getSupplierDisplayNameForLang(supplier, lang) || String(product?.vendor || '').trim() || '-';
         }
-        const CERTIFICATION_COUNTRIES = [
-            { code: 'MY', label: 'Malaysia' },
-            { code: 'US', label: 'United States' },
-            { code: 'EU', label: 'European Union' },
-            { code: 'UK', label: 'United Kingdom' },
-            { code: 'AU', label: 'Australia' }
-        ];
-        const CERTIFICATION_DEFAULTS_FALLBACK = {
-            v: 1,
-            updatedAt: '2026-05-15',
-            rules: {
-                pvModule: {
-                    match: ['光伏Module', 'pv module', 'solar panel', 'module'],
-                    common: ['IEC 61215', 'IEC 61730'],
-                    countries: {
-                        MY: ['SIRIM / MS IEC 61215', 'SIRIM / MS IEC 61730', 'IEC TS 62804-1 (PID, when applicable)'],
-                        US: ['UL 61730-1', 'UL 61730-2', 'IEC/UL 61215 series'],
-                        EU: ['CE declaration', 'EN IEC 61215', 'EN IEC 61730', 'RoHS'],
-                        UK: ['UKCA declaration', 'BS EN IEC 61215', 'BS EN IEC 61730'],
-                        AU: ['CEC Approved PV Modules list', 'IEC 61215', 'IEC 61730']
-                    }
-                },
-                inverter: {
-                    match: ['Inverter', 'inverter', 'pcs', 'converter'],
-                    common: ['IEC 62109-1', 'IEC 62109-2', 'IEC 62477 (when applicable)'],
-                    countries: {
-                        MY: ['IEC 62109-1/2', 'SIRIM / local utility requirements where applicable'],
-                        US: ['UL 1741', 'IEEE 1547 / 1547.1', 'UL 1699B where applicable'],
-                        EU: ['CE declaration', 'Low Voltage Directive 2014/35/EU', 'EMC Directive 2014/30/EU', 'EN IEC 62109-1/2'],
-                        UK: ['UKCA declaration', 'Electrical Equipment (Safety) Regulations 2016', 'EMC Regulations 2016', 'ENA G98/G99 where grid-tied'],
-                        AU: ['CEC Approved Inverters/PCE list', 'AS/NZS 4777.2', 'IEC 62109-1/2']
-                    }
-                },
-                battery: {
-                    match: ['Battery', 'battery', '储能', 'energy storage', 'ess'],
-                    common: ['IEC 62619', 'UN 38.3', 'MSDS'],
-                    countries: {
-                        MY: ['IEC 62619', 'UN 38.3', 'MSDS', 'SIRIM / local battery requirements where applicable'],
-                        US: ['UL 1973', 'UL 9540', 'UL 9540A', 'UN 38.3'],
-                        EU: ['CE declaration', 'EN IEC 62619', 'UN 38.3', 'RoHS'],
-                        UK: ['UKCA declaration', 'EN IEC 62619', 'UN 38.3'],
-                        AU: ['CEC Approved Batteries list', 'IEC 62619', 'UN 38.3']
-                    }
-                },
-                accessory: {
-                    match: ['Accessory', 'accessory', 'mounting', 'bracket', 'cable'],
-                    common: ['Project-specific electrical/import compliance review'],
-                    countries: {
-                        MY: ['SIRIM / local import compliance where applicable'],
-                        US: ['NRTL listing where applicable'],
-                        EU: ['CE/RoHS where applicable'],
-                        UK: ['UKCA where applicable'],
-                        AU: ['AS/NZS compliance where applicable']
-                    }
-                }
-            }
+        const CERTIFICATION_REQUIREMENT_LEVELS = ['Mandatory', 'Utility Preferred', 'International Finance Preferred', 'Optional'];
+        const CERTIFICATION_SOURCE_CATEGORIES = ['PV_MODULE', 'INVERTER', 'BATTERY'];
+        const ENGINEERING_CLASS_DEFINITIONS = {
+            A1: { label: 'A1 - Grid-Tied PV Only', categories: ['PV_MODULE', 'INVERTER'], note: 'Grid-tied PV only; excludes BESS-specific records.' },
+            A2: { label: 'A2 - Grid-Tied PV + Small Battery', categories: ['PV_MODULE', 'INVERTER', 'BATTERY'], note: 'Small backup / self-use battery on a grid-tied PV system.' },
+            B: { label: 'B - Hybrid PV + BESS', categories: ['PV_MODULE', 'INVERTER', 'BATTERY'], note: 'Hybrid PV + BESS with peak shaving or grid-support participation.' },
+            C: { label: 'C - Off-Grid Hybrid', categories: ['PV_MODULE', 'INVERTER', 'BATTERY'], note: 'Off-grid / grid-forming hybrid system; grid-only requirements are hidden.' },
+            D: { label: 'D - Utility Scale Solar', categories: ['PV_MODULE', 'INVERTER'], note: 'Utility solar and MV/HV grid-code review.' },
+            E: { label: 'E - Utility Scale BESS', categories: ['INVERTER', 'BATTERY'], note: 'Utility BESS, PCS, EMS, safety and statutory evidence.' }
         };
-        let certificationDefaultsCatalog = CERTIFICATION_DEFAULTS_FALLBACK;
-        function certificationCategoryKey(product = {}) {
-            const text = `${product.category || ''} ${product.scenario || ''} ${product.name || ''}`.toLowerCase();
-            const rules = certificationDefaultsCatalog?.rules || CERTIFICATION_DEFAULTS_FALLBACK.rules;
-            for (const [key, rule] of Object.entries(rules)) {
-                const matches = Array.isArray(rule?.match) ? rule.match : [];
-                if (matches.some(m => text.includes(String(m || '').toLowerCase()))) return key;
-            }
-            return 'accessory';
-        }
-        function certificationCountriesFromUi() {
-            const checks = Array.from(document.querySelectorAll('.m-cert-country'));
-            const selected = checks.filter(el => el.checked).map(el => String(el.value || '').trim()).filter(Boolean);
-            return selected.length ? selected : CERTIFICATION_COUNTRIES.map(c => c.code);
-        }
+        const PRODUCT_CATEGORY_TO_CERT_SOURCE = {
+            'PV Module': ['PV_MODULE'],
+            Inverter: ['INVERTER'],
+            Battery: ['BATTERY'],
+            'All-in-One System': ['INVERTER', 'BATTERY'],
+            'C&I Storage': ['INVERTER', 'BATTERY']
+        };
         function uniqueCertList(list) {
             const seen = new Set();
             const out = [];
@@ -1898,111 +1845,474 @@
             });
             return out;
         }
-        function defaultCertificationRequirementsForProduct(product = {}, countries = CERTIFICATION_COUNTRIES.map(c => c.code)) {
-            const rules = certificationDefaultsCatalog?.rules || CERTIFICATION_DEFAULTS_FALLBACK.rules;
-            const rule = rules[certificationCategoryKey(product)] || rules.accessory || {};
-            const standards = [];
-            standards.push(...(Array.isArray(rule.common) ? rule.common : []));
-            countries.forEach(code => standards.push(...(Array.isArray(rule.countries?.[code]) ? rule.countries[code] : [])));
+        function normalizeCertificationSourceCategory(value = '') {
+            const raw = String(value || '').trim().toUpperCase().replace(/[\s/-]+/g, '_');
+            if (raw.includes('PV')) return 'PV_MODULE';
+            if (raw.includes('INV') || raw.includes('PCS')) return 'INVERTER';
+            if (raw.includes('BESS') || raw.includes('BAT')) return 'BATTERY';
+            return raw || 'PV_MODULE';
+        }
+        function normalizeCertificationRequirement(record = {}) {
+            const id = String(record.id || record.recordId || '').trim();
             return {
-                countries: countries.slice(),
-                standards: uniqueCertList(standards),
-                source: certificationDefaultsCatalog === CERTIFICATION_DEFAULTS_FALLBACK ? 'embedded-defaults' : 'online-catalog',
-                updatedAt: certificationDefaultsCatalog?.updatedAt || ''
+                id,
+                sourceCategory: normalizeCertificationSourceCategory(record.sourceCategory || record.categoryGroup || record.source_category),
+                productCategory: String(record.productCategory || record.product_category || '').trim(),
+                standard: String(record.standard || record.requirement || record.name || '').trim(),
+                requirementLevel: CERTIFICATION_REQUIREMENT_LEVELS.includes(record.requirementLevel) ? record.requirementLevel : String(record.requirementLevel || record.level || '').trim(),
+                applicabilityCondition: String(record.applicabilityCondition || record.applicability || '').trim(),
+                evidenceType: String(record.evidenceType || '').trim(),
+                projectApplicability: String(record.projectApplicability || '').trim(),
+                sourceUrl: String(record.sourceUrl || record.officialUrl || '').trim(),
+                remarks: String(record.remarks || '').trim(),
+                seedVersion: String(record.seedVersion || '').trim()
             };
         }
+        function normalizeCertificationRequirementsCatalog(records = []) {
+            const byId = new Map();
+            (Array.isArray(records) ? records : []).forEach(record => {
+                const normalized = normalizeCertificationRequirement(record);
+                if (!normalized.id || !normalized.standard) return;
+                byId.set(normalized.id, normalized);
+            });
+            return Array.from(byId.values()).sort((a, b) => a.id.localeCompare(b.id));
+        }
+        function getCertificationRequirementById(id) {
+            const key = String(id || '').trim();
+            return certificationRequirementsCatalog.find(record => record.id === key) || null;
+        }
+        function productCertificationSourceCategories(product = {}) {
+            const category = normalizeProductCategory(product.category || document.getElementById('m-category')?.value || '', '');
+            return PRODUCT_CATEGORY_TO_CERT_SOURCE[category] || [];
+        }
+        function defaultCertificationRequirementIdsForProduct(product = {}) {
+            const sources = new Set(productCertificationSourceCategories(product));
+            if (!sources.size) return [];
+            return certificationRequirementsCatalog
+                .filter(record => sources.has(record.sourceCategory) && record.requirementLevel === 'Mandatory')
+                .map(record => record.id);
+        }
         function normalizeCertificationRequirements(value, product = {}) {
-            if (value && typeof value === 'object') {
-                const countries = Array.isArray(value.countries) && value.countries.length
-                    ? value.countries.map(v => String(v || '').trim()).filter(Boolean)
-                    : CERTIFICATION_COUNTRIES.map(c => c.code);
-                const standards = Array.isArray(value.standards)
-                    ? value.standards
-                    : String(value.standards || value.text || '').split(/[\n;,]+/);
-                return {
-                    countries,
-                    standards: uniqueCertList(standards),
-                    source: String(value.source || ''),
-                    updatedAt: String(value.updatedAt || '')
-                };
-            }
-            if (typeof value === 'string' && value.trim()) {
-                return {
-                    countries: CERTIFICATION_COUNTRIES.map(c => c.code),
-                    standards: uniqueCertList(value.split(/[\n;,]+/)),
-                    source: 'manual',
-                    updatedAt: ''
-                };
-            }
-            return defaultCertificationRequirementsForProduct(product);
+            const selectedIds = Array.isArray(product.certificationRequirementIds)
+                ? product.certificationRequirementIds
+                : Array.isArray(value?.recordIds)
+                    ? value.recordIds
+                    : Array.isArray(value?.requirementIds)
+                        ? value.requirementIds
+                        : [];
+            const legacyStandards = value && typeof value === 'object'
+                ? (Array.isArray(value.standards) ? value.standards : String(value.standards || value.text || '').split(/[\n;,]+/))
+                : (typeof value === 'string' ? value.split(/[\n;,]+/) : []);
+            const normalizedIds = uniqueCertList(selectedIds).filter(id => getCertificationRequirementById(id));
+            return {
+                recordIds: normalizedIds,
+                standards: uniqueCertList(legacyStandards),
+                source: String(value?.source || (normalizedIds.length ? 'record-catalog' : 'legacy')),
+                updatedAt: String(value?.updatedAt || '')
+            };
         }
         function certificationText(req) {
-            return uniqueCertList(req?.standards || []).join('\n');
+            const fromRecords = uniqueCertList((req?.recordIds || []).map(id => getCertificationRequirementById(id)?.standard || id));
+            const legacy = uniqueCertList(req?.standards || []);
+            return uniqueCertList([...fromRecords, ...legacy]).join('\n');
         }
         function getProductCertificationRequirements(product = {}) {
             return normalizeCertificationRequirements(product.certificationRequirements, product);
         }
-        function renderCertificationCountryChoices(selected = CERTIFICATION_COUNTRIES.map(c => c.code)) {
-            const box = document.getElementById('m-cert-country-list');
-            if (!box) return;
-            const chosen = new Set((Array.isArray(selected) ? selected : []).map(v => String(v || '').trim()));
-            box.innerHTML = CERTIFICATION_COUNTRIES.map(c => `
-                <label class="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-600">
-                    <input type="checkbox" class="m-cert-country h-4 w-4 accent-purple-700" value="${c.code}" ${chosen.has(c.code) ? 'checked' : ''} onchange="onCertificationCountryChange()">
-                    <span>${c.label}</span>
-                </label>
-            `).join('');
+        function productCertificationSelectedRecords(product = {}) {
+            const req = getProductCertificationRequirements(product);
+            return (req.recordIds || []).map(getCertificationRequirementById).filter(Boolean);
+        }
+        function productCertificationEvidenceFor(productId, requirementRecordId = '') {
+            const pid = String(productId || '').trim();
+            const rid = String(requirementRecordId || '').trim();
+            return productCertificationEvidence.filter(record => record.productId === pid && (!rid || record.requirementRecordId === rid));
+        }
+        function normalizeProductCertificationEvidence(record = {}) {
+            const productId = String(record.productId || '').trim();
+            const requirementRecordId = String(record.requirementRecordId || record.recordId || '').trim();
+            const id = String(record.id || (productId && requirementRecordId ? `${productId}:${requirementRecordId}` : '')).trim();
+            return {
+                id,
+                productId,
+                requirementRecordId,
+                status: String(record.status || 'Pending Evidence').trim(),
+                evidenceAvailable: record.evidenceAvailable === true || record.evidenceAvailable === 'Yes' || (Array.isArray(record.fileRefs) && record.fileRefs.length) ? 'Yes' : String(record.evidenceAvailable || 'No').trim(),
+                certificateNo: String(record.certificateNo || '').trim(),
+                reportNo: String(record.reportNo || '').trim(),
+                issueDate: String(record.issueDate || '').trim(),
+                expiryDate: String(record.expiryDate || '').trim(),
+                verificationStatus: String(record.verificationStatus || 'Not Reviewed').trim(),
+                fileRefs: Array.isArray(record.fileRefs) ? record.fileRefs.filter(Boolean) : [],
+                remarks: String(record.remarks || '').trim(),
+                updatedAt: String(record.updatedAt || '').trim()
+            };
+        }
+        function normalizeProductCertificationEvidenceList(records = []) {
+            const byId = new Map();
+            (Array.isArray(records) ? records : []).forEach(record => {
+                const normalized = normalizeProductCertificationEvidence(record);
+                if (!normalized.id || !normalized.productId || !normalized.requirementRecordId) return;
+                byId.set(normalized.id, normalized);
+            });
+            return Array.from(byId.values()).sort((a, b) => a.id.localeCompare(b.id));
+        }
+        function upsertProductCertificationEvidence(record = {}) {
+            const normalized = normalizeProductCertificationEvidence({
+                ...record,
+                updatedAt: record.updatedAt || new Date().toISOString()
+            });
+            if (!normalized.id || !normalized.productId || !normalized.requirementRecordId) return null;
+            const idx = productCertificationEvidence.findIndex(item => item.id === normalized.id);
+            if (idx >= 0) productCertificationEvidence[idx] = normalized;
+            else productCertificationEvidence.push(normalized);
+            productCertificationEvidence = normalizeProductCertificationEvidenceList(productCertificationEvidence);
+            saveToLocal();
+            persistEntityToD1('product_certification_evidence', normalized.id, normalized);
+            try { renderEngineeringWorkspace(); } catch (e) {}
+            try { renderDb(); } catch (e) {}
+            return normalized;
+        }
+        function evidenceHasFileOrAvailability(record = {}) {
+            return record.evidenceAvailable === 'Yes' || (Array.isArray(record.fileRefs) && record.fileRefs.length > 0);
+        }
+        function productCertificationEvidenceSummary(product = {}) {
+            const selectedRecords = productCertificationSelectedRecords(product);
+            const evidence = productCertificationEvidenceFor(product.id || '');
+            const availableIds = new Set(evidence.filter(evidenceHasFileOrAvailability).map(item => item.requirementRecordId));
+            const missingMandatory = selectedRecords.filter(record => record.requirementLevel === 'Mandatory' && !availableIds.has(record.id));
+            const uploadedRecords = selectedRecords.filter(record => availableIds.has(record.id)).length;
+            const fileCount = evidence.reduce((sum, item) => sum + (Array.isArray(item.fileRefs) ? item.fileRefs.length : 0), 0);
+            return {
+                selectedRecords,
+                evidence,
+                availableIds,
+                selectedCount: selectedRecords.length,
+                uploadedRecords,
+                fileCount,
+                missingMandatory
+            };
+        }
+        function selectedCertificationRequirementIdsFromUi() {
+            return Array.from(document.querySelectorAll('#m-cert-record-picker input[data-cert-record]:checked'))
+                .map(input => String(input.value || '').trim())
+                .filter(Boolean);
         }
         function readProductCertificationRequirementsFromModal() {
+            const recordIds = selectedCertificationRequirementIdsFromUi();
             const text = String(document.getElementById('m-cert-requirements')?.value || '').trim();
             return {
-                countries: certificationCountriesFromUi(),
-                standards: uniqueCertList(text.split(/[\n;,]+/)),
-                source: window.__certificationAutoFilled ? (certificationDefaultsCatalog === CERTIFICATION_DEFAULTS_FALLBACK ? 'embedded-defaults' : 'online-catalog') : 'manual',
-                updatedAt: certificationDefaultsCatalog?.updatedAt || ''
+                recordIds,
+                standards: uniqueCertList(text.split(/[\n;,]+/)).filter(standard => !recordIds.some(id => getCertificationRequirementById(id)?.standard === standard)),
+                source: 'record-catalog',
+                updatedAt: new Date().toISOString()
             };
         }
+        function renderProductCertificationRecordPicker(product = {}, selectedIds = []) {
+            const picker = document.getElementById('m-cert-record-picker');
+            const summary = document.getElementById('m-cert-selected-summary');
+            const textarea = document.getElementById('m-cert-requirements');
+            if (!picker) return;
+            const sourceSet = new Set(productCertificationSourceCategories(product));
+            const selected = new Set(uniqueCertList(selectedIds));
+            const rows = certificationRequirementsCatalog.filter(record => sourceSet.has(record.sourceCategory));
+            picker.innerHTML = rows.map(record => {
+                const checked = selected.has(record.id);
+                const levelTone = record.requirementLevel === 'Mandatory' ? 'text-red-700 bg-red-50 border-red-100' : record.requirementLevel === 'Utility Preferred' ? 'text-amber-700 bg-amber-50 border-amber-100' : record.requirementLevel === 'International Finance Preferred' ? 'text-blue-700 bg-blue-50 border-blue-100' : 'text-slate-500 bg-slate-50 border-slate-100';
+                return `
+                    <label class="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-3 text-xs hover:border-purple-200">
+                        <input type="checkbox" data-cert-record value="${htmlSafe(record.id)}" ${checked ? 'checked' : ''} onchange="onProductCertificationSelectionChange()" class="mt-0.5 h-4 w-4 accent-purple-700">
+                        <span class="min-w-0 flex-1">
+                            <span class="font-black text-slate-700">${htmlSafe(record.id)} · ${htmlSafe(record.standard)}</span>
+                            <span class="mt-1 block text-[10px] text-slate-400 truncate" title="${htmlSafe(record.applicabilityCondition)}">${htmlSafe(record.applicabilityCondition || '-')}</span>
+                        </span>
+                        <span class="shrink-0 rounded-full border px-2 py-1 text-[10px] font-black ${levelTone}">${htmlSafe(record.requirementLevel || '-')}</span>
+                    </label>
+                `;
+            }).join('') || '<div class="rounded-xl border border-dashed border-slate-200 p-4 text-xs text-slate-400">No certification records mapped to this category.</div>';
+            const selectedRecords = Array.from(selected).map(getCertificationRequirementById).filter(Boolean);
+            if (summary) summary.textContent = `${selectedRecords.length} selected / ${rows.length} available`;
+            if (textarea) textarea.value = certificationText({ recordIds: Array.from(selected), standards: [] });
+        }
+        window.onProductCertificationSelectionChange = () => {
+            const product = {
+                category: document.getElementById('m-category')?.value || '',
+                scenario: document.getElementById('m-scenario')?.value || '',
+                name: document.getElementById('m-name')?.value || ''
+            };
+            renderProductCertificationRecordPicker(product, selectedCertificationRequirementIdsFromUi());
+        };
         window.applyDefaultProductCertifications = () => {
             const product = {
-                name: document.getElementById('m-name')?.value || '',
                 category: document.getElementById('m-category')?.value || '',
-                scenario: document.getElementById('m-scenario')?.value || ''
+                scenario: document.getElementById('m-scenario')?.value || '',
+                name: document.getElementById('m-name')?.value || ''
             };
-            const req = defaultCertificationRequirementsForProduct(product, certificationCountriesFromUi());
-            const textarea = document.getElementById('m-cert-requirements');
-            if (textarea) textarea.value = certificationText(req);
+            const ids = defaultCertificationRequirementIdsForProduct(product);
+            renderProductCertificationRecordPicker(product, ids);
             const note = document.getElementById('m-cert-source-note');
-            if (note) note.textContent = `Defaults loaded from ${req.source === 'online-catalog' ? 'online catalog' : 'embedded fallback'}${req.updatedAt ? ` (${req.updatedAt})` : ''}. Edit as needed.`;
-            window.__certificationAutoFilled = true;
+            if (note) note.textContent = `${ids.length} mandatory records selected from the engineering certification catalog.`;
         };
         window.maybeFillProductCertificationDefaults = () => {
-            const textarea = document.getElementById('m-cert-requirements');
-            if (!textarea) return;
-            if (String(textarea.value || '').trim() && !window.__certificationAutoFilled) return;
+            if (selectedCertificationRequirementIdsFromUi().length) return;
             window.applyDefaultProductCertifications?.();
         };
-        window.onCertificationCountryChange = () => {
-            if (window.__certificationAutoFilled || !String(document.getElementById('m-cert-requirements')?.value || '').trim()) {
-                window.applyDefaultProductCertifications?.();
-            }
+        window.refreshCertificationDefaults = () => {
+            window.applyDefaultProductCertifications?.();
         };
-        window.refreshCertificationDefaults = async () => {
-            const note = document.getElementById('m-cert-source-note');
-            try {
-                const url = new URL('minova-data/certification-defaults.json', window.location.href);
-                url.searchParams.set('v', String(Date.now()));
-                const res = await fetch(url.toString(), { cache: 'no-store' });
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const data = await res.json();
-                if (!data?.rules) throw new Error('Invalid catalog');
-                certificationDefaultsCatalog = data;
-                if (note) note.textContent = `Online certification defaults loaded${data.updatedAt ? ` (${data.updatedAt})` : ''}.`;
-                window.applyDefaultProductCertifications?.();
-            } catch (e) {
-                certificationDefaultsCatalog = CERTIFICATION_DEFAULTS_FALLBACK;
-                if (note) note.textContent = 'Online catalog unavailable; embedded fallback defaults are in use.';
-                window.applyDefaultProductCertifications?.();
+        function certificationLevelTone(level = '') {
+            if (level === 'Mandatory') return 'bg-red-50 text-red-700 border-red-100';
+            if (level === 'Utility Preferred') return 'bg-amber-50 text-amber-700 border-amber-100';
+            if (level === 'International Finance Preferred') return 'bg-blue-50 text-blue-700 border-blue-100';
+            return 'bg-slate-50 text-slate-500 border-slate-100';
+        }
+        function engineeringSelectedLevels() {
+            const checks = Array.from(document.querySelectorAll('#engineering-level-filters input[data-engineering-level]:checked'));
+            return checks.map(input => input.value).filter(Boolean);
+        }
+        function engineeringSelectedCategories() {
+            const checks = Array.from(document.querySelectorAll('#engineering-category-filters input[data-engineering-category]:checked'));
+            return checks.map(input => input.value).filter(Boolean);
+        }
+        function renderEngineeringFilterChips() {
+            const levelBox = document.getElementById('engineering-level-filters');
+            const catBox = document.getElementById('engineering-category-filters');
+            if (levelBox && !levelBox.dataset.ready) {
+                levelBox.innerHTML = CERTIFICATION_REQUIREMENT_LEVELS.map(level => `
+                    <label class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600">
+                        <input type="checkbox" data-engineering-level value="${htmlSafe(level)}" checked onchange="renderEngineeringWorkspace()" class="h-4 w-4 accent-purple-700">
+                        <span>${htmlSafe(level)}</span>
+                    </label>
+                `).join('');
+                levelBox.dataset.ready = '1';
             }
+            if (catBox && !catBox.dataset.ready) {
+                catBox.innerHTML = CERTIFICATION_SOURCE_CATEGORIES.map(category => `
+                    <label class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600">
+                        <input type="checkbox" data-engineering-category value="${htmlSafe(category)}" checked onchange="renderEngineeringWorkspace()" class="h-4 w-4 accent-purple-700">
+                        <span>${htmlSafe(category)}</span>
+                    </label>
+                `).join('');
+                catBox.dataset.ready = '1';
+            }
+        }
+        function engineeringRecordMatchesClass(record, classId) {
+            const cls = ENGINEERING_CLASS_DEFINITIONS[classId] || ENGINEERING_CLASS_DEFINITIONS.A1;
+            if (!cls.categories.includes(record.sourceCategory)) return false;
+            const text = `${record.productCategory} ${record.standard} ${record.applicabilityCondition} ${record.projectApplicability}`.toLowerCase();
+            if (classId === 'A1' && (record.sourceCategory === 'BATTERY' || text.includes('bess') || text.includes('pcs'))) return false;
+            if (classId === 'C' && (text.includes('grid-connected only') || text.includes('grid interface') || text.includes('anti-islanding'))) return false;
+            if (classId === 'D' && record.sourceCategory === 'BATTERY') return false;
+            if (classId === 'E' && record.sourceCategory === 'PV_MODULE') return false;
+            return true;
+        }
+        function engineeringVisibleRecords() {
+            const classId = document.getElementById('engineering-class-filter')?.value || 'A1';
+            const levels = new Set(engineeringSelectedLevels());
+            const categories = new Set(engineeringSelectedCategories());
+            const search = String(document.getElementById('engineering-search')?.value || '').trim().toLowerCase();
+            return certificationRequirementsCatalog.filter(record => {
+                if (!engineeringRecordMatchesClass(record, classId)) return false;
+                if (levels.size && !levels.has(record.requirementLevel)) return false;
+                if (categories.size && !categories.has(record.sourceCategory)) return false;
+                if (!search) return true;
+                const hay = [record.id, record.sourceCategory, record.productCategory, record.standard, record.requirementLevel, record.applicabilityCondition, record.evidenceType, record.projectApplicability].join(' ').toLowerCase();
+                return hay.includes(search);
+            });
+        }
+        function renderEngineeringWorkspace() {
+            renderEngineeringFilterChips();
+            certificationRequirementsCatalog = normalizeCertificationRequirementsCatalog(certificationRequirementsCatalog);
+            productCertificationEvidence = normalizeProductCertificationEvidenceList(productCertificationEvidence);
+            const classId = document.getElementById('engineering-class-filter')?.value || 'A1';
+            const cls = ENGINEERING_CLASS_DEFINITIONS[classId] || ENGINEERING_CLASS_DEFINITIONS.A1;
+            const rows = engineeringVisibleRecords();
+            const list = document.getElementById('engineering-cert-list');
+            const summary = document.getElementById('engineering-summary');
+            const note = document.getElementById('engineering-filter-note');
+            if (note) note.textContent = `${cls.label} | ${cls.note}`;
+            if (summary) {
+                const mandatory = rows.filter(record => record.requirementLevel === 'Mandatory').length;
+                const evidenceCount = productCertificationEvidence.filter(record => record.evidenceAvailable === 'Yes' || (record.fileRefs || []).length).length;
+                const selectedMandatory = rows.filter(record => record.requirementLevel === 'Mandatory');
+                const gaps = selectedMandatory.filter(record => !productCertificationEvidence.some(e => e.requirementRecordId === record.id && (e.evidenceAvailable === 'Yes' || (e.fileRefs || []).length))).length;
+                summary.innerHTML = [
+                    ['Records', rows.length],
+                    ['Mandatory', mandatory],
+                    ['Evidence', evidenceCount],
+                    ['Gaps', gaps]
+                ].map(([label, value]) => `<div class="rounded-2xl border border-slate-100 bg-slate-50 p-3"><div class="text-[10px] font-black text-slate-400 uppercase">${label}</div><div class="text-xl font-black text-slate-800">${value}</div></div>`).join('');
+            }
+            if (!list) return;
+            list.innerHTML = rows.map(record => {
+                const evidenceCount = productCertificationEvidence.filter(e => e.requirementRecordId === record.id).length;
+                const sourceLink = record.sourceUrl ? `<a href="${htmlSafe(record.sourceUrl)}" target="_blank" rel="noopener" class="text-[10px] font-bold text-blue-600 hover:underline">Source</a>` : '<span class="text-[10px] text-slate-300">No source</span>';
+                return `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="py-4 px-4"><div class="font-black text-slate-700">${htmlSafe(record.id)}</div><div class="text-[10px] text-slate-400">${htmlSafe(record.seedVersion || '')}</div></td>
+                        <td class="py-4 px-4"><div class="text-xs font-bold text-slate-600">${htmlSafe(record.sourceCategory)}</div><div class="text-[10px] text-slate-400">${htmlSafe(record.productCategory || '-')}</div></td>
+                        <td class="py-4 px-4"><div class="text-xs font-bold text-slate-700 max-w-[260px] truncate" title="${htmlSafe(record.standard)}">${htmlSafe(record.standard)}</div>${sourceLink}</td>
+                        <td class="py-4 px-4"><span class="rounded-full border px-2 py-1 text-[10px] font-black ${certificationLevelTone(record.requirementLevel)}">${htmlSafe(record.requirementLevel || '-')}</span></td>
+                        <td class="py-4 px-4"><span class="text-xs text-slate-500 max-w-[340px] block truncate" title="${htmlSafe(record.applicabilityCondition)}">${htmlSafe(record.applicabilityCondition || '-')}</span></td>
+                        <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(record.evidenceType || '-')}</td>
+                        <td class="py-4 px-4 text-center"><span class="text-xs font-black text-slate-700">${evidenceCount}</span></td>
+                        <td class="py-4 px-4 text-center"><button onclick="openEngineeringCertDetail('${htmlSafe(record.id)}')" class="text-xs font-black text-purple-700 hover:underline">Details</button></td>
+                    </tr>
+                `;
+            }).join('') || '<tr><td colspan="8" class="py-12 text-center text-slate-400 text-sm">No certification records match the current filters.</td></tr>';
+        }
+        window.renderEngineeringWorkspace = renderEngineeringWorkspace;
+        window.openEngineeringCertDetail = (recordId) => {
+            const record = getCertificationRequirementById(recordId);
+            if (!record) return;
+            const modal = document.getElementById('engineering-cert-detail-modal');
+            const subtitle = document.getElementById('engineering-cert-detail-subtitle');
+            const body = document.getElementById('engineering-cert-detail-body');
+            if (!modal || !body) return;
+            if (subtitle) subtitle.textContent = `${record.id} · ${record.sourceCategory} · ${record.requirementLevel}`;
+            const evidence = productCertificationEvidence.filter(item => item.requirementRecordId === record.id);
+            body.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div><label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Standard</label><input id="engineering-detail-standard" value="${htmlSafe(record.standard)}" class="w-full border border-slate-200 rounded-xl p-3 text-sm"></div>
+                    <div><label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Requirement Level</label><select id="engineering-detail-level" class="w-full border border-slate-200 rounded-xl p-3 text-sm bg-white">${CERTIFICATION_REQUIREMENT_LEVELS.map(level => `<option value="${htmlSafe(level)}" ${record.requirementLevel === level ? 'selected' : ''}>${htmlSafe(level)}</option>`).join('')}</select></div>
+                    <div><label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Evidence Type</label><input id="engineering-detail-evidence-type" value="${htmlSafe(record.evidenceType)}" class="w-full border border-slate-200 rounded-xl p-3 text-sm"></div>
+                    <div><label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Source URL</label><input id="engineering-detail-source-url" value="${htmlSafe(record.sourceUrl)}" class="w-full border border-slate-200 rounded-xl p-3 text-sm"></div>
+                    <div class="md:col-span-2"><label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Applicability</label><textarea id="engineering-detail-applicability" rows="3" class="w-full border border-slate-200 rounded-xl p-3 text-sm">${htmlSafe(record.applicabilityCondition)}</textarea></div>
+                    <div class="md:col-span-2"><label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Remarks</label><textarea id="engineering-detail-remarks" rows="2" class="w-full border border-slate-200 rounded-xl p-3 text-sm">${htmlSafe(record.remarks)}</textarea></div>
+                </div>
+                <div class="border border-slate-200 rounded-2xl p-4">
+                    <div class="text-sm font-black text-slate-700 mb-3">Linked Product Evidence</div>
+                    ${evidence.map(item => `<div class="flex items-center justify-between gap-3 py-2 border-t border-slate-100 first:border-t-0"><span class="text-xs font-bold text-slate-600">${htmlSafe(item.productId)}</span><span class="text-[10px] text-slate-400">${htmlSafe(item.verificationStatus || item.status || '-')}</span><span class="text-xs font-black text-slate-700">${(item.fileRefs || []).length} files</span></div>`).join('') || '<div class="text-xs text-slate-400">No product evidence linked yet.</div>'}
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="saveEngineeringCertDetail('${htmlSafe(record.id)}')" class="flex-1 rounded-2xl bg-slate-900 text-white py-3 text-sm font-black">Save Requirement</button>
+                    <button onclick="closeEngineeringCertDetail()" class="flex-1 rounded-2xl border border-slate-200 text-slate-500 py-3 text-sm font-black">Close</button>
+                </div>
+            `;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        };
+        window.closeEngineeringCertDetail = () => {
+            const modal = document.getElementById('engineering-cert-detail-modal');
+            if (!modal) return;
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        };
+        window.saveEngineeringCertDetail = (recordId) => {
+            const idx = certificationRequirementsCatalog.findIndex(record => record.id === recordId);
+            if (idx < 0) return;
+            const next = {
+                ...certificationRequirementsCatalog[idx],
+                standard: document.getElementById('engineering-detail-standard')?.value || '',
+                requirementLevel: document.getElementById('engineering-detail-level')?.value || '',
+                evidenceType: document.getElementById('engineering-detail-evidence-type')?.value || '',
+                sourceUrl: document.getElementById('engineering-detail-source-url')?.value || '',
+                applicabilityCondition: document.getElementById('engineering-detail-applicability')?.value || '',
+                remarks: document.getElementById('engineering-detail-remarks')?.value || ''
+            };
+            certificationRequirementsCatalog[idx] = normalizeCertificationRequirement(next);
+            saveToLocal();
+            persistEntityToD1('certification_requirement', next.id, next);
+            renderEngineeringWorkspace();
+            closeEngineeringCertDetail();
+        };
+        function productCertificationEvidenceInputId(prefix, recordId) {
+            return `${prefix}-${domSafeId(recordId)}`;
+        }
+        window.openProductCertificationEvidence = (productId, focusRecordId = '') => {
+            const pid = String(productId || '').trim();
+            if (!pid) return alert('Please save the product before maintaining certification evidence.');
+            const product = products.find(item => String(item.id || '') === pid);
+            if (!product) return alert('Product not found.');
+            const modal = document.getElementById('engineering-cert-detail-modal');
+            const subtitle = document.getElementById('engineering-cert-detail-subtitle');
+            const body = document.getElementById('engineering-cert-detail-body');
+            if (!modal || !body) return;
+            const req = getProductCertificationRequirements(product);
+            const selectedIds = (req.recordIds || []).length ? req.recordIds : defaultCertificationRequirementIdsForProduct(product);
+            const records = selectedIds.map(getCertificationRequirementById).filter(Boolean);
+            if (subtitle) subtitle.textContent = `${product.id} · ${product.name || ''} · Product Certification Evidence`;
+            body.innerHTML = `
+                <div class="flex flex-col gap-3">
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <div class="text-xs font-black text-slate-500 uppercase">Selected Requirement Records</div>
+                        <div class="mt-1 text-2xl font-black text-slate-800">${records.length}</div>
+                        <div class="text-xs text-slate-400">${htmlSafe(product.category || '-')} · files are stored under minova-data/certifications/products/${htmlSafe(product.id)}/&lt;recordId&gt;/</div>
+                    </div>
+                    ${records.length ? records.map(record => {
+                        const evidence = productCertificationEvidenceFor(pid, record.id)[0] || normalizeProductCertificationEvidence({ productId: pid, requirementRecordId: record.id });
+                        const fileRefs = Array.isArray(evidence.fileRefs) ? evidence.fileRefs : [];
+                        const focusClass = focusRecordId === record.id ? 'ring-2 ring-purple-200 border-purple-200' : 'border-slate-200';
+                        return `
+                            <div class="rounded-2xl border ${focusClass} bg-white p-4" data-product-evidence-record="${htmlSafe(record.id)}">
+                                <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+                                    <div class="min-w-0">
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <span class="font-black text-slate-800">${htmlSafe(record.id)}</span>
+                                            <span class="rounded-full border px-2 py-1 text-[10px] font-black ${certificationLevelTone(record.requirementLevel)}">${htmlSafe(record.requirementLevel || '-')}</span>
+                                        </div>
+                                        <div class="mt-1 text-sm font-bold text-slate-600">${htmlSafe(record.standard || '-')}</div>
+                                        <div class="mt-1 text-xs text-slate-400">${htmlSafe(record.applicabilityCondition || '-')}</div>
+                                    </div>
+                                    <button onclick="openProductCertificationEvidenceUpload('${htmlSafe(pid)}', '${htmlSafe(record.id)}')" class="shrink-0 rounded-xl bg-purple-700 px-3 py-2 text-xs font-black text-white hover:bg-purple-800">Upload File</button>
+                                </div>
+                                <div class="mt-4 grid grid-cols-1 md:grid-cols-4 gap-3">
+                                    <div>
+                                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Status</label>
+                                        <select id="${productCertificationEvidenceInputId('evidence-status', record.id)}" class="w-full rounded-xl border border-slate-200 p-2 text-xs bg-white">
+                                            ${['Pending Evidence', 'Evidence Uploaded', 'Verified', 'Expired', 'Rejected'].map(status => `<option value="${htmlSafe(status)}" ${evidence.status === status ? 'selected' : ''}>${htmlSafe(status)}</option>`).join('')}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Verification</label>
+                                        <select id="${productCertificationEvidenceInputId('evidence-verification', record.id)}" class="w-full rounded-xl border border-slate-200 p-2 text-xs bg-white">
+                                            ${['Not Reviewed', 'Pending Review', 'Verified', 'Needs Renewal', 'Rejected'].map(status => `<option value="${htmlSafe(status)}" ${evidence.verificationStatus === status ? 'selected' : ''}>${htmlSafe(status)}</option>`).join('')}
+                                        </select>
+                                    </div>
+                                    <div><label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Certificate No.</label><input id="${productCertificationEvidenceInputId('evidence-cert-no', record.id)}" value="${htmlSafe(evidence.certificateNo || '')}" class="w-full rounded-xl border border-slate-200 p-2 text-xs"></div>
+                                    <div><label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Report No.</label><input id="${productCertificationEvidenceInputId('evidence-report-no', record.id)}" value="${htmlSafe(evidence.reportNo || '')}" class="w-full rounded-xl border border-slate-200 p-2 text-xs"></div>
+                                    <div><label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Issue Date</label><input id="${productCertificationEvidenceInputId('evidence-issue', record.id)}" type="date" value="${htmlSafe(evidence.issueDate || '')}" class="w-full rounded-xl border border-slate-200 p-2 text-xs"></div>
+                                    <div><label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Expiry Date</label><input id="${productCertificationEvidenceInputId('evidence-expiry', record.id)}" type="date" value="${htmlSafe(evidence.expiryDate || '')}" class="w-full rounded-xl border border-slate-200 p-2 text-xs"></div>
+                                    <div class="md:col-span-2"><label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Remarks</label><input id="${productCertificationEvidenceInputId('evidence-remarks', record.id)}" value="${htmlSafe(evidence.remarks || '')}" class="w-full rounded-xl border border-slate-200 p-2 text-xs"></div>
+                                </div>
+                                <div class="mt-3 rounded-xl bg-slate-50 p-3">
+                                    <div class="text-[10px] font-black text-slate-400 uppercase mb-2">GitHub Files</div>
+                                    ${fileRefs.length ? fileRefs.map(file => `<div class="flex items-center justify-between gap-3 py-1 text-xs"><button onclick="previewCertFile('${htmlSafe(file.path || '')}')" class="min-w-0 truncate text-blue-600 hover:underline">${htmlSafe(file.name || file.path || '-')}</button><span class="shrink-0 text-slate-400">${htmlSafe(file.sha256 ? file.sha256.slice(0, 10) : '')}</span></div>`).join('') : '<div class="text-xs text-slate-400">No files uploaded for this record yet.</div>'}
+                                </div>
+                                <div class="mt-3 flex justify-end">
+                                    <button onclick="saveProductCertificationEvidence('${htmlSafe(pid)}', '${htmlSafe(record.id)}')" class="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-50">Save Metadata</button>
+                                </div>
+                            </div>
+                        `;
+                    }).join('') : '<div class="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-400">No requirement records selected for this product.</div>'}
+                    <div class="flex gap-3">
+                        <button onclick="closeEngineeringCertDetail()" class="flex-1 rounded-2xl border border-slate-200 text-slate-500 py-3 text-sm font-black">Close</button>
+                    </div>
+                </div>
+            `;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        };
+        window.saveProductCertificationEvidence = (productId, recordId) => {
+            const existing = productCertificationEvidenceFor(productId, recordId)[0] || {};
+            const next = {
+                ...existing,
+                id: existing.id || `${productId}:${recordId}`,
+                productId,
+                requirementRecordId: recordId,
+                status: document.getElementById(productCertificationEvidenceInputId('evidence-status', recordId))?.value || existing.status || 'Pending Evidence',
+                evidenceAvailable: evidenceHasFileOrAvailability(existing) ? 'Yes' : (existing.evidenceAvailable || 'No'),
+                certificateNo: document.getElementById(productCertificationEvidenceInputId('evidence-cert-no', recordId))?.value || '',
+                reportNo: document.getElementById(productCertificationEvidenceInputId('evidence-report-no', recordId))?.value || '',
+                issueDate: document.getElementById(productCertificationEvidenceInputId('evidence-issue', recordId))?.value || '',
+                expiryDate: document.getElementById(productCertificationEvidenceInputId('evidence-expiry', recordId))?.value || '',
+                verificationStatus: document.getElementById(productCertificationEvidenceInputId('evidence-verification', recordId))?.value || 'Not Reviewed',
+                fileRefs: Array.isArray(existing.fileRefs) ? existing.fileRefs : [],
+                remarks: document.getElementById(productCertificationEvidenceInputId('evidence-remarks', recordId))?.value || '',
+                updatedAt: new Date().toISOString()
+            };
+            upsertProductCertificationEvidence(next);
+            window.openProductCertificationEvidence(productId, recordId);
         };
         function renderSupplierOptions(selectedCode = '') {
             ensureSupplierData();
@@ -2476,6 +2786,8 @@
                     historicalInventory = Array.isArray(embedded.data.historicalInventory) ? embedded.data.historicalInventory : [];
                     suppliers = Array.isArray(embedded.data.suppliers) ? embedded.data.suppliers : [];
                     channelPartners = Array.isArray(embedded.data.channelPartners) ? embedded.data.channelPartners : [];
+                    certificationRequirementsCatalog = normalizeCertificationRequirementsCatalog(embedded.data.certificationRequirementsCatalog);
+                    productCertificationEvidence = normalizeProductCertificationEvidenceList(embedded.data.productCertificationEvidence);
                     subcategoriesByCategory = embedded.data.subcategoriesByCategory && typeof embedded.data.subcategoriesByCategory === 'object' ? embedded.data.subcategoriesByCategory : {};
                     profitSettings = normalizeProfitSettings(embedded.data.profitSettings || null);
                     installerProfitSettings = normalizeInstallerProfitSettings(embedded.data.installerProfitSettings || installerProfitSettings || null);
@@ -2492,6 +2804,8 @@
                         localStorage.setItem('minova_historical_inventory_v1', JSON.stringify(historicalInventory));
                         localStorage.setItem('minova_suppliers_v1', JSON.stringify(suppliers));
                         localStorage.setItem('minova_channel_partners_v1', JSON.stringify(channelPartners));
+                        localStorage.setItem('minova_certification_requirements_v1', JSON.stringify(certificationRequirementsCatalog));
+                        localStorage.setItem('minova_product_certification_evidence_v1', JSON.stringify(productCertificationEvidence));
                         localStorage.setItem('minova_subcategories_v1', JSON.stringify(subcategoriesByCategory));
                         localStorage.setItem('minova_profit_settings_v1', JSON.stringify(profitSettings));
                         localStorage.setItem('minova_installer_profit_v1', JSON.stringify(installerProfitSettings));
@@ -2524,6 +2838,14 @@
         try {
             const raw = localStorage.getItem('minova_compatibility_rules_v1');
             if (raw) compatibilityRules = Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : compatibilityRules;
+        } catch (e) {}
+        try {
+            const raw = localStorage.getItem('minova_certification_requirements_v1');
+            if (raw && (!Array.isArray(certificationRequirementsCatalog) || certificationRequirementsCatalog.length === 0)) certificationRequirementsCatalog = normalizeCertificationRequirementsCatalog(JSON.parse(raw));
+        } catch (e) {}
+        try {
+            const raw = localStorage.getItem('minova_product_certification_evidence_v1');
+            if (raw) productCertificationEvidence = normalizeProductCertificationEvidenceList(JSON.parse(raw));
         } catch (e) {}
         try {
             const raw = localStorage.getItem('minova_channel_partners_v1');
@@ -2584,7 +2906,7 @@
         normalizeProductClassificationData();
         saveSubcategoryIndex();
 
-        const TOP_LEVEL_TABS = ['quotation', 'database', 'pricelist', 'pvcalc', 'costcalc', 'inventory', 'transport', 'admin'];
+        const TOP_LEVEL_TABS = ['quotation', 'database', 'engineering', 'pricelist', 'pvcalc', 'costcalc', 'inventory', 'transport', 'admin'];
 
         function getActiveTopLevelTab() {
             for (const tab of TOP_LEVEL_TABS) {
@@ -2604,6 +2926,8 @@
                     renderChannelPartners();
                     renderDb();
                     updateDatalists();
+                } else if (key === 'engineering') {
+                    renderEngineeringWorkspace();
                 } else if (key === 'inventory') {
                     renderInventory();
                     renderNonStockPricingStrategies();
@@ -2640,7 +2964,7 @@
             const run = () => {
                 window.__minovaDeferredRenderScheduled = false;
                 const active = getActiveTopLevelTab();
-                ['database', 'inventory', 'transport', 'pricelist', 'costcalc'].forEach(tab => {
+                ['database', 'engineering', 'inventory', 'transport', 'pricelist', 'costcalc'].forEach(tab => {
                     if (tab !== active) renderTopLevelData(tab);
                 });
             };
@@ -2656,6 +2980,7 @@
             updateDatalists();
             updatePickerFilters();
             try { renderCompanyCertUploadSelectors(); renderCompanyCertList(); } catch (e) {}
+            try { if (getActiveTopLevelTab() === 'engineering') renderEngineeringWorkspace(); } catch (e) {}
             renderTopLevelData(getActiveTopLevelTab(), { force: true });
             scheduleDeferredTopLevelRenders();
         }
@@ -2683,6 +3008,11 @@
             ensureSupplierData();
             channelPartners = normalizeChannelPartners(data?.channelPartners);
             compatibilityRules = normalizeCompatibilityRules(data?.compatibilityRules);
+            const nextCertificationCatalog = normalizeCertificationRequirementsCatalog(data?.certificationRequirementsCatalog);
+            if (nextCertificationCatalog.length || !certificationRequirementsCatalog.length) {
+                certificationRequirementsCatalog = nextCertificationCatalog;
+            }
+            productCertificationEvidence = normalizeProductCertificationEvidenceList(data?.productCertificationEvidence);
             subcategoriesByCategory = data?.subcategoriesByCategory && typeof data.subcategoriesByCategory === 'object' ? data.subcategoriesByCategory : {};
             profitSettings = normalizeProfitSettings(data?.profitSettings || profitSettings || null);
             installerProfitSettings = normalizeInstallerProfitSettings(data?.installerProfitSettings || installerProfitSettings || null);
@@ -2700,6 +3030,8 @@
                 localStorage.setItem('minova_suppliers_v1', JSON.stringify(suppliers));
                 localStorage.setItem('minova_channel_partners_v1', JSON.stringify(channelPartners));
                 localStorage.setItem('minova_compatibility_rules_v1', JSON.stringify(compatibilityRules));
+                localStorage.setItem('minova_certification_requirements_v1', JSON.stringify(certificationRequirementsCatalog));
+                localStorage.setItem('minova_product_certification_evidence_v1', JSON.stringify(productCertificationEvidence));
                 localStorage.setItem('minova_subcategories_v1', JSON.stringify(subcategoriesByCategory));
                 localStorage.setItem('minova_profit_settings_v1', JSON.stringify(profitSettings));
                 localStorage.setItem('minova_installer_profit_v1', JSON.stringify(installerProfitSettings));
@@ -2782,7 +3114,11 @@
             localStorage.setItem('minova_channel_partners_v1', JSON.stringify(channelPartners));
             localStorage.setItem('minova_company_certs', JSON.stringify(companyCerts));
             compatibilityRules = normalizeCompatibilityRules(compatibilityRules);
+            certificationRequirementsCatalog = normalizeCertificationRequirementsCatalog(certificationRequirementsCatalog);
+            productCertificationEvidence = normalizeProductCertificationEvidenceList(productCertificationEvidence);
             try { localStorage.setItem('minova_compatibility_rules_v1', JSON.stringify(compatibilityRules)); } catch (e) {}
+            try { localStorage.setItem('minova_certification_requirements_v1', JSON.stringify(certificationRequirementsCatalog)); } catch (e) {}
+            try { localStorage.setItem('minova_product_certification_evidence_v1', JSON.stringify(productCertificationEvidence)); } catch (e) {}
             try { localStorage.setItem('minova_transport_records_v1', JSON.stringify(transportRecords)); } catch (e) {}
             try { localStorage.setItem('minova_file_delete_logs_v1', JSON.stringify(fileDeleteLogs)); } catch (e) {}
             rebuildSubcategoryIndexFromProducts();
@@ -2811,6 +3147,8 @@
                 historicalInventory,
                 transportRecords,
                 compatibilityRules,
+                certificationRequirementsCatalog,
+                productCertificationEvidence,
                 subcategoriesByCategory,
                 profitSettings,
                 installerProfitSettings,
@@ -3205,7 +3543,7 @@
             const localFileMode = window.location.protocol === 'file:';
             const connected = !!window.__minovaSync?.getStatus?.()?.connected;
             const authMode = !!window.__minovaAuth?.state?.user || document.body.classList.contains('minova-authenticated');
-            const restrictedTabs = ['quotation', 'costcalc', 'database', 'pricelist', 'inventory', 'transport'];
+            const restrictedTabs = ['quotation', 'costcalc', 'database', 'engineering', 'pricelist', 'inventory', 'transport'];
             if (restrictedTabs.includes(tab) && !connected && !localFileMode && !authMode) {
                 tab = 'pvcalc';
             }
@@ -5292,6 +5630,8 @@
         }
         function productMasterSearchHaystack(product) {
             const certReq = getProductCertificationRequirements(product);
+            const certRecords = productCertificationSelectedRecords(product);
+            const certEvidence = productCertificationEvidenceFor(product?.id || '');
             return [
                 product?.id,
                 product?.name,
@@ -5302,8 +5642,10 @@
                 ...flattenProductMasterValues(getProductSourcing(product)),
                 ...flattenProductMasterValues(product.masterData),
                 ...flattenProductMasterValues(product.technicalSpecs),
-                ...flattenProductMasterValues(certReq.countries),
+                ...flattenProductMasterValues(certReq.recordIds),
                 ...flattenProductMasterValues(certReq.standards),
+                ...flattenProductMasterValues(certRecords.map(record => [record.id, record.standard, record.requirementLevel, record.sourceCategory])),
+                ...flattenProductMasterValues(certEvidence),
                 ...flattenProductMasterValues(productMasterAttachedCertFiles(product)),
                 ...flattenProductMasterValues(productMasterAttachedSpecFiles(product)),
                 ...flattenProductMasterValues(getProductCompatibilityRules(product))
@@ -5586,14 +5928,17 @@
             ].map(file => file?.name || file?.fileName || file?.path || file?.url || '').filter(Boolean);
         }
         function productMasterCertificationStatus(product) {
+            const summary = productCertificationEvidenceSummary(product);
             const req = getProductCertificationRequirements(product);
-            const requirementsCount = (req.countries || []).length + (req.standards || []).length;
-            const attachedCount = productMasterAttachedCertFiles(product).length;
+            const selectedCount = summary.selectedCount;
+            const uploadedCount = summary.uploadedRecords + productMasterAttachedCertFiles(product).length;
             const externalLink = String(getProductMasterData(product).certificateLink || '').trim();
-            if (!requirementsCount && !attachedCount && !externalLink) return { status: 'Not Set', label: 'No requirements', gap: 'Requirements missing' };
-            if (requirementsCount && (attachedCount || externalLink)) return { status: 'Ready', label: `${attachedCount} files${externalLink ? ' + link' : ''}`, gap: '' };
-            if (requirementsCount) return { status: 'Gap', label: 'Requirements only', gap: 'Certificate evidence missing' };
-            return { status: 'Evidence Only', label: attachedCount ? `${attachedCount} files` : 'External link only', gap: 'Requirements missing' };
+            const missingMandatory = summary.missingMandatory.length;
+            if (!selectedCount && !(req.standards || []).length && !uploadedCount && !externalLink) return { status: 'Not Set', label: 'No requirements', gap: 'Requirements missing' };
+            if (selectedCount && missingMandatory) return { status: 'Gap', label: `${selectedCount} records / ${summary.fileCount} files`, gap: `${missingMandatory} mandatory missing` };
+            if (selectedCount) return { status: 'Ready', label: `${selectedCount} records / ${summary.fileCount || uploadedCount} evidence`, gap: '' };
+            if ((req.standards || []).length) return { status: uploadedCount || externalLink ? 'Ready' : 'Gap', label: `${(req.standards || []).length} legacy standards`, gap: uploadedCount || externalLink ? '' : 'Record IDs missing' };
+            return { status: 'Evidence Only', label: uploadedCount ? `${uploadedCount} evidence` : 'External link only', gap: 'Requirements missing' };
         }
         function productMasterStatusPill(status, tone = 'slate') {
             const palette = {
@@ -5706,8 +6051,14 @@
             const supplier = getProductSupplier(product);
             const supplierName = productListDisplayText(supplier ? getSupplierDisplayName(supplier) : (product?.vendor || '-'));
             const certReq = getProductCertificationRequirements(product);
-            const certTitle = `${(certReq.countries || []).join(', ')}\n${(certReq.standards || []).join('\n')}`;
-            const certBrief = (certReq.standards || []).slice(0, 2).join(', ') || '-';
+            const certRecords = productCertificationSelectedRecords(product);
+            const certTitle = [
+                ...certRecords.map(record => `${record.id} · ${record.standard} · ${record.requirementLevel}`),
+                ...(certReq.standards || [])
+            ].join('\n');
+            const certBrief = certRecords.length
+                ? `${certRecords.length} records`
+                : ((certReq.standards || []).slice(0, 2).join(', ') || '-');
             const contactHtml = product?.contact ? `<div class="relative group inline-block cursor-help"><span class="${product.contactInfo ? 'border-b border-dashed border-blue-400 text-blue-600' : ''}">${productListDisplayText(product.contact)}</span>${product.contactInfo ? `<div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block px-3 py-2 bg-slate-800 text-white text-xs rounded-lg z-50 whitespace-nowrap">Phone: ${htmlSafe(product.contactInfo)}</div>` : ''}</div>` : '-';
             const masterData = getProductMasterData(product);
             const technicalSpecs = getProductTechnicalSpecs(product);
@@ -8420,7 +8771,8 @@
             `;
         }
         function priceListCountryLabel(code) {
-            return CERTIFICATION_COUNTRIES.find(c => c.code === code)?.label || code;
+            const labels = { PV_MODULE: 'PV Module', INVERTER: 'Inverter / PCS', BATTERY: 'Battery / BESS' };
+            return labels[String(code || '').trim()] || code;
         }
         function renderPriceListFilters() {
             const catSel = document.getElementById('price-list-category-filter');
@@ -8436,18 +8788,20 @@
             };
             const cats = [...new Set(products.map(p => normalizeProductCategory(p.category)).filter(Boolean))].sort((a, b) => a.localeCompare(b));
             const brands = [...new Set(products.map(p => getProductSupplierDisplay(p)).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-            const countryOptions = CERTIFICATION_COUNTRIES.map(c => ({ value: c.code, label: c.label }));
+            const countryOptions = CERTIFICATION_SOURCE_CATEGORIES.map(c => ({ value: c, label: priceListCountryLabel(c) }));
             const certSet = new Set();
             products.forEach(p => {
                 const req = getProductCertificationRequirements(p);
                 const country = keep.country;
-                if (country && !(req.countries || []).includes(country)) return;
+                const records = productCertificationSelectedRecords(p);
+                if (country && !records.some(record => record.sourceCategory === country)) return;
+                records.forEach(record => certSet.add(record.standard || record.id));
                 (req.standards || []).forEach(s => certSet.add(s));
             });
             const certs = [...certSet].sort((a, b) => a.localeCompare(b));
             catSel.innerHTML = `<option value="">All Categories</option>` + cats.map(v => `<option value="${htmlSafe(v)}">${htmlSafe(v)}</option>`).join('');
             brandSel.innerHTML = `<option value="">All Brands</option>` + brands.map(v => `<option value="${htmlSafe(v)}">${htmlSafe(v)}</option>`).join('');
-            countrySel.innerHTML = `<option value="">All Countries</option>` + countryOptions.map(c => `<option value="${c.value}">${c.label}</option>`).join('');
+            countrySel.innerHTML = `<option value="">All Certification Categories</option>` + countryOptions.map(c => `<option value="${c.value}">${c.label}</option>`).join('');
             certSel.innerHTML = `<option value="">All Certifications</option>` + certs.map(v => `<option value="${htmlSafe(v)}">${htmlSafe(v)}</option>`).join('');
             if (keep.cat && cats.includes(keep.cat)) catSel.value = keep.cat;
             if (keep.brand && brands.includes(keep.brand)) brandSel.value = keep.brand;
@@ -8463,12 +8817,14 @@
             const cert = String(document.getElementById('price-list-cert-filter')?.value || '').trim();
             return products.filter(p => {
                 const req = getProductCertificationRequirements(p);
-                const text = `${p.id || ''} ${p.name || ''} ${p.spec || ''} ${p.category || ''} ${p.scenario || ''} ${getProductSupplierDisplay(p)} ${(req.standards || []).join(' ')}`.toLowerCase();
+                const records = productCertificationSelectedRecords(p);
+                const recordStandards = records.map(record => record.standard || record.id);
+                const text = `${p.id || ''} ${p.name || ''} ${p.spec || ''} ${p.category || ''} ${p.scenario || ''} ${getProductSupplierDisplay(p)} ${(req.recordIds || []).join(' ')} ${(req.standards || []).join(' ')} ${recordStandards.join(' ')}`.toLowerCase();
                 if (q && !text.includes(q)) return false;
                 if (category && normalizeProductCategory(p.category) !== category) return false;
                 if (brand && getProductSupplierDisplay(p) !== brand) return false;
-                if (country && !(req.countries || []).includes(country)) return false;
-                if (cert && !(req.standards || []).includes(cert)) return false;
+                if (country && !records.some(record => record.sourceCategory === country)) return false;
+                if (cert && ![...recordStandards, ...(req.standards || [])].includes(cert)) return false;
                 return true;
             }).sort((a, b) => String(a.category || '').localeCompare(String(b.category || '')) || String(a.name || '').localeCompare(String(b.name || '')));
         }
@@ -8817,12 +9173,17 @@
             }
             body.innerHTML = rows.map(p => {
                 const req = getProductCertificationRequirements(p);
+                const certRecords = productCertificationSelectedRecords(p);
                 const pricing = priceListProductPricing(p);
                 const homeProfit = Number.isFinite(parseFloat(pricing.homeProfitPct)) ? parseFloat(pricing.homeProfitPct) : ((pricing.cnHomePct || 0) + (pricing.myHomePct || 0));
                 const bizProfit = Number.isFinite(parseFloat(pricing.bizProfitPct)) ? parseFloat(pricing.bizProfitPct) : ((pricing.cnBizPct || 0) + (pricing.myBizPct || 0));
-                const countries = (req.countries || []).map(priceListCountryLabel).join(', ');
-                const certBrief = (req.standards || []).slice(0, 3).join(', ');
-                const certTitle = `${countries}\n${(req.standards || []).join('\n')}`;
+                const categories = [...new Set(certRecords.map(record => record.sourceCategory).filter(Boolean))].map(priceListCountryLabel).join(', ');
+                const certStandards = certRecords.map(record => record.standard || record.id);
+                const certBrief = certRecords.length ? `${certRecords.length} records` : (req.standards || []).slice(0, 3).join(', ');
+                const certTitle = [
+                    ...certRecords.map(record => `${record.id} · ${record.standard} · ${record.requirementLevel}`),
+                    ...(req.standards || [])
+                ].join('\n');
                 const checked = selectedPriceListProductIds.has(p.id) ? 'checked' : '';
                 const selectedPcsPrice = getPriceListSelectedPcsPrice(pricing);
                 return `
@@ -8844,7 +9205,7 @@
                         <td class="py-4 px-4 text-right">${renderPriceCell(pricing.clearanceBizPrice, pricing.clearanceCost, pricing.costUnit)}</td>
                         <td class="py-4 px-4 text-right">${renderPriceCell(pricing.grayHomePrice, pricing.grayCost, pricing.costUnit)}</td>
                         <td class="py-4 px-4 text-right">${renderPriceCell(pricing.grayBizPrice, pricing.grayCost, pricing.costUnit)}</td>
-                        <td class="py-4 px-4 text-xs text-slate-500 max-w-[220px] truncate" title="${htmlSafe(certTitle)}">${htmlSafe(certBrief || '-')}<div class="text-[10px] text-slate-400">${htmlSafe(countries || '-')}</div></td>
+                        <td class="py-4 px-4 text-xs text-slate-500 max-w-[220px] truncate" title="${htmlSafe(certTitle)}">${htmlSafe(certBrief || '-')}<div class="text-[10px] text-slate-400">${htmlSafe(categories || certStandards.slice(0, 2).join(', ') || '-')}</div></td>
                     </tr>
                 `;
             }).join('');
@@ -8982,6 +9343,8 @@
             const rows = selected.map(p => {
                 const r = priceListProductPricing(p);
                 const req = getProductCertificationRequirements(p);
+                const certRecords = productCertificationSelectedRecords(p);
+                const evidence = productCertificationEvidenceFor(p.id || '');
                 const market = getMarketPriceSummary(p.category || '', { days: 30 });
                 const homeProfit = Number.isFinite(parseFloat(r.homeProfitPct)) ? parseFloat(r.homeProfitPct) : ((r.cnHomePct || 0) + (r.myHomePct || 0));
                 const bizProfit = Number.isFinite(parseFloat(r.bizProfitPct)) ? parseFloat(r.bizProfitPct) : ((r.cnBizPct || 0) + (r.myBizPct || 0));
@@ -9019,8 +9382,10 @@
                     'Grey C&I CNY': r.grayBizPrice || 0,
                     'Grey C&I MYR': (r.grayBizPrice || 0) / getSalesOutRateCnyPerMyr(),
                     'Formula Note': `Clearance cost = Avg Cost * (1 + duty ${r.dutyPct}% + SST ${r.sstPct}%); Grey cost = Avg Cost * (1 + grey tax ${r.grayPct}%); RESI profit = ${(r.homeProfitPct || 0).toFixed(2)}%; C&I profit = ${(r.bizProfitPct || 0).toFixed(2)}%; FX 1 MYR = ${getSalesOutRateCnyPerMyr().toFixed(4)} CNY`,
-                    'Certification Countries': (req.countries || []).map(priceListCountryLabel).join(', '),
-                    'Certification Standards': (req.standards || []).join('; ')
+                    'Certification Record IDs': (req.recordIds || []).join('; '),
+                    'Certification Source Categories': [...new Set(certRecords.map(record => record.sourceCategory).filter(Boolean))].map(priceListCountryLabel).join(', '),
+                    'Certification Standards': [...certRecords.map(record => record.standard || record.id), ...(req.standards || [])].join('; '),
+                    'Certification Evidence Files': evidence.reduce((sum, item) => sum + (Array.isArray(item.fileRefs) ? item.fileRefs.length : 0), 0)
                 };
                 return out;
             });
@@ -9465,10 +9830,8 @@
                 });
                 window.__productImageDraft = '';
                 renderProductImagePreview();
-                renderCertificationCountryChoices();
                 const textarea = document.getElementById('m-cert-requirements');
                 if (textarea) textarea.value = '';
-                window.__certificationAutoFilled = true;
                 window.applyDefaultProductCertifications?.();
             }
             document.getElementById('modal').classList.remove('hidden');
@@ -9485,8 +9848,7 @@
             const currencyEl = document.getElementById('m-price-currency');
             if (currencyEl) currencyEl.value = 'CNY';
             updateProductPriceCurrencyUi();
-            renderCertificationCountryChoices();
-            window.__certificationAutoFilled = false;
+            renderProductCertificationRecordPicker({}, []);
             window.__productImageDraft = '';
             const fileEl = document.getElementById('m-product-image-file');
             if (fileEl) fileEl.value = '';
@@ -9509,6 +9871,7 @@
                 priceBasisUnit: document.getElementById('m-price-basis-unit')?.value || '',
                 unitQtyPerPcs: document.getElementById('m-unit-qty-per-pcs')?.value || ''
             });
+            const certificationDraft = readProductCertificationRequirementsFromModal();
             const data = {
                 id: window.editId || generateNextId(category),
                 name: document.getElementById('m-name').value,
@@ -9533,7 +9896,8 @@
                 sourcing: readProductSourcingFromModal(supplier.code),
                 masterData: readProductMasterDataFromModal(),
                 technicalSpecs: readProductTechnicalSpecsFromModal(category),
-                certificationRequirements: readProductCertificationRequirementsFromModal(),
+                certificationRequirementIds: certificationDraft.recordIds,
+                certificationRequirements: certificationDraft,
                 productImageDataUrl: String(window.__productImageDraft || ''),
                 ts: Date.now()
             };
@@ -9600,12 +9964,11 @@
             if (document.getElementById('m-price-currency')) document.getElementById('m-price-currency').value = getProductCurrency(p, 'cost');
             updateProductPriceCurrencyUi();
             const certReq = getProductCertificationRequirements(p);
-            renderCertificationCountryChoices(certReq.countries);
+            renderProductCertificationRecordPicker(p, certReq.recordIds || []);
             const certTextarea = document.getElementById('m-cert-requirements');
             if (certTextarea) certTextarea.value = certificationText(certReq);
             const certNote = document.getElementById('m-cert-source-note');
-            if (certNote) certNote.textContent = certReq.source === 'manual' ? 'Manual product certification requirements.' : `Defaults loaded from ${certReq.source === 'online-catalog' ? 'online catalog' : 'embedded fallback'}${certReq.updatedAt ? ` (${certReq.updatedAt})` : ''}.`;
-            window.__certificationAutoFilled = !p.certificationRequirements;
+            if (certNote) certNote.textContent = `${(certReq.recordIds || []).length} engineering records selected${certReq.updatedAt ? ` (${certReq.updatedAt})` : ''}.`;
             window.__productImageDraft = String(p.productImageDataUrl || p.imageDataUrl || '');
             renderProductImagePreview();
             openModal();
@@ -9635,6 +9998,7 @@
             leadTime: '供货周期',
             contact: '联系人',
             contactInfo: '联系方式',
+            certificationRequirementIds: '认证Record IDs',
             certificationCountries: '产品认证国家',
             certificationStandards: '产品认证标准',
             costCurrency: '基准币种',
@@ -9657,6 +10021,7 @@
             leadTime: 'Lead Time',
             contact: 'Contact',
             contactInfo: 'Contact Info',
+            certificationRequirementIds: 'Certification Record IDs',
             certificationCountries: 'Certification Countries',
             certificationStandards: 'Certification Standards',
             costCurrency: 'Base Currency',
@@ -9871,6 +10236,7 @@
                 inverterKw: ['逆变器kW', 'Inverter kW', 'Inverter Capacity', 'Inverter Capacity kW'],
                 batteryKwh: ['电池kWh', 'Battery kWh', 'Battery Capacity', 'Battery Capacity kWh'],
                 scenario: ['应用场景', 'Subcategory', 'Application Scenario'],
+                certificationRequirementIds: ['认证Record IDs', '认证记录ID', 'Certification Record IDs', 'Certification Requirement IDs', 'Record IDs'],
                 certificationCountries: ['产品认证国家', '认证国家', 'Certification Countries'],
                 certificationStandards: ['产品认证标准', '产品认证', 'Certification Standards', 'Product Certification'],
                 costCurrency: ['基准币种', 'Base Currency', 'Currency', 'Cost Currency', 'Price Currency'],
@@ -10025,17 +10391,25 @@
                 } else {
                     newProduct.unitQtyPerPcs = pricingMeta.unitQtyPerPcs;
                 }
-                if (newProduct.certificationCountries || newProduct.certificationStandards) {
+                const importedRecordIds = uniqueCertList(String(newProduct.certificationRequirementIds || '').split(/[\n;,/]+/))
+                    .map(id => String(id || '').trim().toUpperCase())
+                    .filter(id => getCertificationRequirementById(id));
+                if (importedRecordIds.length || newProduct.certificationCountries || newProduct.certificationStandards) {
                     const countries = uniqueCertList(String(newProduct.certificationCountries || '').split(/[\n;,/]+/)).map(v => v.toUpperCase());
                     const standards = uniqueCertList(String(newProduct.certificationStandards || '').split(/[\n;,]+/));
+                    newProduct.certificationRequirementIds = importedRecordIds;
                     newProduct.certificationRequirements = {
-                        countries: countries.length ? countries : CERTIFICATION_COUNTRIES.map(c => c.code),
+                        recordIds: importedRecordIds,
+                        legacyCountries: countries,
                         standards,
                         source: 'import',
                         updatedAt: ''
                     };
+                    if (!newProduct.certificationRequirementIds.length) delete newProduct.certificationRequirementIds;
                     delete newProduct.certificationCountries;
                     delete newProduct.certificationStandards;
+                } else {
+                    delete newProduct.certificationRequirementIds;
                 }
                 const existingIndex = products.findIndex(p => p.id === newProduct.id);
                 if (existingIndex !== -1) {
@@ -10106,13 +10480,14 @@
             const masterHeaders = ['SKU / Model', 'Brand', 'Series', 'Application', 'Voltage Class', 'Phase', 'Status', 'Country Available', 'Datasheet Link', 'External Certificate Link', 'Remark'];
             const sourcingHeaders = ['Source Type', 'Channel Partner ID', 'Brand Supplier Code', 'Commercial Supplier Code', 'Factory Supplier Code', 'Brand Owner Supplier Code', 'Authorization Status', 'Authorization Expiry', 'Source Remark'];
             const technicalHeaders = PRODUCT_MASTER_TECHNICAL_IMPORT_KEYS.map(key => PRODUCT_MASTER_TECHNICAL_LABEL_BY_KEY[key]);
-            const headers = ['Product ID', 'Product Name', 'Category', 'Supplier', 'Spec Model', 'Inverter kW', 'Battery kWh', 'Subcategory', 'Warranty Years', 'Cycle Count', 'Lead Time', 'Contact', 'Contact Method', 'Product Certification Countries', 'Product Certification Standards', 'Base Currency', 'Price Basis Unit', 'Qty per PCS', 'Base Cost', 'Base Price', ...masterHeaders, ...sourcingHeaders, ...technicalHeaders];
+            const headers = ['Product ID', 'Product Name', 'Category', 'Supplier', 'Spec Model', 'Inverter kW', 'Battery kWh', 'Subcategory', 'Warranty Years', 'Cycle Count', 'Lead Time', 'Contact', 'Contact Method', 'Certification Record IDs', 'Product Certification Standards', 'Base Currency', 'Price Basis Unit', 'Qty per PCS', 'Base Cost', 'Base Price', ...masterHeaders, ...sourcingHeaders, ...technicalHeaders];
             const data = products.map(p => {
                 const pricingMeta = getProductPricingMeta(p);
                 const hybridSpec = isHybridStorageCategory(p.category) ? parseHybridStorageSpec(p) : { inverterKw: '', batteryKwh: '' };
                 const md = getProductMasterData(p);
                 const tech = getProductTechnicalSpecs(p);
                 const sourcing = getProductSourcing(p);
+                const certReq = getProductCertificationRequirements(p);
                 return [
                 p.id || '',
                 p.name || '',
@@ -10127,8 +10502,8 @@
                 p.leadTime || '',
                 p.contact || '',
                 p.contactInfo || '',
-                (getProductCertificationRequirements(p).countries || []).join(', '),
-                (getProductCertificationRequirements(p).standards || []).join('; '),
+                (certReq.recordIds || []).join('; '),
+                (certReq.standards || []).join('; '),
                 getProductCurrency(p, 'cost'),
                 pricingMeta.priceBasisUnit,
                 pricingMeta.unitQtyPerPcs,
@@ -10160,7 +10535,7 @@
 
             // 如果没数据，加一行示例
             if (data.length === 0) {
-                data.push(['PROD001', 'Sample All-in-One', 'All-in-One System', 'Generic Supplier', '5.5 kW / 10 kWh', 5.5, 10, 'Single-Phase All-in-One', '10', '0', '15 days', 'Sales Manager', 'sales@example.com', 'MY, US, EU', 'IEC 62619; IEC 62109-1/2', 'CNY', 'set', 1, 5000, 6500, 'AIO-5.5-10', 'Generic Brand', 'Hybrid Series', 'Residential', 'LV', 'Single', 'Active', 'MY', '', '', 'Sample V3 Product Master row', 'Direct Factory', '', 'SUP001', 'SUP001', 'SUP001', 'SUP001', 'Authorized', '', 'Factory source confirmed', ...PRODUCT_MASTER_TECHNICAL_IMPORT_KEYS.map(key => key === 'nominalEnergyKwh' ? 10 : (key === 'pcsRatedPowerKw' ? 5.5 : ''))]);
+                data.push(['PROD001', 'Sample All-in-One', 'All-in-One System', 'Generic Supplier', '5.5 kW / 10 kWh', 5.5, 10, 'Single-Phase All-in-One', '10', '0', '15 days', 'Sales Manager', 'sales@example.com', 'INV-001; BESS-001', 'IEC 62619; IEC 62109-1/2', 'CNY', 'set', 1, 5000, 6500, 'AIO-5.5-10', 'Generic Brand', 'Hybrid Series', 'Residential', 'LV', 'Single', 'Active', 'MY', '', '', 'Sample V3 Product Master row', 'Direct Factory', '', 'SUP001', 'SUP001', 'SUP001', 'SUP001', 'Authorized', '', 'Factory source confirmed', ...PRODUCT_MASTER_TECHNICAL_IMPORT_KEYS.map(key => key === 'nominalEnergyKwh' ? 10 : (key === 'pcsRatedPowerKw' ? 5.5 : ''))]);
             }
 
             const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
@@ -11491,6 +11866,8 @@
                 transportRecords,
                 fileDeleteLogs,
                 compatibilityRules,
+                certificationRequirementsCatalog,
+                productCertificationEvidence,
                 subcategoriesByCategory,
                 profitSettings,
                 installerProfitSettings,
@@ -11519,6 +11896,8 @@
                     transportRecords,
                     fileDeleteLogs,
                     compatibilityRules,
+                    certificationRequirementsCatalog,
+                    productCertificationEvidence,
                     subcategoriesByCategory,
                     profitSettings,
                     installerProfitSettings,
@@ -11908,6 +12287,73 @@
                 renderProductCertsInModal();
             } catch (err) {
                 alert('上传失败: ' + err.message);
+            }
+        };
+
+        window.openProductCertificationEvidenceUpload = (productId, recordId) => {
+            const pid = String(productId || '').trim();
+            const rid = String(recordId || '').trim();
+            if (!pid || !rid) return;
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx';
+            input.onchange = async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                await window.uploadProductCertificationEvidence(pid, rid, file);
+            };
+            input.click();
+        };
+
+        window.uploadProductCertificationEvidence = async (productId, recordId, file) => {
+            const pid = String(productId || '').trim();
+            const rid = String(recordId || '').trim();
+            if (!pid || !rid || !file) return;
+            const status = window.__minovaSync?.getStatus?.();
+            if (!status?.connected || !window.__minovaSync?.repo?.commitTextFiles) {
+                alert('Please connect GitHub before uploading certification evidence files.');
+                return;
+            }
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const bytes = new Uint8Array(arrayBuffer);
+                const digest = await crypto.subtle.digest('SHA-256', arrayBuffer);
+                const hashHex = Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+                let binary = '';
+                for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+                const content = btoa(binary);
+                const safeRecordId = rid.replace(/[^A-Za-z0-9_-]/g, '_');
+                const path = `minova-data/certifications/products/${pid}/${safeRecordId}/${file.name}`;
+                const { owner, repo, branch } = window.__minovaSync.config || {};
+                await window.__minovaSync.repo.commitTextFiles({
+                    owner, repo, branch,
+                    message: `minova: upload certification evidence ${pid} ${rid} ${file.name}`,
+                    files: [{ path, content, encoding: 'base64' }]
+                });
+                const existing = productCertificationEvidenceFor(pid, rid)[0] || {};
+                const fileRef = {
+                    id: crypto.randomUUID(),
+                    name: file.name,
+                    path,
+                    size: file.size,
+                    contentType: file.type || '',
+                    sha256: hashHex,
+                    uploadedAt: new Date().toISOString()
+                };
+                upsertProductCertificationEvidence({
+                    ...existing,
+                    id: existing.id || `${pid}:${rid}`,
+                    productId: pid,
+                    requirementRecordId: rid,
+                    status: existing.status && existing.status !== 'Pending Evidence' ? existing.status : 'Evidence Uploaded',
+                    evidenceAvailable: 'Yes',
+                    verificationStatus: existing.verificationStatus && existing.verificationStatus !== 'Not Reviewed' ? existing.verificationStatus : 'Pending Review',
+                    fileRefs: [...(Array.isArray(existing.fileRefs) ? existing.fileRefs : []), fileRef],
+                    updatedAt: new Date().toISOString()
+                });
+                window.openProductCertificationEvidence(pid, rid);
+            } catch (err) {
+                alert('Evidence upload failed: ' + String(err?.message || err || ''));
             }
         };
 

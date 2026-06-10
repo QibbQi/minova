@@ -2445,17 +2445,17 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
     <main id="view-engineering" class="max-w-6xl mx-auto px-4 mb-20 hidden" style="display: none;">
         <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 mb-6">
-            <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4">
-                <div>
+            <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                <div class="min-w-0">
                     <p class="text-[10px] font-black text-purple-700 uppercase tracking-widest mb-1">Engineering Workspace</p>
                     <h2 id="engineering-workspace-title" class="text-2xl font-black text-slate-800">Certification Standards</h2>
                     <p id="engineering-workspace-subtitle" class="text-xs text-slate-400 mt-1">Maintain Malaysia product certification requirements, product evidence, and class-based engineering readiness.</p>
                 </div>
-                <div>
-                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 xl:text-right">Workspace</label>
-                    <div id="engineering-workspace-switch" class="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
-                        <button id="engineering-workspace-certification" type="button" onclick="setEngineeringWorkspaceView('certification')" class="px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white">Certification Standards</button>
-                        <button id="engineering-workspace-product-master" type="button" onclick="setEngineeringWorkspaceView('productMaster')" class="px-4 py-2 rounded-lg text-xs font-black text-slate-500">Product Master</button>
+                <div class="md:ml-auto md:text-right">
+                    <label class="block text-[10px] font-black text-purple-700 uppercase tracking-widest mb-1">Workspace</label>
+                    <div id="engineering-workspace-switch" class="inline-flex rounded-xl border border-yellow-200 bg-yellow-50 p-1">
+                        <button id="engineering-workspace-certification" type="button" onclick="setEngineeringWorkspaceView('certification')" class="px-4 py-2 rounded-lg text-xs font-black bg-purple-700 text-white shadow-sm">Certification Standards</button>
+                        <button id="engineering-workspace-product-master" type="button" onclick="setEngineeringWorkspaceView('productMaster')" class="px-4 py-2 rounded-lg text-xs font-black text-purple-700 hover:bg-yellow-100">Product Master</button>
                     </div>
                 </div>
             </div>
@@ -6796,8 +6796,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (subtitle) subtitle.textContent = inProductMaster
                 ? 'Maintain engineering product master details by category, readiness, and technical data.'
                 : 'Maintain Malaysia product certification requirements, product evidence, and class-based engineering readiness.';
-            if (certBtn) certBtn.className = !inProductMaster ? 'px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white' : 'px-4 py-2 rounded-lg text-xs font-black text-slate-500';
-            if (productBtn) productBtn.className = inProductMaster ? 'px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white' : 'px-4 py-2 rounded-lg text-xs font-black text-slate-500';
+            if (certBtn) certBtn.className = !inProductMaster ? 'px-4 py-2 rounded-lg text-xs font-black bg-purple-700 text-white shadow-sm' : 'px-4 py-2 rounded-lg text-xs font-black text-purple-700 hover:bg-yellow-100';
+            if (productBtn) productBtn.className = inProductMaster ? 'px-4 py-2 rounded-lg text-xs font-black bg-purple-700 text-white shadow-sm' : 'px-4 py-2 rounded-lg text-xs font-black text-purple-700 hover:bg-yellow-100';
             syncEngineeringCertificationModeVisibility();
         }
         function setEngineeringWorkspaceView(view = 'certification') {

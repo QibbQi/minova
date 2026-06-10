@@ -367,6 +367,15 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     engineeringTab.indexOf('id="engineering-workspace-certification"') < engineeringTab.indexOf('id="engineering-summary"'),
     'Engineering workspace switch should sit above the summary cards'
   );
+  [
+    'md:flex-row md:items-start md:justify-between',
+    'md:ml-auto md:text-right',
+    'border-yellow-200 bg-yellow-50',
+    'bg-purple-700 text-white shadow-sm',
+    'text-purple-700 hover:bg-yellow-100'
+  ].forEach((text) => {
+    assert.equal(engineeringTab.includes(text), true, `Missing engineering workspace switch layout/color: ${text}`);
+  });
   assert.ok(
     engineeringTab.indexOf('id="engineering-add-record-button"') > engineeringTab.indexOf('id="engineering-mode-matrix"')
       && engineeringTab.indexOf('id="engineering-add-record-button"') < engineeringTab.indexOf('id="engineering-quote-source-default"'),
@@ -434,6 +443,7 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     "document.getElementById('engineering-search-products-primary')",
     "classList.toggle('hidden', !inCertification || engineeringWorkspaceMode !== 'standard')",
     "classList.toggle('hidden', inProductMaster)",
+    "'px-4 py-2 rounded-lg text-xs font-black bg-purple-700 text-white shadow-sm'",
     'Unable to find products containing every selected standard record.',
     'nextCertificationCatalog.length || !certificationRequirementsCatalog.length',
     "persistEntityToD1('certification_requirement'",

@@ -2157,8 +2157,8 @@
             if (subtitle) subtitle.textContent = inProductMaster
                 ? 'Maintain engineering product master details by category, readiness, and technical data.'
                 : 'Maintain Malaysia product certification requirements, product evidence, and class-based engineering readiness.';
-            if (certBtn) certBtn.className = !inProductMaster ? 'px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white' : 'px-4 py-2 rounded-lg text-xs font-black text-slate-500';
-            if (productBtn) productBtn.className = inProductMaster ? 'px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white' : 'px-4 py-2 rounded-lg text-xs font-black text-slate-500';
+            if (certBtn) certBtn.className = !inProductMaster ? 'px-4 py-2 rounded-lg text-xs font-black bg-purple-700 text-white shadow-sm' : 'px-4 py-2 rounded-lg text-xs font-black text-purple-700 hover:bg-yellow-100';
+            if (productBtn) productBtn.className = inProductMaster ? 'px-4 py-2 rounded-lg text-xs font-black bg-purple-700 text-white shadow-sm' : 'px-4 py-2 rounded-lg text-xs font-black text-purple-700 hover:bg-yellow-100';
             syncEngineeringCertificationModeVisibility();
         }
         function setEngineeringWorkspaceView(view = 'certification') {

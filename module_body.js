@@ -997,6 +997,7 @@
         let compatibilityRules = [];
         let certificationRequirementsCatalog = [];
         let productCertificationEvidence = [];
+        let productMasterDetailTemplates = [];
         let inventorySummaryMode = false;
         let inventoryFullHeadHtml = '';
         let selectedInventoryForTransport = new Set();
@@ -1833,6 +1834,11 @@
             'All-in-One System': ['INVERTER', 'BATTERY'],
             'C&I Storage': ['INVERTER', 'BATTERY']
         };
+        const CERTIFICATION_PRODUCT_CATEGORY_DEFAULTS = {
+            PV_MODULE: ['PV Module', 'PV Junction Box', 'PV Cable / Connector', 'PV Mounting / Tracker', 'PV Packaging'],
+            INVERTER: ['PV Inverter', 'Hybrid Inverter', 'BESS PCS', 'Grid Interface', 'EMS'],
+            BATTERY: ['Battery Pack / System', 'BMS', 'EMS', 'BESS PCS', 'BESS System']
+        };
         function uniqueCertList(list) {
             const seen = new Set();
             const out = [];
@@ -2067,8 +2073,155 @@
             return 'bg-slate-50 text-slate-500 border-slate-100';
         }
         const MINOVA_ENGINEERING_QUOTE_DEFAULTS_KEY = 'minova_engineering_quote_defaults_v1';
+        let engineeringWorkspaceView = 'certification';
         let engineeringWorkspaceMode = 'standard';
+        let engineeringProductMasterMode = 'product';
         let engineeringStandardSelectedIds = new Set();
+        const ENGINEERING_PRODUCT_MASTER_DETAIL_GROUPS = {
+            all: { label: 'All Product Master Details', master: ['model', 'brand', 'series', 'application', 'voltageClass', 'phase', 'status', 'countryAvailable'], technical: [], extra: ['certification', 'commercial', 'documents'] },
+            basic: { label: 'Basic', master: ['model', 'brand', 'series', 'application', 'status', 'countryAvailable'], technical: [], extra: [] },
+            electrical: { label: 'Electrical', master: ['voltageClass', 'phase'], technical: ['powerW', 'ratedAcPowerKw', 'maxAcOutputPowerKw', 'nominalEnergyKwh', 'usableEnergyKwh', 'pcsRatedPowerKw', 'maxOutputPowerKw', 'moduleEfficiencyPct', 'mpptQty', 'batteryVoltageRangeV', 'gridVoltageV'], extra: [] },
+            mechanical: { label: 'Mechanical', master: [], technical: ['dimensionsMm', 'weightKg', 'ipRating', 'coolingType', 'mountingMethod', 'installationType', 'indoorOutdoor', 'operatingTemperature'], extra: [] },
+            certification: { label: 'Certification', master: ['certificateLink'], technical: ['certification', 'safetyStandard', 'gridCode'], extra: ['certification'] },
+            commercial: { label: 'Commercial / Source', master: ['remark'], technical: [], extra: ['commercial'] },
+            documents: { label: 'Documents', master: ['datasheetLink', 'certificateLink'], technical: [], extra: ['documents'] }
+        };
+        const PRODUCT_MASTER_DETAIL_TEMPLATE_STORAGE_KEY = 'minova_product_master_detail_templates_v1';
+        const PRODUCT_MASTER_DETAIL_NEW_FIELD_VALUE = '__new_field__';
+        const PRODUCT_MASTER_DETAIL_MASTER_FIELD_LABELS = {
+            model: 'Model',
+            brand: 'Brand',
+            series: 'Series',
+            application: 'Application',
+            voltageClass: 'Voltage Class',
+            phase: 'Phase',
+            status: 'Status',
+            countryAvailable: 'Country Available',
+            datasheetLink: 'Datasheet Link',
+            certificateLink: 'Certificate Link',
+            remark: 'Remark'
+        };
+        function productMasterDetailTemplateId(category = '', detailGroup = '') {
+            const cat = normalizeProductCategory(category || 'PV Module', 'PV Module');
+            const group = String(detailGroup || 'basic').trim() || 'basic';
+            return `${cat}:${group}`;
+        }
+        function uniqueProductMasterFieldKeys(keys = []) {
+            return Array.from(new Set((Array.isArray(keys) ? keys : []).map(key => String(key || '').trim()).filter(Boolean)));
+        }
+        function defaultProductMasterDetailFieldKeys(category = 'PV Module', detailGroup = 'basic') {
+            const group = ENGINEERING_PRODUCT_MASTER_DETAIL_GROUPS[detailGroup] || ENGINEERING_PRODUCT_MASTER_DETAIL_GROUPS.basic;
+            const techIds = (() => {
+                try { return new Set(getProductTechnicalSpecFieldsForCategory(category).map(field => field.id)); } catch (e) { return new Set(); }
+            })();
+            return uniqueProductMasterFieldKeys([
+                ...(group.master || []),
+                ...(group.technical || []).filter(key => !techIds.size || techIds.has(key))
+            ]);
+        }
+        function normalizeProductMasterDetailTemplate(record = {}) {
+            const category = normalizeProductCategory(record.category || 'PV Module', 'PV Module');
+            const detailGroup = ENGINEERING_PRODUCT_MASTER_DETAIL_GROUPS[record.detailGroup] ? record.detailGroup : 'basic';
+            const defaultFields = defaultProductMasterDetailFieldKeys(category, detailGroup);
+            const fieldKeys = uniqueProductMasterFieldKeys(record.fieldKeys?.length ? record.fieldKeys : defaultFields);
+            const requiredSet = new Set(uniqueProductMasterFieldKeys(record.requiredFieldKeys));
+            const fieldLabels = {};
+            if (record.fieldLabels && typeof record.fieldLabels === 'object') {
+                fieldKeys.forEach(key => {
+                    const label = String(record.fieldLabels[key] || '').trim();
+                    if (label) fieldLabels[key] = label;
+                });
+            }
+            const id = String(record.id || productMasterDetailTemplateId(category, detailGroup)).trim();
+            return {
+                id,
+                category,
+                detailGroup,
+                fieldKeys,
+                requiredFieldKeys: fieldKeys.filter(key => requiredSet.has(key)),
+                fieldLabels,
+                updatedAt: String(record.updatedAt || new Date().toISOString()),
+                remarks: String(record.remarks || '').trim()
+            };
+        }
+        function normalizeProductMasterDetailTemplates(list = []) {
+            const map = new Map();
+            (Array.isArray(list) ? list : []).forEach(item => {
+                const normalized = normalizeProductMasterDetailTemplate(item);
+                if (normalized.id) map.set(normalized.id, normalized);
+            });
+            return Array.from(map.values());
+        }
+        function getProductMasterDetailTemplate(category = 'PV Module', detailGroup = 'basic') {
+            const id = productMasterDetailTemplateId(category, detailGroup);
+            return productMasterDetailTemplates.find(template => template.id === id)
+                || normalizeProductMasterDetailTemplate({ id, category, detailGroup });
+        }
+        function productMasterDetailFieldLabel(key = '') {
+            const fieldKey = String(key || '').trim();
+            try {
+                if (PRODUCT_MASTER_DETAIL_MASTER_FIELD_LABELS[fieldKey]) return PRODUCT_MASTER_DETAIL_MASTER_FIELD_LABELS[fieldKey];
+                if (PRODUCT_MASTER_TECHNICAL_LABEL_BY_KEY?.[fieldKey]) return PRODUCT_MASTER_TECHNICAL_LABEL_BY_KEY[fieldKey];
+            } catch (e) {}
+            return fieldKey;
+        }
+        function productMasterDetailTemplateFieldLabel(key = '', template = {}) {
+            const fieldKey = String(key || '').trim();
+            const customLabel = String(template?.fieldLabels?.[fieldKey] || '').trim();
+            return customLabel || productMasterDetailFieldLabel(fieldKey);
+        }
+        function nextProductMasterDetailCustomFieldKey(template = {}) {
+            const selected = new Set(uniqueProductMasterFieldKeys(template.fieldKeys));
+            let index = 1;
+            while (selected.has(`customDetail${String(index).padStart(2, '0')}`)) index += 1;
+            return `customDetail${String(index).padStart(2, '0')}`;
+        }
+        function productMasterDetailFieldOptions(category = '') {
+            const masterKeys = Object.keys(PRODUCT_MASTER_DETAIL_MASTER_FIELD_LABELS);
+            const techFields = (() => {
+                try { return getProductTechnicalSpecFieldsForCategory(category); } catch (e) { return []; }
+            })();
+            const rows = [
+                ...masterKeys.map(key => ({ key, label: PRODUCT_MASTER_DETAIL_MASTER_FIELD_LABELS[key], kind: 'masterData' })),
+                ...techFields.map(field => ({ key: field.id, label: field.label || field.id, kind: 'technicalSpecs' }))
+            ];
+            const seen = new Set();
+            return rows.filter(row => {
+                if (!row.key || seen.has(row.key)) return false;
+                seen.add(row.key);
+                return true;
+            });
+        }
+        function productMasterDetailFieldKind(category = '', key = '') {
+            const fieldKey = String(key || '').trim();
+            try {
+                if (PRODUCT_MASTER_COMMON_FIELD_KEYS.includes(fieldKey)) return 'masterData';
+                if (getProductTechnicalSpecFieldsForCategory(category).some(field => field.id === fieldKey)) return 'technicalSpecs';
+            } catch (e) {}
+            if (fieldKey.startsWith('customDetail')) return 'technicalSpecs';
+            return 'previewOnly';
+        }
+        function productMasterDetailValue(product = {}, category = '', key = '') {
+            const kind = productMasterDetailFieldKind(category || product.category, key);
+            if (kind === 'masterData') return getProductMasterData(product)[key] ?? '';
+            if (kind === 'technicalSpecs') return getProductTechnicalSpecs(product)[key] ?? '';
+            return '';
+        }
+        function setProductMasterDetailValue(product = {}, category = '', key = '', value = '') {
+            const kind = productMasterDetailFieldKind(category || product.category, key);
+            if (kind === 'masterData') {
+                product.masterData = { ...(product.masterData || {}), [key]: String(value ?? '').trim() };
+                product.masterData = compactProductMasterObject(product.masterData);
+                return true;
+            }
+            if (kind === 'technicalSpecs') {
+                const field = getProductTechnicalSpecFieldsForCategory(category || product.category).find(item => item.id === key) || {};
+                product.technicalSpecs = { ...(product.technicalSpecs || {}), [key]: coerceProductMasterFieldValue(value, field.type) };
+                product.technicalSpecs = compactProductMasterObject(product.technicalSpecs);
+                return true;
+            }
+            return false;
+        }
         function canManageEngineeringRecord(action = 'edit') {
             if (action === 'delete') return window.__minovaAuth?.canPerformAction?.('engineering', 'delete') ?? true;
             if (action === 'upload') return window.__minovaAuth?.canPerformAction?.('engineering', 'upload') ?? true;
@@ -2116,8 +2269,7 @@
             const priceType = document.getElementById('engineering-quote-price-default')?.value || 'clearance_home';
             try { localStorage.setItem(MINOVA_ENGINEERING_QUOTE_DEFAULTS_KEY, JSON.stringify({ source, priceType })); } catch (e) {}
         };
-        function setEngineeringWorkspaceMode(mode = 'standard') {
-            engineeringWorkspaceMode = mode === 'matrix' ? 'matrix' : 'standard';
+        function syncEngineeringCertificationModeVisibility() {
             const standard = document.getElementById('engineering-standard-panel');
             const matrix = document.getElementById('engineering-matrix-panel');
             const standardSearchFilters = document.getElementById('engineering-standard-search-filters');
@@ -2125,13 +2277,43 @@
             const searchProductBtn = document.getElementById('engineering-search-products-primary');
             const standardBtn = document.getElementById('engineering-mode-standard');
             const matrixBtn = document.getElementById('engineering-mode-matrix');
-            if (standard) standard.classList.toggle('hidden', engineeringWorkspaceMode !== 'standard');
-            if (matrix) matrix.classList.toggle('hidden', engineeringWorkspaceMode !== 'matrix');
-            if (standardSearchFilters) standardSearchFilters.classList.toggle('hidden', engineeringWorkspaceMode !== 'standard');
-            if (standardMatchCard) standardMatchCard.classList.toggle('hidden', engineeringWorkspaceMode !== 'standard');
-            if (searchProductBtn) searchProductBtn.classList.toggle('hidden', engineeringWorkspaceMode !== 'standard');
+            const inCertification = engineeringWorkspaceView === 'certification';
+            if (standard) standard.classList.toggle('hidden', !inCertification || engineeringWorkspaceMode !== 'standard');
+            if (matrix) matrix.classList.toggle('hidden', !inCertification || engineeringWorkspaceMode !== 'matrix');
+            if (standardSearchFilters) standardSearchFilters.classList.toggle('hidden', !inCertification || engineeringWorkspaceMode !== 'standard');
+            if (standardMatchCard) standardMatchCard.classList.toggle('hidden', !inCertification || engineeringWorkspaceMode !== 'standard');
+            if (searchProductBtn) searchProductBtn.classList.toggle('hidden', !inCertification || engineeringWorkspaceMode !== 'standard');
             if (standardBtn) standardBtn.className = engineeringWorkspaceMode === 'standard' ? 'px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white' : 'px-4 py-2 rounded-lg text-xs font-black text-slate-500';
             if (matrixBtn) matrixBtn.className = engineeringWorkspaceMode === 'matrix' ? 'px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white' : 'px-4 py-2 rounded-lg text-xs font-black text-slate-500';
+        }
+        function syncEngineeringWorkspaceViewChrome() {
+            const inProductMaster = engineeringWorkspaceView === 'productMaster';
+            const certPanel = document.getElementById('engineering-certification-workspace-panel');
+            const productPanel = document.getElementById('engineering-product-master-panel');
+            const title = document.getElementById('engineering-workspace-title');
+            const subtitle = document.getElementById('engineering-workspace-subtitle');
+            const certBtn = document.getElementById('engineering-workspace-certification');
+            const productBtn = document.getElementById('engineering-workspace-product-master');
+            const summary = document.getElementById('engineering-summary');
+            if (certPanel) certPanel.classList.toggle('hidden', inProductMaster);
+            if (productPanel) productPanel.classList.toggle('hidden', !inProductMaster);
+            summary?.classList.toggle('hidden', engineeringWorkspaceView !== 'certification');
+            if (title) title.textContent = inProductMaster ? 'Product Master' : 'Certification Standards';
+            if (subtitle) subtitle.textContent = inProductMaster
+                ? 'Maintain engineering product master details by category, readiness, and technical data.'
+                : 'Maintain Malaysia product certification requirements, product evidence, and class-based engineering readiness.';
+            if (certBtn) certBtn.className = !inProductMaster ? 'px-4 py-2 rounded-lg text-xs font-black bg-purple-700 text-white shadow-sm' : 'px-4 py-2 rounded-lg text-xs font-black text-purple-700 brand-yellow-inactive';
+            if (productBtn) productBtn.className = inProductMaster ? 'px-4 py-2 rounded-lg text-xs font-black bg-purple-700 text-white shadow-sm' : 'px-4 py-2 rounded-lg text-xs font-black text-purple-700 brand-yellow-inactive';
+            syncEngineeringCertificationModeVisibility();
+        }
+        function setEngineeringWorkspaceView(view = 'certification') {
+            engineeringWorkspaceView = view === 'productMaster' ? 'productMaster' : 'certification';
+            renderEngineeringWorkspace();
+        }
+        window.setEngineeringWorkspaceView = setEngineeringWorkspaceView;
+        function setEngineeringWorkspaceMode(mode = 'standard') {
+            engineeringWorkspaceMode = mode === 'matrix' ? 'matrix' : 'standard';
+            syncEngineeringCertificationModeVisibility();
             renderEngineeringWorkspace();
         }
         window.setEngineeringWorkspaceMode = setEngineeringWorkspaceMode;
@@ -2149,6 +2331,59 @@
             }, 0);
             return `${prefix}-${String(max + 1).padStart(3, '0')}`;
         }
+        window.nextCertificationRequirementIdForCategory = nextCertificationRequirementIdForCategory;
+        function certificationProductCategoryOptions(sourceCategory = 'PV_MODULE', selected = '') {
+            const source = normalizeCertificationSourceCategory(sourceCategory);
+            const existing = certificationRequirementsCatalog
+                .filter(record => record.sourceCategory === source)
+                .map(record => record.productCategory);
+            return uniqueCertList([...(CERTIFICATION_PRODUCT_CATEGORY_DEFAULTS[source] || []), ...existing, selected]);
+        }
+        function renderCertificationProductCategoryOptions(sourceCategory = 'PV_MODULE', selected = '') {
+            const normalizedSelected = String(selected || '').trim();
+            const options = certificationProductCategoryOptions(sourceCategory, normalizedSelected);
+            const selectedIsKnown = !normalizedSelected || options.some(option => option.toLowerCase() === normalizedSelected.toLowerCase());
+            return [
+                ...options.map(option => `<option value="${htmlSafe(option)}" ${option === normalizedSelected ? 'selected' : ''}>${htmlSafe(option)}</option>`),
+                `<option value="__custom__" ${selectedIsKnown ? '' : 'selected'}>+ Add custom category</option>`
+            ].join('');
+        }
+        function readEngineeringDetailProductCategory() {
+            const select = document.getElementById('engineering-detail-product-category-select');
+            if (!select) return String(document.getElementById('engineering-detail-product-category')?.value || '').trim();
+            if (select.value === '__custom__') {
+                return String(document.getElementById('engineering-detail-product-category-custom')?.value || '').trim();
+            }
+            return String(select.value || '').trim();
+        }
+        function syncEngineeringProductCategoryInput() {
+            const select = document.getElementById('engineering-detail-product-category-select');
+            const custom = document.getElementById('engineering-detail-product-category-custom');
+            if (!select || !custom) return;
+            const isCustom = select.value === '__custom__';
+            custom.classList.toggle('hidden', !isCustom);
+            if (isCustom && !custom.value) custom.focus();
+        }
+        window.syncEngineeringProductCategoryInput = syncEngineeringProductCategoryInput;
+        function syncEngineeringRequirementEditorSourceCategory() {
+            const source = document.getElementById('engineering-detail-source-category')?.value || 'PV_MODULE';
+            const isNew = document.getElementById('engineering-detail-is-new')?.value === '1';
+            const idInput = document.getElementById('engineering-detail-id');
+            if (isNew && idInput) idInput.value = nextCertificationRequirementIdForCategory(source);
+            const productCategorySelect = document.getElementById('engineering-detail-product-category-select');
+            const productCategoryCustom = document.getElementById('engineering-detail-product-category-custom');
+            if (!productCategorySelect) return;
+            const previousValue = readEngineeringDetailProductCategory();
+            const sourceOptions = certificationProductCategoryOptions(source);
+            const nextValue = sourceOptions.some(option => option.toLowerCase() === previousValue.toLowerCase()) && previousValue
+                ? previousValue
+                : (sourceOptions[0] || '');
+            productCategorySelect.innerHTML = renderCertificationProductCategoryOptions(source, nextValue);
+            productCategorySelect.value = nextValue;
+            if (productCategoryCustom) productCategoryCustom.value = '';
+            syncEngineeringProductCategoryInput();
+        }
+        window.syncEngineeringRequirementEditorSourceCategory = syncEngineeringRequirementEditorSourceCategory;
         function getEngineeringRequirementLinkedProducts(recordId) {
             const id = String(recordId || '').trim();
             if (!id) return [];
@@ -2282,10 +2517,522 @@
                 `;
             }).join('') || '<tr><td colspan="8" class="py-12 text-center text-slate-400 text-sm">No certification records match the current filters.</td></tr>';
         }
+        function engineeringProductMasterFilterValue(id, fallback = 'all') {
+            return String(document.getElementById(id)?.value || fallback).trim() || fallback;
+        }
+        function productMasterDetailValuePresent(value) {
+            if (Array.isArray(value)) return value.length > 0;
+            if (value && typeof value === 'object') return Object.keys(value).length > 0;
+            return String(value ?? '').trim() !== '';
+        }
+        function productMasterDetailGroupValues(product = {}, groupId = 'all') {
+            const group = ENGINEERING_PRODUCT_MASTER_DETAIL_GROUPS[groupId] || ENGINEERING_PRODUCT_MASTER_DETAIL_GROUPS.all;
+            const md = getProductMasterData(product);
+            const tech = getProductTechnicalSpecs(product);
+            const sourcing = getProductSourcing(product);
+            const certReq = getProductCertificationRequirements(product);
+            const values = [
+                ...(group.master || []).map(key => md[key]),
+                ...(group.technical || []).map(key => tech[key])
+            ];
+            if ((group.extra || []).includes('certification')) {
+                values.push(certReq.recordIds || [], certReq.standards || [], md.certificateLink);
+            }
+            if ((group.extra || []).includes('commercial')) {
+                values.push(sourcing.sourceType, sourcing.commercialSupplierCode, sourcing.factorySupplierCode, sourcing.authorizationStatus, product.leadTime, product.priceBasisUnit, product.cost, product.price);
+            }
+            if ((group.extra || []).includes('documents')) {
+                values.push(md.datasheetLink, md.certificateLink, productMasterAttachedCertFiles(product), productMasterAttachedSpecFiles(product));
+            }
+            if (groupId === 'all') {
+                values.push(product.name, product.category, product.supplierCode, product.spec);
+            }
+            return values;
+        }
+        function productMasterDetailGroupStatus(product = {}, groupId = 'all') {
+            const values = productMasterDetailGroupValues(product, groupId);
+            const total = values.length;
+            const filled = values.filter(productMasterDetailValuePresent).length;
+            const missing = Math.max(total - filled, 0);
+            const group = ENGINEERING_PRODUCT_MASTER_DETAIL_GROUPS[groupId] || ENGINEERING_PRODUCT_MASTER_DETAIL_GROUPS.all;
+            return {
+                label: group.label,
+                total,
+                filled,
+                missing,
+                complete: total > 0 && missing === 0
+            };
+        }
+        function engineeringProductMasterSearchHaystack(product = {}) {
+            const md = getProductMasterData(product);
+            const tech = getProductTechnicalSpecs(product);
+            const sourcing = getProductSourcing(product);
+            const certReq = getProductCertificationRequirements(product);
+            const certRecords = productCertificationSelectedRecords(product);
+            return [
+                product.id, product.name, product.category, product.scenario, product.spec, product.supplierCode, product.vendor,
+                ...Object.values(md), ...Object.values(tech), ...Object.values(sourcing),
+                ...(certReq.recordIds || []), ...(certReq.standards || []),
+                ...certRecords.flatMap(record => [record.id, record.standard, record.requirementLevel, record.sourceCategory])
+            ].join(' ').toLowerCase();
+        }
+        function engineeringProductMasterVisibleProducts() {
+            ensureSupplierData();
+            const typeView = engineeringProductMasterFilterValue('engineering-product-master-type-filter');
+            const detailGroup = engineeringProductMasterFilterValue('engineering-product-master-detail-group');
+            const detailState = engineeringProductMasterFilterValue('engineering-product-master-detail-state');
+            const certFilter = engineeringProductMasterFilterValue('engineering-product-master-cert-filter');
+            const query = String(document.getElementById('engineering-product-master-search')?.value || '').trim().toLowerCase();
+            const typeGroup = PRODUCT_TYPE_GROUPS.find(group => group.id === typeView) || PRODUCT_TYPE_GROUPS[0];
+            return products.filter(product => {
+                if (typeGroup.id !== 'all' && getProductTypeGroup(product).id !== typeGroup.id) return false;
+                const detailStatus = productMasterDetailGroupStatus(product, detailGroup);
+                if (detailState === 'missing' && detailStatus.missing === 0) return false;
+                if (detailState === 'complete' && detailStatus.missing > 0) return false;
+                const certStatus = productMasterCertificationStatus(product);
+                if (certFilter === 'ready' && certStatus.status !== 'Ready') return false;
+                if (certFilter === 'gap' && certStatus.status !== 'Gap') return false;
+                if (certFilter === 'none' && certStatus.status !== 'Not Set') return false;
+                if (query && !engineeringProductMasterSearchHaystack(product).includes(query)) return false;
+                return true;
+            });
+        }
+        function renderEngineeringProductMasterSummary(rows = []) {
+            const summary = document.getElementById('engineering-product-master-summary');
+            if (!summary) return;
+            const detailGroup = engineeringProductMasterFilterValue('engineering-product-master-detail-group');
+            const activeCount = rows.filter(product => String(getProductMasterData(product).status || product.status || '').toLowerCase() === 'active').length;
+            const missingCount = rows.filter(product => productMasterDetailGroupStatus(product, detailGroup).missing > 0).length;
+            const readyCount = rows.filter(product => productMasterCertificationStatus(product).status === 'Ready').length;
+            summary.innerHTML = [
+                ['Products', rows.length],
+                ['Active', activeCount],
+                ['Missing Details', missingCount],
+                ['Cert Ready', readyCount]
+            ].map(([label, value]) => `<div class="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2"><div class="text-[10px] font-black uppercase text-slate-400">${label}</div><div class="text-lg font-black text-slate-800">${value}</div></div>`).join('');
+        }
+        function setEngineeringProductMasterMode(mode = 'product') {
+            engineeringProductMasterMode = mode === 'detail' ? 'detail' : 'product';
+            syncEngineeringProductMasterModeChrome();
+            if (engineeringWorkspaceView === 'productMaster') renderEngineeringWorkspace();
+        }
+        function syncEngineeringProductMasterModeChrome() {
+            const productPanel = document.getElementById('engineering-product-master-product-mode-panel');
+            const detailPanel = document.getElementById('engineering-product-master-detail-mode-panel');
+            const productBtn = document.getElementById('engineering-product-master-mode-product');
+            const detailBtn = document.getElementById('engineering-product-master-mode-detail');
+            if (productPanel) productPanel.classList.toggle('hidden', engineeringProductMasterMode !== 'product');
+            if (detailPanel) detailPanel.classList.toggle('hidden', engineeringProductMasterMode !== 'detail');
+            if (productBtn) productBtn.className = engineeringProductMasterMode === 'product' ? 'px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white' : 'px-4 py-2 rounded-lg text-xs font-black text-slate-500';
+            if (detailBtn) detailBtn.className = engineeringProductMasterMode === 'detail' ? 'px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white' : 'px-4 py-2 rounded-lg text-xs font-black text-slate-500';
+        }
+        window.setEngineeringProductMasterMode = setEngineeringProductMasterMode;
+        function saveProductMasterDetailTemplate(template = {}) {
+            const normalized = normalizeProductMasterDetailTemplate(template);
+            const idx = productMasterDetailTemplates.findIndex(item => item.id === normalized.id);
+            if (idx >= 0) productMasterDetailTemplates[idx] = normalized;
+            else productMasterDetailTemplates.push(normalized);
+            productMasterDetailTemplates = normalizeProductMasterDetailTemplates(productMasterDetailTemplates);
+            saveToLocal();
+            persistEntityToD1('product_master_detail_template', normalized.id, normalized);
+            return normalized;
+        }
+        function currentProductMasterDetailTemplate() {
+            const category = document.getElementById('engineering-detail-template-category')?.value || 'PV Module';
+            const detailGroup = document.getElementById('engineering-detail-template-group')?.value || 'basic';
+            return getProductMasterDetailTemplate(category, detailGroup);
+        }
+        function resetProductMasterDetailFieldPicker(template = currentProductMasterDetailTemplate()) {
+            const picker = document.getElementById('engineering-detail-template-field-picker');
+            const labelEditor = document.getElementById('engineering-detail-template-field-label-editor');
+            const button = document.getElementById('engineering-detail-template-add-field');
+            const cancel = document.getElementById('engineering-detail-template-cancel-edit');
+            if (!picker) return;
+            picker.dataset.editFieldKey = '';
+            picker.classList.remove('hidden');
+            if (labelEditor) {
+                labelEditor.value = '';
+                labelEditor.classList.add('hidden');
+            }
+            const selected = new Set(template.fieldKeys || []);
+            const options = productMasterDetailFieldOptions(template.category);
+            picker.innerHTML = `<option value="">Select existing field</option><option value="${PRODUCT_MASTER_DETAIL_NEW_FIELD_VALUE}">+ New Field</option>` + options
+                .map(option => `<option value="${htmlSafe(option.key)}" ${selected.has(option.key) ? 'disabled' : ''}>${htmlSafe(option.label)} · ${htmlSafe(option.kind)}</option>`)
+                .join('');
+            picker.value = '';
+            if (button) button.textContent = 'Add Field';
+            if (cancel) cancel.classList.add('hidden');
+        }
+        window.cancelProductMasterDetailTemplateFieldEdit = () => resetProductMasterDetailFieldPicker();
+        function beginProductMasterDetailTemplateFieldEdit(fieldKey = '') {
+            if (!canManageEngineeringRecord('edit')) return alert('No engineering edit permission.');
+            const template = currentProductMasterDetailTemplate();
+            const picker = document.getElementById('engineering-detail-template-field-picker');
+            const labelEditor = document.getElementById('engineering-detail-template-field-label-editor');
+            const button = document.getElementById('engineering-detail-template-add-field');
+            const cancel = document.getElementById('engineering-detail-template-cancel-edit');
+            if (!picker || !labelEditor) return;
+            picker.classList.add('hidden');
+            picker.dataset.editFieldKey = fieldKey;
+            labelEditor.value = productMasterDetailTemplateFieldLabel(fieldKey, template);
+            labelEditor.classList.remove('hidden');
+            labelEditor.focus();
+            labelEditor.select();
+            if (button) button.textContent = 'Save Name';
+            if (cancel) cancel.classList.remove('hidden');
+        }
+        window.beginProductMasterDetailTemplateFieldEdit = beginProductMasterDetailTemplateFieldEdit;
+        function renderEngineeringProductMasterDetailFields(template) {
+            const box = document.getElementById('engineering-detail-template-fields');
+            if (!box) return;
+            resetProductMasterDetailFieldPicker(template);
+            const required = new Set(template.requiredFieldKeys || []);
+            box.innerHTML = (template.fieldKeys || []).map(key => {
+                const kind = productMasterDetailFieldKind(template.category, key);
+                return `<div class="flex items-center justify-between gap-3 px-4 py-3">
+                    <div class="min-w-0">
+                        <div class="text-xs font-black text-slate-700">${htmlSafe(productMasterDetailTemplateFieldLabel(key, template))}</div>
+                        <div class="text-[10px] text-slate-400">${htmlSafe(key)} · ${htmlSafe(kind === 'previewOnly' ? 'preview only' : kind)}</div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label class="inline-flex items-center gap-1 text-[10px] font-black text-slate-500">
+                            <input type="checkbox" ${required.has(key) ? 'checked' : ''} onchange="toggleProductMasterDetailTemplateRequired('${htmlSafe(key)}', this.checked)" class="h-4 w-4 accent-purple-700"> Required
+                        </label>
+                        <button type="button" data-engineering-action="edit" onclick="beginProductMasterDetailTemplateFieldEdit('${htmlSafe(key)}')" class="text-xs font-black text-purple-700 hover:underline">Edit</button>
+                        <button type="button" data-engineering-action="delete" onclick="deleteProductMasterDetailTemplateField('${htmlSafe(key)}')" class="text-xs font-black text-red-600 hover:underline">Delete</button>
+                    </div>
+                </div>`;
+            }).join('') || '<div class="p-6 text-center text-xs text-slate-400">No fields in this template yet.</div>';
+        }
+        function productsForProductMasterDetailTemplate(template) {
+            return products.filter(product => normalizeProductCategory(product.category, '') === template.category);
+        }
+        function productMasterDetailFieldDatalistId(template = {}, fieldKey = '') {
+            return `engineering-detail-values-${slugify(`${template.id || 'template'}-${fieldKey}`)}`;
+        }
+        function productMasterDetailFieldValueOptions(template = {}, fieldKey = '') {
+            return uniqueCertList(productsForProductMasterDetailTemplate(template)
+                .map(product => productMasterDetailValue(product, template.category, fieldKey))
+                .filter(productMasterDetailValuePresent));
+        }
+        function renderEngineeringProductMasterDetailBulkList(template) {
+            const box = document.getElementById('engineering-detail-template-bulk-list');
+            if (!box) return;
+            const rows = productsForProductMasterDetailTemplate(template);
+            const fields = template.fieldKeys || [];
+            if (!rows.length) {
+                box.innerHTML = '<div class="p-6 text-center text-xs text-slate-400">No products in this category. Use Add Product to create one.</div>';
+                return;
+            }
+            const datalists = fields.map(key => {
+                const datalistId = productMasterDetailFieldDatalistId(template, key);
+                const options = productMasterDetailFieldValueOptions(template, key);
+                return `<datalist id="${htmlSafe(datalistId)}">${options.map(value => `<option value="${htmlSafe(value)}"></option>`).join('')}</datalist>`;
+            }).join('');
+            const head = ['Product', ...fields.map(key => productMasterDetailTemplateFieldLabel(key, template))].map(label => `<th class="py-3 px-3">${htmlSafe(label)}</th>`).join('');
+            const body = rows.map(product => `<tr class="hover:bg-slate-50 transition-colors">
+                <td class="py-3 px-3 align-top">
+                    <div class="font-black text-slate-700">${htmlSafe(product.id || '-')}</div>
+                    <div class="text-[10px] text-slate-400 max-w-[180px] truncate" title="${htmlSafe(productListDisplayText(product.name))}">${htmlSafe(productListDisplayText(product.name))}</div>
+                </td>
+                ${fields.map(key => {
+                    const value = productMasterDetailValue(product, template.category, key);
+                    const disabled = productMasterDetailFieldKind(template.category, key) === 'previewOnly';
+                    const datalistId = productMasterDetailFieldDatalistId(template, key);
+                    return `<td class="py-3 px-3 align-top">
+                        <input data-engineering-detail-product="${htmlSafe(product.id || '')}" data-engineering-detail-field="${htmlSafe(key)}" data-engineering-detail-value-options="${htmlSafe(datalistId)}" list="${htmlSafe(datalistId)}" value="${htmlSafe(value)}" ${disabled ? 'disabled' : ''} class="min-w-[150px] border border-slate-200 rounded-lg px-2 py-2 text-xs outline-none focus:border-purple-500 ${disabled ? 'bg-slate-50 text-slate-400' : 'bg-white'}">
+                    </td>`;
+                }).join('')}
+            </tr>`).join('');
+            box.innerHTML = `${datalists}<table class="w-full text-left whitespace-nowrap">
+                <thead class="bg-slate-50/70"><tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">${head}</tr></thead>
+                <tbody class="divide-y divide-slate-50">${body}</tbody>
+            </table>`;
+        }
+        function renderEngineeringProductMasterDetailMode() {
+            const template = currentProductMasterDetailTemplate();
+            renderEngineeringProductMasterDetailFields(template);
+            renderEngineeringProductMasterDetailBulkList(template);
+            applyEngineeringPermissions();
+        }
+        window.renderEngineeringProductMasterDetailMode = renderEngineeringProductMasterDetailMode;
+        function addProductMasterDetailTemplateField() {
+            if (!canManageEngineeringRecord('edit')) return alert('No engineering edit permission.');
+            const template = currentProductMasterDetailTemplate();
+            const picker = document.getElementById('engineering-detail-template-field-picker');
+            const editFieldKey = String(picker?.dataset?.editFieldKey || '').trim();
+            if (editFieldKey) return saveProductMasterDetailTemplateFieldLabel(editFieldKey);
+            let fieldKey = String(picker?.value || '').trim();
+            if (!fieldKey) return;
+            const isNewField = fieldKey === PRODUCT_MASTER_DETAIL_NEW_FIELD_VALUE;
+            if (isNewField) fieldKey = nextProductMasterDetailCustomFieldKey(template);
+            if (!editFieldKey && (template.fieldKeys || []).includes(fieldKey)) return alert('This field is already in the template.');
+            const fieldKeys = [...(template.fieldKeys || []), fieldKey];
+            const fieldLabels = isNewField ? { ...(template.fieldLabels || {}), [fieldKey]: 'New Field' } : template.fieldLabels || {};
+            const requiredFieldKeys = template.requiredFieldKeys || [];
+            const next = saveProductMasterDetailTemplate({ ...template, fieldKeys, fieldLabels, requiredFieldKeys, updatedAt: new Date().toISOString() });
+            renderEngineeringProductMasterDetailMode();
+            if (isNewField) beginProductMasterDetailTemplateFieldEdit(fieldKey);
+            return next;
+        }
+        window.addProductMasterDetailTemplateField = addProductMasterDetailTemplateField;
+        window.editProductMasterDetailTemplateField = beginProductMasterDetailTemplateFieldEdit;
+        function saveProductMasterDetailTemplateFieldLabel(fieldKey = '') {
+            if (!canManageEngineeringRecord('edit')) return alert('No engineering edit permission.');
+            const template = currentProductMasterDetailTemplate();
+            const key = String(fieldKey || '').trim();
+            if (!key || !(template.fieldKeys || []).includes(key)) return;
+            const labelEditor = document.getElementById('engineering-detail-template-field-label-editor');
+            const label = String(labelEditor?.value || '').trim();
+            if (!label) return alert('Field name is required.');
+            const defaultLabel = productMasterDetailFieldLabel(key);
+            const fieldLabels = { ...(template.fieldLabels || {}) };
+            if (label === defaultLabel) delete fieldLabels[key];
+            else fieldLabels[key] = label;
+            const next = saveProductMasterDetailTemplate({ ...template, fieldLabels, updatedAt: new Date().toISOString() });
+            renderEngineeringProductMasterDetailMode();
+            return next;
+        }
+        window.saveProductMasterDetailTemplateFieldLabel = saveProductMasterDetailTemplateFieldLabel;
+        function toggleProductMasterDetailTemplateRequired(fieldKey = '', checked = false) {
+            if (!canManageEngineeringRecord('edit')) return;
+            const template = currentProductMasterDetailTemplate();
+            const required = new Set(template.requiredFieldKeys || []);
+            if (checked) required.add(fieldKey);
+            else required.delete(fieldKey);
+            saveProductMasterDetailTemplate({ ...template, requiredFieldKeys: Array.from(required), updatedAt: new Date().toISOString() });
+            renderEngineeringProductMasterDetailMode();
+        }
+        window.toggleProductMasterDetailTemplateRequired = toggleProductMasterDetailTemplateRequired;
+        function deleteProductMasterDetailTemplateField(fieldKey = '') {
+            if (!canManageEngineeringRecord('delete')) return alert('No engineering delete permission.');
+            const template = currentProductMasterDetailTemplate();
+            if (!confirm(`Delete ${fieldKey} from this template?`)) return;
+            const fieldKeys = (template.fieldKeys || []).filter(key => key !== fieldKey);
+            const requiredFieldKeys = (template.requiredFieldKeys || []).filter(key => key !== fieldKey);
+            const fieldLabels = { ...(template.fieldLabels || {}) };
+            delete fieldLabels[fieldKey];
+            if (!fieldKeys.length) {
+                productMasterDetailTemplates = productMasterDetailTemplates.filter(item => item.id !== template.id);
+                saveToLocal();
+                deleteEntityFromD1('product_master_detail_template', template.id);
+            } else {
+                saveProductMasterDetailTemplate({ ...template, fieldKeys, requiredFieldKeys, fieldLabels, updatedAt: new Date().toISOString() });
+            }
+            renderEngineeringProductMasterDetailMode();
+        }
+        window.deleteProductMasterDetailTemplateField = deleteProductMasterDetailTemplateField;
+        function previewEngineeringProductMasterBulkSave() {
+            if (!canManageEngineeringRecord('edit')) return alert('No engineering edit permission.');
+            const template = currentProductMasterDetailTemplate();
+            const changes = [];
+            document.querySelectorAll('#engineering-detail-template-bulk-list input[data-engineering-detail-product]').forEach(input => {
+                if (input.disabled) return;
+                const product = products.find(item => String(item.id || '') === input.dataset.engineeringDetailProduct);
+                const fieldKey = input.dataset.engineeringDetailField || '';
+                if (!product || !fieldKey) return;
+                const before = String(productMasterDetailValue(product, template.category, fieldKey) ?? '');
+                const after = String(input.value ?? '').trim();
+                if (before !== after) changes.push({ product, fieldKey, before, after });
+            });
+            if (!changes.length) return alert('No product detail changes to save.');
+            const preview = changes.slice(0, 12).map(change => `${change.product.id} · ${change.fieldKey}: ${change.before || '-'} -> ${change.after || '-'}`).join('\n');
+            if (!confirm(`Preview ${changes.length} product detail changes:\n\n${preview}${changes.length > 12 ? '\n...' : ''}\n\nSave these changes?`)) return;
+            const touched = new Set();
+            changes.forEach(change => {
+                if (setProductMasterDetailValue(change.product, template.category, change.fieldKey, change.after)) touched.add(change.product.id);
+            });
+            saveToLocal();
+            products.filter(product => touched.has(product.id)).forEach(product => persistEntityToD1('product', product.id, product));
+            renderEngineeringProductMasterDetailMode();
+        }
+        window.previewEngineeringProductMasterBulkSave = previewEngineeringProductMasterBulkSave;
+        function addEngineeringDetailModeProduct() {
+            if (!canManageEngineeringRecord('edit')) return alert('No engineering edit permission.');
+            const category = document.getElementById('engineering-detail-template-category')?.value || 'PV Module';
+            openModal();
+            setTimeout(() => {
+                const cat = document.getElementById('m-category');
+                if (cat) {
+                    cat.value = category;
+                    try { window.onCategoryChange?.(); } catch (e) {}
+                    try { window.renderProductTechnicalFields?.(category, {}); } catch (e) {}
+                }
+            }, 0);
+        }
+        window.addEngineeringDetailModeProduct = addEngineeringDetailModeProduct;
+        function openEngineeringDetailProductSearch() {
+            if (!canManageEngineeringRecord('edit')) return alert('No engineering edit permission.');
+            const modal = document.getElementById('engineering-detail-product-search-modal');
+            const categorySelect = document.getElementById('engineering-detail-product-search-category');
+            const groupSelect = document.getElementById('engineering-detail-product-search-group');
+            const query = document.getElementById('engineering-detail-product-search-query');
+            if (categorySelect) categorySelect.value = document.getElementById('engineering-detail-template-category')?.value || 'PV Module';
+            if (groupSelect) groupSelect.value = document.getElementById('engineering-detail-template-group')?.value || 'basic';
+            if (query) query.value = '';
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+            renderEngineeringDetailProductSearchResults();
+        }
+        window.openEngineeringDetailProductSearch = openEngineeringDetailProductSearch;
+        function closeEngineeringDetailProductSearch() {
+            const modal = document.getElementById('engineering-detail-product-search-modal');
+            if (!modal) return;
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+        window.closeEngineeringDetailProductSearch = closeEngineeringDetailProductSearch;
+        function engineeringDetailProductSearchTemplate() {
+            const category = document.getElementById('engineering-detail-product-search-category')?.value || 'PV Module';
+            const detailGroup = document.getElementById('engineering-detail-product-search-group')?.value || 'basic';
+            return getProductMasterDetailTemplate(category, detailGroup);
+        }
+        function renderEngineeringDetailProductSearchResults() {
+            const box = document.getElementById('engineering-detail-product-search-results');
+            if (!box) return;
+            const template = engineeringDetailProductSearchTemplate();
+            const category = template.category;
+            const query = String(document.getElementById('engineering-detail-product-search-query')?.value || '').trim().toLowerCase();
+            const fields = template.fieldKeys || [];
+            const rows = products.filter(product => normalizeProductCategory(product.category, '') === category)
+                .filter(product => {
+                    if (!query) return true;
+                    const haystack = [
+                        product.id,
+                        product.name,
+                        product.vendor,
+                        product.supplierCode,
+                        ...fields.map(fieldKey => productMasterDetailValue(product, category, fieldKey))
+                    ].join(' ').toLowerCase();
+                    return haystack.includes(query);
+                });
+            if (!rows.length) {
+                box.innerHTML = '<div class="p-6 text-center text-xs text-slate-400">No matching products for this category and data range.</div>';
+                return;
+            }
+            box.innerHTML = rows.map(product => {
+                const filled = fields.filter(fieldKey => productMasterDetailValuePresent(productMasterDetailValue(product, category, fieldKey))).length;
+                const preview = fields.slice(0, 4).map(fieldKey => {
+                    const value = productMasterDetailValue(product, category, fieldKey);
+                    return value ? `${productMasterDetailTemplateFieldLabel(fieldKey, template)}: ${value}` : '';
+                }).filter(Boolean).join(' · ');
+                return `<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-4">
+                    <div class="min-w-0">
+                        <div class="text-sm font-black text-slate-800">${htmlSafe(product.id || '-')} <span class="text-xs text-slate-400">${htmlSafe(productListDisplayText(product.name))}</span></div>
+                        <div class="text-[11px] text-slate-400 mt-1">${filled}/${fields.length} fields filled${preview ? ` · ${htmlSafe(preview)}` : ''}</div>
+                    </div>
+                    <button type="button" data-engineering-action="edit" onclick="applyEngineeringDetailProductSearchSelection('${htmlSafe(product.id || '')}')" class="rounded-xl bg-purple-700 px-3 py-2 text-xs font-black text-white hover:bg-purple-800">Use Product Data</button>
+                </div>`;
+            }).join('');
+            applyEngineeringPermissions();
+        }
+        window.renderEngineeringDetailProductSearchResults = renderEngineeringDetailProductSearchResults;
+        function applyEngineeringDetailProductSearchSelection(productId = '') {
+            if (!canManageEngineeringRecord('edit')) return alert('No engineering edit permission.');
+            const template = engineeringDetailProductSearchTemplate();
+            const categorySelect = document.getElementById('engineering-detail-template-category');
+            const groupSelect = document.getElementById('engineering-detail-template-group');
+            if (categorySelect) categorySelect.value = template.category;
+            if (groupSelect) groupSelect.value = template.detailGroup;
+            renderEngineeringProductMasterDetailMode();
+            const sourceId = String(productId || '').trim();
+            const source = products.find(product => String(product.id || '') === sourceId && normalizeProductCategory(product.category, '') === template.category);
+            if (!source) return alert('Source product not found.');
+            document.querySelectorAll('#engineering-detail-template-bulk-list input[data-engineering-detail-product]').forEach(input => {
+                if (input.disabled || input.dataset.engineeringDetailProduct === sourceId) return;
+                const fieldKey = input.dataset.engineeringDetailField || '';
+                input.value = productMasterDetailValue(source, template.category, fieldKey);
+            });
+            closeEngineeringDetailProductSearch();
+        }
+        window.applyEngineeringDetailProductSearchSelection = applyEngineeringDetailProductSearchSelection;
+        function reuseEngineeringDetailProductData() {
+            openEngineeringDetailProductSearch();
+        }
+        window.reuseEngineeringDetailProductData = reuseEngineeringDetailProductData;
+        async function openEngineeringDetailImportPreview(file) {
+            const box = document.getElementById('engineering-detail-import-preview');
+            if (!box) return;
+            if (!file) {
+                box.innerHTML = 'No file selected. CESC vertical key-value preview and Midea model matrix preview are supported.';
+                return;
+            }
+            if (!window.XLSX) {
+                box.innerHTML = 'Excel parser is not loaded. Please retry after the page finishes loading.';
+                return;
+            }
+            try {
+                const buffer = await file.arrayBuffer();
+                const workbook = XLSX.read(buffer, { type: 'array' });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+                const width = Math.max(0, ...rows.map(row => row.length));
+                const mode = width <= 3 ? 'CESC vertical key-value preview' : 'Midea model matrix preview';
+                const template = currentProductMasterDetailTemplate();
+                const fieldSet = new Set(template.fieldKeys || []);
+                const previewKeys = rows.flat().map(value => String(value || '').trim()).filter(Boolean).slice(0, 120);
+                const matched = previewKeys.filter(value => fieldSet.has(value) || fieldSet.has(value.replace(/\s+/g, '')));
+                box.innerHTML = `<div class="font-black text-slate-700 mb-1">${htmlSafe(mode)}</div>
+                    <div>${htmlSafe(file.name)} · ${rows.length} rows · ${width} columns</div>
+                    <div class="mt-2">Matched existing template fields: <b>${matched.length}</b>. Unmatched fields stay in preview. No product fields are created automatically.</div>`;
+            } catch (error) {
+                box.innerHTML = `Unable to preview Excel file: ${htmlSafe(error.message || error)}`;
+            }
+        }
+        window.openEngineeringDetailImportPreview = openEngineeringDetailImportPreview;
+        function renderEngineeringProductMasterWorkspace() {
+            syncEngineeringProductMasterModeChrome();
+            if (engineeringProductMasterMode === 'detail') {
+                renderEngineeringProductMasterDetailMode();
+                return;
+            }
+            const list = document.getElementById('engineering-product-master-list');
+            if (!list) return;
+            const rows = engineeringProductMasterVisibleProducts();
+            const detailGroup = engineeringProductMasterFilterValue('engineering-product-master-detail-group');
+            const detailLabel = (ENGINEERING_PRODUCT_MASTER_DETAIL_GROUPS[detailGroup] || ENGINEERING_PRODUCT_MASTER_DETAIL_GROUPS.all).label;
+            const note = document.getElementById('engineering-product-master-filter-note');
+            renderEngineeringProductMasterSummary(rows);
+            if (note) note.textContent = `${rows.length} products | ${detailLabel}`;
+            list.innerHTML = rows.map(product => {
+                const ctx = productMasterContext(product);
+                const detailStatus = productMasterDetailGroupStatus(product, detailGroup);
+                const certTone = ctx.certStatus.status === 'Ready' ? 'green' : (ctx.certStatus.status === 'Gap' ? 'amber' : 'slate');
+                return `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="py-4 px-4"><div class="font-black text-slate-700">${htmlSafe(product.id || '-')}</div><div class="text-xs font-bold text-slate-600 max-w-[240px] truncate" title="${htmlSafe(productListDisplayText(product.name))}">${htmlSafe(productListDisplayText(product.name))}</div></td>
+                        <td class="py-4 px-4"><div class="text-xs font-bold text-slate-600">${htmlSafe(productListDisplayText(product.category))}</div><div class="text-[10px] text-slate-400">${htmlSafe(getProductTypeGroup(product).label)}</div></td>
+                        <td class="py-4 px-4"><div class="text-xs font-bold text-slate-700">${htmlSafe(detailStatus.label)}</div><div class="text-[10px] text-slate-400">${detailStatus.filled}/${detailStatus.total} fields maintained${detailStatus.missing ? ` · ${detailStatus.missing} missing` : ''}</div></td>
+                        <td class="py-4 px-4">${productMasterStatusPill(ctx.certStatus.status, certTone)}<div class="text-[10px] text-slate-400 mt-1">${htmlSafe(ctx.certStatus.label)}</div></td>
+                        <td class="py-4 px-4"><div class="text-xs text-slate-600">${htmlSafe(ctx.supplierName)}</div><div class="text-[10px] text-slate-400">${htmlSafe(ctx.sourcing.sourceType || 'Unknown')}</div></td>
+                        <td class="py-4 px-4 text-center">
+                            <div class="inline-flex items-center gap-2">
+                                <button data-engineering-action="edit" onclick="editProduct('${htmlSafe(product.id || '')}')" class="rounded-xl bg-purple-700 px-3 py-2 text-xs font-black text-white hover:bg-purple-800">Details</button>
+                                <button onclick="openProductCertificationEvidence('${htmlSafe(product.id || '')}')" class="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-50">Evidence</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('') || '<tr><td colspan="6" class="py-12 text-center text-slate-400 text-sm">No products match the selected Product Master filters.</td></tr>';
+            applyEngineeringPermissions();
+        }
+        function setEngineeringProductMasterFilter() {
+            renderEngineeringWorkspace();
+        }
+        window.setEngineeringProductMasterFilter = setEngineeringProductMasterFilter;
         function renderEngineeringWorkspace() {
+            syncEngineeringWorkspaceViewChrome();
             renderEngineeringFilterChips();
             certificationRequirementsCatalog = normalizeCertificationRequirementsCatalog(certificationRequirementsCatalog);
             productCertificationEvidence = normalizeProductCertificationEvidenceList(productCertificationEvidence);
+            if (engineeringWorkspaceView === 'productMaster') {
+                renderEngineeringProductMasterWorkspace();
+                applyEngineeringPermissions();
+                return;
+            }
+            syncEngineeringCertificationModeVisibility();
             const classId = document.getElementById('engineering-class-filter')?.value || 'A1';
             const cls = ENGINEERING_CLASS_DEFINITIONS[classId] || ENGINEERING_CLASS_DEFINITIONS.A1;
             const rows = engineeringVisibleRecords();
@@ -2455,8 +3202,12 @@
                 <input id="engineering-detail-is-new" type="hidden" value="${isNew ? '1' : '0'}">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div><label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Record ID</label><input id="engineering-detail-id" value="${htmlSafe(record.id)}" readonly class="w-full border border-slate-200 rounded-xl p-3 text-sm bg-slate-50 font-black text-slate-700"></div>
-                    <div><label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Source Category</label><select id="engineering-detail-source-category" ${disabled} onchange="if(document.getElementById('engineering-detail-is-new')?.value==='1') document.getElementById('engineering-detail-id').value = nextCertificationRequirementIdForCategory(this.value)" class="w-full border border-slate-200 rounded-xl p-3 text-sm bg-white">${CERTIFICATION_SOURCE_CATEGORIES.map(category => `<option value="${htmlSafe(category)}" ${record.sourceCategory === category ? 'selected' : ''}>${htmlSafe(category)}</option>`).join('')}</select></div>
-                    <div><label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Product Category</label><input id="engineering-detail-product-category" ${disabled} value="${htmlSafe(record.productCategory)}" class="w-full border border-slate-200 rounded-xl p-3 text-sm"></div>
+                    <div><label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Source Category</label><select id="engineering-detail-source-category" ${disabled} onchange="syncEngineeringRequirementEditorSourceCategory()" class="w-full border border-slate-200 rounded-xl p-3 text-sm bg-white">${CERTIFICATION_SOURCE_CATEGORIES.map(category => `<option value="${htmlSafe(category)}" ${record.sourceCategory === category ? 'selected' : ''}>${htmlSafe(category)}</option>`).join('')}</select></div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Product Category</label>
+                        <select id="engineering-detail-product-category-select" ${disabled} onchange="syncEngineeringProductCategoryInput()" class="w-full border border-slate-200 rounded-xl p-3 text-sm bg-white">${renderCertificationProductCategoryOptions(record.sourceCategory, record.productCategory)}</select>
+                        <input id="engineering-detail-product-category-custom" ${disabled} value="" placeholder="Add custom product category" class="hidden mt-2 w-full border border-slate-200 rounded-xl p-3 text-sm">
+                    </div>
                     <div><label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Requirement Level</label><select id="engineering-detail-level" ${disabled} class="w-full border border-slate-200 rounded-xl p-3 text-sm bg-white">${CERTIFICATION_REQUIREMENT_LEVELS.map(level => `<option value="${htmlSafe(level)}" ${record.requirementLevel === level ? 'selected' : ''}>${htmlSafe(level)}</option>`).join('')}</select></div>
                     <div class="md:col-span-2"><label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Standard</label><input id="engineering-detail-standard" ${disabled} value="${htmlSafe(record.standard)}" class="w-full border border-slate-200 rounded-xl p-3 text-sm"></div>
                     <div><label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Evidence Type</label><input id="engineering-detail-evidence-type" ${disabled} value="${htmlSafe(record.evidenceType)}" class="w-full border border-slate-200 rounded-xl p-3 text-sm"></div>
@@ -2480,6 +3231,7 @@
             `;
             modal.classList.remove('hidden');
             modal.classList.add('flex');
+            syncEngineeringProductCategoryInput();
             applyEngineeringPermissions();
         }
         window.openEngineeringRequirementEditor = openEngineeringRequirementEditor;
@@ -2501,7 +3253,7 @@
                 ...(idx >= 0 ? certificationRequirementsCatalog[idx] : {}),
                 id: recordId,
                 sourceCategory: document.getElementById('engineering-detail-source-category')?.value || 'PV_MODULE',
-                productCategory: document.getElementById('engineering-detail-product-category')?.value || '',
+                productCategory: readEngineeringDetailProductCategory(),
                 standard: document.getElementById('engineering-detail-standard')?.value || '',
                 requirementLevel: document.getElementById('engineering-detail-level')?.value || '',
                 evidenceType: document.getElementById('engineering-detail-evidence-type')?.value || '',
@@ -3118,6 +3870,7 @@
                     channelPartners = Array.isArray(embedded.data.channelPartners) ? embedded.data.channelPartners : [];
                     certificationRequirementsCatalog = normalizeCertificationRequirementsCatalog(embedded.data.certificationRequirementsCatalog);
                     productCertificationEvidence = normalizeProductCertificationEvidenceList(embedded.data.productCertificationEvidence);
+                    productMasterDetailTemplates = normalizeProductMasterDetailTemplates(embedded.data.productMasterDetailTemplates);
                     subcategoriesByCategory = embedded.data.subcategoriesByCategory && typeof embedded.data.subcategoriesByCategory === 'object' ? embedded.data.subcategoriesByCategory : {};
                     profitSettings = normalizeProfitSettings(embedded.data.profitSettings || null);
                     installerProfitSettings = normalizeInstallerProfitSettings(embedded.data.installerProfitSettings || installerProfitSettings || null);
@@ -3136,6 +3889,7 @@
                         localStorage.setItem('minova_channel_partners_v1', JSON.stringify(channelPartners));
                         localStorage.setItem('minova_certification_requirements_v1', JSON.stringify(certificationRequirementsCatalog));
                         localStorage.setItem('minova_product_certification_evidence_v1', JSON.stringify(productCertificationEvidence));
+                        localStorage.setItem('minova_product_master_detail_templates_v1', JSON.stringify(productMasterDetailTemplates));
                         localStorage.setItem('minova_subcategories_v1', JSON.stringify(subcategoriesByCategory));
                         localStorage.setItem('minova_profit_settings_v1', JSON.stringify(profitSettings));
                         localStorage.setItem('minova_installer_profit_v1', JSON.stringify(installerProfitSettings));
@@ -3176,6 +3930,10 @@
         try {
             const raw = localStorage.getItem('minova_product_certification_evidence_v1');
             if (raw) productCertificationEvidence = normalizeProductCertificationEvidenceList(JSON.parse(raw));
+        } catch (e) {}
+        try {
+            const raw = localStorage.getItem('minova_product_master_detail_templates_v1');
+            if (raw) productMasterDetailTemplates = normalizeProductMasterDetailTemplates(JSON.parse(raw));
         } catch (e) {}
         try {
             const raw = localStorage.getItem('minova_channel_partners_v1');
@@ -3343,6 +4101,7 @@
                 certificationRequirementsCatalog = nextCertificationCatalog;
             }
             productCertificationEvidence = normalizeProductCertificationEvidenceList(data?.productCertificationEvidence);
+            productMasterDetailTemplates = normalizeProductMasterDetailTemplates(data?.productMasterDetailTemplates);
             subcategoriesByCategory = data?.subcategoriesByCategory && typeof data.subcategoriesByCategory === 'object' ? data.subcategoriesByCategory : {};
             profitSettings = normalizeProfitSettings(data?.profitSettings || profitSettings || null);
             installerProfitSettings = normalizeInstallerProfitSettings(data?.installerProfitSettings || installerProfitSettings || null);
@@ -3362,6 +4121,7 @@
                 localStorage.setItem('minova_compatibility_rules_v1', JSON.stringify(compatibilityRules));
                 localStorage.setItem('minova_certification_requirements_v1', JSON.stringify(certificationRequirementsCatalog));
                 localStorage.setItem('minova_product_certification_evidence_v1', JSON.stringify(productCertificationEvidence));
+                localStorage.setItem('minova_product_master_detail_templates_v1', JSON.stringify(productMasterDetailTemplates));
                 localStorage.setItem('minova_subcategories_v1', JSON.stringify(subcategoriesByCategory));
                 localStorage.setItem('minova_profit_settings_v1', JSON.stringify(profitSettings));
                 localStorage.setItem('minova_installer_profit_v1', JSON.stringify(installerProfitSettings));
@@ -3446,9 +4206,11 @@
             compatibilityRules = normalizeCompatibilityRules(compatibilityRules);
             certificationRequirementsCatalog = normalizeCertificationRequirementsCatalog(certificationRequirementsCatalog);
             productCertificationEvidence = normalizeProductCertificationEvidenceList(productCertificationEvidence);
+            productMasterDetailTemplates = normalizeProductMasterDetailTemplates(productMasterDetailTemplates);
             try { localStorage.setItem('minova_compatibility_rules_v1', JSON.stringify(compatibilityRules)); } catch (e) {}
             try { localStorage.setItem('minova_certification_requirements_v1', JSON.stringify(certificationRequirementsCatalog)); } catch (e) {}
             try { localStorage.setItem('minova_product_certification_evidence_v1', JSON.stringify(productCertificationEvidence)); } catch (e) {}
+            try { localStorage.setItem('minova_product_master_detail_templates_v1', JSON.stringify(productMasterDetailTemplates)); } catch (e) {}
             try { localStorage.setItem('minova_transport_records_v1', JSON.stringify(transportRecords)); } catch (e) {}
             try { localStorage.setItem('minova_file_delete_logs_v1', JSON.stringify(fileDeleteLogs)); } catch (e) {}
             rebuildSubcategoryIndexFromProducts();
@@ -3479,6 +4241,7 @@
                 compatibilityRules,
                 certificationRequirementsCatalog,
                 productCertificationEvidence,
+                productMasterDetailTemplates,
                 subcategoriesByCategory,
                 profitSettings,
                 installerProfitSettings,
@@ -12198,6 +12961,7 @@
                 compatibilityRules,
                 certificationRequirementsCatalog,
                 productCertificationEvidence,
+                productMasterDetailTemplates,
                 subcategoriesByCategory,
                 profitSettings,
                 installerProfitSettings,
@@ -12228,6 +12992,7 @@
                     compatibilityRules,
                     certificationRequirementsCatalog,
                     productCertificationEvidence,
+                    productMasterDetailTemplates,
                     subcategoriesByCategory,
                     profitSettings,
                     installerProfitSettings,
@@ -12621,6 +13386,7 @@
         };
 
         window.openProductCertificationEvidenceUpload = (productId, recordId) => {
+            if (!canManageEngineeringRecord('upload')) return alert('No engineering upload permission.');
             const pid = String(productId || '').trim();
             const rid = String(recordId || '').trim();
             if (!pid || !rid) return;
@@ -12636,6 +13402,7 @@
         };
 
         window.uploadProductCertificationEvidence = async (productId, recordId, file) => {
+            if (!canManageEngineeringRecord('upload')) return alert('No engineering upload permission.');
             const pid = String(productId || '').trim();
             const rid = String(recordId || '').trim();
             if (!pid || !rid || !file) return;

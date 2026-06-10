@@ -332,6 +332,8 @@ test('engineering workspace exposes certification matrix filters and seeded cata
 
   [
     'Engineering Workspace',
+    'id="engineering-workspace-certification"',
+    'id="engineering-workspace-product-master"',
     'id="engineering-mode-standard"',
     'id="engineering-mode-matrix"',
     'id="engineering-add-record-button"',
@@ -348,9 +350,50 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'id="engineering-class-filter"',
     'id="engineering-level-filters"',
     'id="engineering-category-filters"',
-    'id="engineering-cert-list"'
+    'id="engineering-cert-list"',
+    'id="engineering-certification-workspace-panel"',
+    'id="engineering-product-master-panel"',
+    'id="engineering-product-master-type-filter"',
+    'id="engineering-product-master-detail-group"',
+    'id="engineering-product-master-detail-state"',
+    'id="engineering-product-master-cert-filter"',
+    'id="engineering-product-master-search"',
+    'id="engineering-product-master-summary"',
+    'id="engineering-product-master-list"',
+    'id="engineering-product-master-mode-product"',
+    'id="engineering-product-master-mode-detail"',
+    'id="engineering-product-master-product-mode-panel"',
+    'id="engineering-product-master-detail-mode-panel"',
+    'id="engineering-detail-template-category"',
+    'id="engineering-detail-template-group"',
+    'id="engineering-detail-template-fields"',
+    'id="engineering-detail-template-field-picker"',
+    'id="engineering-detail-template-field-label-editor"',
+    'id="engineering-detail-template-add-field"',
+    'id="engineering-detail-template-cancel-edit"',
+    'id="engineering-detail-template-bulk-list"',
+    'id="engineering-detail-template-add-product"',
+    'id="engineering-detail-template-reuse-product"',
+    'id="engineering-detail-template-preview-save"',
+    'Product mode',
+    'Detail mode'
   ].forEach((text) => {
     assert.equal(engineeringTab.includes(text), true, `Missing engineering workspace UI: ${text}`);
+  });
+  assert.ok(
+    engineeringTab.indexOf('id="engineering-workspace-certification"') < engineeringTab.indexOf('id="engineering-summary"'),
+    'Engineering workspace switch should sit above the summary cards'
+  );
+  [
+    'md:flex-row md:items-start md:justify-between',
+    'md:ml-auto md:text-right',
+    'brand-yellow-surface',
+    'brand-yellow-action',
+    'brand-yellow-inactive',
+    'bg-purple-700 text-white shadow-sm',
+    'text-purple-700 brand-yellow-inactive'
+  ].forEach((text) => {
+    assert.equal(engineeringTab.includes(text), true, `Missing engineering workspace switch layout/color: ${text}`);
   });
   assert.ok(
     engineeringTab.indexOf('id="engineering-add-record-button"') > engineeringTab.indexOf('id="engineering-mode-matrix"')
@@ -375,6 +418,11 @@ test('engineering workspace exposes certification matrix filters and seeded cata
   assert.equal(html.includes('id="engineering-cert-detail-modal"'), true, 'Missing engineering detail modal');
   assert.equal(html.includes('id="engineering-standard-product-modal"'), true, 'Missing engineering product result modal');
   assert.equal(html.includes('id="engineering-standard-product-modal-body"'), true, 'Missing engineering product result modal body');
+  assert.equal(html.includes('id="engineering-detail-product-search-modal"'), true, 'Missing engineering detail product search modal');
+  assert.equal(html.includes('id="engineering-detail-product-search-category"'), true, 'Missing engineering detail product search category filter');
+  assert.equal(html.includes('id="engineering-detail-product-search-group"'), true, 'Missing engineering detail product search group filter');
+  assert.equal(html.includes('id="engineering-detail-product-search-query"'), true, 'Missing engineering detail product search query input');
+  assert.equal(html.includes('id="engineering-detail-product-search-results"'), true, 'Missing engineering detail product search results');
 
   ['A1', 'A2', 'B', 'C', 'D', 'E', 'Mandatory', 'Utility Preferred', 'International Finance Preferred', 'Optional', 'PV_MODULE', 'INVERTER', 'BATTERY'].forEach((text) => {
     assert.equal(engineeringTab.includes(text) || html.includes(text), true, `Missing engineering filter value: ${text}`);
@@ -387,9 +435,38 @@ test('engineering workspace exposes certification matrix filters and seeded cata
   [
     'let certificationRequirementsCatalog = []',
     'let productCertificationEvidence = []',
+    'let productMasterDetailTemplates = []',
+    'function normalizeProductMasterDetailTemplate',
+    'function getProductMasterDetailTemplate',
+    'function setEngineeringProductMasterMode',
+    'function renderEngineeringProductMasterDetailMode',
+    'function saveProductMasterDetailTemplate',
+    'function resetProductMasterDetailFieldPicker',
+    'function beginProductMasterDetailTemplateFieldEdit',
+    'function nextProductMasterDetailCustomFieldKey',
+    'function productMasterDetailTemplateFieldLabel',
+    'function saveProductMasterDetailTemplateFieldLabel',
+    'function productMasterDetailFieldValueOptions',
+    'function productMasterDetailFieldDatalistId',
+    'function openEngineeringDetailProductSearch',
+    'function renderEngineeringDetailProductSearchResults',
+    'function applyEngineeringDetailProductSearchSelection',
+    'function closeEngineeringDetailProductSearch',
+    'function deleteProductMasterDetailTemplateField',
+    'function previewEngineeringProductMasterBulkSave',
     'function normalizeCertificationRequirement',
+    'function certificationProductCategoryOptions',
+    'function renderCertificationProductCategoryOptions',
+    'function syncEngineeringRequirementEditorSourceCategory',
+    'function syncEngineeringProductCategoryInput',
+    'function readEngineeringDetailProductCategory',
     'function renderEngineeringWorkspace',
+    'function setEngineeringWorkspaceView',
     'function setEngineeringWorkspaceMode',
+    'function renderEngineeringProductMasterWorkspace',
+    'function engineeringProductMasterVisibleProducts',
+    'function productMasterDetailGroupStatus',
+    'function setEngineeringProductMasterFilter',
     'function pruneEngineeringStandardSelectionToRows',
     'function openEngineeringRequirementEditor',
     'function saveEngineeringRequirementEditor',
@@ -412,15 +489,75 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     "document.getElementById('engineering-standard-search-filters')",
     "document.getElementById('engineering-standard-match-card')",
     "document.getElementById('engineering-search-products-primary')",
-    "classList.toggle('hidden', engineeringWorkspaceMode !== 'standard')",
+    "classList.toggle('hidden', !inCertification || engineeringWorkspaceMode !== 'standard')",
+    "summary?.classList.toggle('hidden', engineeringWorkspaceView !== 'certification')",
+    "classList.toggle('hidden', inProductMaster)",
+    "'px-4 py-2 rounded-lg text-xs font-black bg-purple-700 text-white shadow-sm'",
     'Unable to find products containing every selected standard record.',
     'nextCertificationCatalog.length || !certificationRequirementsCatalog.length',
+    "const CERTIFICATION_PRODUCT_CATEGORY_DEFAULTS = {",
+    'id="engineering-detail-product-category-select"',
+    'id="engineering-detail-product-category-custom"',
+    "BATTERY: ['Battery Pack / System', 'BMS', 'EMS', 'BESS PCS', 'BESS System']",
+    "const sourceOptions = certificationProductCategoryOptions(source)",
+    "nextCertificationRequirementIdForCategory(source)",
+    "productCategory: readEngineeringDetailProductCategory()",
+    'window.nextCertificationRequirementIdForCategory = nextCertificationRequirementIdForCategory',
+    'window.syncEngineeringRequirementEditorSourceCategory = syncEngineeringRequirementEditorSourceCategory',
+    'window.syncEngineeringProductCategoryInput = syncEngineeringProductCategoryInput',
+    'value="__custom__"',
     "persistEntityToD1('certification_requirement'",
     "deleteEntityFromD1('certification_requirement'",
     "persistEntityToD1('product_certification_evidence'",
+    "persistEntityToD1('product_master_detail_template'",
+    "deleteEntityFromD1('product_master_detail_template'",
+    "localStorage.setItem('minova_product_master_detail_templates_v1'",
+    'Search Product',
+    'data-engineering-detail-value-options',
+    'list="${htmlSafe(datalistId)}"',
+    "products.filter(product => normalizeProductCategory(product.category, '') === category)",
+    'Choose a product and fill the current data range.',
+    'Select existing field',
+    '+ New Field',
+    'customDetail',
+    "if (fieldKey.startsWith('customDetail')) return 'technicalSpecs'",
+    "fieldKey === PRODUCT_MASTER_DETAIL_NEW_FIELD_VALUE",
+    "beginProductMasterDetailTemplateFieldEdit(fieldKey)",
+    'Save Name',
+    'fieldLabels',
+    'productMasterDetailTemplateFieldLabel(key, template)',
+    "const fieldLabels = { ...(template.fieldLabels || {}) }",
     'minova-data/certifications/products/${pid}/${safeRecordId}/${file.name}'
   ].forEach((text) => {
     assert.equal(html.includes(text), true, `Missing engineering workspace behavior: ${text}`);
+  });
+
+  assert.equal(html.includes('Enter an existing field key to add to this template'), false, 'Add Field should not use the old prompt flow');
+  assert.equal(html.includes('Edit field key. Use an existing masterData or technicalSpecs key'), false, 'Edit Field should not use the old prompt flow');
+  assert.equal(html.includes('Choose replacement field'), false, 'Edit Field should rename the field label instead of replacing the field key');
+  assert.equal(html.includes('Save Edit'), false, 'Edit Field should expose Save Name instead of a generic replacement save');
+  assert.equal(html.includes('Import Excel Preview'), false, 'Detail mode should not expose the Excel preview button');
+  assert.equal(html.includes('id="engineering-detail-import-file"'), false, 'Detail mode should not keep the Excel preview file input');
+});
+
+test('engineering product master detail mode keeps template state and import preview separate from product schema', () => {
+  const state = embeddedState();
+  const engineeringTab = mainSnippet('<main id="view-engineering"');
+
+  assert.ok(Array.isArray(state.data.productMasterDetailTemplates), 'Embedded state should include productMasterDetailTemplates');
+  [
+    'Basic',
+    'Electrical',
+    'Mechanical',
+    'Certification',
+    'Commercial',
+    'Documents',
+    'CESC vertical key-value preview',
+    'Midea model matrix preview',
+    'Unmatched fields stay in preview',
+    'No product fields are created automatically'
+  ].forEach((text) => {
+    assert.equal(engineeringTab.includes(text) || html.includes(text), true, `Missing Detail mode UX text: ${text}`);
   });
 });
 

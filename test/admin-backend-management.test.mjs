@@ -250,6 +250,7 @@ test('business domain permission maps D1 domains to RBAC resources', () => {
   assert.deepEqual(domainPermission('compatibility_rule'), { resource: 'products', read: 'read', write: 'edit', delete: 'delete' });
   assert.deepEqual(domainPermission('certification_requirement'), { resource: 'engineering', read: 'read', write: 'edit', delete: 'delete' });
   assert.deepEqual(domainPermission('product_certification_evidence'), { resource: 'engineering', read: 'read', write: 'edit', delete: 'delete' });
+  assert.deepEqual(domainPermission('product_master_detail_template'), { resource: 'engineering', read: 'read', write: 'edit', delete: 'delete' });
   assert.deepEqual(domainPermission('channel_partner'), { resource: 'suppliers', read: 'read', write: 'edit', delete: 'delete' });
   assert.deepEqual(domainPermission('market_price'), { resource: 'priceList', read: 'read', write: 'edit', delete: 'delete' });
   assert.deepEqual(domainPermission('saved_quote'), { resource: 'quotes', read: 'read', write: 'edit', delete: 'delete' });
@@ -385,6 +386,7 @@ test('business bootstrap payload reshapes entity rows into app state', () => {
     { domain: 'product', record_id: 'P1', payload_json: '{"id":"P1","name":"PV"}', updated_at: '2026-06-03 01:00:00' },
     { domain: 'certification_requirement', record_id: 'PV-001', payload_json: '{"id":"PV-001","sourceCategory":"PV_MODULE","standard":"IEC 61215 series"}', updated_at: '2026-06-03 01:00:10' },
     { domain: 'product_certification_evidence', record_id: 'P1:PV-001', payload_json: '{"id":"P1:PV-001","productId":"P1","requirementRecordId":"PV-001"}', updated_at: '2026-06-03 01:00:20' },
+    { domain: 'product_master_detail_template', record_id: 'PV Module:basic', payload_json: '{"id":"PV Module:basic","category":"PV Module","detailGroup":"basic","fieldKeys":["model"],"requiredFieldKeys":["model"]}', updated_at: '2026-06-03 01:00:25' },
     { domain: 'channel_partner', record_id: 'CP1', payload_json: '{"id":"CP1","brandSupplierCode":"SUP1","type":"Authorized Distributor","name":"MY Distributor"}', updated_at: '2026-06-03 01:00:30' },
     { domain: 'inventory', record_id: 'I1', payload_json: '{"id":"I1","productId":"P1"}', updated_at: '2026-06-03 01:01:00' },
     { domain: 'market_price', record_id: 'M1', payload_json: '{"id":"M1","category":"PV Module"}', updated_at: '2026-06-03 01:02:00' },
@@ -399,6 +401,7 @@ test('business bootstrap payload reshapes entity rows into app state', () => {
   assert.deepEqual(payload.data.products, [{ id: 'P1', name: 'PV' }]);
   assert.deepEqual(payload.data.certificationRequirementsCatalog, [{ id: 'PV-001', sourceCategory: 'PV_MODULE', standard: 'IEC 61215 series' }]);
   assert.deepEqual(payload.data.productCertificationEvidence, [{ id: 'P1:PV-001', productId: 'P1', requirementRecordId: 'PV-001' }]);
+  assert.deepEqual(payload.data.productMasterDetailTemplates, [{ id: 'PV Module:basic', category: 'PV Module', detailGroup: 'basic', fieldKeys: ['model'], requiredFieldKeys: ['model'] }]);
   assert.deepEqual(payload.data.channelPartners, [{ id: 'CP1', brandSupplierCode: 'SUP1', type: 'Authorized Distributor', name: 'MY Distributor' }]);
   assert.deepEqual(payload.data.inventory, [{ id: 'I1', productId: 'P1' }]);
   assert.deepEqual(payload.data.compatibilityRules, [{ id: 'CR1', sourceProductId: 'P1', targetProductId: 'I1' }]);
@@ -422,6 +425,7 @@ test('business snapshot migration maps suppliers into D1 entities', () => {
     products: [{ id: 'P1', name: 'PV' }],
     certificationRequirementsCatalog: [{ id: 'PV-001', sourceCategory: 'PV_MODULE', standard: 'IEC 61215 series' }],
     productCertificationEvidence: [{ id: 'P1:PV-001', productId: 'P1', requirementRecordId: 'PV-001' }],
+    productMasterDetailTemplates: [{ id: 'PV Module:basic', category: 'PV Module', detailGroup: 'basic', fieldKeys: ['model'] }],
     channelPartners: [{ id: 'CP1', brandSupplierCode: 'SUP1', type: 'Dealer', name: 'Dealer One' }],
     compatibilityRules: [{ id: 'CR1', sourceProductId: 'P1', targetProductId: 'INV1' }]
   });
@@ -440,6 +444,11 @@ test('business snapshot migration maps suppliers into D1 entities', () => {
     domain: 'product_certification_evidence',
     recordId: 'P1:PV-001',
     payload: { id: 'P1:PV-001', productId: 'P1', requirementRecordId: 'PV-001' }
+  }]);
+  assert.deepEqual(items.filter(item => item.domain === 'product_master_detail_template'), [{
+    domain: 'product_master_detail_template',
+    recordId: 'PV Module:basic',
+    payload: { id: 'PV Module:basic', category: 'PV Module', detailGroup: 'basic', fieldKeys: ['model'] }
   }]);
   assert.deepEqual(items.filter(item => item.domain === 'compatibility_rule'), [{
     domain: 'compatibility_rule',

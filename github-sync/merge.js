@@ -91,6 +91,7 @@ export function mergeState(remote, local) {
     channelPartners: mergeByKey(rData.channelPartners, lData.channelPartners, stableRecordKey),
     certificationRequirementsCatalog: mergeByKey(rData.certificationRequirementsCatalog, lData.certificationRequirementsCatalog, stableRecordKey),
     productCertificationEvidence: mergeByKey(rData.productCertificationEvidence, lData.productCertificationEvidence, stableRecordKey),
+    productMasterDetailTemplates: mergeByKey(rData.productMasterDetailTemplates, lData.productMasterDetailTemplates, stableRecordKey),
     inventory: mergeByKey(rData.inventory, lData.inventory, stableRecordKey),
     inventoryHistory: [],
     suppliers: mergeByKey(rData.suppliers, lData.suppliers, supplierMergeKey),

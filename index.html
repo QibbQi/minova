@@ -2459,12 +2459,15 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 </div>
             </div>
             <div class="mt-5 flex flex-col xl:flex-row xl:items-end xl:justify-between gap-4">
-                <div>
+                <div class="flex flex-col sm:flex-row sm:items-end gap-3">
+                    <div>
                     <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Mode</label>
                     <div class="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
                         <button id="engineering-mode-standard" type="button" onclick="setEngineeringWorkspaceMode('standard')" class="px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white">Standard mode</button>
                         <button id="engineering-mode-matrix" type="button" onclick="setEngineeringWorkspaceMode('matrix')" class="px-4 py-2 rounded-lg text-xs font-black text-slate-500">Matrix mode</button>
                     </div>
+                    </div>
+                    <button id="engineering-add-record-button" type="button" data-engineering-action="edit" onclick="openEngineeringRequirementEditor()" class="rounded-xl bg-purple-700 px-4 py-2.5 text-xs font-black text-white hover:bg-purple-800">Add Record</button>
                 </div>
                 <div class="flex flex-col md:flex-row gap-3 md:items-end">
                     <div>
@@ -2483,7 +2486,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             <option value="gray_biz">Grey C&I</option>
                         </select>
                     </div>
-                    <button type="button" data-engineering-action="edit" onclick="openEngineeringRequirementEditor()" class="rounded-xl bg-purple-700 px-4 py-2.5 text-xs font-black text-white hover:bg-purple-800">Add Record</button>
+                    <button id="engineering-search-products-primary" type="button" onclick="searchEngineeringStandardProducts()" class="rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-black text-white hover:bg-slate-800">Search Product</button>
                 </div>
             </div>
             <div class="mt-4 flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
@@ -2515,7 +2518,6 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     <div id="engineering-standard-selection-note" class="text-xs font-bold text-slate-500">0 records selected</div>
                     <div class="flex flex-wrap gap-2">
                         <button type="button" onclick="clearEngineeringStandardSelection()" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-500 hover:bg-slate-50">Clear</button>
-                        <button type="button" onclick="searchEngineeringStandardProducts()" class="rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white hover:bg-slate-800">Search Product</button>
                     </div>
                 </div>
             </div>

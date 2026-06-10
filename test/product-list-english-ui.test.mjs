@@ -334,6 +334,8 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'Engineering Workspace',
     'id="engineering-mode-standard"',
     'id="engineering-mode-matrix"',
+    'id="engineering-add-record-button"',
+    'id="engineering-search-products-primary"',
     'id="engineering-standard-panel"',
     'id="engineering-matrix-panel"',
     'id="engineering-standard-list"',
@@ -345,6 +347,16 @@ test('engineering workspace exposes certification matrix filters and seeded cata
   ].forEach((text) => {
     assert.equal(engineeringTab.includes(text), true, `Missing engineering workspace UI: ${text}`);
   });
+  assert.ok(
+    engineeringTab.indexOf('id="engineering-add-record-button"') > engineeringTab.indexOf('id="engineering-mode-matrix"')
+      && engineeringTab.indexOf('id="engineering-add-record-button"') < engineeringTab.indexOf('id="engineering-quote-source-default"'),
+    'Add Record should sit beside the mode selector before quote defaults'
+  );
+  assert.ok(
+    engineeringTab.indexOf('id="engineering-search-products-primary"') > engineeringTab.indexOf('id="engineering-quote-price-default"')
+      && engineeringTab.indexOf('id="engineering-search-products-primary"') < engineeringTab.indexOf('id="engineering-search"'),
+    'Primary Search Product button should replace the old Add Record position beside quote defaults'
+  );
   assert.equal(html.includes('id="engineering-cert-detail-modal"'), true, 'Missing engineering detail modal');
 
   ['A1', 'A2', 'B', 'C', 'D', 'E', 'Mandatory', 'Utility Preferred', 'International Finance Preferred', 'Optional', 'PV_MODULE', 'INVERTER', 'BATTERY'].forEach((text) => {

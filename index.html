@@ -6818,6 +6818,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             documents: { label: 'Documents', master: ['datasheetLink', 'certificateLink'], technical: [], extra: ['documents'] }
         };
         const PRODUCT_MASTER_DETAIL_TEMPLATE_STORAGE_KEY = 'minova_product_master_detail_templates_v1';
+        const PRODUCT_MASTER_DETAIL_NEW_FIELD_VALUE = '__new_field__';
         const PRODUCT_MASTER_DETAIL_MASTER_FIELD_LABELS = {
             model: 'Model',
             brand: 'Brand',
@@ -6900,6 +6901,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const customLabel = String(template?.fieldLabels?.[fieldKey] || '').trim();
             return customLabel || productMasterDetailFieldLabel(fieldKey);
         }
+        function nextProductMasterDetailCustomFieldKey(template = {}) {
+            const selected = new Set(uniqueProductMasterFieldKeys(template.fieldKeys));
+            let index = 1;
+            while (selected.has(`customDetail${String(index).padStart(2, '0')}`)) index += 1;
+            return `customDetail${String(index).padStart(2, '0')}`;
+        }
         function productMasterDetailFieldOptions(category = '') {
             const masterKeys = Object.keys(PRODUCT_MASTER_DETAIL_MASTER_FIELD_LABELS);
             const techFields = (() => {
@@ -6922,6 +6929,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 if (PRODUCT_MASTER_COMMON_FIELD_KEYS.includes(fieldKey)) return 'masterData';
                 if (getProductTechnicalSpecFieldsForCategory(category).some(field => field.id === fieldKey)) return 'technicalSpecs';
             } catch (e) {}
+            if (fieldKey.startsWith('customDetail')) return 'technicalSpecs';
             return 'previewOnly';
         }
         function productMasterDetailValue(product = {}, category = '', key = '') {
@@ -7379,7 +7387,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             }
             const selected = new Set(template.fieldKeys || []);
             const options = productMasterDetailFieldOptions(template.category);
-            picker.innerHTML = '<option value="">Select existing field</option>' + options
+            picker.innerHTML = `<option value="">Select existing field</option><option value="${PRODUCT_MASTER_DETAIL_NEW_FIELD_VALUE}">+ New Field</option>` + options
                 .map(option => `<option value="${htmlSafe(option.key)}" ${selected.has(option.key) ? 'disabled' : ''}>${htmlSafe(option.label)} · ${htmlSafe(option.kind)}</option>`)
                 .join('');
             picker.value = '';
@@ -7471,13 +7479,17 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const picker = document.getElementById('engineering-detail-template-field-picker');
             const editFieldKey = String(picker?.dataset?.editFieldKey || '').trim();
             if (editFieldKey) return saveProductMasterDetailTemplateFieldLabel(editFieldKey);
-            const fieldKey = String(picker?.value || '').trim();
+            let fieldKey = String(picker?.value || '').trim();
             if (!fieldKey) return;
+            const isNewField = fieldKey === PRODUCT_MASTER_DETAIL_NEW_FIELD_VALUE;
+            if (isNewField) fieldKey = nextProductMasterDetailCustomFieldKey(template);
             if (!editFieldKey && (template.fieldKeys || []).includes(fieldKey)) return alert('This field is already in the template.');
             const fieldKeys = [...(template.fieldKeys || []), fieldKey];
+            const fieldLabels = isNewField ? { ...(template.fieldLabels || {}), [fieldKey]: 'New Field' } : template.fieldLabels || {};
             const requiredFieldKeys = template.requiredFieldKeys || [];
-            const next = saveProductMasterDetailTemplate({ ...template, fieldKeys, requiredFieldKeys, updatedAt: new Date().toISOString() });
+            const next = saveProductMasterDetailTemplate({ ...template, fieldKeys, fieldLabels, requiredFieldKeys, updatedAt: new Date().toISOString() });
             renderEngineeringProductMasterDetailMode();
+            if (isNewField) beginProductMasterDetailTemplateFieldEdit(fieldKey);
             return next;
         }
         window.addProductMasterDetailTemplateField = addProductMasterDetailTemplateField;

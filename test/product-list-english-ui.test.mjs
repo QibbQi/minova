@@ -347,7 +347,6 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'id="engineering-standard-category-filters"',
     'id="engineering-standard-match-card"',
     'id="engineering-standard-match-host"',
-    'id="engineering-matrix-match-host"',
     'id="engineering-refresh-product-results"',
     'id="engineering-open-quotation"',
     'id="engineering-standard-panel"',
@@ -356,12 +355,11 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'id="engineering-standard-list"',
     'id="engineering-standard-product-results"',
     'id="engineering-class-filter"',
+    'id="engineering-matrix-class-inline"',
     'id="engineering-architecture-class-toolbar"',
     'id="engineering-architecture-class-edit-actions"',
     'id="engineering-add-architecture-class"',
     'id="engineering-delete-architecture-class"',
-    'id="engineering-level-filters"',
-    'id="engineering-category-filters"',
     'id="engineering-cert-list"',
     'id="engineering-certification-workspace-panel"',
     'id="engineering-product-master-panel"',
@@ -394,7 +392,6 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'mt-5 grid grid-cols-1 gap-4',
     'sm:grid-cols-[minmax(0,1fr)_180px_minmax(0,1fr)_auto_auto]',
     'whitespace-nowrap min-w-[96px]',
-    'lg:grid-cols-[minmax(420px,1fr)_minmax(220px,0.55fr)_minmax(260px,340px)]',
     'Product mode',
     'Detail mode',
     'Class & Filters',
@@ -426,6 +423,11 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'Add Record should live with certification edit controls before matched products'
   );
   assert.ok(
+    engineeringTab.indexOf('id="engineering-matrix-class-inline"') > engineeringTab.indexOf('id="engineering-architecture-class-toolbar"')
+      && engineeringTab.indexOf('id="engineering-matrix-class-inline"') < engineeringTab.indexOf('id="engineering-add-record-button"'),
+    'Matrix Class & Filters should sit beside Maintenance in the unified top control block'
+  );
+  assert.ok(
     engineeringTab.indexOf('id="engineering-search-products-primary"') > engineeringTab.indexOf('id="engineering-open-quotation"')
       && engineeringTab.indexOf('id="engineering-search-products-primary"') < engineeringTab.indexOf('id="engineering-standard-product-results"'),
     'Primary Search Product button should sit inside Matched Products after Open Quotation'
@@ -446,18 +448,10 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'Matched Products should sit below Search Product and above the standard record list'
   );
   const matrixPanel = snippetBetween('id="engineering-matrix-panel"', 'id="engineering-product-master-panel"');
-  assert.ok(
-    matrixPanel.indexOf('id="engineering-level-filters"') < matrixPanel.indexOf('id="engineering-matrix-match-host"')
-      && matrixPanel.indexOf('id="engineering-category-filters"') < matrixPanel.indexOf('id="engineering-matrix-match-host"')
-      && matrixPanel.indexOf('id="engineering-matrix-match-host"') < matrixPanel.indexOf('data-freeze-table="engineering-matrix"'),
-    'Matrix mode should place Matched Products below filters and above the record table'
-  );
-  assert.ok(
-    matrixPanel.indexOf('id="engineering-level-filters"') < matrixPanel.indexOf('id="engineering-class-filter"')
-      && matrixPanel.indexOf('id="engineering-category-filters"') < matrixPanel.indexOf('id="engineering-class-filter"'),
-    'Matrix mode should keep Class & Filters as the compact right-side control after requirement/category filters'
-  );
-  assert.equal(matrixPanel.includes('class="space-y-5"'), false, 'Matrix mode filters should be stitched as sibling controls instead of stacked groups');
+  assert.equal(matrixPanel.includes('id="engineering-level-filters"'), false, 'Matrix mode should not create a separate requirement-level filter block');
+  assert.equal(matrixPanel.includes('id="engineering-category-filters"'), false, 'Matrix mode should not create a separate category filter block');
+  assert.equal(matrixPanel.includes('id="engineering-matrix-match-host"'), false, 'Matrix mode should use the unified Matched Products block, not a separate host');
+  assert.equal(matrixPanel.includes('id="engineering-standard-match-card"'), false, 'Matrix record panel should only contain the matrix table');
   assert.equal(matrixPanel.includes('Linked Products'), true, 'Matrix mode should label product linkage as Linked Products');
   assert.equal(matrixPanel.includes('Product Evidence'), false, 'Matrix mode should not use Product Evidence as a table column');
   assert.equal(matrixPanel.includes('id="engineering-matrix-select-all"'), true, 'Matrix mode should support selecting records for matched product search');
@@ -580,11 +574,11 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     "document.getElementById('engineering-architecture-class-edit-actions')",
     "document.getElementById('engineering-standard-match-card')",
     "document.getElementById('engineering-search-products-primary')",
-    "document.getElementById('engineering-standard-match-host')",
-    "document.getElementById('engineering-matrix-match-host')",
-    "targetHost.appendChild(standardMatchCard)",
+    "document.getElementById('engineering-matrix-class-inline')",
+    "standardSearchFilters.classList.toggle('hidden', !inCertification)",
     "standardMatchCard.classList.toggle('hidden', !inCertification)",
     "searchProductBtn.classList.toggle('hidden', !inCertification)",
+    "matrixClassInline.classList.toggle('hidden', !inCertification || engineeringWorkspaceMode !== 'matrix')",
     "summary?.classList.toggle('hidden', engineeringWorkspaceView !== 'certification')",
     "classList.toggle('hidden', inProductMaster)",
     "'px-4 py-2 rounded-lg text-xs font-black bg-purple-700 text-white shadow-sm'",

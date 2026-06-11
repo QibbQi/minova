@@ -2487,6 +2487,23 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                                 <button id="engineering-cert-edit-mode" type="button" onclick="setEngineeringCertificationEditMode('edit')" class="px-4 py-2 rounded-lg text-xs font-black text-slate-500">Edit mode</button>
                             </div>
                         </div>
+                        <div id="engineering-matrix-class-inline" class="hidden min-w-[280px]">
+                            <div class="flex items-center justify-between gap-3 mb-1">
+                                <label class="block text-[10px] font-black text-slate-400 uppercase">Class & Filters</label>
+                                <div id="engineering-architecture-class-edit-actions" class="hidden flex-wrap gap-2">
+                                    <button id="engineering-add-architecture-class" type="button" data-engineering-action="edit" onclick="addEngineeringArchitectureClass()" class="rounded-xl bg-purple-700 px-3 py-2 text-xs font-black text-white hover:bg-purple-800">Add Class</button>
+                                    <button id="engineering-delete-architecture-class" type="button" data-engineering-action="delete" onclick="deleteEngineeringArchitectureClass()" class="rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs font-black text-red-600 hover:bg-red-100">Delete Class</button>
+                                </div>
+                            </div>
+                            <select id="engineering-class-filter" onchange="renderEngineeringWorkspace()" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold outline-none bg-white focus:border-purple-500">
+                                <option value="A1">A1 - Grid-Tied PV Only</option>
+                                <option value="A2">A2 - Grid-Tied PV + Small Battery</option>
+                                <option value="B">B - Hybrid PV + BESS</option>
+                                <option value="C">C - Off-Grid Hybrid</option>
+                                <option value="D">D - Utility Scale Solar</option>
+                                <option value="E">E - Utility Scale BESS</option>
+                            </select>
+                        </div>
                         <button id="engineering-add-record-button" type="button" data-engineering-action="edit" onclick="openEngineeringRequirementEditor()" class="hidden rounded-xl bg-purple-700 px-4 py-2.5 text-xs font-black text-white hover:bg-purple-800">Add Record</button>
                     </div>
                 </div>
@@ -2573,36 +2590,6 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             </div>
         </div>
         <div id="engineering-matrix-panel" class="hidden space-y-4">
-            <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
-                <div class="grid grid-cols-1 lg:grid-cols-[minmax(420px,1fr)_minmax(220px,0.55fr)_minmax(260px,340px)] gap-5 lg:items-start">
-                    <div class="min-w-0">
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">Requirement Level</label>
-                        <div id="engineering-level-filters" class="flex flex-wrap gap-2"></div>
-                    </div>
-                    <div class="min-w-0">
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">Category</label>
-                        <div id="engineering-category-filters" class="flex flex-wrap gap-2"></div>
-                    </div>
-                    <div class="min-w-0 lg:ml-auto">
-                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
-                            <label class="block text-[10px] font-black text-slate-400 uppercase">Class & Filters</label>
-                            <div id="engineering-architecture-class-edit-actions" class="hidden flex-wrap gap-2">
-                                <button id="engineering-add-architecture-class" type="button" data-engineering-action="edit" onclick="addEngineeringArchitectureClass()" class="rounded-xl bg-purple-700 px-3 py-2 text-xs font-black text-white hover:bg-purple-800">Add Class</button>
-                                <button id="engineering-delete-architecture-class" type="button" data-engineering-action="delete" onclick="deleteEngineeringArchitectureClass()" class="rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs font-black text-red-600 hover:bg-red-100">Delete Class</button>
-                            </div>
-                        </div>
-                        <select id="engineering-class-filter" onchange="renderEngineeringWorkspace()" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold outline-none bg-white focus:border-purple-500">
-                            <option value="A1">A1 - Grid-Tied PV Only</option>
-                            <option value="A2">A2 - Grid-Tied PV + Small Battery</option>
-                            <option value="B">B - Hybrid PV + BESS</option>
-                            <option value="C">C - Off-Grid Hybrid</option>
-                            <option value="D">D - Utility Scale Solar</option>
-                            <option value="E">E - Utility Scale BESS</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-            <div id="engineering-matrix-match-host"></div>
             <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
             <div class="overflow-x-auto">
                 <table data-freeze-table="engineering-matrix" class="w-full text-left whitespace-nowrap">
@@ -7383,20 +7370,16 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const standardSearchFilters = document.getElementById('engineering-standard-search-filters');
             const standardMatchCard = document.getElementById('engineering-standard-match-card');
             const searchProductBtn = document.getElementById('engineering-search-products-primary');
-            const standardMatchHost = document.getElementById('engineering-standard-match-host');
-            const matrixMatchHost = document.getElementById('engineering-matrix-match-host');
+            const matrixClassInline = document.getElementById('engineering-matrix-class-inline');
             const standardBtn = document.getElementById('engineering-mode-standard');
             const matrixBtn = document.getElementById('engineering-mode-matrix');
             const inCertification = engineeringWorkspaceView === 'certification';
-            if (standardMatchCard) {
-                const targetHost = engineeringWorkspaceMode === 'matrix' ? matrixMatchHost : standardMatchHost;
-                if (targetHost && standardMatchCard.parentElement !== targetHost) targetHost.appendChild(standardMatchCard);
-            }
             if (standard) standard.classList.toggle('hidden', !inCertification || engineeringWorkspaceMode !== 'standard');
             if (matrix) matrix.classList.toggle('hidden', !inCertification || engineeringWorkspaceMode !== 'matrix');
-            if (standardSearchFilters) standardSearchFilters.classList.toggle('hidden', !inCertification || engineeringWorkspaceMode !== 'standard');
+            if (standardSearchFilters) standardSearchFilters.classList.toggle('hidden', !inCertification);
             if (standardMatchCard) standardMatchCard.classList.toggle('hidden', !inCertification);
             if (searchProductBtn) searchProductBtn.classList.toggle('hidden', !inCertification);
+            if (matrixClassInline) matrixClassInline.classList.toggle('hidden', !inCertification || engineeringWorkspaceMode !== 'matrix');
             if (standardBtn) standardBtn.className = engineeringWorkspaceMode === 'standard' ? 'px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white' : 'px-4 py-2 rounded-lg text-xs font-black text-slate-500';
             if (matrixBtn) matrixBtn.className = engineeringWorkspaceMode === 'matrix' ? 'px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white' : 'px-4 py-2 rounded-lg text-xs font-black text-slate-500';
             syncEngineeringCertificationEditChrome();
@@ -7512,15 +7495,11 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return productCertificationEvidence.filter(item => item.requirementRecordId === id);
         }
         function engineeringSelectedLevels() {
-            const checks = engineeringWorkspaceMode === 'standard'
-                ? Array.from(document.querySelectorAll('#engineering-standard-level-filters input[data-engineering-level]:checked'))
-                : Array.from(document.querySelectorAll('#engineering-level-filters input[data-engineering-level]:checked'));
+            const checks = Array.from(document.querySelectorAll('#engineering-standard-level-filters input[data-engineering-level]:checked'));
             return checks.map(input => input.value).filter(Boolean);
         }
         function engineeringSelectedCategories() {
-            const checks = engineeringWorkspaceMode === 'standard'
-                ? Array.from(document.querySelectorAll('#engineering-standard-category-filters input[data-engineering-category]:checked'))
-                : Array.from(document.querySelectorAll('#engineering-category-filters input[data-engineering-category]:checked'));
+            const checks = Array.from(document.querySelectorAll('#engineering-standard-category-filters input[data-engineering-category]:checked'));
             return checks.map(input => input.value).filter(Boolean);
         }
         function renderEngineeringFilterChips() {
@@ -7546,8 +7525,6 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             };
             renderLevelBox(document.getElementById('engineering-standard-level-filters'));
             renderCategoryBox(document.getElementById('engineering-standard-category-filters'));
-            renderLevelBox(document.getElementById('engineering-level-filters'));
-            renderCategoryBox(document.getElementById('engineering-category-filters'));
         }
         function engineeringRecordMatchesClass(record, classId) {
             const cls = ENGINEERING_CLASS_DEFINITIONS[classId] || ENGINEERING_CLASS_DEFINITIONS.A1;

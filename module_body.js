@@ -2586,20 +2586,16 @@
             const standardSearchFilters = document.getElementById('engineering-standard-search-filters');
             const standardMatchCard = document.getElementById('engineering-standard-match-card');
             const searchProductBtn = document.getElementById('engineering-search-products-primary');
-            const standardMatchHost = document.getElementById('engineering-standard-match-host');
-            const matrixMatchHost = document.getElementById('engineering-matrix-match-host');
+            const matrixClassInline = document.getElementById('engineering-matrix-class-inline');
             const standardBtn = document.getElementById('engineering-mode-standard');
             const matrixBtn = document.getElementById('engineering-mode-matrix');
             const inCertification = engineeringWorkspaceView === 'certification';
-            if (standardMatchCard) {
-                const targetHost = engineeringWorkspaceMode === 'matrix' ? matrixMatchHost : standardMatchHost;
-                if (targetHost && standardMatchCard.parentElement !== targetHost) targetHost.appendChild(standardMatchCard);
-            }
             if (standard) standard.classList.toggle('hidden', !inCertification || engineeringWorkspaceMode !== 'standard');
             if (matrix) matrix.classList.toggle('hidden', !inCertification || engineeringWorkspaceMode !== 'matrix');
-            if (standardSearchFilters) standardSearchFilters.classList.toggle('hidden', !inCertification || engineeringWorkspaceMode !== 'standard');
+            if (standardSearchFilters) standardSearchFilters.classList.toggle('hidden', !inCertification);
             if (standardMatchCard) standardMatchCard.classList.toggle('hidden', !inCertification);
             if (searchProductBtn) searchProductBtn.classList.toggle('hidden', !inCertification);
+            if (matrixClassInline) matrixClassInline.classList.toggle('hidden', !inCertification || engineeringWorkspaceMode !== 'matrix');
             if (standardBtn) standardBtn.className = engineeringWorkspaceMode === 'standard' ? 'px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white' : 'px-4 py-2 rounded-lg text-xs font-black text-slate-500';
             if (matrixBtn) matrixBtn.className = engineeringWorkspaceMode === 'matrix' ? 'px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white' : 'px-4 py-2 rounded-lg text-xs font-black text-slate-500';
             syncEngineeringCertificationEditChrome();
@@ -2715,15 +2711,11 @@
             return productCertificationEvidence.filter(item => item.requirementRecordId === id);
         }
         function engineeringSelectedLevels() {
-            const checks = engineeringWorkspaceMode === 'standard'
-                ? Array.from(document.querySelectorAll('#engineering-standard-level-filters input[data-engineering-level]:checked'))
-                : Array.from(document.querySelectorAll('#engineering-level-filters input[data-engineering-level]:checked'));
+            const checks = Array.from(document.querySelectorAll('#engineering-standard-level-filters input[data-engineering-level]:checked'));
             return checks.map(input => input.value).filter(Boolean);
         }
         function engineeringSelectedCategories() {
-            const checks = engineeringWorkspaceMode === 'standard'
-                ? Array.from(document.querySelectorAll('#engineering-standard-category-filters input[data-engineering-category]:checked'))
-                : Array.from(document.querySelectorAll('#engineering-category-filters input[data-engineering-category]:checked'));
+            const checks = Array.from(document.querySelectorAll('#engineering-standard-category-filters input[data-engineering-category]:checked'));
             return checks.map(input => input.value).filter(Boolean);
         }
         function renderEngineeringFilterChips() {
@@ -2749,8 +2741,6 @@
             };
             renderLevelBox(document.getElementById('engineering-standard-level-filters'));
             renderCategoryBox(document.getElementById('engineering-standard-category-filters'));
-            renderLevelBox(document.getElementById('engineering-level-filters'));
-            renderCategoryBox(document.getElementById('engineering-category-filters'));
         }
         function engineeringRecordMatchesClass(record, classId) {
             const cls = ENGINEERING_CLASS_DEFINITIONS[classId] || ENGINEERING_CLASS_DEFINITIONS.A1;

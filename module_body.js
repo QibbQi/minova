@@ -3432,7 +3432,7 @@
             if (firstBatch) return window.pickProduct?.(firstBatch.id, defaults.priceType);
             const ok = confirm('No stock is available. Add this product from Price List instead?');
             if (!ok) return;
-            addFromPriceList(promptEngineeringPriceType(defaults.priceType));
+            addFromPriceList(defaults.priceType);
         }
         window.addEngineeringProductToQuote = addEngineeringProductToQuote;
         function openEngineeringRequirementEditor(recordId = '') {

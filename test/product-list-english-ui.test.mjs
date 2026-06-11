@@ -614,6 +614,12 @@ test('engineering workspace exposes certification matrix filters and seeded cata
   assert.ok(standardSearch, 'Standard Search Product handler should exist');
   assert.equal(standardSearch[1].includes('openEngineeringStandardProductModal'), false, 'Standard Search Product should render inline results without opening a modal');
 
+  const engineeringQuoteAdd = html.match(/function addEngineeringProductToQuote\(productId\) \{([\s\S]*?)\n\s*\}\n\s*window\.addEngineeringProductToQuote/);
+  assert.ok(engineeringQuoteAdd, 'Engineering quote-add handler should exist');
+  assert.match(engineeringQuoteAdd[1], /confirm\('No stock is available\. Add this product from Price List instead\?'\)/, 'Inventory-first fallback should ask before using Price List');
+  assert.match(engineeringQuoteAdd[1], /addFromPriceList\(defaults\.priceType\)/, 'Inventory-first fallback should reuse the selected default price type');
+  assert.equal(engineeringQuoteAdd[1].includes('promptEngineeringPriceType'), false, 'Inventory-first fallback should use the Price List flow without the old price prompt');
+
   assert.equal(html.includes('Enter an existing field key to add to this template'), false, 'Add Field should not use the old prompt flow');
   assert.equal(html.includes('Edit field key. Use an existing masterData or technicalSpecs key'), false, 'Edit Field should not use the old prompt flow');
   assert.equal(html.includes('Choose replacement field'), false, 'Edit Field should rename the field label instead of replacing the field key');

@@ -2763,15 +2763,21 @@
             inputClass = '',
             template = {},
             fieldKey = '',
-            disabled = false
+            disabled = false,
+            inputType = 'text',
+            extraAttrs = '',
+            onInput = '',
+            onChange = ''
         } = {}) {
             const hiddenChoices = productMasterDetailHiddenHistorySet(template, fieldKey);
-            const rawChoices = Array.from(new Set((Array.isArray(choices) ? choices : []).map(option => String(option ?? '').trim()).filter(Boolean)));
+            const rawChoices = Array.from(new Set([...(Array.isArray(choices) ? choices : []), value].map(option => String(option ?? '').trim()).filter(Boolean)));
             const visibleChoices = rawChoices.filter(choice => !hiddenChoices.has(choice.toLowerCase()));
             const hasHistoryChoices = rawChoices.length > 0 && !disabled;
             const resolvedInputId = inputId || `engineering-detail-history-${productMasterDetailSafeDomId(`${template.id || 'template'}-${fieldKey}`)}`;
             const baseClass = inputClass || 'w-full min-w-[160px] border border-slate-200 rounded-lg px-2 py-2 text-xs outline-none focus:border-purple-500 bg-white';
-            const input = `<input id="${htmlSafe(resolvedInputId)}" ${commonAttrs} value="${htmlSafe(value)}" placeholder="${htmlSafe(placeholder)}" ${disabled ? 'disabled' : ''} ${hasHistoryChoices ? 'oninput="filterProductMasterDetailBulkHistoryValues(this)"' : ''} class="${htmlSafe(baseClass)} ${visibleChoices.length && !disabled ? 'pr-8' : ''}">`;
+            const onInputAttr = [hasHistoryChoices ? 'filterProductMasterDetailBulkHistoryValues(this)' : '', onInput].filter(Boolean).join('; ');
+            const onChangeAttr = String(onChange || '').trim();
+            const input = `<input id="${htmlSafe(resolvedInputId)}" type="${htmlSafe(inputType)}" ${commonAttrs} value="${htmlSafe(value)}" placeholder="${htmlSafe(placeholder)}" ${disabled ? 'disabled' : ''} ${onInputAttr ? `oninput="${htmlSafe(onInputAttr)}"` : ''} ${onChangeAttr ? `onchange="${htmlSafe(onChangeAttr)}"` : ''} ${extraAttrs} class="${htmlSafe(baseClass)} ${visibleChoices.length && !disabled ? 'pr-8' : ''}">`;
             if (!disabled && visibleChoices.length) {
                 return `<div class="relative min-w-[220px]">
                     ${input}
@@ -4222,14 +4228,7 @@
             saveSubcategoryIndex();
         }
         window.updateSubcatSuggestions = () => {
-            const list = document.getElementById('subcat-suggestions');
-            const catEl = document.getElementById('m-category');
-            if (!list) return;
-            const cat = normalizeProductCategory(catEl?.value || '');
-            const subs = cat
-                ? (subcategoriesByCategory[cat] || [])
-                : Array.from(new Set(Object.values(subcategoriesByCategory).flat()));
-            list.innerHTML = subs.filter(Boolean).sort((a, b) => String(a).localeCompare(String(b))).map(s => `<option value="${String(s).replaceAll('"', '&quot;')}">`).join('');
+            renderProductModalSubcategoryHistoryField(document.getElementById('m-scenario')?.value || '');
         };
 
         loadSubcategoryIndex();
@@ -6916,6 +6915,123 @@
             setVal('m-source-remark', sourcing.sourceRemark);
             updateSupplyRouteVisibility();
         }
+        function productModalHistoryTemplate(fieldKey = '', category = '') {
+            const normalizedCategory = normalizeProductCategory(category || document.getElementById('m-category')?.value || '', '');
+            const classification = ['category', 'scenario'].includes(String(fieldKey || ''));
+            return {
+                id: classification ? 'product-modal:classification' : `product-modal:${normalizedCategory || 'all'}`,
+                category: normalizedCategory || 'PV Module',
+                detailGroup: 'productModal'
+            };
+        }
+        function productModalHistoryChoices(fieldKey = '', category = '') {
+            const key = String(fieldKey || '').trim();
+            const normalizedCategory = normalizeProductCategory(category || document.getElementById('m-category')?.value || '', '');
+            if (key === 'category') {
+                return uniqueCertList(['PV Module', 'Inverter', 'Battery', 'Accessory', 'All-in-One System', 'C&I Storage', ...products.map(product => normalizeProductCategory(product.category || '', ''))]);
+            }
+            if (key === 'scenario') {
+                const scoped = normalizedCategory ? (subcategoriesByCategory[normalizedCategory] || []) : [];
+                const all = Object.values(subcategoriesByCategory || {}).flat();
+                return uniqueCertList([...scoped, ...all, ...products
+                    .filter(product => !normalizedCategory || normalizeProductCategory(product.category || '', '') === normalizedCategory)
+                    .map(product => normalizeProductSubcategory(product.scenario || ''))]);
+            }
+            const rows = products.filter(product => !normalizedCategory || normalizeProductCategory(product.category || '', '') === normalizedCategory);
+            const values = rows.map(product => {
+                if (PRODUCT_MASTER_COMMON_FIELD_KEYS.includes(key)) return getProductMasterData(product)[key];
+                return getProductTechnicalSpecs(product)[key];
+            });
+            if (key === 'status') values.push('Active', 'Discontinued', 'Pending');
+            return uniqueCertList(values.filter(productMasterDetailValuePresent));
+        }
+        function renderProductModalHistoryInput({
+            id = '',
+            fieldKey = '',
+            value = '',
+            choices = [],
+            category = '',
+            placeholder = '',
+            inputType = 'text',
+            extraAttrs = '',
+            onInput = '',
+            onChange = '',
+            inputClass = 'w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500 bg-white'
+        } = {}) {
+            return renderProductMasterDetailHistoryInputControl({
+                inputId: id,
+                value,
+                choices,
+                commonAttrs: `data-product-modal-history-field="${htmlSafe(fieldKey)}"`,
+                placeholder,
+                template: productModalHistoryTemplate(fieldKey, category),
+                fieldKey,
+                inputType,
+                extraAttrs,
+                onInput,
+                onChange,
+                inputClass
+            });
+        }
+        function renderProductModalCategoryHistoryField(value = document.getElementById('m-category')?.value || '') {
+            const box = document.getElementById('product-modal-category-field');
+            if (!box) return;
+            const sync = 'updateSubcatSuggestions(); updateHybridSpecControls(); updateProductPriceUnitNote(); renderProductModalMasterDetailFields(this.value, readProductMasterDataFromModal()); renderProductTechnicalFields(this.value); maybeFillProductCertificationDefaults()';
+            box.innerHTML = renderProductModalHistoryInput({
+                id: 'm-category',
+                fieldKey: 'category',
+                value,
+                choices: productModalHistoryChoices('category', value),
+                onInput: sync,
+                onChange: sync,
+                inputClass: 'w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 bg-white'
+            });
+        }
+        function renderProductModalSubcategoryHistoryField(value = document.getElementById('m-scenario')?.value || '') {
+            const box = document.getElementById('product-modal-subcategory-field');
+            if (!box) return;
+            const category = document.getElementById('m-category')?.value || '';
+            box.innerHTML = renderProductModalHistoryInput({
+                id: 'm-scenario',
+                fieldKey: 'scenario',
+                value,
+                category,
+                choices: productModalHistoryChoices('scenario', category),
+                placeholder: 'e.g. Rooftop / C&I Storage'
+            });
+        }
+        function renderProductModalClassificationHistoryFields(category = '', scenario = '') {
+            renderProductModalCategoryHistoryField(category);
+            renderProductModalSubcategoryHistoryField(scenario);
+        }
+        function productModalMasterFieldPlaceholder(key = '') {
+            return {
+                application: 'Residential / C&I / Utility',
+                voltageClass: 'LV / HV / N/A',
+                phase: 'Single / Three / N/A',
+                countryAvailable: 'MY, VN, TH...'
+            }[key] || '';
+        }
+        function renderProductModalMasterDetailFields(category = document.getElementById('m-category')?.value || '', values = {}) {
+            const box = document.getElementById('product-master-details-fields');
+            if (!box) return;
+            const md = values || {};
+            box.innerHTML = PRODUCT_MASTER_COMMON_FIELD_KEYS.map(key => {
+                const label = productMasterDetailFieldLabel(key);
+                const span = key === 'remark' ? 'md:col-span-2' : '';
+                return `<div class="${span}">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">${htmlSafe(label)}</label>
+                    ${renderProductModalHistoryInput({
+                        id: `m-master-${key}`,
+                        fieldKey: key,
+                        value: md[key] || '',
+                        category,
+                        choices: productModalHistoryChoices(key, category),
+                        placeholder: productModalMasterFieldPlaceholder(key)
+                    })}
+                </div>`;
+            }).join('');
+        }
         function readProductMasterDataFromModal() {
             const data = {};
             PRODUCT_MASTER_COMMON_FIELD_KEYS.forEach(key => {
@@ -6932,10 +7048,7 @@
         }
         function fillProductMasterDetails(product = {}) {
             const md = getProductMasterData(product);
-            PRODUCT_MASTER_COMMON_FIELD_KEYS.forEach(key => {
-                const el = document.getElementById(`m-master-${key}`);
-                if (el) el.value = md[key] || '';
-            });
+            renderProductModalMasterDetailFields(product.category || document.getElementById('m-category')?.value || '', md);
         }
         window.renderProductTechnicalFields = (category, values = {}) => {
             const box = document.getElementById('product-master-technical-fields');
@@ -6952,7 +7065,15 @@
                 const value = values?.[field.id] ?? '';
                 return `<div>
                     <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">${htmlSafe(field.label)}</label>
-                    <input id="m-tech-${htmlSafe(field.id)}" type="${field.type === 'number' ? 'number' : 'text'}" ${field.type === 'number' ? 'step="0.01"' : ''} value="${htmlSafe(value)}" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500">
+                    ${renderProductModalHistoryInput({
+                        id: `m-tech-${field.id}`,
+                        fieldKey: field.id,
+                        value,
+                        category,
+                        choices: productModalHistoryChoices(field.id, category),
+                        inputType: field.type === 'number' ? 'number' : 'text',
+                        extraAttrs: field.type === 'number' ? 'step="0.01"' : ''
+                    })}
                 </div>`;
             }).join('');
         };
@@ -11152,6 +11273,7 @@
             }
             updateSupplierSelects(window.editId ? (products.find(p => p.id === window.editId)?.supplierCode || '') : '');
             updateProductCurrencyFromSupplier({ skipExisting: true });
+            if (!window.editId) renderProductModalClassificationHistoryFields('', '');
             updateSubcatSuggestions();
             if (!window.editId) {
                 fillProductMasterDetails({});
@@ -11183,6 +11305,8 @@
             const currencyEl = document.getElementById('m-price-currency');
             if (currencyEl) currencyEl.value = 'CNY';
             updateProductPriceCurrencyUi();
+            renderProductModalClassificationHistoryFields('', '');
+            fillProductMasterDetails({});
             renderProductCertificationRecordPicker({}, []);
             window.__productImageDraft = '';
             const fileEl = document.getElementById('m-product-image-file');
@@ -11270,7 +11394,7 @@
             ensureSupplierData();
             document.getElementById('m-name').value = p.name || '';
             const category = p.category || '';
-            document.getElementById('m-category').value = category;
+            renderProductModalClassificationHistoryFields(category, p.scenario || '');
             fillProductMasterDetails(p);
             renderProductTechnicalFields(category, p?.technicalSpecs || {});
             updateSupplierSelects(p.supplierCode || getProductSupplier(p)?.code || '');
@@ -12330,9 +12454,7 @@
         }
         function updateDatalists() {
             ensureSupplierData();
-            const cats = [...new Set(products.map(p => normalizeProductCategory(p.category)).filter(Boolean))];
-            const catList = document.getElementById('cat-suggestions');
-            if (catList) catList.innerHTML = cats.map(c => `<option value="${htmlSafe(c)}">`).join('');
+            if (document.getElementById('product-modal-category-field')) renderProductModalCategoryHistoryField(document.getElementById('m-category')?.value || '');
             updateSupplierSelects();
             updateSubcatSuggestions();
 

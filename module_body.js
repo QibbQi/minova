@@ -2942,19 +2942,23 @@
             ].map(([label, value]) => `<div class="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2"><div class="text-[10px] font-black uppercase text-slate-400">${label}</div><div class="text-lg font-black text-slate-800">${value}</div></div>`).join('');
         }
         function setEngineeringProductMasterMode(mode = 'product') {
-            engineeringProductMasterMode = mode === 'detail' ? 'detail' : 'product';
+            engineeringProductMasterMode = mode === 'detail' || mode === 'search' ? mode : 'product';
             syncEngineeringProductMasterModeChrome();
             if (engineeringWorkspaceView === 'productMaster') renderEngineeringWorkspace();
         }
         function syncEngineeringProductMasterModeChrome() {
             const productPanel = document.getElementById('engineering-product-master-product-mode-panel');
             const detailPanel = document.getElementById('engineering-product-master-detail-mode-panel');
+            const searchPanel = document.getElementById('engineering-product-master-search-mode-panel');
             const productBtn = document.getElementById('engineering-product-master-mode-product');
             const detailBtn = document.getElementById('engineering-product-master-mode-detail');
+            const searchBtn = document.getElementById('engineering-product-master-mode-search');
             if (productPanel) productPanel.classList.toggle('hidden', engineeringProductMasterMode !== 'product');
             if (detailPanel) detailPanel.classList.toggle('hidden', engineeringProductMasterMode !== 'detail');
+            if (searchPanel) searchPanel.classList.toggle('hidden', engineeringProductMasterMode !== 'search');
             if (productBtn) productBtn.className = engineeringProductMasterMode === 'product' ? 'px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white' : 'px-4 py-2 rounded-lg text-xs font-black text-slate-500';
             if (detailBtn) detailBtn.className = engineeringProductMasterMode === 'detail' ? 'px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white' : 'px-4 py-2 rounded-lg text-xs font-black text-slate-500';
+            if (searchBtn) searchBtn.className = engineeringProductMasterMode === 'search' ? 'px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white' : 'px-4 py-2 rounded-lg text-xs font-black text-slate-500';
         }
         window.setEngineeringProductMasterMode = setEngineeringProductMasterMode;
         function saveProductMasterDetailTemplate(template = {}) {
@@ -3386,30 +3390,31 @@
             }, 0);
         }
         window.addEngineeringDetailModeProduct = addEngineeringDetailModeProduct;
-        function openEngineeringDetailProductSearch() {
-            if (!canManageEngineeringRecord('edit')) return alert('No engineering edit permission.');
-            const modal = document.getElementById('engineering-detail-product-search-modal');
+        function syncEngineeringDetailProductSearchSelectors(category = '', group = '') {
             const categorySelect = document.getElementById('engineering-detail-product-search-category');
             const groupSelect = document.getElementById('engineering-detail-product-search-group');
-            if (categorySelect) categorySelect.value = document.getElementById('engineering-detail-template-category')?.value || 'PV Module';
+            const selectedCategory = category || categorySelect?.value || document.getElementById('engineering-detail-template-category')?.value || 'PV Module';
+            const selectedGroup = normalizeProductMasterDetailGroupKey(group || groupSelect?.value || document.getElementById('engineering-detail-template-group')?.value || 'basic');
+            if (categorySelect) categorySelect.value = selectedCategory;
             if (groupSelect) {
-                const selectedGroup = document.getElementById('engineering-detail-template-group')?.value || 'basic';
                 groupSelect.innerHTML = productMasterDetailGroupSelectOptions(selectedGroup, { includeNew: false });
-                groupSelect.value = normalizeProductMasterDetailGroupKey(selectedGroup);
+                groupSelect.value = selectedGroup;
             }
-            if (modal) {
-                modal.classList.remove('hidden');
-                modal.classList.add('flex');
-            }
+        }
+        function openEngineeringDetailProductSearch() {
+            engineeringProductMasterMode = 'search';
+            syncEngineeringProductMasterModeChrome();
+            if (engineeringWorkspaceView === 'productMaster') renderEngineeringWorkspace();
+            syncEngineeringDetailProductSearchSelectors(
+                document.getElementById('engineering-detail-template-category')?.value || '',
+                document.getElementById('engineering-detail-template-group')?.value || ''
+            );
             loadEngineeringQuoteDefaultsToUi();
             renderEngineeringDetailProductSearchCriteria();
         }
         window.openEngineeringDetailProductSearch = openEngineeringDetailProductSearch;
         function closeEngineeringDetailProductSearch() {
-            const modal = document.getElementById('engineering-detail-product-search-modal');
-            if (!modal) return;
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
+            if (engineeringProductMasterMode === 'search') setEngineeringProductMasterMode('detail');
         }
         window.closeEngineeringDetailProductSearch = closeEngineeringDetailProductSearch;
         function engineeringDetailProductSearchTemplate() {
@@ -3573,6 +3578,14 @@
             renderEngineeringDetailProductSearchCriteria();
         }
         window.clearEngineeringDetailProductSearch = clearEngineeringDetailProductSearch;
+        function renderEngineeringProductMasterSearchMode() {
+            syncEngineeringProductMasterModeChrome();
+            syncEngineeringDetailProductSearchSelectors();
+            loadEngineeringQuoteDefaultsToUi();
+            renderEngineeringDetailProductSearchCriteria();
+            applyEngineeringPermissions();
+        }
+        window.renderEngineeringProductMasterSearchMode = renderEngineeringProductMasterSearchMode;
         async function openEngineeringDetailImportPreview(file) {
             const box = document.getElementById('engineering-detail-import-preview');
             if (!box) return;
@@ -3607,6 +3620,10 @@
             syncEngineeringProductMasterModeChrome();
             if (engineeringProductMasterMode === 'detail') {
                 renderEngineeringProductMasterDetailMode();
+                return;
+            }
+            if (engineeringProductMasterMode === 'search') {
+                renderEngineeringProductMasterSearchMode();
                 return;
             }
             const list = document.getElementById('engineering-product-master-list');

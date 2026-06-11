@@ -2622,6 +2622,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 <div class="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
                     <button id="engineering-product-master-mode-product" type="button" onclick="setEngineeringProductMasterMode('product')" class="px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white">Product mode</button>
                     <button id="engineering-product-master-mode-detail" type="button" onclick="setEngineeringProductMasterMode('detail')" class="px-4 py-2 rounded-lg text-xs font-black text-slate-500">Detail mode</button>
+                    <button id="engineering-product-master-mode-search" type="button" onclick="setEngineeringProductMasterMode('search')" class="px-4 py-2 rounded-lg text-xs font-black text-slate-500">Search mode</button>
                 </div>
             </div>
             <div id="engineering-product-master-product-mode-panel" class="space-y-4">
@@ -2712,10 +2713,6 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             <h3 class="text-lg font-black text-slate-800">Detail Template Maintenance</h3>
                             <p class="text-xs text-slate-400">Configure selected details by category, then maintain existing product fields in bulk.</p>
                         </div>
-                        <div class="flex flex-wrap gap-2">
-                            <button id="engineering-detail-template-add-product" type="button" data-engineering-action="edit" onclick="addEngineeringDetailModeProduct()" class="rounded-xl bg-purple-700 px-3 py-2 text-xs font-black text-white hover:bg-purple-800">Add Product</button>
-                            <button id="engineering-detail-template-reuse-product" type="button" data-engineering-action="edit" onclick="openEngineeringDetailProductSearch()" class="rounded-xl border brand-yellow-action px-3 py-2 text-xs font-black">Search Product</button>
-                        </div>
                     </div>
                     <div class="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
@@ -2781,76 +2778,76 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     </div>
                 </div>
             </div>
+            <div id="engineering-product-master-search-mode-panel" class="hidden space-y-4">
+                <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 border-b border-slate-100 px-6 py-5">
+                        <div>
+                            <h3 class="text-lg font-black text-slate-800">Product Detail Search</h3>
+                            <p class="text-xs text-slate-400">Find products by selected detail fields, then add a match to Quotation Builder.</p>
+                        </div>
+                    </div>
+                    <div class="p-6 space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Product Category</label>
+                                <select id="engineering-detail-product-search-category" onchange="renderEngineeringDetailProductSearchCriteria()" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold outline-none bg-white focus:border-purple-500">
+                                    <option value="PV Module">PV Module</option>
+                                    <option value="Inverter">Inverter</option>
+                                    <option value="Battery">Battery</option>
+                                    <option value="All-in-One System">All-in-One System</option>
+                                    <option value="C&I Storage">C&I Storage</option>
+                                    <option value="Accessory">Accessory</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Selected Details Group</label>
+                                <select id="engineering-detail-product-search-group" onchange="renderEngineeringDetailProductSearchCriteria()" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold outline-none bg-white focus:border-purple-500">
+                                    <option value="basic">Basic</option>
+                                    <option value="electrical">Electrical</option>
+                                    <option value="mechanical">Mechanical</option>
+                                    <option value="certification">Certification</option>
+                                    <option value="commercial">Commercial</option>
+                                    <option value="documents">Documents</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="engineering-detail-product-search-criteria" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+                        <div class="rounded-2xl border border-slate-200 overflow-hidden">
+                            <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3 border-b border-slate-100 px-4 py-3">
+                                <div>
+                                    <div class="text-sm font-black text-slate-700">Matched Products</div>
+                                    <div class="text-[11px] text-slate-400">Products must satisfy every filled detail condition.</div>
+                                </div>
+                                <div class="flex flex-col sm:flex-row gap-3 sm:items-end">
+                                    <div>
+                                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Default Source</label>
+                                        <select id="engineering-detail-quote-source-default" onchange="saveEngineeringDetailQuoteDefaults()" class="w-full sm:w-40 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none bg-white focus:border-purple-500">
+                                            <option value="inventory">Inventory First</option>
+                                            <option value="priceList">Price List</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Default Price</label>
+                                        <select id="engineering-detail-quote-price-default" onchange="saveEngineeringDetailQuoteDefaults()" class="w-full sm:w-40 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none bg-white focus:border-purple-500">
+                                            <option value="clearance_home">Clearance RESI</option>
+                                            <option value="clearance_biz">Clearance C&I</option>
+                                            <option value="gray_home">Grey RESI</option>
+                                            <option value="gray_biz">Grey C&I</option>
+                                        </select>
+                                    </div>
+                                    <button type="button" onclick="clearEngineeringDetailProductSearch()" class="rounded-xl border border-slate-200 px-4 py-2 text-xs font-black text-slate-600 hover:bg-slate-50">Refresh / Clear</button>
+                                    <button type="button" onclick="searchEngineeringDetailProducts()" class="rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white hover:bg-slate-800">Search Products</button>
+                                </div>
+                            </div>
+                            <div id="engineering-detail-product-search-results" class="divide-y divide-slate-50 overflow-hidden">
+                                <div class="p-6 text-center text-xs text-slate-400">Fill detail conditions, then search products.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </main>
-
-    <div id="engineering-detail-product-search-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center z-[216] p-4">
-        <div class="bg-white rounded-3xl p-6 w-full max-w-5xl shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div class="flex items-start justify-between gap-4 mb-5">
-                <div>
-                    <h3 class="text-xl font-black text-slate-800">Search Product</h3>
-                    <p class="text-xs text-slate-400 mt-1">Find products by selected detail fields, then add a match to Quotation Builder.</p>
-                </div>
-                <button type="button" onclick="closeEngineeringDetailProductSearch()" class="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-500 hover:bg-slate-50">Close</button>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-                <div>
-                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Product Category</label>
-                    <select id="engineering-detail-product-search-category" onchange="renderEngineeringDetailProductSearchCriteria()" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold outline-none bg-white focus:border-purple-500">
-                        <option value="PV Module">PV Module</option>
-                        <option value="Inverter">Inverter</option>
-                        <option value="Battery">Battery</option>
-                        <option value="All-in-One System">All-in-One System</option>
-                        <option value="C&I Storage">C&I Storage</option>
-                        <option value="Accessory">Accessory</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Selected Details Group</label>
-                    <select id="engineering-detail-product-search-group" onchange="renderEngineeringDetailProductSearchCriteria()" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold outline-none bg-white focus:border-purple-500">
-                        <option value="basic">Basic</option>
-                        <option value="electrical">Electrical</option>
-                        <option value="mechanical">Mechanical</option>
-                        <option value="certification">Certification</option>
-                        <option value="commercial">Commercial</option>
-                        <option value="documents">Documents</option>
-                    </select>
-                </div>
-            </div>
-            <div id="engineering-detail-product-search-criteria" class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4"></div>
-            <div class="rounded-2xl border border-slate-200 overflow-hidden">
-                <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3 border-b border-slate-100 px-4 py-3">
-                    <div>
-                        <div class="text-sm font-black text-slate-700">Matched Products</div>
-                        <div class="text-[11px] text-slate-400">Products must satisfy every filled detail condition.</div>
-                    </div>
-                    <div class="flex flex-col sm:flex-row gap-3 sm:items-end">
-                        <div>
-                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Default Source</label>
-                            <select id="engineering-detail-quote-source-default" onchange="saveEngineeringDetailQuoteDefaults()" class="w-full sm:w-40 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none bg-white focus:border-purple-500">
-                                <option value="inventory">Inventory First</option>
-                                <option value="priceList">Price List</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Default Price</label>
-                            <select id="engineering-detail-quote-price-default" onchange="saveEngineeringDetailQuoteDefaults()" class="w-full sm:w-40 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none bg-white focus:border-purple-500">
-                                <option value="clearance_home">Clearance RESI</option>
-                                <option value="clearance_biz">Clearance C&I</option>
-                                <option value="gray_home">Grey RESI</option>
-                                <option value="gray_biz">Grey C&I</option>
-                            </select>
-                        </div>
-                        <button type="button" onclick="clearEngineeringDetailProductSearch()" class="rounded-xl border border-slate-200 px-4 py-2 text-xs font-black text-slate-600 hover:bg-slate-50">Refresh / Clear</button>
-                        <button type="button" onclick="searchEngineeringDetailProducts()" class="rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white hover:bg-slate-800">Search Products</button>
-                    </div>
-                </div>
-                <div id="engineering-detail-product-search-results" class="divide-y divide-slate-50 overflow-hidden">
-                    <div class="p-6 text-center text-xs text-slate-400">Fill detail conditions, then search products.</div>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <div id="engineering-cert-detail-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center z-[215] p-4">
         <div class="bg-white rounded-3xl p-8 w-full max-w-3xl shadow-2xl max-h-[90vh] overflow-y-auto">
@@ -7729,19 +7726,23 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             ].map(([label, value]) => `<div class="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2"><div class="text-[10px] font-black uppercase text-slate-400">${label}</div><div class="text-lg font-black text-slate-800">${value}</div></div>`).join('');
         }
         function setEngineeringProductMasterMode(mode = 'product') {
-            engineeringProductMasterMode = mode === 'detail' ? 'detail' : 'product';
+            engineeringProductMasterMode = mode === 'detail' || mode === 'search' ? mode : 'product';
             syncEngineeringProductMasterModeChrome();
             if (engineeringWorkspaceView === 'productMaster') renderEngineeringWorkspace();
         }
         function syncEngineeringProductMasterModeChrome() {
             const productPanel = document.getElementById('engineering-product-master-product-mode-panel');
             const detailPanel = document.getElementById('engineering-product-master-detail-mode-panel');
+            const searchPanel = document.getElementById('engineering-product-master-search-mode-panel');
             const productBtn = document.getElementById('engineering-product-master-mode-product');
             const detailBtn = document.getElementById('engineering-product-master-mode-detail');
+            const searchBtn = document.getElementById('engineering-product-master-mode-search');
             if (productPanel) productPanel.classList.toggle('hidden', engineeringProductMasterMode !== 'product');
             if (detailPanel) detailPanel.classList.toggle('hidden', engineeringProductMasterMode !== 'detail');
+            if (searchPanel) searchPanel.classList.toggle('hidden', engineeringProductMasterMode !== 'search');
             if (productBtn) productBtn.className = engineeringProductMasterMode === 'product' ? 'px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white' : 'px-4 py-2 rounded-lg text-xs font-black text-slate-500';
             if (detailBtn) detailBtn.className = engineeringProductMasterMode === 'detail' ? 'px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white' : 'px-4 py-2 rounded-lg text-xs font-black text-slate-500';
+            if (searchBtn) searchBtn.className = engineeringProductMasterMode === 'search' ? 'px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white' : 'px-4 py-2 rounded-lg text-xs font-black text-slate-500';
         }
         window.setEngineeringProductMasterMode = setEngineeringProductMasterMode;
         function saveProductMasterDetailTemplate(template = {}) {
@@ -8173,30 +8174,31 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             }, 0);
         }
         window.addEngineeringDetailModeProduct = addEngineeringDetailModeProduct;
-        function openEngineeringDetailProductSearch() {
-            if (!canManageEngineeringRecord('edit')) return alert('No engineering edit permission.');
-            const modal = document.getElementById('engineering-detail-product-search-modal');
+        function syncEngineeringDetailProductSearchSelectors(category = '', group = '') {
             const categorySelect = document.getElementById('engineering-detail-product-search-category');
             const groupSelect = document.getElementById('engineering-detail-product-search-group');
-            if (categorySelect) categorySelect.value = document.getElementById('engineering-detail-template-category')?.value || 'PV Module';
+            const selectedCategory = category || categorySelect?.value || document.getElementById('engineering-detail-template-category')?.value || 'PV Module';
+            const selectedGroup = normalizeProductMasterDetailGroupKey(group || groupSelect?.value || document.getElementById('engineering-detail-template-group')?.value || 'basic');
+            if (categorySelect) categorySelect.value = selectedCategory;
             if (groupSelect) {
-                const selectedGroup = document.getElementById('engineering-detail-template-group')?.value || 'basic';
                 groupSelect.innerHTML = productMasterDetailGroupSelectOptions(selectedGroup, { includeNew: false });
-                groupSelect.value = normalizeProductMasterDetailGroupKey(selectedGroup);
+                groupSelect.value = selectedGroup;
             }
-            if (modal) {
-                modal.classList.remove('hidden');
-                modal.classList.add('flex');
-            }
+        }
+        function openEngineeringDetailProductSearch() {
+            engineeringProductMasterMode = 'search';
+            syncEngineeringProductMasterModeChrome();
+            if (engineeringWorkspaceView === 'productMaster') renderEngineeringWorkspace();
+            syncEngineeringDetailProductSearchSelectors(
+                document.getElementById('engineering-detail-template-category')?.value || '',
+                document.getElementById('engineering-detail-template-group')?.value || ''
+            );
             loadEngineeringQuoteDefaultsToUi();
             renderEngineeringDetailProductSearchCriteria();
         }
         window.openEngineeringDetailProductSearch = openEngineeringDetailProductSearch;
         function closeEngineeringDetailProductSearch() {
-            const modal = document.getElementById('engineering-detail-product-search-modal');
-            if (!modal) return;
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
+            if (engineeringProductMasterMode === 'search') setEngineeringProductMasterMode('detail');
         }
         window.closeEngineeringDetailProductSearch = closeEngineeringDetailProductSearch;
         function engineeringDetailProductSearchTemplate() {
@@ -8360,6 +8362,14 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             renderEngineeringDetailProductSearchCriteria();
         }
         window.clearEngineeringDetailProductSearch = clearEngineeringDetailProductSearch;
+        function renderEngineeringProductMasterSearchMode() {
+            syncEngineeringProductMasterModeChrome();
+            syncEngineeringDetailProductSearchSelectors();
+            loadEngineeringQuoteDefaultsToUi();
+            renderEngineeringDetailProductSearchCriteria();
+            applyEngineeringPermissions();
+        }
+        window.renderEngineeringProductMasterSearchMode = renderEngineeringProductMasterSearchMode;
         async function openEngineeringDetailImportPreview(file) {
             const box = document.getElementById('engineering-detail-import-preview');
             if (!box) return;
@@ -8394,6 +8404,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             syncEngineeringProductMasterModeChrome();
             if (engineeringProductMasterMode === 'detail') {
                 renderEngineeringProductMasterDetailMode();
+                return;
+            }
+            if (engineeringProductMasterMode === 'search') {
+                renderEngineeringProductMasterSearchMode();
                 return;
             }
             const list = document.getElementById('engineering-product-master-list');

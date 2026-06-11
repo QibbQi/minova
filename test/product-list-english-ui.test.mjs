@@ -372,8 +372,10 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'id="engineering-product-master-list"',
     'id="engineering-product-master-mode-product"',
     'id="engineering-product-master-mode-detail"',
+    'id="engineering-product-master-mode-search"',
     'id="engineering-product-master-product-mode-panel"',
     'id="engineering-product-master-detail-mode-panel"',
+    'id="engineering-product-master-search-mode-panel"',
     'id="engineering-detail-template-category"',
     'id="engineering-detail-template-group"',
     'id="engineering-detail-template-fields"',
@@ -385,8 +387,6 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'id="engineering-detail-template-save-field"',
     'id="engineering-detail-template-cancel-edit"',
     'id="engineering-detail-template-bulk-list"',
-    'id="engineering-detail-template-add-product"',
-    'id="engineering-detail-template-reuse-product"',
     'id="engineering-detail-template-preview-save"',
     'id="engineering-detail-template-bulk-scope"',
     'mt-5 grid grid-cols-1 gap-4',
@@ -394,6 +394,7 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'whitespace-nowrap min-w-[96px]',
     'Product mode',
     'Detail mode',
+    'Search mode',
     'Class & Filters',
     'View mode',
     'Edit mode',
@@ -410,7 +411,6 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'md:flex-row md:items-start md:justify-between',
     'md:ml-auto md:text-right',
     'brand-yellow-surface',
-    'brand-yellow-action',
     'brand-yellow-inactive',
     'bg-purple-700 text-white shadow-sm',
     'text-purple-700 brand-yellow-inactive'
@@ -456,12 +456,17 @@ test('engineering workspace exposes certification matrix filters and seeded cata
   assert.equal(matrixPanel.includes('Linked Products'), true, 'Matrix mode should label product linkage as Linked Products');
   assert.equal(matrixPanel.includes('Product Evidence'), false, 'Matrix mode should not use Product Evidence as a table column');
   assert.equal(matrixPanel.includes('id="engineering-matrix-select-all"'), true, 'Matrix mode should support selecting records for matched product search');
+  assert.equal(engineeringTab.includes('id="engineering-detail-template-add-product"'), false, 'Detail Template Maintenance should not keep Add Product action');
+  assert.equal(engineeringTab.includes('id="engineering-detail-template-reuse-product"'), false, 'Detail Template Maintenance should not keep Search Product modal action');
   assert.equal(html.includes('id="engineering-cert-detail-modal"'), true, 'Missing engineering detail modal');
-  assert.equal(html.includes('id="engineering-detail-product-search-modal"'), true, 'Missing engineering detail product search modal');
+  assert.equal(html.includes('id="engineering-detail-product-search-modal"'), false, 'Engineering detail product search should be an inline Search mode, not a modal');
   assert.equal(html.includes('id="engineering-detail-product-search-category"'), true, 'Missing engineering detail product search category filter');
   assert.equal(html.includes('id="engineering-detail-product-search-group"'), true, 'Missing engineering detail product search group filter');
   assert.equal(html.includes('id="engineering-detail-product-search-criteria"'), true, 'Missing engineering detail product search criteria');
   assert.equal(html.includes('id="engineering-detail-product-search-results"'), true, 'Missing engineering detail product search results');
+  const searchModePanel = snippetBetween('id="engineering-product-master-search-mode-panel"', 'id="engineering-cert-detail-modal"');
+  assert.equal(searchModePanel.includes('id="engineering-detail-product-search-category"'), true, 'Search mode should contain the product search category filter');
+  assert.equal(searchModePanel.includes('id="engineering-detail-product-search-results"'), true, 'Search mode should contain matched product results');
   [
     'id="engineering-architecture-class-modal"',
     'id="engineering-architecture-class-id"',

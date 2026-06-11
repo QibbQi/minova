@@ -2508,6 +2508,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     </div>
                     </div>
                 </div>
+                <div id="engineering-standard-match-host">
                 <div id="engineering-standard-match-card" class="mt-4 bg-white rounded-2xl border border-slate-200 overflow-hidden">
                     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 border-b border-slate-100 px-4 py-3">
                         <div>
@@ -2539,6 +2540,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     <div id="engineering-standard-product-results" class="divide-y divide-slate-50">
                         <div class="p-8 text-center text-xs text-slate-400">Select standards, then search products.</div>
                     </div>
+                </div>
                 </div>
             </div>
         </div>
@@ -2572,9 +2574,19 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         </div>
         <div id="engineering-matrix-panel" class="hidden space-y-4">
             <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
-                <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-5">
-                    <div>
-                        <div class="flex items-center justify-between gap-3 mb-2">
+                <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(260px,360px)] gap-5 xl:items-start">
+                    <div class="space-y-5">
+                        <div class="min-w-0">
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">Requirement Level</label>
+                            <div id="engineering-level-filters" class="flex flex-wrap gap-2"></div>
+                        </div>
+                        <div class="min-w-0">
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">Category</label>
+                            <div id="engineering-category-filters" class="flex flex-wrap gap-2"></div>
+                        </div>
+                    </div>
+                    <div class="min-w-0 xl:ml-auto">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
                             <label class="block text-[10px] font-black text-slate-400 uppercase">Class & Filters</label>
                             <div id="engineering-architecture-class-edit-actions" class="hidden flex-wrap gap-2">
                                 <button id="engineering-add-architecture-class" type="button" data-engineering-action="edit" onclick="addEngineeringArchitectureClass()" class="rounded-xl bg-purple-700 px-3 py-2 text-xs font-black text-white hover:bg-purple-800">Add Class</button>
@@ -2590,16 +2602,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             <option value="E">E - Utility Scale BESS</option>
                         </select>
                     </div>
-                    <div class="min-w-0">
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">Requirement Level</label>
-                        <div id="engineering-level-filters" class="flex flex-wrap gap-2"></div>
-                    </div>
-                    <div class="min-w-0 xl:text-right">
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">Category</label>
-                        <div id="engineering-category-filters" class="flex flex-wrap gap-2 xl:justify-end"></div>
-                    </div>
                 </div>
             </div>
+            <div id="engineering-matrix-match-host"></div>
             <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
             <div class="overflow-x-auto">
                 <table data-freeze-table="engineering-matrix" class="w-full text-left whitespace-nowrap">
@@ -7380,9 +7385,15 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const standardSearchFilters = document.getElementById('engineering-standard-search-filters');
             const standardMatchCard = document.getElementById('engineering-standard-match-card');
             const searchProductBtn = document.getElementById('engineering-search-products-primary');
+            const standardMatchHost = document.getElementById('engineering-standard-match-host');
+            const matrixMatchHost = document.getElementById('engineering-matrix-match-host');
             const standardBtn = document.getElementById('engineering-mode-standard');
             const matrixBtn = document.getElementById('engineering-mode-matrix');
             const inCertification = engineeringWorkspaceView === 'certification';
+            if (standardMatchCard) {
+                const targetHost = engineeringWorkspaceMode === 'matrix' ? matrixMatchHost : standardMatchHost;
+                if (targetHost && standardMatchCard.parentElement !== targetHost) targetHost.appendChild(standardMatchCard);
+            }
             if (standard) standard.classList.toggle('hidden', !inCertification || engineeringWorkspaceMode !== 'standard');
             if (matrix) matrix.classList.toggle('hidden', !inCertification || engineeringWorkspaceMode !== 'matrix');
             if (standardSearchFilters) standardSearchFilters.classList.toggle('hidden', !inCertification || engineeringWorkspaceMode !== 'standard');

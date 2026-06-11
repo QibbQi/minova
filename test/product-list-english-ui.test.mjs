@@ -346,6 +346,8 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'id="engineering-standard-level-filters"',
     'id="engineering-standard-category-filters"',
     'id="engineering-standard-match-card"',
+    'id="engineering-standard-match-host"',
+    'id="engineering-matrix-match-host"',
     'id="engineering-refresh-product-results"',
     'id="engineering-open-quotation"',
     'id="engineering-standard-panel"',
@@ -392,6 +394,7 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'mt-5 grid grid-cols-1 gap-4',
     'sm:grid-cols-[minmax(0,1fr)_180px_minmax(0,1fr)_auto_auto]',
     'whitespace-nowrap min-w-[96px]',
+    'xl:grid-cols-[minmax(0,1fr)_minmax(260px,360px)]',
     'Product mode',
     'Detail mode',
     'Class & Filters',
@@ -443,6 +446,17 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'Matched Products should sit below Search Product and above the standard record list'
   );
   const matrixPanel = snippetBetween('id="engineering-matrix-panel"', 'id="engineering-product-master-panel"');
+  assert.ok(
+    matrixPanel.indexOf('id="engineering-level-filters"') < matrixPanel.indexOf('id="engineering-matrix-match-host"')
+      && matrixPanel.indexOf('id="engineering-category-filters"') < matrixPanel.indexOf('id="engineering-matrix-match-host"')
+      && matrixPanel.indexOf('id="engineering-matrix-match-host"') < matrixPanel.indexOf('data-freeze-table="engineering-matrix"'),
+    'Matrix mode should place Matched Products below filters and above the record table'
+  );
+  assert.ok(
+    matrixPanel.indexOf('id="engineering-level-filters"') < matrixPanel.indexOf('id="engineering-class-filter"')
+      && matrixPanel.indexOf('id="engineering-category-filters"') < matrixPanel.indexOf('id="engineering-class-filter"'),
+    'Matrix mode should keep Class & Filters as the compact right-side control after requirement/category filters'
+  );
   assert.equal(matrixPanel.includes('Linked Products'), true, 'Matrix mode should label product linkage as Linked Products');
   assert.equal(matrixPanel.includes('Product Evidence'), false, 'Matrix mode should not use Product Evidence as a table column');
   assert.equal(matrixPanel.includes('id="engineering-matrix-select-all"'), true, 'Matrix mode should support selecting records for matched product search');
@@ -565,6 +579,9 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     "document.getElementById('engineering-architecture-class-edit-actions')",
     "document.getElementById('engineering-standard-match-card')",
     "document.getElementById('engineering-search-products-primary')",
+    "document.getElementById('engineering-standard-match-host')",
+    "document.getElementById('engineering-matrix-match-host')",
+    "targetHost.appendChild(standardMatchCard)",
     "standardMatchCard.classList.toggle('hidden', !inCertification)",
     "searchProductBtn.classList.toggle('hidden', !inCertification)",
     "summary?.classList.toggle('hidden', engineeringWorkspaceView !== 'certification')",

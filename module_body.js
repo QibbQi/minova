@@ -2586,9 +2586,15 @@
             const standardSearchFilters = document.getElementById('engineering-standard-search-filters');
             const standardMatchCard = document.getElementById('engineering-standard-match-card');
             const searchProductBtn = document.getElementById('engineering-search-products-primary');
+            const standardMatchHost = document.getElementById('engineering-standard-match-host');
+            const matrixMatchHost = document.getElementById('engineering-matrix-match-host');
             const standardBtn = document.getElementById('engineering-mode-standard');
             const matrixBtn = document.getElementById('engineering-mode-matrix');
             const inCertification = engineeringWorkspaceView === 'certification';
+            if (standardMatchCard) {
+                const targetHost = engineeringWorkspaceMode === 'matrix' ? matrixMatchHost : standardMatchHost;
+                if (targetHost && standardMatchCard.parentElement !== targetHost) targetHost.appendChild(standardMatchCard);
+            }
             if (standard) standard.classList.toggle('hidden', !inCertification || engineeringWorkspaceMode !== 'standard');
             if (matrix) matrix.classList.toggle('hidden', !inCertification || engineeringWorkspaceMode !== 'matrix');
             if (standardSearchFilters) standardSearchFilters.classList.toggle('hidden', !inCertification || engineeringWorkspaceMode !== 'standard');

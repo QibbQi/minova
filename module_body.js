@@ -2079,6 +2079,7 @@
         let engineeringCertificationEditMode = false;
         let engineeringProductMasterMode = 'product';
         let engineeringStandardSelectedIds = new Set();
+        let engineeringArchitectureClassSelectedIds = new Set();
         const ENGINEERING_PRODUCT_MASTER_DETAIL_GROUPS = {
             all: { label: 'All Product Master Details', master: ['model', 'brand', 'series', 'application', 'voltageClass', 'phase', 'status', 'countryAvailable'], technical: [], extra: ['certification', 'commercial', 'documents'] },
             basic: { label: 'Basic', master: ['model', 'brand', 'series', 'application', 'status', 'countryAvailable'], technical: [], extra: [] },
@@ -2349,6 +2350,7 @@
                     id,
                     label: String(cls.label || id).trim(),
                     categories: normalizeEngineeringClassCategories(cls.categories),
+                    recordIds: Array.from(new Set(Array.isArray(cls.recordIds) ? cls.recordIds.map(v => String(v || '').trim()).filter(Boolean) : [])),
                     note: String(cls.note || '').trim()
                 }));
             try { localStorage.setItem(MINOVA_ENGINEERING_CLASS_STORAGE_KEY, JSON.stringify(custom)); } catch (e) {}
@@ -2363,6 +2365,7 @@
                     ENGINEERING_CLASS_DEFINITIONS[id] = {
                         label: String(item.label || id).trim() || id,
                         categories,
+                        recordIds: Array.from(new Set(Array.isArray(item.recordIds) ? item.recordIds.map(v => String(v || '').trim()).filter(Boolean) : [])),
                         note: String(item.note || '').trim(),
                         custom: true
                     };
@@ -2400,23 +2403,161 @@
             renderEngineeringWorkspace();
         }
         window.setEngineeringCertificationEditMode = setEngineeringCertificationEditMode;
-        function addEngineeringArchitectureClass() {
-            if (!canManageEngineeringRecord()) return alert('No engineering edit permission.');
-            const id = normalizeEngineeringClassId(prompt('Architecture class ID, for example F or B2', 'F') || '');
+        function nextEngineeringArchitectureClassId() {
+            const ids = Object.keys(ENGINEERING_CLASS_DEFINITIONS).map(id => normalizeEngineeringClassId(id)).filter(Boolean);
+            const letters = ids.filter(id => /^[A-Z]$/.test(id)).map(id => id.charCodeAt(0));
+            const nextCode = Math.max('E'.charCodeAt(0), ...letters) + 1;
+            if (nextCode <= 'Z'.charCodeAt(0)) return String.fromCharCode(nextCode);
+            let index = 1;
+            while (ENGINEERING_CLASS_DEFINITIONS[`CUSTOM-${index}`]) index += 1;
+            return `CUSTOM-${index}`;
+        }
+        window.nextEngineeringArchitectureClassId = nextEngineeringArchitectureClassId;
+        function selectedEngineeringArchitectureClassLevels() {
+            return Array.from(document.querySelectorAll('#engineering-architecture-class-level-filters input[data-engineering-class-level]:checked')).map(input => input.value).filter(Boolean);
+        }
+        function selectedEngineeringArchitectureClassCategories() {
+            return Array.from(document.querySelectorAll('#engineering-architecture-class-category-filters input[data-engineering-class-category]:checked')).map(input => input.value).filter(Boolean);
+        }
+        function renderEngineeringArchitectureClassModalFilters() {
+            const render = (box, values, attr) => {
+                if (!box) return;
+                box.innerHTML = values.map(value => `
+                    <label class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600 shadow-sm transition-colors hover:border-purple-200">
+                        <input type="checkbox" ${attr} value="${htmlSafe(value)}" checked onchange="renderEngineeringArchitectureClassRecordCards()" class="h-4 w-4 accent-purple-700">
+                        <span>${htmlSafe(value)}</span>
+                    </label>
+                `).join('');
+            };
+            render(document.getElementById('engineering-architecture-class-level-filters'), CERTIFICATION_REQUIREMENT_LEVELS, 'data-engineering-class-level');
+            render(document.getElementById('engineering-architecture-class-category-filters'), CERTIFICATION_SOURCE_CATEGORIES, 'data-engineering-class-category');
+        }
+        window.renderEngineeringArchitectureClassModalFilters = renderEngineeringArchitectureClassModalFilters;
+        function updateEngineeringArchitectureClassSelectionNote(visibleCount = 0) {
+            const note = document.getElementById('engineering-architecture-class-selection-note');
+            if (note) note.textContent = `${engineeringArchitectureClassSelectedIds.size} records selected · ${visibleCount} visible`;
+        }
+        function renderEngineeringArchitectureClassRecordCards() {
+            const box = document.getElementById('engineering-architecture-class-record-cards');
+            if (!box) return;
+            const levels = new Set(selectedEngineeringArchitectureClassLevels());
+            const categories = new Set(selectedEngineeringArchitectureClassCategories());
+            const rows = certificationRequirementsCatalog.filter(record => {
+                if (levels.size && !levels.has(record.requirementLevel)) return false;
+                if (categories.size && !categories.has(record.sourceCategory)) return false;
+                return true;
+            });
+            const groups = new Map();
+            rows.forEach(record => {
+                const key = `${record.requirementLevel || 'Other'} · ${record.sourceCategory || 'Other'}`;
+                if (!groups.has(key)) groups.set(key, []);
+                groups.get(key).push(record);
+            });
+            updateEngineeringArchitectureClassSelectionNote(rows.length);
+            if (!rows.length) {
+                box.innerHTML = '<div class="rounded-2xl border border-dashed border-slate-200 p-8 text-center text-xs font-bold text-slate-400">No records match the selected level and category filters.</div>';
+                return;
+            }
+            box.innerHTML = Array.from(groups.entries()).map(([group, records]) => `
+                <div class="rounded-2xl border border-slate-200 overflow-hidden">
+                    <div class="flex items-center justify-between gap-3 bg-slate-50 px-4 py-3">
+                        <div class="text-xs font-black text-slate-500 uppercase tracking-widest">${htmlSafe(group)}</div>
+                        <div class="text-[10px] font-black text-slate-400">${records.length} records</div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 p-3">
+                        ${records.map(record => {
+                            const checked = engineeringArchitectureClassSelectedIds.has(record.id);
+                            return `
+                                <label class="rounded-2xl border ${checked ? 'border-purple-300 bg-purple-50' : 'border-slate-200 bg-white'} p-3 cursor-pointer hover:border-purple-300 transition-colors">
+                                    <div class="flex items-start gap-3">
+                                        <input type="checkbox" data-engineering-class-record value="${htmlSafe(record.id)}" ${checked ? 'checked' : ''} onchange="toggleEngineeringArchitectureClassRecord('${htmlSafe(record.id)}', this.checked)" class="mt-1 h-4 w-4 accent-purple-700">
+                                        <div class="min-w-0">
+                                            <div class="text-sm font-black text-slate-800">${htmlSafe(record.id)}</div>
+                                            <div class="mt-1 text-xs font-bold text-slate-700 truncate" title="${htmlSafe(record.standard || '')}">${htmlSafe(record.standard || '-')}</div>
+                                            <div class="mt-1 text-[10px] text-slate-400 line-clamp-2">${htmlSafe(record.applicabilityCondition || record.productCategory || '-')}</div>
+                                        </div>
+                                    </div>
+                                </label>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+        window.renderEngineeringArchitectureClassRecordCards = renderEngineeringArchitectureClassRecordCards;
+        function toggleEngineeringArchitectureClassRecord(recordId, checked) {
+            const id = String(recordId || '').trim();
             if (!id) return;
+            if (checked) engineeringArchitectureClassSelectedIds.add(id);
+            else engineeringArchitectureClassSelectedIds.delete(id);
+            renderEngineeringArchitectureClassRecordCards();
+        }
+        window.toggleEngineeringArchitectureClassRecord = toggleEngineeringArchitectureClassRecord;
+        function selectVisibleEngineeringArchitectureClassRecords(checked = true) {
+            document.querySelectorAll('#engineering-architecture-class-record-cards input[data-engineering-class-record]').forEach(input => {
+                const id = String(input.value || '').trim();
+                if (!id) return;
+                if (checked) engineeringArchitectureClassSelectedIds.add(id);
+                else engineeringArchitectureClassSelectedIds.delete(id);
+            });
+            renderEngineeringArchitectureClassRecordCards();
+        }
+        window.selectVisibleEngineeringArchitectureClassRecords = selectVisibleEngineeringArchitectureClassRecords;
+        function selectedEngineeringArchitectureClassRecordIds() {
+            return Array.from(engineeringArchitectureClassSelectedIds).filter(id => getCertificationRequirementById(id));
+        }
+        window.selectedEngineeringArchitectureClassRecordIds = selectedEngineeringArchitectureClassRecordIds;
+        function openEngineeringArchitectureClassModal() {
+            const modal = document.getElementById('engineering-architecture-class-modal');
+            if (!modal) return;
+            engineeringArchitectureClassSelectedIds = new Set();
+            const idInput = document.getElementById('engineering-architecture-class-id');
+            const nameInput = document.getElementById('engineering-architecture-class-name');
+            if (idInput) idInput.value = nextEngineeringArchitectureClassId();
+            if (nameInput) nameInput.value = '';
+            renderEngineeringArchitectureClassModalFilters();
+            renderEngineeringArchitectureClassRecordCards();
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(() => nameInput?.focus(), 0);
+        }
+        window.openEngineeringArchitectureClassModal = openEngineeringArchitectureClassModal;
+        function closeEngineeringArchitectureClassModal() {
+            const modal = document.getElementById('engineering-architecture-class-modal');
+            if (!modal) return;
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+        window.closeEngineeringArchitectureClassModal = closeEngineeringArchitectureClassModal;
+        function saveEngineeringArchitectureClassModal() {
+            if (!canManageEngineeringRecord()) return alert('No engineering edit permission.');
+            const id = normalizeEngineeringClassId(document.getElementById('engineering-architecture-class-id')?.value || nextEngineeringArchitectureClassId());
+            const name = String(document.getElementById('engineering-architecture-class-name')?.value || '').trim();
+            const recordIds = selectedEngineeringArchitectureClassRecordIds();
+            if (!id) return alert('Architecture Class ID is required.');
+            if (!name) return alert('Architecture Class name is required.');
             if (ENGINEERING_CLASS_DEFINITIONS[id]) return alert('Architecture Class already exists.');
-            const label = String(prompt('Architecture class label', `${id} - Custom Architecture`) || '').trim();
-            if (!label) return;
-            const categoryText = prompt('Categories, comma separated: PV_MODULE, INVERTER, BATTERY', 'PV_MODULE,INVERTER,BATTERY') || '';
-            const categories = normalizeEngineeringClassCategories(categoryText);
-            if (!categories.length) return alert('Select at least one valid category.');
-            const note = String(prompt('Applicability note', 'Custom class maintained in Engineering Workspace.') || '').trim();
-            ENGINEERING_CLASS_DEFINITIONS[id] = { label, categories, note, custom: true };
+            if (!recordIds.length) return alert('Select at least one certification record.');
+            const selectedRecords = recordIds.map(id => getCertificationRequirementById(id)).filter(Boolean);
+            const categories = Array.from(new Set(selectedRecords.map(record => record.sourceCategory).filter(Boolean)));
+            ENGINEERING_CLASS_DEFINITIONS[id] = {
+                label: `${id} - ${name}`,
+                categories: categories.length ? categories : CERTIFICATION_SOURCE_CATEGORIES.slice(),
+                recordIds,
+                note: `${recordIds.length} selected certification records.`,
+                custom: true
+            };
             saveEngineeringArchitectureClasses();
+            closeEngineeringArchitectureClassModal();
             renderEngineeringArchitectureClassOptions();
             const select = document.getElementById('engineering-class-filter');
             if (select) select.value = id;
             renderEngineeringWorkspace();
+        }
+        window.saveEngineeringArchitectureClassModal = saveEngineeringArchitectureClassModal;
+        function addEngineeringArchitectureClass() {
+            if (!canManageEngineeringRecord()) return alert('No engineering edit permission.');
+            openEngineeringArchitectureClassModal();
         }
         window.addEngineeringArchitectureClass = addEngineeringArchitectureClass;
         function deleteEngineeringArchitectureClass() {
@@ -2601,6 +2742,9 @@
         }
         function engineeringRecordMatchesClass(record, classId) {
             const cls = ENGINEERING_CLASS_DEFINITIONS[classId] || ENGINEERING_CLASS_DEFINITIONS.A1;
+            if (Array.isArray(cls.recordIds) && cls.recordIds.length) {
+                return cls.recordIds.map(id => String(id || '').trim()).includes(String(record.id || '').trim());
+            }
             if (!cls.categories.includes(record.sourceCategory)) return false;
             const text = `${record.productCategory} ${record.standard} ${record.applicabilityCondition} ${record.projectApplicability}`.toLowerCase();
             if (classId === 'A1' && (record.sourceCategory === 'BATTERY' || text.includes('bess') || text.includes('pcs'))) return false;

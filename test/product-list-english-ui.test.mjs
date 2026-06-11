@@ -447,6 +447,17 @@ test('engineering workspace exposes certification matrix filters and seeded cata
   assert.equal(html.includes('id="engineering-detail-product-search-group"'), true, 'Missing engineering detail product search group filter');
   assert.equal(html.includes('id="engineering-detail-product-search-criteria"'), true, 'Missing engineering detail product search criteria');
   assert.equal(html.includes('id="engineering-detail-product-search-results"'), true, 'Missing engineering detail product search results');
+  [
+    'id="engineering-architecture-class-modal"',
+    'id="engineering-architecture-class-id"',
+    'id="engineering-architecture-class-name"',
+    'id="engineering-architecture-class-level-filters"',
+    'id="engineering-architecture-class-category-filters"',
+    'id="engineering-architecture-class-record-cards"',
+    'id="engineering-architecture-class-save"'
+  ].forEach((text) => {
+    assert.equal(html.includes(text), true, `Missing Architecture Class modal UI: ${text}`);
+  });
 
   ['A1', 'A2', 'B', 'C', 'D', 'E', 'Mandatory', 'Utility Preferred', 'International Finance Preferred', 'Optional', 'PV_MODULE', 'INVERTER', 'BATTERY'].forEach((text) => {
     assert.equal(engineeringTab.includes(text) || html.includes(text), true, `Missing engineering filter value: ${text}`);
@@ -509,6 +520,13 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'function syncEngineeringCertificationEditChrome',
     'function renderEngineeringArchitectureClassOptions',
     'function addEngineeringArchitectureClass',
+    'function nextEngineeringArchitectureClassId',
+    'function openEngineeringArchitectureClassModal',
+    'function renderEngineeringArchitectureClassModalFilters',
+    'function renderEngineeringArchitectureClassRecordCards',
+    'function selectedEngineeringArchitectureClassRecordIds',
+    'function saveEngineeringArchitectureClassModal',
+    'function closeEngineeringArchitectureClassModal',
     'function deleteEngineeringArchitectureClass',
     'function setEngineeringWorkspaceView',
     'function setEngineeringWorkspaceMode',
@@ -528,6 +546,7 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'function canManageEngineeringRecord',
     'MINOVA_ENGINEERING_QUOTE_DEFAULTS_KEY',
     'MINOVA_ENGINEERING_CLASS_STORAGE_KEY',
+    'recordIds',
     'PRODUCT_MASTER_DETAIL_HISTORY_HIDDEN_STORAGE_KEY',
     "getFifoBatchesForProduct(productId)[0]",
     "ids.every(id => selected.has(id))",
@@ -654,6 +673,15 @@ test('engineering workspace exposes certification matrix filters and seeded cata
   assert.ok(matrixListRenderer, 'Matrix record table renderer should exist');
   assert.match(matrixListRenderer[1], /engineeringCertificationEditMode/, 'Matrix record actions should depend on certification edit mode');
   assert.match(matrixListRenderer[1], /deleteEngineeringRequirementRecord/, 'Matrix record delete action should be available in edit mode');
+
+  const classMatcher = html.match(/function engineeringRecordMatchesClass\(record, classId\) \{([\s\S]*?)\n\s*\}\n\s*function engineeringVisibleRecords/);
+  assert.ok(classMatcher, 'Architecture Class matcher should exist');
+  assert.match(classMatcher[1], /recordIds/, 'Custom Architecture Classes should match selected record IDs exactly');
+
+  const addClassHandler = html.match(/function addEngineeringArchitectureClass\(\) \{([\s\S]*?)\n\s*\}\n\s*window\.addEngineeringArchitectureClass/);
+  assert.ok(addClassHandler, 'Add Class handler should exist');
+  assert.match(addClassHandler[1], /openEngineeringArchitectureClassModal/, 'Add Class should open the class builder modal instead of browser prompts');
+  assert.equal(addClassHandler[1].includes('prompt('), false, 'Add Class should not use prompt dialogs');
 
   const detailSearchResults = html.match(/function renderEngineeringDetailProductSearchResults\(matches = \[\], template = engineeringDetailProductSearchTemplate\(\), filters = \[\]\) \{([\s\S]*?)\n\s*\}\n\s*window\.renderEngineeringDetailProductSearchResults/);
   assert.ok(detailSearchResults, 'Detail Search result renderer should exist');

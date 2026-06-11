@@ -1883,6 +1883,12 @@
             });
             return Array.from(byId.values()).sort((a, b) => a.id.localeCompare(b.id));
         }
+        function mergeCertificationRequirementsCatalog(baseRecords = [], incomingRecords = []) {
+            const byId = new Map();
+            normalizeCertificationRequirementsCatalog(baseRecords).forEach(record => byId.set(record.id, record));
+            normalizeCertificationRequirementsCatalog(incomingRecords).forEach(record => byId.set(record.id, record));
+            return Array.from(byId.values()).sort((a, b) => a.id.localeCompare(b.id));
+        }
         function getCertificationRequirementById(id) {
             const key = String(id || '').trim();
             return certificationRequirementsCatalog.find(record => record.id === key) || null;
@@ -4746,7 +4752,9 @@
             compatibilityRules = normalizeCompatibilityRules(data?.compatibilityRules);
             const nextCertificationCatalog = normalizeCertificationRequirementsCatalog(data?.certificationRequirementsCatalog);
             if (nextCertificationCatalog.length || !certificationRequirementsCatalog.length) {
-                certificationRequirementsCatalog = nextCertificationCatalog;
+                certificationRequirementsCatalog = nextCertificationCatalog.length >= certificationRequirementsCatalog.length
+                    ? nextCertificationCatalog
+                    : mergeCertificationRequirementsCatalog(certificationRequirementsCatalog, nextCertificationCatalog);
             }
             productCertificationEvidence = normalizeProductCertificationEvidenceList(data?.productCertificationEvidence);
             productMasterDetailTemplates = normalizeProductMasterDetailTemplates(data?.productMasterDetailTemplates);

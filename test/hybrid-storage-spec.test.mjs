@@ -53,8 +53,10 @@ test('hybrid storage specs split inverter kW and battery kWh from old combined s
 });
 
 test('product modal and import/export expose separate hybrid storage inputs', () => {
-  assert.match(html, /id="m-inverter-kw"/, 'product modal exposes inverter capacity');
-  assert.match(html, /id="m-battery-kwh"/, 'product modal exposes battery capacity');
+  assert.match(html, /id:\s*'m-inverter-kw'/, 'product modal exposes inverter capacity through the history input renderer');
+  assert.match(html, /id:\s*'m-battery-kwh'/, 'product modal exposes battery capacity through the history input renderer');
+  assert.match(html, /fieldKey:\s*'inverterKw'/, 'inverter capacity uses the shared history value control');
+  assert.match(html, /fieldKey:\s*'batteryKwh'/, 'battery capacity uses the shared history value control');
   assert.match(html, /inverterKw:\s*hybrid \?/, 'saveProduct persists inverterKw for hybrid categories');
   assert.match(html, /batteryKwh:\s*hybrid \?/, 'saveProduct persists batteryKwh for hybrid categories');
   assert.match(html, /inverterKw:\s*\['逆变器kW'/, 'import aliases include inverter kW');

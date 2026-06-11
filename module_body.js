@@ -6942,6 +6942,15 @@
                     .map(product => normalizeProductSubcategory(product.scenario || ''))]);
             }
             const rows = products.filter(product => !normalizedCategory || normalizeProductCategory(product.category || '', '') === normalizedCategory);
+            if (key === 'spec') {
+                return uniqueCertList(rows.map(product => product.spec || getProductDisplaySpec(product)).filter(productMasterDetailValuePresent));
+            }
+            if (key === 'inverterKw') {
+                return uniqueCertList(rows.map(product => formatCapacityValue(parseHybridStorageSpec(product).inverterKw)).filter(productMasterDetailValuePresent));
+            }
+            if (key === 'batteryKwh') {
+                return uniqueCertList(rows.map(product => formatCapacityValue(parseHybridStorageSpec(product).batteryKwh)).filter(productMasterDetailValuePresent));
+            }
             const values = rows.map(product => {
                 if (PRODUCT_MASTER_COMMON_FIELD_KEYS.includes(key)) return getProductMasterData(product)[key];
                 return getProductTechnicalSpecs(product)[key];
@@ -6980,7 +6989,7 @@
         function renderProductModalCategoryHistoryField(value = document.getElementById('m-category')?.value || '') {
             const box = document.getElementById('product-modal-category-field');
             if (!box) return;
-            const sync = 'updateSubcatSuggestions(); updateHybridSpecControls(); updateProductPriceUnitNote(); renderProductModalMasterDetailFields(this.value, readProductMasterDataFromModal()); renderProductTechnicalFields(this.value); maybeFillProductCertificationDefaults()';
+            const sync = 'updateSubcatSuggestions(); window.renderProductModalSpecHistoryFields?.({ category: this.value }); updateProductPriceUnitNote(); renderProductModalMasterDetailFields(this.value, readProductMasterDataFromModal()); renderProductTechnicalFields(this.value); maybeFillProductCertificationDefaults()';
             box.innerHTML = renderProductModalHistoryInput({
                 id: 'm-category',
                 fieldKey: 'category',
@@ -7004,6 +7013,67 @@
                 placeholder: 'e.g. Rooftop / C&I Storage'
             });
         }
+        function renderProductModalSpecHistoryField(value = document.getElementById('m-spec')?.value || '', category = document.getElementById('m-category')?.value || '') {
+            const box = document.getElementById('product-modal-spec-field');
+            if (!box) return;
+            box.innerHTML = renderProductModalHistoryInput({
+                id: 'm-spec',
+                fieldKey: 'spec',
+                value,
+                category,
+                choices: isHybridStorageCategory(category) ? [] : productModalHistoryChoices('spec', category),
+                placeholder: 'e.g. 550W/48V',
+                onInput: 'updateProductPriceUnitNote()',
+                onChange: 'updateProductPriceUnitNote()',
+                inputClass: 'w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500 bg-white'
+            });
+        }
+        function renderProductModalHybridCapacityHistoryFields(values = {}, category = document.getElementById('m-category')?.value || '') {
+            const invBox = document.getElementById('product-modal-inverter-kw-field');
+            const batBox = document.getElementById('product-modal-battery-kwh-field');
+            const inverterKw = values.inverterKw ?? document.getElementById('m-inverter-kw')?.value ?? '';
+            const batteryKwh = values.batteryKwh ?? document.getElementById('m-battery-kwh')?.value ?? '';
+            if (invBox) {
+                invBox.innerHTML = renderProductModalHistoryInput({
+                    id: 'm-inverter-kw',
+                    fieldKey: 'inverterKw',
+                    value: inverterKw,
+                    category,
+                    choices: productModalHistoryChoices('inverterKw', category),
+                    placeholder: 'e.g. 5.5',
+                    inputType: 'number',
+                    extraAttrs: 'step="0.01" min="0"',
+                    onInput: 'syncHybridSpecFromInputs()',
+                    onChange: 'syncHybridSpecFromInputs()',
+                    inputClass: 'w-full border border-purple-100 rounded-xl p-3 text-sm outline-none focus:border-purple-500 bg-white'
+                });
+            }
+            if (batBox) {
+                batBox.innerHTML = renderProductModalHistoryInput({
+                    id: 'm-battery-kwh',
+                    fieldKey: 'batteryKwh',
+                    value: batteryKwh,
+                    category,
+                    choices: productModalHistoryChoices('batteryKwh', category),
+                    placeholder: 'e.g. 10',
+                    inputType: 'number',
+                    extraAttrs: 'step="0.01" min="0"',
+                    onInput: 'syncHybridSpecFromInputs()',
+                    onChange: 'syncHybridSpecFromInputs()',
+                    inputClass: 'w-full border border-purple-100 rounded-xl p-3 text-sm outline-none focus:border-purple-500 bg-white'
+                });
+            }
+        }
+        function renderProductModalSpecHistoryFields(options = {}) {
+            const category = options.category ?? document.getElementById('m-category')?.value ?? '';
+            renderProductModalSpecHistoryField(options.spec ?? document.getElementById('m-spec')?.value ?? '', category);
+            renderProductModalHybridCapacityHistoryFields({
+                inverterKw: options.inverterKw ?? document.getElementById('m-inverter-kw')?.value ?? '',
+                batteryKwh: options.batteryKwh ?? document.getElementById('m-battery-kwh')?.value ?? ''
+            }, category);
+            updateHybridSpecControls();
+        }
+        window.renderProductModalSpecHistoryFields = renderProductModalSpecHistoryFields;
         function renderProductModalClassificationHistoryFields(category = '', scenario = '') {
             renderProductModalCategoryHistoryField(category);
             renderProductModalSubcategoryHistoryField(scenario);
@@ -11277,7 +11347,10 @@
             }
             updateSupplierSelects(window.editId ? (products.find(p => p.id === window.editId)?.supplierCode || '') : '');
             updateProductCurrencyFromSupplier({ skipExisting: true });
-            if (!window.editId) renderProductModalClassificationHistoryFields('', '');
+            if (!window.editId) {
+                renderProductModalClassificationHistoryFields('', '');
+                renderProductModalSpecHistoryFields({ category: '' });
+            }
             updateSubcatSuggestions();
             if (!window.editId) {
                 fillProductMasterDetails({});
@@ -11305,11 +11378,12 @@
                 if (el) el.value = '';
             });
             renderProductTechnicalFields('');
-            updateHybridSpecControls();
+            renderProductModalSpecHistoryFields({ category: '', spec: '', inverterKw: '', batteryKwh: '' });
             const currencyEl = document.getElementById('m-price-currency');
             if (currencyEl) currencyEl.value = 'CNY';
             updateProductPriceCurrencyUi();
             renderProductModalClassificationHistoryFields('', '');
+            renderProductModalSpecHistoryFields({ category: '', spec: '', inverterKw: '', batteryKwh: '' });
             fillProductMasterDetails({});
             renderProductCertificationRecordPicker({}, []);
             window.__productImageDraft = '';
@@ -11403,8 +11477,14 @@
             renderProductTechnicalFields(category, p?.technicalSpecs || {});
             updateSupplierSelects(p.supplierCode || getProductSupplier(p)?.code || '');
             fillProductSourcingDetails(p);
-            document.getElementById('m-spec').value = p.spec || '';
             const hybridSpec = parseHybridStorageSpec(p);
+            renderProductModalSpecHistoryFields({
+                category,
+                spec: p.spec || '',
+                inverterKw: hybridSpec.inverterKw ? formatCapacityValue(hybridSpec.inverterKw) : '',
+                batteryKwh: hybridSpec.batteryKwh ? formatCapacityValue(hybridSpec.batteryKwh) : ''
+            });
+            document.getElementById('m-spec').value = p.spec || '';
             const invEl = document.getElementById('m-inverter-kw');
             const batEl = document.getElementById('m-battery-kwh');
             if (invEl) invEl.value = hybridSpec.inverterKw ? formatCapacityValue(hybridSpec.inverterKw) : '';

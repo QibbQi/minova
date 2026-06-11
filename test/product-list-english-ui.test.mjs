@@ -575,9 +575,15 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     "row.querySelectorAll('[data-engineering-detail-history-option]')",
     'data-product-modal-history-field',
     'renderProductModalHistoryInput({',
-    "const sync = 'updateSubcatSuggestions(); updateHybridSpecControls(); updateProductPriceUnitNote(); renderProductModalMasterDetailFields(this.value, readProductMasterDataFromModal()); renderProductTechnicalFields(this.value); maybeFillProductCertificationDefaults()'",
+    "const sync = 'updateSubcatSuggestions(); window.renderProductModalSpecHistoryFields?.({ category: this.value }); updateProductPriceUnitNote(); renderProductModalMasterDetailFields(this.value, readProductMasterDataFromModal()); renderProductTechnicalFields(this.value); maybeFillProductCertificationDefaults()'",
     "id: 'm-category'",
     "id: 'm-scenario'",
+    "id: 'm-spec'",
+    "id: 'm-inverter-kw'",
+    "id: 'm-battery-kwh'",
+    "fieldKey: 'spec'",
+    "fieldKey: 'inverterKw'",
+    "fieldKey: 'batteryKwh'",
     "PRODUCT_MASTER_COMMON_FIELD_KEYS.map(key =>",
     'Search Products',
     'Add to Quotation Builder',
@@ -612,6 +618,9 @@ test('engineering workspace exposes certification matrix filters and seeded cata
   assert.equal(html.includes('id="engineering-detail-import-file"'), false, 'Detail mode should not keep the Excel preview file input');
   assert.equal(html.includes('xl:grid-cols-[0.9fr_1.5fr]'), false, 'Detail mode should stack Field Template above Bulk Product Maintenance to avoid squeezed controls');
   assert.equal(html.includes('No products loaded.'), false, 'Bulk Product Maintenance should not ship a stale static no-products placeholder');
+  assert.equal(html.includes('<input type="text" id="m-spec"'), false, 'Specification should use the Product modal history input control');
+  assert.equal(html.includes('<input type="number" id="m-inverter-kw"'), false, 'Hybrid inverter capacity should use the Product modal history input control');
+  assert.equal(html.includes('<input type="number" id="m-battery-kwh"'), false, 'Hybrid battery capacity should use the Product modal history input control');
 });
 
 test('engineering product master detail mode keeps template state and import preview separate from product schema', () => {

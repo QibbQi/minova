@@ -22,6 +22,7 @@ const AUTH_SESSION_KEY = 'minova_auth_session_v1';
 const AUTH_SESSION_EXPIRES_KEY = 'minova_auth_session_expires_v1';
 const D1_WRITE_QUEUE_KEY = 'minova_d1_write_queue_v1';
 const AUTH_FETCH_TIMEOUT_MS = 12000;
+const AUTH_LOGIN_FETCH_TIMEOUT_MS = 45000;
 const AUTH_FETCH_RETRY_DELAYS_MS = [300, 900];
 const ADMIN_REFRESH_MIN_INTERVAL_MS = 15000;
 const D1_WRITE_RETRY_DELAYS_MS = [2000, 5000, 15000, 30000];
@@ -286,6 +287,12 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = AUTH_FETCH_TIMEOU
   }
 }
 
+function authFetchTimeoutFor(path, options = {}) {
+  const method = String(options.method || 'GET').toUpperCase();
+  if (method === 'POST' && /^\/auth\/(login|forgot-password)$/i.test(String(path || ''))) return AUTH_LOGIN_FETCH_TIMEOUT_MS;
+  return AUTH_FETCH_TIMEOUT_MS;
+}
+
 const authFetch = async (path, options = {}) => {
   const headers = {
     'content-type': 'application/json',
@@ -305,7 +312,7 @@ const authFetch = async (path, options = {}) => {
           ...options,
           credentials: 'include',
           headers
-        });
+        }, authFetchTimeoutFor(path, options));
         state.apiBase = base;
         safeStorageSet(AUTH_API_BASE_KEY, base);
         break;

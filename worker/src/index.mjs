@@ -16,6 +16,9 @@ import {
 const COOKIE_NAME = 'minova_session';
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8' };
 const DEFAULT_ADMIN_EMAIL = 'qibbqi00@google.com';
+const BOOTSTRAP_CACHE_TTL_MS = 5 * 60 * 1000;
+let bootstrapCacheUntil = 0;
+let bootstrapPromise = null;
 const ROLE_NAME_TO_KEY = Object.fromEntries(
   Object.entries(ROLE_DEFINITIONS).map(([key, role]) => [role.displayName, key])
 );
@@ -163,6 +166,20 @@ async function readJson(request) {
 }
 
 async function ensureBootstrap(env) {
+  const now = Date.now();
+  if (bootstrapCacheUntil > now) return;
+  if (bootstrapPromise) return bootstrapPromise;
+  bootstrapPromise = ensureBootstrapUncached(env)
+    .then(() => {
+      bootstrapCacheUntil = Date.now() + BOOTSTRAP_CACHE_TTL_MS;
+    })
+    .finally(() => {
+      bootstrapPromise = null;
+    });
+  return bootstrapPromise;
+}
+
+async function ensureBootstrapUncached(env) {
   const db = env.minova_auth_db;
   if (!db) throw new Error('D1 binding minova_auth_db is missing');
   await ensureUsersEmailColumn(db);
@@ -188,7 +205,7 @@ async function ensureBootstrap(env) {
 
   const existing = await db.prepare('SELECT id, password_hash FROM users WHERE username = ?').bind('admin').first();
   const adminEmail = normalizePasswordResetEmail(env.MINOVA_INITIAL_ADMIN_EMAIL || DEFAULT_ADMIN_EMAIL);
-  if (env.MINOVA_INITIAL_ADMIN_PASSWORD) {
+  if (env.MINOVA_INITIAL_ADMIN_PASSWORD && shouldRefreshInitialAdminPassword(existing)) {
     const password = await hashPassword(env.MINOVA_INITIAL_ADMIN_PASSWORD);
     const adminRole = await db.prepare('SELECT id FROM roles WHERE name = ?').bind(ROLE_DEFINITIONS.admin.displayName).first();
     if (!existing) {
@@ -205,6 +222,10 @@ async function ensureBootstrap(env) {
   if (existing && adminEmail) {
     await db.prepare("UPDATE users SET email = ? WHERE username = 'admin' AND COALESCE(email, '') = ''").bind(adminEmail).run();
   }
+}
+
+export function shouldRefreshInitialAdminPassword(existing) {
+  return !existing || !String(existing.password_hash || '').startsWith('pbkdf2');
 }
 
 async function ensureBusinessTables(db) {

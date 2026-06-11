@@ -31,6 +31,7 @@ import {
   normalizeUserDeletePayload,
   normalizeUserResetPasswordPayload,
   normalizeUserUpdatePayload,
+  shouldRefreshInitialAdminPassword,
   validatePasswordChangeRequest
 } from '../worker/src/index.mjs';
 
@@ -218,6 +219,9 @@ test('auth UI prefers the stable Worker API on non-Minova domains', () => {
 
 test('auth UI retries transient backend reads and throttles admin auto-refresh', () => {
   assert.match(authUiSource, /AUTH_FETCH_TIMEOUT_MS = 12000/);
+  assert.match(authUiSource, /AUTH_LOGIN_FETCH_TIMEOUT_MS = 45000/);
+  assert.match(authUiSource, /function authFetchTimeoutFor\(path, options = \{\}\)/);
+  assert.match(authUiSource, /authFetchTimeoutFor\(path, options\)/);
   assert.match(authUiSource, /AUTH_FETCH_RETRY_DELAYS_MS = \[300, 900\]/);
   assert.match(authUiSource, /D1_WRITE_QUEUE_KEY = 'minova_d1_write_queue_v1'/);
   assert.match(authUiSource, /queueBusinessWrite/);
@@ -227,6 +231,13 @@ test('auth UI retries transient backend reads and throttles admin auto-refresh',
   assert.match(authUiSource, /ADMIN_REFRESH_MIN_INTERVAL_MS = 15000/);
   assert.match(authUiSource, /if \(adminState\.loadingPromise\) return adminState\.loadingPromise;/);
   assert.match(authUiSource, /if \(isAdminViewVisible\(\)\) loadAdminPanel\(\);/);
+});
+
+test('worker bootstrap avoids rehashing the seeded admin password when current hash is modern', () => {
+  assert.equal(shouldRefreshInitialAdminPassword(null), true);
+  assert.equal(shouldRefreshInitialAdminPassword({ password_hash: '' }), true);
+  assert.equal(shouldRefreshInitialAdminPassword({ password_hash: 'legacy-hash' }), true);
+  assert.equal(shouldRefreshInitialAdminPassword({ password_hash: 'pbkdf2$abc$def' }), false);
 });
 
 test('D1 write queue only retries transient business failures', () => {

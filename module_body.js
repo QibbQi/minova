@@ -2083,7 +2083,7 @@
         let engineeringWorkspaceView = 'certification';
         let engineeringWorkspaceMode = 'standard';
         let engineeringCertificationEditMode = false;
-        let engineeringProductMasterMode = 'product';
+        let engineeringProductMasterMode = 'search';
         let engineeringStandardSelectedIds = new Set();
         let engineeringArchitectureClassSelectedIds = new Set();
         const ENGINEERING_PRODUCT_MASTER_DETAIL_GROUPS = {
@@ -2941,8 +2941,8 @@
                 ['Cert Ready', readyCount]
             ].map(([label, value]) => `<div class="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2"><div class="text-[10px] font-black uppercase text-slate-400">${label}</div><div class="text-lg font-black text-slate-800">${value}</div></div>`).join('');
         }
-        function setEngineeringProductMasterMode(mode = 'product') {
-            engineeringProductMasterMode = mode === 'detail' || mode === 'search' ? mode : 'product';
+        function setEngineeringProductMasterMode(mode = 'search') {
+            engineeringProductMasterMode = mode === 'detail' ? 'detail' : 'search';
             syncEngineeringProductMasterModeChrome();
             if (engineeringWorkspaceView === 'productMaster') renderEngineeringWorkspace();
         }
@@ -2950,13 +2950,11 @@
             const productPanel = document.getElementById('engineering-product-master-product-mode-panel');
             const detailPanel = document.getElementById('engineering-product-master-detail-mode-panel');
             const searchPanel = document.getElementById('engineering-product-master-search-mode-panel');
-            const productBtn = document.getElementById('engineering-product-master-mode-product');
             const detailBtn = document.getElementById('engineering-product-master-mode-detail');
             const searchBtn = document.getElementById('engineering-product-master-mode-search');
             if (productPanel) productPanel.classList.toggle('hidden', engineeringProductMasterMode !== 'product');
             if (detailPanel) detailPanel.classList.toggle('hidden', engineeringProductMasterMode !== 'detail');
             if (searchPanel) searchPanel.classList.toggle('hidden', engineeringProductMasterMode !== 'search');
-            if (productBtn) productBtn.className = engineeringProductMasterMode === 'product' ? 'px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white' : 'px-4 py-2 rounded-lg text-xs font-black text-slate-500';
             if (detailBtn) detailBtn.className = engineeringProductMasterMode === 'detail' ? 'px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white' : 'px-4 py-2 rounded-lg text-xs font-black text-slate-500';
             if (searchBtn) searchBtn.className = engineeringProductMasterMode === 'search' ? 'px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white' : 'px-4 py-2 rounded-lg text-xs font-black text-slate-500';
         }

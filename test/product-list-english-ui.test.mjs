@@ -370,7 +370,6 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'id="engineering-product-master-search"',
     'id="engineering-product-master-summary"',
     'id="engineering-product-master-list"',
-    'id="engineering-product-master-mode-product"',
     'id="engineering-product-master-mode-detail"',
     'id="engineering-product-master-mode-search"',
     'id="engineering-product-master-product-mode-panel"',
@@ -392,7 +391,6 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'mt-5 grid grid-cols-1 gap-4',
     'sm:grid-cols-[minmax(0,1fr)_180px_minmax(0,1fr)_auto_auto]',
     'whitespace-nowrap min-w-[96px]',
-    'Product mode',
     'Detail mode',
     'Search mode',
     'Class & Filters',
@@ -456,6 +454,9 @@ test('engineering workspace exposes certification matrix filters and seeded cata
   assert.equal(matrixPanel.includes('Linked Products'), true, 'Matrix mode should label product linkage as Linked Products');
   assert.equal(matrixPanel.includes('Product Evidence'), false, 'Matrix mode should not use Product Evidence as a table column');
   assert.equal(matrixPanel.includes('id="engineering-matrix-select-all"'), true, 'Matrix mode should support selecting records for matched product search');
+  assert.equal(engineeringTab.includes('id="engineering-product-master-mode-product"'), false, 'Product Master should not expose Product mode');
+  assert.equal(engineeringTab.includes('Product mode'), false, 'Product Master mode switch should not show Product mode');
+  assert.equal(html.includes("let engineeringProductMasterMode = 'search'"), true, 'Product Master should default to Search mode');
   assert.equal(engineeringTab.includes('id="engineering-detail-template-add-product"'), false, 'Detail Template Maintenance should not keep Add Product action');
   assert.equal(engineeringTab.includes('id="engineering-detail-template-reuse-product"'), false, 'Detail Template Maintenance should not keep Search Product modal action');
   assert.equal(html.includes('id="engineering-cert-detail-modal"'), true, 'Missing engineering detail modal');

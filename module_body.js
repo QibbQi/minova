@@ -2592,8 +2592,8 @@
             if (standard) standard.classList.toggle('hidden', !inCertification || engineeringWorkspaceMode !== 'standard');
             if (matrix) matrix.classList.toggle('hidden', !inCertification || engineeringWorkspaceMode !== 'matrix');
             if (standardSearchFilters) standardSearchFilters.classList.toggle('hidden', !inCertification || engineeringWorkspaceMode !== 'standard');
-            if (standardMatchCard) standardMatchCard.classList.toggle('hidden', !inCertification || engineeringWorkspaceMode !== 'standard');
-            if (searchProductBtn) searchProductBtn.classList.toggle('hidden', !inCertification || engineeringWorkspaceMode !== 'standard');
+            if (standardMatchCard) standardMatchCard.classList.toggle('hidden', !inCertification);
+            if (searchProductBtn) searchProductBtn.classList.toggle('hidden', !inCertification);
             if (standardBtn) standardBtn.className = engineeringWorkspaceMode === 'standard' ? 'px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white' : 'px-4 py-2 rounded-lg text-xs font-black text-slate-500';
             if (matrixBtn) matrixBtn.className = engineeringWorkspaceMode === 'matrix' ? 'px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white' : 'px-4 py-2 rounded-lg text-xs font-black text-slate-500';
             syncEngineeringCertificationEditChrome();
@@ -2820,8 +2820,13 @@
         function renderEngineeringMatrixList(rows = []) {
             const list = document.getElementById('engineering-cert-list');
             if (!list) return;
+            pruneEngineeringStandardSelectionToRows(rows);
+            const allVisibleSelected = rows.length > 0 && rows.every(record => engineeringStandardSelectedIds.has(record.id));
+            const selectAll = document.getElementById('engineering-matrix-select-all');
+            if (selectAll) selectAll.checked = allVisibleSelected;
             list.innerHTML = rows.map(record => {
-                const evidenceCount = getEngineeringRequirementEvidence(record.id).length;
+                const linked = getEngineeringRequirementLinkedProducts(record.id);
+                const checked = engineeringStandardSelectedIds.has(record.id);
                 const sourceLink = record.sourceUrl ? `<a href="${htmlSafe(record.sourceUrl)}" target="_blank" rel="noopener" class="text-[10px] font-bold text-blue-600 hover:underline">Source</a>` : '<span class="text-[10px] text-slate-300">No source</span>';
                 const editActions = engineeringCertificationEditMode ? `
                                 <button data-engineering-action="edit" onclick="openEngineeringRequirementEditor('${htmlSafe(record.id)}')" class="text-xs font-black text-purple-700 hover:underline">Edit</button>
@@ -2829,13 +2834,14 @@
                 ` : '';
                 return `
                     <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="py-4 px-4"><input type="checkbox" data-engineering-standard-select value="${htmlSafe(record.id)}" ${checked ? 'checked' : ''} onchange="toggleEngineeringStandardSelection('${htmlSafe(record.id)}', this.checked)" class="h-4 w-4 accent-purple-700"></td>
                         <td class="py-4 px-4"><div class="font-black text-slate-700">${htmlSafe(record.id)}</div><div class="text-[10px] text-slate-400">${htmlSafe(record.seedVersion || '')}</div></td>
                         <td class="py-4 px-4"><div class="text-xs font-bold text-slate-600">${htmlSafe(record.sourceCategory)}</div><div class="text-[10px] text-slate-400">${htmlSafe(record.productCategory || '-')}</div></td>
                         <td class="py-4 px-4"><div class="text-xs font-bold text-slate-700 max-w-[260px] truncate" title="${htmlSafe(record.standard)}">${htmlSafe(record.standard)}</div>${sourceLink}</td>
                         <td class="py-4 px-4"><span class="rounded-full border px-2 py-1 text-[10px] font-black ${certificationLevelTone(record.requirementLevel)}">${htmlSafe(record.requirementLevel || '-')}</span></td>
                         <td class="py-4 px-4"><span class="text-xs text-slate-500 max-w-[340px] block truncate" title="${htmlSafe(record.applicabilityCondition)}">${htmlSafe(record.applicabilityCondition || '-')}</span></td>
                         <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(record.evidenceType || '-')}</td>
-                        <td class="py-4 px-4 text-center"><span class="text-xs font-black text-slate-700">${evidenceCount}</span></td>
+                        <td class="py-4 px-4 text-center"><button onclick="openEngineeringCertDetail('${htmlSafe(record.id)}')" class="text-xs font-black text-slate-700 hover:text-purple-700">${linked.length}</button></td>
                         <td class="py-4 px-4 text-center">
                             <div class="inline-flex items-center gap-2">
                                 <button onclick="openEngineeringCertDetail('${htmlSafe(record.id)}')" class="text-xs font-black text-slate-700 hover:text-purple-700 hover:underline">Details</button>
@@ -2844,7 +2850,7 @@
                         </td>
                     </tr>
                 `;
-            }).join('') || '<tr><td colspan="8" class="py-12 text-center text-slate-400 text-sm">No certification records match the current filters.</td></tr>';
+            }).join('') || '<tr><td colspan="9" class="py-12 text-center text-slate-400 text-sm">No certification records match the current filters.</td></tr>';
             window.applyFrozenColumns('engineering-matrix');
         }
         function engineeringProductMasterFilterValue(id, fallback = 'all') {
@@ -3692,6 +3698,9 @@
                 else engineeringStandardSelectedIds.delete(record.id);
             });
             renderEngineeringWorkspace();
+        };
+        window.toggleEngineeringMatrixSelectionAll = (checked) => {
+            window.toggleEngineeringStandardSelectionAll(checked);
         };
         window.clearEngineeringStandardSelection = () => {
             engineeringStandardSelectedIds = new Set();

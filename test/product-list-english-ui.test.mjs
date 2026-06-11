@@ -350,6 +350,7 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'id="engineering-open-quotation"',
     'id="engineering-standard-panel"',
     'id="engineering-matrix-panel"',
+    'id="engineering-matrix-select-all"',
     'id="engineering-standard-list"',
     'id="engineering-standard-product-results"',
     'id="engineering-class-filter"',
@@ -441,6 +442,10 @@ test('engineering workspace exposes certification matrix filters and seeded cata
       && engineeringTab.indexOf('id="engineering-standard-product-results"') < engineeringTab.indexOf('id="engineering-standard-list"'),
     'Matched Products should sit below Search Product and above the standard record list'
   );
+  const matrixPanel = snippetBetween('id="engineering-matrix-panel"', 'id="engineering-product-master-panel"');
+  assert.equal(matrixPanel.includes('Linked Products'), true, 'Matrix mode should label product linkage as Linked Products');
+  assert.equal(matrixPanel.includes('Product Evidence'), false, 'Matrix mode should not use Product Evidence as a table column');
+  assert.equal(matrixPanel.includes('id="engineering-matrix-select-all"'), true, 'Matrix mode should support selecting records for matched product search');
   assert.equal(html.includes('id="engineering-cert-detail-modal"'), true, 'Missing engineering detail modal');
   assert.equal(html.includes('id="engineering-detail-product-search-modal"'), true, 'Missing engineering detail product search modal');
   assert.equal(html.includes('id="engineering-detail-product-search-category"'), true, 'Missing engineering detail product search category filter');
@@ -536,6 +541,7 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'function productMasterDetailGroupStatus',
     'function setEngineeringProductMasterFilter',
     'function pruneEngineeringStandardSelectionToRows',
+    'toggleEngineeringMatrixSelectionAll',
     'function openEngineeringRequirementEditor',
     'function saveEngineeringRequirementEditor',
     'function deleteEngineeringRequirementRecord',
@@ -559,7 +565,8 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     "document.getElementById('engineering-architecture-class-edit-actions')",
     "document.getElementById('engineering-standard-match-card')",
     "document.getElementById('engineering-search-products-primary')",
-    "classList.toggle('hidden', !inCertification || engineeringWorkspaceMode !== 'standard')",
+    "standardMatchCard.classList.toggle('hidden', !inCertification)",
+    "searchProductBtn.classList.toggle('hidden', !inCertification)",
     "summary?.classList.toggle('hidden', engineeringWorkspaceView !== 'certification')",
     "classList.toggle('hidden', inProductMaster)",
     "'px-4 py-2 rounded-lg text-xs font-black bg-purple-700 text-white shadow-sm'",
@@ -675,6 +682,9 @@ test('engineering workspace exposes certification matrix filters and seeded cata
   assert.ok(matrixListRenderer, 'Matrix record table renderer should exist');
   assert.match(matrixListRenderer[1], /engineeringCertificationEditMode/, 'Matrix record actions should depend on certification edit mode');
   assert.match(matrixListRenderer[1], /deleteEngineeringRequirementRecord/, 'Matrix record delete action should be available in edit mode');
+  assert.match(matrixListRenderer[1], /getEngineeringRequirementLinkedProducts\(record\.id\)/, 'Matrix record rows should show linked product counts');
+  assert.match(matrixListRenderer[1], /toggleEngineeringStandardSelection/, 'Matrix record rows should use the shared selected-record search flow');
+  assert.equal(matrixListRenderer[1].includes('getEngineeringRequirementEvidence(record.id).length'), false, 'Matrix record rows should not show evidence counts as product links');
 
   const classMatcher = html.match(/function engineeringRecordMatchesClass\(record, classId\) \{([\s\S]*?)\n\s*\}\n\s*function engineeringVisibleRecords/);
   assert.ok(classMatcher, 'Architecture Class matcher should exist');

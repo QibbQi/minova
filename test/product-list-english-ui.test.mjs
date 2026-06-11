@@ -370,9 +370,12 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'id="engineering-detail-template-category"',
     'id="engineering-detail-template-group"',
     'id="engineering-detail-template-fields"',
-    'id="engineering-detail-template-field-picker"',
-    'id="engineering-detail-template-field-label-editor"',
+    'id="engineering-detail-template-field-form"',
+    'id="engineering-detail-template-field-name"',
+    'id="engineering-detail-template-target-group"',
+    'id="engineering-detail-template-custom-group"',
     'id="engineering-detail-template-add-field"',
+    'id="engineering-detail-template-save-field"',
     'id="engineering-detail-template-cancel-edit"',
     'id="engineering-detail-template-bulk-list"',
     'id="engineering-detail-template-add-product"',
@@ -380,7 +383,7 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'id="engineering-detail-template-preview-save"',
     'id="engineering-detail-template-bulk-scope"',
     'mt-5 grid grid-cols-1 gap-4',
-    'sm:grid-cols-[minmax(0,1fr)_auto_auto]',
+    'sm:grid-cols-[minmax(0,1fr)_180px_minmax(0,1fr)_auto_auto]',
     'whitespace-nowrap min-w-[96px]',
     'Product mode',
     'Detail mode'
@@ -451,7 +454,9 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'function setEngineeringProductMasterMode',
     'function renderEngineeringProductMasterDetailMode',
     'function saveProductMasterDetailTemplate',
-    'function resetProductMasterDetailFieldPicker',
+    'function resetProductMasterDetailFieldForm',
+    'function beginProductMasterDetailTemplateFieldAdd',
+    'function saveProductMasterDetailTemplateFieldForm',
     'function beginProductMasterDetailTemplateFieldEdit',
     'function nextProductMasterDetailCustomFieldKey',
     'function productMasterDetailTemplateFieldLabel',
@@ -595,14 +600,17 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     "if (min !== null && max !== null && min > max)",
     "return filters.every(filter =>",
     "filter.exact ? productText === target : productText.includes(target)",
-    'Select existing field',
-    '+ New Field',
+    'function productMasterDetailGroupDefinition',
+    'function normalizeProductMasterDetailGroupKey',
+    'function productMasterDetailGroupSelectOptions',
+    'Save to group',
+    'Custom group name',
+    'Save Field',
     'customDetail',
     "if (fieldKey.startsWith('customDetail')) return 'technicalSpecs'",
-    "fieldKey === PRODUCT_MASTER_DETAIL_NEW_FIELD_VALUE",
-    "beginProductMasterDetailTemplateFieldEdit(fieldKey)",
     'Save Name',
     'fieldLabels',
+    'detailGroupLabel',
     'productMasterDetailTemplateFieldLabel(key, template)',
     "const fieldLabels = { ...(template.fieldLabels || {}) }",
     'minova-data/certifications/products/${pid}/${safeRecordId}/${file.name}'
@@ -619,6 +627,25 @@ test('engineering workspace exposes certification matrix filters and seeded cata
   assert.match(engineeringQuoteAdd[1], /confirm\('No stock is available\. Add this product from Price List instead\?'\)/, 'Inventory-first fallback should ask before using Price List');
   assert.match(engineeringQuoteAdd[1], /addFromPriceList\(defaults\.priceType\)/, 'Inventory-first fallback should reuse the selected default price type');
   assert.equal(engineeringQuoteAdd[1].includes('promptEngineeringPriceType'), false, 'Inventory-first fallback should use the Price List flow without the old price prompt');
+
+  const fieldTemplateMarkup = engineeringTab.slice(
+    engineeringTab.indexOf('<div class="text-sm font-black text-slate-700">Field Template</div>'),
+    engineeringTab.indexOf('<div class="text-sm font-black text-slate-700">Bulk Product Maintenance</div>')
+  );
+  assert.equal(fieldTemplateMarkup.includes('Select existing field'), false, 'Field Template should not expose an existing-field picker');
+  assert.equal(fieldTemplateMarkup.includes('Required'), false, 'Field Template should not expose required checkboxes');
+
+  const fieldRenderer = html.match(/function renderEngineeringProductMasterDetailFields\(template\) \{([\s\S]*?)\n\s*\}\n\s*function productsForProductMasterDetailTemplate/);
+  assert.ok(fieldRenderer, 'Field Template renderer should exist');
+  assert.equal(fieldRenderer[1].includes('toggleProductMasterDetailTemplateRequired'), false, 'Field Template renderer should not wire required toggles');
+  assert.equal(fieldRenderer[1].includes('masterData'), false, 'Field Template rows should not show internal masterData labels');
+  assert.equal(fieldRenderer[1].includes('technicalSpecs'), false, 'Field Template rows should not show internal technicalSpecs labels');
+  assert.match(fieldRenderer[1], /productMasterDetailGroupLabel\(template\.detailGroup\)/, 'Field Template rows should show the selected details group label');
+
+  const templateNormalizer = html.match(/function normalizeProductMasterDetailTemplate\(record = \{\}\) \{([\s\S]*?)\n\s*\}\n\s*function normalizeProductMasterDetailTemplates/);
+  assert.ok(templateNormalizer, 'Template normalizer should exist');
+  assert.equal(templateNormalizer[1].includes("? record.detailGroup : 'basic'"), false, 'Custom detail groups should not normalize back to basic');
+  assert.match(templateNormalizer[1], /normalizeProductMasterDetailGroupKey\(record\.detailGroup \|\| 'basic'\)/, 'Template normalizer should preserve normalized custom detail groups');
 
   assert.equal(html.includes('Enter an existing field key to add to this template'), false, 'Add Field should not use the old prompt flow');
   assert.equal(html.includes('Edit field key. Use an existing masterData or technicalSpecs key'), false, 'Edit Field should not use the old prompt flow');

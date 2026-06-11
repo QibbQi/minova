@@ -532,6 +532,8 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'onclick="toggleProductMasterDetailBulkHistoryMenu(this)"',
     'onclick="applyProductMasterDetailBulkHistoryValue(this)"',
     'title="Show history values"',
+    'border-t-slate-700',
+    'aria-hidden="true"',
     'data-engineering-detail-product-row',
     'data-engineering-detail-template-field',
     'Bulk Product Maintenance is editing',

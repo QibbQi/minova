@@ -2746,7 +2746,9 @@
             if (!disabled && choices.length) {
                 return `<div class="relative min-w-[220px]">
                     ${input}
-                    <button type="button" data-engineering-detail-history-target="${htmlSafe(inputId)}" onclick="toggleProductMasterDetailBulkHistoryMenu(this)" title="Show history values" class="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 rounded-md text-[10px] font-black text-slate-500 hover:bg-slate-100">v</button>
+                    <button type="button" data-engineering-detail-history-target="${htmlSafe(inputId)}" onclick="toggleProductMasterDetailBulkHistoryMenu(this)" title="Show history values" class="absolute right-1 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-md hover:bg-slate-100">
+                        <span aria-hidden="true" class="inline-block h-0 w-0 border-l-[4px] border-r-[4px] border-t-[6px] border-l-transparent border-r-transparent border-t-slate-700"></span>
+                    </button>
                     <div data-engineering-detail-history-menu="${htmlSafe(inputId)}" class="hidden absolute right-0 top-full z-30 mt-1 max-h-44 min-w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl">
                         ${choices.map(choice => `<button type="button" data-engineering-detail-history-target="${htmlSafe(inputId)}" data-engineering-detail-history-value="${htmlSafe(choice)}" onclick="applyProductMasterDetailBulkHistoryValue(this)" class="block w-full px-3 py-2 text-left text-xs font-bold text-slate-600 hover:bg-slate-50">${htmlSafe(choice)}</button>`).join('')}
                     </div>

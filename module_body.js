@@ -2810,6 +2810,7 @@
             });
             const empty = menu.querySelector('[data-engineering-detail-history-empty]');
             if (empty) empty.classList.toggle('hidden', shown > 0);
+            menu.classList.toggle('hidden', !(query && shown > 0));
         }
         window.filterProductMasterDetailBulkHistoryValues = filterProductMasterDetailBulkHistoryValues;
         function applyProductMasterDetailBulkHistoryValue(button) {

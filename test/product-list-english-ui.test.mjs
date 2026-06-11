@@ -552,6 +552,7 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     '${listAttr}',
     'Product data will not be changed.',
     "valueText.includes(query)",
+    "menu.classList.toggle('hidden', !(query && shown > 0))",
     "localStorage.setItem(PRODUCT_MASTER_DETAIL_HISTORY_HIDDEN_STORAGE_KEY",
     'renderEngineeringProductMasterDetailBulkList(template);',
     "input.dataset.engineeringDetailProduct",

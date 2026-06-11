@@ -348,7 +348,7 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'id="engineering-standard-match-card"',
     'id="engineering-standard-match-host"',
     'id="engineering-refresh-product-results"',
-    'id="engineering-open-quotation"',
+    'id="engineering-match-within-category"',
     'id="engineering-standard-panel"',
     'id="engineering-matrix-panel"',
     'id="engineering-matrix-select-all"',
@@ -428,9 +428,9 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'Matrix Class & Filters should sit beside Maintenance in the unified top control block'
   );
   assert.ok(
-    engineeringTab.indexOf('id="engineering-search-products-primary"') > engineeringTab.indexOf('id="engineering-open-quotation"')
+    engineeringTab.indexOf('id="engineering-search-products-primary"') > engineeringTab.indexOf('id="engineering-match-within-category"')
       && engineeringTab.indexOf('id="engineering-search-products-primary"') < engineeringTab.indexOf('id="engineering-standard-product-results"'),
-    'Primary Search Product button should sit inside Matched Products after Open Quotation'
+    'Primary Search Product button should sit inside Matched Products after within category'
   );
   assert.ok(
     engineeringTab.indexOf('id="engineering-search"') < engineeringTab.indexOf('id="engineering-filter-note"')
@@ -447,6 +447,7 @@ test('engineering workspace exposes certification matrix filters and seeded cata
       && engineeringTab.indexOf('id="engineering-standard-product-results"') < engineeringTab.indexOf('id="engineering-standard-list"'),
     'Matched Products should sit below Search Product and above the standard record list'
   );
+  assert.equal(engineeringTab.includes('id="engineering-open-quotation"'), false, 'Matched Products should not keep the Open Quotation button');
   const matrixPanel = snippetBetween('id="engineering-matrix-panel"', 'id="engineering-product-master-panel"');
   assert.equal(matrixPanel.includes('id="engineering-level-filters"'), false, 'Matrix mode should not create a separate requirement-level filter block');
   assert.equal(matrixPanel.includes('id="engineering-category-filters"'), false, 'Matrix mode should not create a separate category filter block');
@@ -556,6 +557,11 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'function deleteEngineeringRequirementRecord',
     'function searchEngineeringStandardProducts',
     'function renderEngineeringMatchedProductRows',
+    'function engineeringProductRecordIdSet',
+    'function engineeringMatchWithinCategoryEnabled',
+    'function engineeringSelectedRecordsByCategory',
+    'function engineeringProductMatchesSelectedStandards',
+    'function syncEngineeringStandardSelectionControls',
     'function refreshEngineeringProductResults',
     'function addEngineeringProductToQuote',
     'function getEngineeringRequirementLinkedProducts',
@@ -565,7 +571,10 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'recordIds',
     'PRODUCT_MASTER_DETAIL_HISTORY_HIDDEN_STORAGE_KEY',
     "getFifoBatchesForProduct(productId)[0]",
-    "ids.every(id => selected.has(id))",
+    "engineeringProductMatchesSelectedStandards(product, ids, withinCategory)",
+    "engineeringMatchedRecordIdsForProduct(product, ids, withinCategory)",
+    "groups.forEach((groupIds, sourceCategory) =>",
+    "withinCategory ? matched.length > 0 : matched.length === ids.length",
     "querySelectorAll('#engineering-standard-level-filters input[data-engineering-level]:checked')",
     "querySelectorAll('#engineering-standard-category-filters input[data-engineering-category]:checked')",
     'engineeringStandardSelectedIds.delete(id)',
@@ -582,7 +591,8 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     "summary?.classList.toggle('hidden', engineeringWorkspaceView !== 'certification')",
     "classList.toggle('hidden', inProductMaster)",
     "'px-4 py-2 rounded-lg text-xs font-black bg-purple-700 text-white shadow-sm'",
-    'Unable to find products containing every selected standard record.',
+    'matching the selected category groups',
+    'containing every selected standard record',
     'nextCertificationCatalog.length || !certificationRequirementsCatalog.length',
     'mergeCertificationRequirementsCatalog(certificationRequirementsCatalog, nextCertificationCatalog)',
     "const CERTIFICATION_PRODUCT_CATEGORY_DEFAULTS = {",
@@ -684,6 +694,13 @@ test('engineering workspace exposes certification matrix filters and seeded cata
   const standardSearch = html.match(/function searchEngineeringStandardProducts\(\) \{([\s\S]*?)\n\s*\}\n\s*window\.searchEngineeringStandardProducts/);
   assert.ok(standardSearch, 'Standard Search Product handler should exist');
   assert.equal(standardSearch[1].includes('openEngineeringStandardProductModal'), false, 'Standard Search Product should render inline results without opening a modal');
+  assert.match(standardSearch[1], /engineeringMatchWithinCategoryEnabled/, 'Standard Search Product should read the within category toggle');
+  assert.match(standardSearch[1], /engineeringProductMatchesSelectedStandards/, 'Standard Search Product should use the shared product matching helper');
+
+  const standardToggle = html.match(/window\.toggleEngineeringStandardSelection = \(recordId, checked\) => \{([\s\S]*?)\n\s*\};\n\s*function syncEngineeringStandardSelectionControls/);
+  assert.ok(standardToggle, 'Standard selection toggle should exist');
+  assert.equal(standardToggle[1].includes('renderEngineeringWorkspace()'), false, 'Single record selection should not rerender the table and collapse multi-select state');
+  assert.match(standardToggle[1], /syncEngineeringStandardSelectionControls/, 'Single record selection should sync checkbox UI after updating the set');
 
   const standardListRenderer = html.match(/function renderEngineeringStandardList\(rows = \[\]\) \{([\s\S]*?)\n\s*\}\n\s*function pruneEngineeringStandardSelectionToRows/);
   assert.ok(standardListRenderer, 'Standard record table renderer should exist');

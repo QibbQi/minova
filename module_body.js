@@ -2702,8 +2702,7 @@
             const id = String(recordId || '').trim();
             if (!id) return [];
             return products.filter(product => {
-                const req = getProductCertificationRequirements(product);
-                return (req.recordIds || []).map(v => String(v || '').trim()).includes(id);
+                return engineeringProductRecordIdSet(product).has(id);
             });
         }
         function getEngineeringRequirementEvidence(recordId) {
@@ -3686,8 +3685,21 @@
             if (!id) return;
             if (checked) engineeringStandardSelectedIds.add(id);
             else engineeringStandardSelectedIds.delete(id);
-            renderEngineeringWorkspace();
+            syncEngineeringStandardSelectionControls();
         };
+        function syncEngineeringStandardSelectionControls() {
+            document.querySelectorAll('[data-engineering-standard-select]').forEach(input => {
+                input.checked = engineeringStandardSelectedIds.has(String(input.value || '').trim());
+            });
+            const visibleRecords = engineeringVisibleRecords();
+            const allVisibleSelected = visibleRecords.length > 0 && visibleRecords.every(record => engineeringStandardSelectedIds.has(record.id));
+            const standardSelectAll = document.getElementById('engineering-standard-select-all');
+            const matrixSelectAll = document.getElementById('engineering-matrix-select-all');
+            if (standardSelectAll) standardSelectAll.checked = allVisibleSelected;
+            if (matrixSelectAll) matrixSelectAll.checked = allVisibleSelected;
+            const selectedNote = document.getElementById('engineering-standard-selection-note');
+            if (selectedNote) selectedNote.textContent = `${engineeringStandardSelectedIds.size} records selected`;
+        }
         window.toggleEngineeringStandardSelectionAll = (checked) => {
             engineeringVisibleRecords().forEach(record => {
                 if (checked) engineeringStandardSelectedIds.add(record.id);
@@ -3712,6 +3724,44 @@
         function engineeringSelectedStandardIds() {
             return Array.from(engineeringStandardSelectedIds).filter(id => getCertificationRequirementById(id));
         }
+        function engineeringProductRecordIdSet(product = {}) {
+            const req = getProductCertificationRequirements(product);
+            return new Set(uniqueCertList([
+                ...(Array.isArray(product.certificationRequirementIds) ? product.certificationRequirementIds : []),
+                ...(Array.isArray(product.certificationRequirements?.recordIds) ? product.certificationRequirements.recordIds : []),
+                ...(Array.isArray(product.certificationRequirements?.requirementIds) ? product.certificationRequirements.requirementIds : []),
+                ...(req.recordIds || [])
+            ]).map(id => String(id || '').trim()).filter(id => getCertificationRequirementById(id)));
+        }
+        function engineeringMatchWithinCategoryEnabled() {
+            return Boolean(document.getElementById('engineering-match-within-category')?.checked);
+        }
+        function engineeringSelectedRecordsByCategory(ids = []) {
+            return ids.reduce((map, id) => {
+                const record = getCertificationRequirementById(id);
+                if (!record?.sourceCategory) return map;
+                if (!map.has(record.sourceCategory)) map.set(record.sourceCategory, []);
+                map.get(record.sourceCategory).push(record.id);
+                return map;
+            }, new Map());
+        }
+        function engineeringMatchedRecordIdsForProduct(product = {}, ids = [], withinCategory = false) {
+            const selected = engineeringProductRecordIdSet(product);
+            if (!withinCategory) return ids.filter(id => selected.has(id));
+            const productSources = new Set(productCertificationSourceCategories(product));
+            const groups = engineeringSelectedRecordsByCategory(ids);
+            const matched = [];
+            groups.forEach((groupIds, sourceCategory) => {
+                if (!productSources.has(sourceCategory)) return;
+                if (groupIds.every(id => selected.has(id))) matched.push(...groupIds);
+            });
+            return matched;
+        }
+        function engineeringProductMatchesSelectedStandards(product = {}, ids = [], withinCategory = false) {
+            if (!ids.length) return false;
+            const matched = engineeringMatchedRecordIdsForProduct(product, ids, withinCategory);
+            return withinCategory ? matched.length > 0 : matched.length === ids.length;
+        }
         function engineeringPriceLabel(type = 'clearance_home') {
             if (type === 'clearance_biz') return 'Clearance C&I';
             if (type === 'gray_home') return 'Grey RESI';
@@ -3722,11 +3772,12 @@
             const text = prompt('Price type: clearance_home / clearance_biz / gray_home / gray_biz', defaultType);
             return ['clearance_home', 'clearance_biz', 'gray_home', 'gray_biz'].includes(text) ? text : defaultType;
         }
-        function renderEngineeringMatchedProductRows(matches = [], ids = []) {
+        function renderEngineeringMatchedProductRows(matches = [], ids = [], options = {}) {
+            const withinCategory = Boolean(options.withinCategory);
             if (!matches.length) {
                 return `
                     <div class="p-8 text-center">
-                        <div class="text-sm font-black text-slate-700">Unable to find products containing every selected standard record.</div>
+                        <div class="text-sm font-black text-slate-700">Unable to find products ${withinCategory ? 'matching the selected category groups' : 'containing every selected standard record'}.</div>
                         <div class="mt-2 text-xs text-slate-400">${ids.length ? `Selected: ${htmlSafe(ids.join(', '))}` : 'Select at least one standard record.'}</div>
                     </div>
                 `;
@@ -3735,6 +3786,10 @@
                 const stock = getTotalStockQty(product.id);
                 const firstBatch = getFifoBatchesForProduct(product.id)[0];
                 const supplier = getProductSupplierDisplay(product);
+                const matchedIds = engineeringMatchedRecordIdsForProduct(product, ids, withinCategory);
+                const matchLabel = withinCategory
+                    ? `${matchedIds.length} category standards matched`
+                    : `${ids.length} standards matched`;
                 return `
                     <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 p-4">
                         <div class="min-w-0">
@@ -3744,7 +3799,7 @@
                                 <span class="rounded-full ${stock > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'} px-2 py-1 text-[10px] font-black">Stock ${formatNumberAuto(stock, 4)}</span>
                             </div>
                             <div class="mt-1 text-sm font-bold text-slate-700 truncate">${htmlSafe(product.name || '-')}</div>
-                            <div class="text-[11px] text-slate-400 truncate">${htmlSafe(supplier)} · ${firstBatch ? `FIFO ${htmlSafe(firstBatch.batchNo || '-')}` : 'No active batch'} · ${ids.length} standards matched</div>
+                            <div class="text-[11px] text-slate-400 truncate">${htmlSafe(supplier)} · ${firstBatch ? `FIFO ${htmlSafe(firstBatch.batchNo || '-')}` : 'No active batch'} · ${htmlSafe(matchLabel)}</div>
                         </div>
                         <button data-engineering-action="quote-add" onclick="addEngineeringProductToQuote('${htmlSafe(product.id || '')}')" class="rounded-xl bg-purple-700 px-4 py-2 text-xs font-black text-white hover:bg-purple-800">Add to Quotation Builder</button>
                     </div>
@@ -3779,6 +3834,7 @@
         function searchEngineeringStandardProducts() {
             pruneEngineeringStandardSelectionToRows(engineeringVisibleRecords());
             const ids = engineeringSelectedStandardIds();
+            const withinCategory = engineeringMatchWithinCategoryEnabled();
             const box = document.getElementById('engineering-standard-product-results');
             if (!ids.length) {
                 const message = 'Select at least one standard record.';
@@ -3786,11 +3842,8 @@
                 closeEngineeringStandardProductModal();
                 return;
             }
-            const matches = products.filter(product => {
-                const selected = new Set(getProductCertificationRequirements(product).recordIds || []);
-                return ids.every(id => selected.has(id));
-            });
-            const content = renderEngineeringMatchedProductRows(matches, ids);
+            const matches = products.filter(product => engineeringProductMatchesSelectedStandards(product, ids, withinCategory));
+            const content = renderEngineeringMatchedProductRows(matches, ids, { withinCategory });
             if (box) box.innerHTML = content;
             closeEngineeringStandardProductModal();
             applyEngineeringPermissions();

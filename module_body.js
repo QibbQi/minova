@@ -2501,6 +2501,7 @@
             }).join('') || '<tr><td colspan="7" class="py-12 text-center text-slate-400 text-sm">No certification records match the current search.</td></tr>';
             const selectedNote = document.getElementById('engineering-standard-selection-note');
             if (selectedNote) selectedNote.textContent = `${engineeringStandardSelectedIds.size} records selected`;
+            window.applyFrozenColumns('engineering-standard');
         }
         function pruneEngineeringStandardSelectionToRows(rows = []) {
             const visibleIds = new Set(rows.map(record => String(record.id || '').trim()).filter(Boolean));
@@ -2528,6 +2529,7 @@
                     </tr>
                 `;
             }).join('') || '<tr><td colspan="8" class="py-12 text-center text-slate-400 text-sm">No certification records match the current filters.</td></tr>';
+            window.applyFrozenColumns('engineering-matrix');
         }
         function engineeringProductMasterFilterValue(id, fallback = 'all') {
             return String(document.getElementById(id)?.value || fallback).trim() || fallback;
@@ -2888,7 +2890,7 @@
                 const options = productMasterDetailFieldValueOptions(template, key);
                 return `<datalist id="${htmlSafe(datalistId)}">${options.map(value => `<option value="${htmlSafe(value)}"></option>`).join('')}</datalist>`;
             }).join('');
-            const head = ['Product', ...fields.map(key => productMasterDetailTemplateFieldLabel(key, template))].map(label => `<th class="py-3 px-3">${htmlSafe(label)}</th>`).join('');
+            const head = ['Product', ...fields.map(key => productMasterDetailTemplateFieldLabel(key, template))].map((label, index) => `<th class="py-3 px-3">${index === 0 ? `<div class="flex flex-col items-start gap-1"><span>${htmlSafe(label)}</span>${renderFreezeColumnButton('engineering-detail-bulk', 3)}</div>` : htmlSafe(label)}</th>`).join('');
             const body = rows.map(product => `<tr data-engineering-detail-product-row="${htmlSafe(product.id || '')}" class="hover:bg-slate-50 transition-colors">
                 <td class="py-3 px-3 align-top">
                     <div class="font-black text-slate-700">${htmlSafe(product.id || '-')}</div>
@@ -2900,10 +2902,11 @@
                     </td>`;
                 }).join('')}
             </tr>`).join('');
-            box.innerHTML = `${datalists}<table class="w-full min-w-[980px] text-left whitespace-nowrap">
+            box.innerHTML = `${datalists}<table data-freeze-table="engineering-detail-bulk" class="w-full min-w-[980px] text-left whitespace-nowrap">
                 <thead class="bg-slate-50/70"><tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">${head}</tr></thead>
                 <tbody class="divide-y divide-slate-50">${body}</tbody>
             </table>`;
+            window.applyFrozenColumns('engineering-detail-bulk');
         }
         function renderEngineeringProductMasterDetailMode() {
             const template = currentProductMasterDetailTemplate();
@@ -3265,6 +3268,7 @@
                 `;
             }).join('') || '<tr><td colspan="6" class="py-12 text-center text-slate-400 text-sm">No products match the selected Product Master filters.</td></tr>';
             applyEngineeringPermissions();
+            window.applyFrozenColumns('engineering-product-master');
         }
         function setEngineeringProductMasterFilter() {
             renderEngineeringWorkspace();

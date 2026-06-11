@@ -2536,10 +2536,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         <div id="engineering-standard-panel" class="space-y-4">
             <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left whitespace-nowrap">
+                    <table data-freeze-table="engineering-standard" class="w-full text-left whitespace-nowrap">
                         <thead class="bg-slate-50/70">
                             <tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
-                                <th class="py-4 px-4"><input id="engineering-standard-select-all" type="checkbox" onchange="toggleEngineeringStandardSelectionAll(this.checked)" class="h-4 w-4 accent-purple-700"></th>
+                                <th class="py-4 px-4"><div class="flex flex-col items-start gap-1"><input id="engineering-standard-select-all" type="checkbox" onchange="toggleEngineeringStandardSelectionAll(this.checked)" class="h-4 w-4 accent-purple-700"><button id="freeze-engineering-standard-btn" type="button" class="table-freeze-btn" onclick="window.cycleFrozenColumns('engineering-standard', 3)" title="Cycle frozen columns">Freeze 0</button></div></th>
                                 <th class="py-4 px-4">Record</th>
                                 <th class="py-4 px-4">Category</th>
                                 <th class="py-4 px-4">Standard</th>
@@ -2587,10 +2587,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             </div>
             <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
             <div class="overflow-x-auto">
-                <table class="w-full text-left whitespace-nowrap">
+                <table data-freeze-table="engineering-matrix" class="w-full text-left whitespace-nowrap">
                     <thead class="bg-slate-50/70">
                         <tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
-                            <th class="py-4 px-4">Record</th>
+                            <th class="py-4 px-4"><div class="flex flex-col items-start gap-1"><span>Record</span><button id="freeze-engineering-matrix-btn" type="button" class="table-freeze-btn" onclick="window.cycleFrozenColumns('engineering-matrix', 3)" title="Cycle frozen columns">Freeze 0</button></div></th>
                             <th class="py-4 px-4">Category</th>
                             <th class="py-4 px-4">Standard</th>
                             <th class="py-4 px-4">Level</th>
@@ -2678,10 +2678,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     </div>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left whitespace-nowrap">
+                    <table data-freeze-table="engineering-product-master" class="w-full text-left whitespace-nowrap">
                         <thead class="bg-slate-50/70">
                             <tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
-                                <th class="py-4 px-4">Product</th>
+                                <th class="py-4 px-4"><div class="flex flex-col items-start gap-1"><span>Product</span><button id="freeze-engineering-product-master-btn" type="button" class="table-freeze-btn" onclick="window.cycleFrozenColumns('engineering-product-master', 3)" title="Cycle frozen columns">Freeze 0</button></div></th>
                                 <th class="py-4 px-4">Category</th>
                                 <th class="py-4 px-4">Selected Details</th>
                                 <th class="py-4 px-4">Certification</th>
@@ -7242,6 +7242,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             }).join('') || '<tr><td colspan="7" class="py-12 text-center text-slate-400 text-sm">No certification records match the current search.</td></tr>';
             const selectedNote = document.getElementById('engineering-standard-selection-note');
             if (selectedNote) selectedNote.textContent = `${engineeringStandardSelectedIds.size} records selected`;
+            window.applyFrozenColumns('engineering-standard');
         }
         function pruneEngineeringStandardSelectionToRows(rows = []) {
             const visibleIds = new Set(rows.map(record => String(record.id || '').trim()).filter(Boolean));
@@ -7269,6 +7270,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     </tr>
                 `;
             }).join('') || '<tr><td colspan="8" class="py-12 text-center text-slate-400 text-sm">No certification records match the current filters.</td></tr>';
+            window.applyFrozenColumns('engineering-matrix');
         }
         function engineeringProductMasterFilterValue(id, fallback = 'all') {
             return String(document.getElementById(id)?.value || fallback).trim() || fallback;
@@ -7629,7 +7631,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 const options = productMasterDetailFieldValueOptions(template, key);
                 return `<datalist id="${htmlSafe(datalistId)}">${options.map(value => `<option value="${htmlSafe(value)}"></option>`).join('')}</datalist>`;
             }).join('');
-            const head = ['Product', ...fields.map(key => productMasterDetailTemplateFieldLabel(key, template))].map(label => `<th class="py-3 px-3">${htmlSafe(label)}</th>`).join('');
+            const head = ['Product', ...fields.map(key => productMasterDetailTemplateFieldLabel(key, template))].map((label, index) => `<th class="py-3 px-3">${index === 0 ? `<div class="flex flex-col items-start gap-1"><span>${htmlSafe(label)}</span>${renderFreezeColumnButton('engineering-detail-bulk', 3)}</div>` : htmlSafe(label)}</th>`).join('');
             const body = rows.map(product => `<tr data-engineering-detail-product-row="${htmlSafe(product.id || '')}" class="hover:bg-slate-50 transition-colors">
                 <td class="py-3 px-3 align-top">
                     <div class="font-black text-slate-700">${htmlSafe(product.id || '-')}</div>
@@ -7641,10 +7643,11 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     </td>`;
                 }).join('')}
             </tr>`).join('');
-            box.innerHTML = `${datalists}<table class="w-full min-w-[980px] text-left whitespace-nowrap">
+            box.innerHTML = `${datalists}<table data-freeze-table="engineering-detail-bulk" class="w-full min-w-[980px] text-left whitespace-nowrap">
                 <thead class="bg-slate-50/70"><tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">${head}</tr></thead>
                 <tbody class="divide-y divide-slate-50">${body}</tbody>
             </table>`;
+            window.applyFrozenColumns('engineering-detail-bulk');
         }
         function renderEngineeringProductMasterDetailMode() {
             const template = currentProductMasterDetailTemplate();
@@ -8006,6 +8009,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 `;
             }).join('') || '<tr><td colspan="6" class="py-12 text-center text-slate-400 text-sm">No products match the selected Product Master filters.</td></tr>';
             applyEngineeringPermissions();
+            window.applyFrozenColumns('engineering-product-master');
         }
         function setEngineeringProductMasterFilter() {
             renderEngineeringWorkspace();

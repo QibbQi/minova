@@ -9,10 +9,14 @@ test('product, price, inventory, and non-stock tables expose column freeze contr
     'product-list',
     'price-list',
     'inventory',
-    'non-stock-pricing'
+    'non-stock-pricing',
+    'engineering-standard',
+    'engineering-matrix',
+    'engineering-product-master',
+    'engineering-detail-bulk'
   ].forEach((tableKey) => {
     assert.match(html, new RegExp(`data-freeze-table="${tableKey}"`), `${tableKey} table is registered for frozen columns`);
-    assert.match(html, new RegExp(`cycleFrozenColumns\\('${tableKey}', 3\\)`), `${tableKey} table header renders a freeze button`);
+    assert.match(html, new RegExp(`(?:cycleFrozenColumns\\('${tableKey}', 3\\)|renderFreezeColumnButton\\('${tableKey}', 3\\))`), `${tableKey} table header renders a freeze button`);
   });
   assert.match(html, /function renderFreezeColumnButton\(tableKey, maxColumns = 3\)/, 'dynamic table headers can render freeze buttons');
   assert.match(html, /class="flex flex-col items-start gap-1"/, 'freeze buttons sit below the first header label');
@@ -31,7 +35,11 @@ test('dynamic table renderers reapply frozen columns after rerendering rows', ()
     /window\.renderDb = \(\) => \{[\s\S]*?window\.applyFrozenColumns\('product-list'\);[\s\S]*?\n\s*\};/,
     /window\.renderPriceList = \(\) => \{[\s\S]*?window\.applyFrozenColumns\('price-list'\);[\s\S]*?\n\s*\};/,
     /window\.renderInventory = \(\) => \{[\s\S]*?window\.applyFrozenColumns\('inventory'\);[\s\S]*?\n\s*\};/,
-    /window\.renderNonStockPricingStrategies = \(\) => \{[\s\S]*?window\.applyFrozenColumns\('non-stock-pricing'\);[\s\S]*?\n\s*\};/
+    /window\.renderNonStockPricingStrategies = \(\) => \{[\s\S]*?window\.applyFrozenColumns\('non-stock-pricing'\);[\s\S]*?\n\s*\};/,
+    /function renderEngineeringStandardList\(rows = \[\]\) \{[\s\S]*?window\.applyFrozenColumns\('engineering-standard'\);[\s\S]*?\n\s*\}/,
+    /function renderEngineeringMatrixList\(rows = \[\]\) \{[\s\S]*?window\.applyFrozenColumns\('engineering-matrix'\);[\s\S]*?\n\s*\}/,
+    /function renderEngineeringProductMasterWorkspace\(\) \{[\s\S]*?window\.applyFrozenColumns\('engineering-product-master'\);[\s\S]*?\n\s*\}/,
+    /function renderEngineeringProductMasterDetailBulkList\(template\) \{[\s\S]*?window\.applyFrozenColumns\('engineering-detail-bulk'\);[\s\S]*?\n\s*\}/
   ].forEach((pattern) => assert.match(html, pattern));
 });
 

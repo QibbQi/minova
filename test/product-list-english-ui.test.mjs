@@ -394,7 +394,7 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'mt-5 grid grid-cols-1 gap-4',
     'sm:grid-cols-[minmax(0,1fr)_180px_minmax(0,1fr)_auto_auto]',
     'whitespace-nowrap min-w-[96px]',
-    'xl:grid-cols-[minmax(0,1fr)_minmax(260px,360px)]',
+    'lg:grid-cols-[minmax(420px,1fr)_minmax(220px,0.55fr)_minmax(260px,340px)]',
     'Product mode',
     'Detail mode',
     'Class & Filters',
@@ -457,6 +457,7 @@ test('engineering workspace exposes certification matrix filters and seeded cata
       && matrixPanel.indexOf('id="engineering-category-filters"') < matrixPanel.indexOf('id="engineering-class-filter"'),
     'Matrix mode should keep Class & Filters as the compact right-side control after requirement/category filters'
   );
+  assert.equal(matrixPanel.includes('class="space-y-5"'), false, 'Matrix mode filters should be stitched as sibling controls instead of stacked groups');
   assert.equal(matrixPanel.includes('Linked Products'), true, 'Matrix mode should label product linkage as Linked Products');
   assert.equal(matrixPanel.includes('Product Evidence'), false, 'Matrix mode should not use Product Evidence as a table column');
   assert.equal(matrixPanel.includes('id="engineering-matrix-select-all"'), true, 'Matrix mode should support selecting records for matched product search');

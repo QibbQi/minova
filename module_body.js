@@ -2087,6 +2087,7 @@
             documents: { label: 'Documents', master: ['datasheetLink', 'certificateLink'], technical: [], extra: ['documents'] }
         };
         const PRODUCT_MASTER_DETAIL_TEMPLATE_STORAGE_KEY = 'minova_product_master_detail_templates_v1';
+        const PRODUCT_MASTER_DETAIL_HISTORY_HIDDEN_STORAGE_KEY = 'minova_product_master_detail_history_hidden_v1';
         const PRODUCT_MASTER_DETAIL_NEW_FIELD_VALUE = '__new_field__';
         const PRODUCT_MASTER_DETAIL_MASTER_FIELD_LABELS = {
             model: 'Model',
@@ -2734,15 +2735,39 @@
                 .map(product => productMasterDetailValue(product, template.category, fieldKey))
                 .filter(productMasterDetailValuePresent));
         }
+        function productMasterDetailHiddenHistoryKey(template = {}, fieldKey = '') {
+            const templateId = String(template?.id || productMasterDetailTemplateId(template?.category, template?.detailGroup)).trim() || 'template';
+            return `${templateId}::${String(fieldKey || '').trim()}`;
+        }
+        function readProductMasterDetailHiddenHistory() {
+            try {
+                const parsed = JSON.parse(localStorage.getItem(PRODUCT_MASTER_DETAIL_HISTORY_HIDDEN_STORAGE_KEY) || '{}');
+                return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+            } catch (e) {
+                return {};
+            }
+        }
+        function writeProductMasterDetailHiddenHistory(map = {}) {
+            try { localStorage.setItem(PRODUCT_MASTER_DETAIL_HISTORY_HIDDEN_STORAGE_KEY, JSON.stringify(map || {})); } catch (e) {}
+        }
+        function productMasterDetailHiddenHistorySet(template = {}, fieldKey = '') {
+            const hidden = readProductMasterDetailHiddenHistory()[productMasterDetailHiddenHistoryKey(template, fieldKey)] || [];
+            return new Set((Array.isArray(hidden) ? hidden : []).map(value => String(value || '').trim().toLowerCase()).filter(Boolean));
+        }
         function renderProductMasterDetailBulkEditorControl(product = {}, template = {}, fieldKey = '') {
             const value = String(productMasterDetailValue(product, template.category, fieldKey) ?? '');
             const disabled = productMasterDetailFieldKind(template.category, fieldKey) === 'previewOnly';
             const datalistId = productMasterDetailFieldDatalistId(template, fieldKey);
             const options = productMasterDetailFieldValueOptions(template, fieldKey);
-            const choices = Array.from(new Set([...options, value].map(option => String(option ?? '').trim()).filter(Boolean)));
+            const hiddenChoices = productMasterDetailHiddenHistorySet(template, fieldKey);
+            const rawChoices = Array.from(new Set([...options, value].map(option => String(option ?? '').trim()).filter(Boolean)));
+            const choices = rawChoices
+                .filter(choice => !hiddenChoices.has(choice.toLowerCase()));
+            const hasHistoryChoices = rawChoices.length > 0 && !disabled;
             const inputId = `engineering-detail-bulk-${productMasterDetailSafeDomId(`${template.id || 'template'}-${product.id || 'product'}-${fieldKey}`)}`;
             const commonAttrs = `data-engineering-detail-product="${htmlSafe(product.id || '')}" data-engineering-detail-field="${htmlSafe(fieldKey)}" data-engineering-detail-template-field="${htmlSafe(fieldKey)}" data-engineering-detail-value-options="${htmlSafe(datalistId)}"`;
-            const input = `<input id="${htmlSafe(inputId)}" ${commonAttrs} list="${htmlSafe(datalistId)}" value="${htmlSafe(value)}" ${disabled ? 'disabled' : ''} class="w-full min-w-[160px] border border-slate-200 rounded-lg px-2 py-2 ${choices.length && !disabled ? 'pr-8' : ''} text-xs outline-none focus:border-purple-500 ${disabled ? 'bg-slate-50 text-slate-400' : 'bg-white'}">`;
+            const listAttr = hasHistoryChoices ? '' : `list="${htmlSafe(datalistId)}"`;
+            const input = `<input id="${htmlSafe(inputId)}" ${commonAttrs} ${listAttr} value="${htmlSafe(value)}" ${disabled ? 'disabled' : ''} ${hasHistoryChoices ? 'oninput="filterProductMasterDetailBulkHistoryValues(this)"' : ''} class="w-full min-w-[160px] border border-slate-200 rounded-lg px-2 py-2 ${choices.length && !disabled ? 'pr-8' : ''} text-xs outline-none focus:border-purple-500 ${disabled ? 'bg-slate-50 text-slate-400' : 'bg-white'}">`;
             if (!disabled && choices.length) {
                 return `<div class="relative min-w-[220px]">
                     ${input}
@@ -2750,7 +2775,11 @@
                         <span aria-hidden="true" class="inline-block h-0 w-0 border-l-[4px] border-r-[4px] border-t-[6px] border-l-transparent border-r-transparent border-t-slate-700"></span>
                     </button>
                     <div data-engineering-detail-history-menu="${htmlSafe(inputId)}" class="hidden absolute right-0 top-full z-30 mt-1 max-h-44 min-w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl">
-                        ${choices.map(choice => `<button type="button" data-engineering-detail-history-target="${htmlSafe(inputId)}" data-engineering-detail-history-value="${htmlSafe(choice)}" onclick="applyProductMasterDetailBulkHistoryValue(this)" class="block w-full px-3 py-2 text-left text-xs font-bold text-slate-600 hover:bg-slate-50">${htmlSafe(choice)}</button>`).join('')}
+                        ${choices.map(choice => `<div data-engineering-detail-history-option data-engineering-detail-history-value="${htmlSafe(choice)}" class="flex items-center border-b border-slate-50 last:border-b-0">
+                            <button type="button" data-engineering-detail-history-target="${htmlSafe(inputId)}" data-engineering-detail-history-value="${htmlSafe(choice)}" onclick="applyProductMasterDetailBulkHistoryValue(this)" class="min-w-0 flex-1 px-3 py-2 text-left text-xs font-bold text-slate-600 hover:bg-slate-50">${htmlSafe(choice)}</button>
+                            <button type="button" data-engineering-detail-history-delete data-engineering-detail-history-target="${htmlSafe(inputId)}" data-engineering-detail-history-template="${htmlSafe(template.id || '')}" data-engineering-detail-history-field="${htmlSafe(fieldKey)}" data-engineering-detail-history-value="${htmlSafe(choice)}" onclick="deleteProductMasterDetailBulkHistoryValue(this)" title="Delete history value" class="px-3 py-2 text-[10px] font-black text-red-600 hover:bg-red-50">Delete</button>
+                        </div>`).join('')}
+                        <div data-engineering-detail-history-empty class="hidden px-3 py-2 text-xs font-bold text-slate-400">No matching history values.</div>
                     </div>
                 </div>`;
             }
@@ -2766,6 +2795,23 @@
             menu.classList.toggle('hidden');
         }
         window.toggleProductMasterDetailBulkHistoryMenu = toggleProductMasterDetailBulkHistoryMenu;
+        function filterProductMasterDetailBulkHistoryValues(input) {
+            const inputId = input?.id || '';
+            if (!inputId) return;
+            const menu = document.querySelector(`[data-engineering-detail-history-menu="${CSS.escape(inputId)}"]`);
+            if (!menu) return;
+            const query = String(input.value || '').trim().toLowerCase();
+            let shown = 0;
+            menu.querySelectorAll('[data-engineering-detail-history-option]').forEach(option => {
+                const valueText = String(option.dataset.engineeringDetailHistoryValue || '').toLowerCase();
+                const match = !query || valueText.includes(query);
+                option.classList.toggle('hidden', !match);
+                if (match) shown += 1;
+            });
+            const empty = menu.querySelector('[data-engineering-detail-history-empty]');
+            if (empty) empty.classList.toggle('hidden', shown > 0);
+        }
+        window.filterProductMasterDetailBulkHistoryValues = filterProductMasterDetailBulkHistoryValues;
         function applyProductMasterDetailBulkHistoryValue(button) {
             const target = document.getElementById(button?.dataset?.engineeringDetailHistoryTarget || '');
             const value = button?.dataset?.engineeringDetailHistoryValue || '';
@@ -2775,6 +2821,25 @@
             document.querySelectorAll('[data-engineering-detail-history-menu]').forEach(item => item.classList.add('hidden'));
         }
         window.applyProductMasterDetailBulkHistoryValue = applyProductMasterDetailBulkHistoryValue;
+        function deleteProductMasterDetailBulkHistoryValue(button) {
+            const targetId = button?.dataset?.engineeringDetailHistoryTarget || '';
+            const templateId = String(button?.dataset?.engineeringDetailHistoryTemplate || '').trim();
+            const fieldKey = String(button?.dataset?.engineeringDetailHistoryField || '').trim();
+            const value = String(button?.dataset?.engineeringDetailHistoryValue || '').trim();
+            if (!templateId || !fieldKey || !value) return;
+            if (!confirm(`Delete history value "${value}" from this field? Product data will not be changed.`)) return;
+            const key = `${templateId}::${fieldKey}`;
+            const map = readProductMasterDetailHiddenHistory();
+            const hidden = new Set((Array.isArray(map[key]) ? map[key] : []).map(item => String(item || '').trim().toLowerCase()).filter(Boolean));
+            hidden.add(value.toLowerCase());
+            map[key] = Array.from(hidden);
+            writeProductMasterDetailHiddenHistory(map);
+            const option = button.closest('[data-engineering-detail-history-option]');
+            if (option) option.remove();
+            const input = document.getElementById(targetId);
+            if (input) filterProductMasterDetailBulkHistoryValues(input);
+        }
+        window.deleteProductMasterDetailBulkHistoryValue = deleteProductMasterDetailBulkHistoryValue;
         function renderEngineeringProductMasterDetailBulkList(template) {
             const box = document.getElementById('engineering-detail-template-bulk-list');
             const scope = document.getElementById('engineering-detail-template-bulk-scope');

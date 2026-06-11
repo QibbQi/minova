@@ -8012,7 +8012,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <div class="mt-1 text-sm font-bold text-slate-700 truncate">${htmlSafe(productListDisplayText(product.name))}</div>
                         <div class="text-[11px] text-slate-400 truncate">${htmlSafe(supplier)} · ${firstBatch ? `FIFO ${htmlSafe(firstBatch.batchNo || '-')}` : 'No active batch'}${preview ? ` · ${htmlSafe(preview)}` : ''}</div>
                     </div>
-                    <button type="button" data-engineering-action="quote-add" onclick="addEngineeringProductToQuote('${htmlSafe(product.id || '')}')" class="rounded-xl bg-purple-700 px-4 py-2 text-xs font-black text-white hover:bg-purple-800">Add to Quotation Builder</button>
+                    <button type="button" data-engineering-action="quote-add" onclick="addEngineeringDetailSearchProductToQuote('${htmlSafe(product.id || '')}')" class="rounded-xl bg-purple-700 px-4 py-2 text-xs font-black text-white hover:bg-purple-800">Add to Quotation Builder</button>
                 </div>`;
             }).join('');
             applyEngineeringPermissions();
@@ -8254,18 +8254,57 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             applyEngineeringPermissions();
         }
         window.searchEngineeringStandardProducts = searchEngineeringStandardProducts;
-        function addEngineeringProductToQuote(productId) {
+        window.__engineeringQuoteAddAfterAdd = null;
+        function runEngineeringQuoteAddCompletion(productId = '') {
+            const afterAdd = window.__engineeringQuoteAddAfterAdd;
+            if (typeof afterAdd !== 'function') return;
+            window.__engineeringQuoteAddAfterAdd = null;
+            try {
+                afterAdd(productId);
+            } catch (error) {
+                console.warn('Engineering quote add completion failed', error);
+            }
+        }
+        window.runEngineeringQuoteAddCompletion = runEngineeringQuoteAddCompletion;
+        function confirmEngineeringDetailSearchQuoteAdded(productId = '') {
+            const product = products.find(item => String(item.id || '') === String(productId || ''));
+            const productName = productListDisplayText(product?.name || productId || 'Product');
+            const ok = confirm(`Added to Quotation Builder. Open Quotation now?\n\n${productName}`);
+            if (!ok) return;
+            closeEngineeringDetailProductSearch();
+            switchTab('quotation');
+        }
+        window.confirmEngineeringDetailSearchQuoteAdded = confirmEngineeringDetailSearchQuoteAdded;
+        function addEngineeringDetailSearchProductToQuote(productId) {
+            return addEngineeringProductToQuote(productId, { afterAdd: confirmEngineeringDetailSearchQuoteAdded });
+        }
+        window.addEngineeringDetailSearchProductToQuote = addEngineeringDetailSearchProductToQuote;
+        function addEngineeringProductToQuote(productId, options = {}) {
             if (!canAddEngineeringProductToQuote()) return alert('No quotation edit permission.');
             const product = products.find(item => String(item.id || '') === String(productId || ''));
             if (!product) return alert('Product not found.');
             const defaults = getEngineeringQuoteDefaults();
-            const addFromPriceList = (priceType = defaults.priceType) => window.pickPriceListProduct?.(product.id, priceType);
+            const afterAdd = typeof options.afterAdd === 'function' ? options.afterAdd : null;
+            const queueCompletion = () => {
+                if (afterAdd) window.__engineeringQuoteAddAfterAdd = afterAdd;
+            };
+            const addFromPriceList = (priceType = defaults.priceType) => {
+                if (typeof window.pickPriceListProduct !== 'function') return false;
+                queueCompletion();
+                window.pickPriceListProduct(product.id, priceType);
+                return true;
+            };
             if (defaults.source === 'priceList') return addFromPriceList(defaults.priceType);
             const firstBatch = getFifoBatchesForProduct(productId)[0];
-            if (firstBatch) return window.pickProduct?.(firstBatch.id, defaults.priceType);
+            if (firstBatch) {
+                if (typeof window.pickProduct !== 'function') return false;
+                queueCompletion();
+                window.pickProduct(firstBatch.id, defaults.priceType);
+                return true;
+            }
             const ok = confirm('No stock is available. Add this product from Price List instead?');
-            if (!ok) return;
-            addFromPriceList(defaults.priceType);
+            if (!ok) return false;
+            return addFromPriceList(defaults.priceType);
         }
         window.addEngineeringProductToQuote = addEngineeringProductToQuote;
         function openEngineeringRequirementEditor(recordId = '') {
@@ -17269,6 +17308,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 quoteRows.splice(insertIdx, 0, { id: Date.now(), description: p.name, vendor: brand, vendorManualOverride: false, supplierCode, spec: getProductDisplaySpec(p) || '', batchNo: item.batchNo, quantity: 1, price: price, cost: cost, productId: item.productId || '', inventoryId: item.id || '' });
             }
             renderQuote();
+            window.runEngineeringQuoteAddCompletion?.(item.productId || '');
         }
 
         function addPriceListProductToQuote(productId, priceType) {
@@ -17301,6 +17341,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 quoteRows.splice(insertIdx, 0, { id: Date.now(), description: p.name, vendor: brand, vendorManualOverride: false, supplierCode, spec: getProductDisplaySpec(p) || '', batchNo: '', quantity: 1, price: price, cost: cost, productId: p.id || '', inventoryId: '' });
             }
             renderQuote();
+            window.runEngineeringQuoteAddCompletion?.(p.id || '');
         }
 
         window.openBatteryProgramModal = (inventoryId, priceType) => {
@@ -17327,8 +17368,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             }
         };
 
-        window.closeBatteryProgramModal = () => {
+        window.closeBatteryProgramModal = (options = {}) => {
             window.__pendingBatteryPick = null;
+            if (!options.preserveEngineeringQuoteAdd) window.__engineeringQuoteAddAfterAdd = null;
             const modal = document.getElementById('battery-program-modal');
             if (modal) {
                 modal.classList.add('hidden');
@@ -17344,7 +17386,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (quoteProgram) quoteProgram.value = BATTERY_SOLAR_PROGRAMS.includes(program) ? program : 'offgrid';
             window.__lastBatterySolarProgram = quoteProgram?.value || 'offgrid';
             window.resetQuoteExportFactorForProgram?.({ recalc: false });
-            window.closeBatteryProgramModal();
+            window.closeBatteryProgramModal({ preserveEngineeringQuoteAdd: true });
             if (pending.source === 'priceList') addPriceListProductToQuote(pending.productId, pending.priceType);
             else addProductToQuote(pending.inventoryId, pending.priceType);
             window.updateQuoteSolarProgramAvailability?.({ fromUser: true });

@@ -482,6 +482,9 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'function searchEngineeringDetailProducts',
     'function renderEngineeringDetailProductSearchResults',
     'function closeEngineeringDetailProductSearch',
+    'function runEngineeringQuoteAddCompletion',
+    'function confirmEngineeringDetailSearchQuoteAdded',
+    'function addEngineeringDetailSearchProductToQuote',
     'function deleteProductMasterDetailTemplateField',
     'function previewEngineeringProductMasterBulkSave',
     'function normalizeCertificationRequirement',
@@ -595,7 +598,9 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'Search Products',
     'Add to Quotation Builder',
     "productMatchesEngineeringDetailFilters(product, template, filters)",
-    "addEngineeringProductToQuote('${htmlSafe(product.id || '')}')",
+    "addEngineeringDetailSearchProductToQuote('${htmlSafe(product.id || '')}')",
+    'Added to Quotation Builder. Open Quotation now?',
+    '__engineeringQuoteAddAfterAdd',
     "const match = String(value ?? '').replace(/,/g, '').match(/-?\\d+(?:\\.\\d+)?/)",
     "if (min !== null && max !== null && min > max)",
     "return filters.every(filter =>",
@@ -622,8 +627,14 @@ test('engineering workspace exposes certification matrix filters and seeded cata
   assert.ok(standardSearch, 'Standard Search Product handler should exist');
   assert.equal(standardSearch[1].includes('openEngineeringStandardProductModal'), false, 'Standard Search Product should render inline results without opening a modal');
 
-  const engineeringQuoteAdd = html.match(/function addEngineeringProductToQuote\(productId\) \{([\s\S]*?)\n\s*\}\n\s*window\.addEngineeringProductToQuote/);
+  const detailSearchResults = html.match(/function renderEngineeringDetailProductSearchResults\(matches = \[\], template = engineeringDetailProductSearchTemplate\(\), filters = \[\]\) \{([\s\S]*?)\n\s*\}\n\s*window\.renderEngineeringDetailProductSearchResults/);
+  assert.ok(detailSearchResults, 'Detail Search result renderer should exist');
+  assert.match(detailSearchResults[1], /addEngineeringDetailSearchProductToQuote\('\$\{htmlSafe\(product\.id \|\| ''\)\}'\)/, 'Detail Search quote-add button should use the post-add open quotation prompt');
+  assert.equal(detailSearchResults[1].includes("addEngineeringProductToQuote('${htmlSafe(product.id || '')}')"), false, 'Detail Search should not bypass the post-add prompt wrapper');
+
+  const engineeringQuoteAdd = html.match(/function addEngineeringProductToQuote\(productId, options = \{\}\) \{([\s\S]*?)\n\s*\}\n\s*window\.addEngineeringProductToQuote/);
   assert.ok(engineeringQuoteAdd, 'Engineering quote-add handler should exist');
+  assert.match(engineeringQuoteAdd[1], /afterAdd/, 'Engineering quote-add handler should accept an optional completion callback');
   assert.match(engineeringQuoteAdd[1], /confirm\('No stock is available\. Add this product from Price List instead\?'\)/, 'Inventory-first fallback should ask before using Price List');
   assert.match(engineeringQuoteAdd[1], /addFromPriceList\(defaults\.priceType\)/, 'Inventory-first fallback should reuse the selected default price type');
   assert.equal(engineeringQuoteAdd[1].includes('promptEngineeringPriceType'), false, 'Inventory-first fallback should use the Price List flow without the old price prompt');

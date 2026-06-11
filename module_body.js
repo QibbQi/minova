@@ -4877,7 +4877,19 @@
         };
 
         // --- Core UI Logic ---
+        window.hideGlobalTooltip = () => {
+            const tooltip = document.getElementById('global-tooltip');
+            if (!tooltip) return;
+            tooltip.classList.add('hidden');
+            tooltip.innerHTML = '';
+            tooltip.style.left = '';
+            tooltip.style.top = '';
+            tooltip.style.width = '';
+            tooltip.style.maxWidth = '';
+        };
+        window.hidePriceListTooltip = window.hideGlobalTooltip;
         window.switchTab = (tab) => {
+            window.hideGlobalTooltip?.();
             const localFileMode = window.location.protocol === 'file:';
             const connected = !!window.__minovaSync?.getStatus?.()?.connected;
             const authMode = !!window.__minovaAuth?.state?.user || document.body.classList.contains('minova-authenticated');
@@ -5541,6 +5553,7 @@
         };
 
         window.removeRow = (id) => {
+            window.hideGlobalTooltip?.();
             quoteRows = quoteRows.filter(r => r.id !== id);
             if(quoteRows.length === 0) quoteRows.push({ id: Date.now(), description: '', vendor: '', spec: '', batchNo: '', quantity: 1, price: 0, cost: 0, productId: '', inventoryId: '' });
             renderQuote();
@@ -5845,6 +5858,7 @@
         };
 
         function renderQuote() {
+            window.hideGlobalTooltip?.();
             const container = document.getElementById('quote-body');
             const rate = parseFloat(document.getElementById('rate-myr-cny').value) || 1.53;
             const t = i18n[currentLang];
@@ -10480,7 +10494,10 @@
             const raw = String(categoryOrProductId || '').trim();
             const product = products.find(p => String(p.id) === raw);
             const category = product ? String(product.category || '').trim() : raw;
-            if (!category) return;
+            if (!category) {
+                window.hideGlobalTooltip?.();
+                return;
+            }
             tooltip.innerHTML = marketTooltipHtml(category);
             tooltip.classList.remove('hidden');
             const x = event.clientX + 16;
@@ -10841,7 +10858,10 @@
         window.showPriceListTooltip = (event, productId) => {
             const tooltip = document.getElementById('global-tooltip');
             const p = products.find(x => String(x.id) === String(productId));
-            if (!tooltip || !p) return;
+            if (!tooltip || !p) {
+                window.hideGlobalTooltip?.();
+                return;
+            }
             const r = priceListProductPricing(p);
             const market = getMarketPriceSummary(p.category || '', { days: 30 });
             tooltip.innerHTML = `
@@ -10864,9 +10884,7 @@
             tooltip.style.left = `${Math.max(12, Math.min(rawLeft, window.innerWidth - tooltipWidth - 12))}px`;
             tooltip.style.top = `${Math.max(12, Math.min(rawTop, window.innerHeight - tooltipHeight - 12))}px`;
         };
-        window.hidePriceListTooltip = () => {
-            document.getElementById('global-tooltip')?.classList.add('hidden');
-        };
+        window.hidePriceListTooltip = window.hideGlobalTooltip;
         window.exportSelectedPriceListExcel = () => {
             const selected = products.filter(p => selectedPriceListProductIds.has(p.id));
             if (!selected.length) return alert('Please select at least one product to export.');

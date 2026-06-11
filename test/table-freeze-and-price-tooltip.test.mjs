@@ -64,3 +64,12 @@ test('price list hover tooltip is a compact market and quote comparison', () => 
   assert.doesNotMatch(tooltip[1], /Grey Cost:/, 'tooltip no longer shows grey cost calculation');
   assert.doesNotMatch(tooltip[1], /Certifications:/, 'tooltip no longer shows certification details');
 });
+
+test('global market tooltip is cleared when quote rows or pages change', () => {
+  assert.match(html, /<div id="global-tooltip"[^>]*hidden"[^>]*><\/div>/, 'global tooltip starts empty and hidden');
+  assert.match(html, /window\.hideGlobalTooltip = \(\) => \{[\s\S]*?tooltip\.innerHTML = '';[\s\S]*?\};/, 'global tooltip clear helper hides and empties stale content');
+  assert.match(html, /window\.hidePriceListTooltip = window\.hideGlobalTooltip;/, 'price-list and market hover use the same cleanup helper');
+  assert.match(html, /window\.switchTab = \(tab\) => \{[\s\S]*?window\.hideGlobalTooltip\?\.\(\);/, 'switching pages clears any active tooltip');
+  assert.match(html, /function renderQuote\(\) \{[\s\S]*?window\.hideGlobalTooltip\?\.\(\);/, 'rerendering quote rows clears any active tooltip');
+  assert.match(html, /window\.removeRow = \(id\) => \{[\s\S]*?window\.hideGlobalTooltip\?\.\(\);/, 'deleting a quote row clears any active tooltip');
+});

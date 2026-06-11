@@ -4578,22 +4578,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
     </div>
 
     <!-- 全局浮窗容器 -->
-    <div id="global-tooltip" class="fixed p-3 bg-slate-800 text-white text-xs rounded-lg shadow-xl z-[9999] pointer-events-none w-64 whitespace-normal hidden" style="left: 872px; top: 455px;">
-                <p class="font-black text-sm mb-2 border-b border-slate-600 pb-1">25kW Three-Phase Inverter</p>
-                <div class="space-y-1">
-                    <p>PCS Price (Clearance RESI): <span class="font-black text-white">RM 16.59/pcs</span> (¥28.54/pcs)</p>
-                    <p class="text-slate-300">Formula: Clearance RESI per kW × 25 kW/pcs</p>
-                    <p>PCS Cost: <span class="font-black text-white">RM 8.8023/pcs</span> (¥15.1400/pcs)</p>
-                    <p>Avg Cost: <span class="font-black text-white">RM 0.3521/kW</span> (¥0.6056/kW; base cost)</p>
-                    <p>Clearance Cost: ¥0.6056 × (1 + 20% duty + 10% SST) = <span class="font-black text-blue-200">¥0.7873</span></p>
-                    <p>Grey Cost: ¥0.6056 × (1 + 5% grey tax) = <span class="font-black text-indigo-200">¥0.6359</span></p>
-                    <p>RESI Price: cost × (1 + 45% total company margin) = +45.00%</p>
-                    <p>C&amp;I Price: cost × (1 + 45% total company margin) = +45.00%</p>
-                    <p>Market 30D: <span class="font-black text-amber-200">No 30-day market price</span></p>
-                    <p>FX: 1 MYR = 1.7200 CNY</p>
-                    <p class="pt-1 text-slate-300">Certifications: IEC 62109-1, IEC 62109-2, IEC 62477 (when applicable), IEC 62109-1/2, SIRIM / local utility requirements where applicable</p>
-                </div>
-            </div>
+    <div id="global-tooltip" class="fixed p-3 bg-slate-800 text-white text-xs rounded-lg shadow-xl z-[9999] pointer-events-none w-64 whitespace-normal hidden"></div>
 
     <!-- Inventory pricing modal -->
     <div id="inventory-edit-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center z-[200] p-4">
@@ -9618,7 +9603,19 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         };
 
         // --- Core UI Logic ---
+        window.hideGlobalTooltip = () => {
+            const tooltip = document.getElementById('global-tooltip');
+            if (!tooltip) return;
+            tooltip.classList.add('hidden');
+            tooltip.innerHTML = '';
+            tooltip.style.left = '';
+            tooltip.style.top = '';
+            tooltip.style.width = '';
+            tooltip.style.maxWidth = '';
+        };
+        window.hidePriceListTooltip = window.hideGlobalTooltip;
         window.switchTab = (tab) => {
+            window.hideGlobalTooltip?.();
             const localFileMode = window.location.protocol === 'file:';
             const connected = !!window.__minovaSync?.getStatus?.()?.connected;
             const authMode = !!window.__minovaAuth?.state?.user || document.body.classList.contains('minova-authenticated');
@@ -10282,6 +10279,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         };
 
         window.removeRow = (id) => {
+            window.hideGlobalTooltip?.();
             quoteRows = quoteRows.filter(r => r.id !== id);
             if(quoteRows.length === 0) quoteRows.push({ id: Date.now(), description: '', vendor: '', spec: '', batchNo: '', quantity: 1, price: 0, cost: 0, productId: '', inventoryId: '' });
             renderQuote();
@@ -10586,6 +10584,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         };
 
         function renderQuote() {
+            window.hideGlobalTooltip?.();
             const container = document.getElementById('quote-body');
             const rate = parseFloat(document.getElementById('rate-myr-cny').value) || 1.53;
             const t = i18n[currentLang];
@@ -15221,7 +15220,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const raw = String(categoryOrProductId || '').trim();
             const product = products.find(p => String(p.id) === raw);
             const category = product ? String(product.category || '').trim() : raw;
-            if (!category) return;
+            if (!category) {
+                window.hideGlobalTooltip?.();
+                return;
+            }
             tooltip.innerHTML = marketTooltipHtml(category);
             tooltip.classList.remove('hidden');
             const x = event.clientX + 16;
@@ -15582,7 +15584,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         window.showPriceListTooltip = (event, productId) => {
             const tooltip = document.getElementById('global-tooltip');
             const p = products.find(x => String(x.id) === String(productId));
-            if (!tooltip || !p) return;
+            if (!tooltip || !p) {
+                window.hideGlobalTooltip?.();
+                return;
+            }
             const r = priceListProductPricing(p);
             const market = getMarketPriceSummary(p.category || '', { days: 30 });
             tooltip.innerHTML = `
@@ -15605,9 +15610,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             tooltip.style.left = `${Math.max(12, Math.min(rawLeft, window.innerWidth - tooltipWidth - 12))}px`;
             tooltip.style.top = `${Math.max(12, Math.min(rawTop, window.innerHeight - tooltipHeight - 12))}px`;
         };
-        window.hidePriceListTooltip = () => {
-            document.getElementById('global-tooltip')?.classList.add('hidden');
-        };
+        window.hidePriceListTooltip = window.hideGlobalTooltip;
         window.exportSelectedPriceListExcel = () => {
             const selected = products.filter(p => selectedPriceListProductIds.has(p.id));
             if (!selected.length) return alert('Please select at least one product to export.');

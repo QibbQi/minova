@@ -2754,36 +2754,59 @@
             const hidden = readProductMasterDetailHiddenHistory()[productMasterDetailHiddenHistoryKey(template, fieldKey)] || [];
             return new Set((Array.isArray(hidden) ? hidden : []).map(value => String(value || '').trim().toLowerCase()).filter(Boolean));
         }
-        function renderProductMasterDetailBulkEditorControl(product = {}, template = {}, fieldKey = '') {
-            const value = String(productMasterDetailValue(product, template.category, fieldKey) ?? '');
-            const disabled = productMasterDetailFieldKind(template.category, fieldKey) === 'previewOnly';
-            const datalistId = productMasterDetailFieldDatalistId(template, fieldKey);
-            const options = productMasterDetailFieldValueOptions(template, fieldKey);
+        function renderProductMasterDetailHistoryInputControl({
+            inputId = '',
+            value = '',
+            choices = [],
+            commonAttrs = '',
+            placeholder = '',
+            inputClass = '',
+            template = {},
+            fieldKey = '',
+            disabled = false
+        } = {}) {
             const hiddenChoices = productMasterDetailHiddenHistorySet(template, fieldKey);
-            const rawChoices = Array.from(new Set([...options, value].map(option => String(option ?? '').trim()).filter(Boolean)));
-            const choices = rawChoices
-                .filter(choice => !hiddenChoices.has(choice.toLowerCase()));
+            const rawChoices = Array.from(new Set((Array.isArray(choices) ? choices : []).map(option => String(option ?? '').trim()).filter(Boolean)));
+            const visibleChoices = rawChoices.filter(choice => !hiddenChoices.has(choice.toLowerCase()));
             const hasHistoryChoices = rawChoices.length > 0 && !disabled;
-            const inputId = `engineering-detail-bulk-${productMasterDetailSafeDomId(`${template.id || 'template'}-${product.id || 'product'}-${fieldKey}`)}`;
-            const commonAttrs = `data-engineering-detail-product="${htmlSafe(product.id || '')}" data-engineering-detail-field="${htmlSafe(fieldKey)}" data-engineering-detail-template-field="${htmlSafe(fieldKey)}" data-engineering-detail-value-options="${htmlSafe(datalistId)}"`;
-            const listAttr = hasHistoryChoices ? '' : `list="${htmlSafe(datalistId)}"`;
-            const input = `<input id="${htmlSafe(inputId)}" ${commonAttrs} ${listAttr} value="${htmlSafe(value)}" ${disabled ? 'disabled' : ''} ${hasHistoryChoices ? 'oninput="filterProductMasterDetailBulkHistoryValues(this)"' : ''} class="w-full min-w-[160px] border border-slate-200 rounded-lg px-2 py-2 ${choices.length && !disabled ? 'pr-8' : ''} text-xs outline-none focus:border-purple-500 ${disabled ? 'bg-slate-50 text-slate-400' : 'bg-white'}">`;
-            if (!disabled && choices.length) {
+            const resolvedInputId = inputId || `engineering-detail-history-${productMasterDetailSafeDomId(`${template.id || 'template'}-${fieldKey}`)}`;
+            const baseClass = inputClass || 'w-full min-w-[160px] border border-slate-200 rounded-lg px-2 py-2 text-xs outline-none focus:border-purple-500 bg-white';
+            const input = `<input id="${htmlSafe(resolvedInputId)}" ${commonAttrs} value="${htmlSafe(value)}" placeholder="${htmlSafe(placeholder)}" ${disabled ? 'disabled' : ''} ${hasHistoryChoices ? 'oninput="filterProductMasterDetailBulkHistoryValues(this)"' : ''} class="${htmlSafe(baseClass)} ${visibleChoices.length && !disabled ? 'pr-8' : ''}">`;
+            if (!disabled && visibleChoices.length) {
                 return `<div class="relative min-w-[220px]">
                     ${input}
-                    <button type="button" data-engineering-detail-history-target="${htmlSafe(inputId)}" onclick="toggleProductMasterDetailBulkHistoryMenu(this)" title="Show history values" class="absolute right-1 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-md hover:bg-slate-100">
+                    <button type="button" data-engineering-detail-history-target="${htmlSafe(resolvedInputId)}" onclick="toggleProductMasterDetailBulkHistoryMenu(this)" title="Show history values" class="absolute right-1 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-md hover:bg-slate-100">
                         <span aria-hidden="true" class="inline-block h-0 w-0 border-l-[4px] border-r-[4px] border-t-[6px] border-l-transparent border-r-transparent border-t-slate-700"></span>
                     </button>
-                    <div data-engineering-detail-history-menu="${htmlSafe(inputId)}" class="hidden absolute right-0 top-full z-30 mt-1 max-h-44 min-w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl">
-                        ${choices.map(choice => `<div data-engineering-detail-history-option data-engineering-detail-history-value="${htmlSafe(choice)}" class="flex items-center border-b border-slate-50 last:border-b-0">
-                            <button type="button" data-engineering-detail-history-target="${htmlSafe(inputId)}" data-engineering-detail-history-value="${htmlSafe(choice)}" onclick="applyProductMasterDetailBulkHistoryValue(this)" class="min-w-0 flex-1 px-3 py-2 text-left text-xs font-bold text-slate-600 hover:bg-slate-50">${htmlSafe(choice)}</button>
-                            <button type="button" data-engineering-detail-history-delete data-engineering-detail-history-target="${htmlSafe(inputId)}" data-engineering-detail-history-template="${htmlSafe(template.id || '')}" data-engineering-detail-history-field="${htmlSafe(fieldKey)}" data-engineering-detail-history-value="${htmlSafe(choice)}" onclick="deleteProductMasterDetailBulkHistoryValue(this)" title="Delete history value" class="px-3 py-2 text-[10px] font-black text-red-600 hover:bg-red-50">Delete</button>
+                    <div data-engineering-detail-history-menu="${htmlSafe(resolvedInputId)}" class="hidden absolute right-0 top-full z-30 mt-1 max-h-44 min-w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl">
+                        ${visibleChoices.map(choice => `<div data-engineering-detail-history-option data-engineering-detail-history-value="${htmlSafe(choice)}" class="flex items-center border-b border-slate-50 last:border-b-0">
+                            <button type="button" data-engineering-detail-history-target="${htmlSafe(resolvedInputId)}" data-engineering-detail-history-value="${htmlSafe(choice)}" onclick="applyProductMasterDetailBulkHistoryValue(this)" class="min-w-0 flex-1 px-3 py-2 text-left text-xs font-bold text-slate-600 hover:bg-slate-50">${htmlSafe(choice)}</button>
+                            <button type="button" data-engineering-detail-history-delete data-engineering-detail-history-target="${htmlSafe(resolvedInputId)}" data-engineering-detail-history-template="${htmlSafe(template.id || '')}" data-engineering-detail-history-field="${htmlSafe(fieldKey)}" data-engineering-detail-history-value="${htmlSafe(choice)}" onclick="deleteProductMasterDetailBulkHistoryValue(this)" title="Delete history value" class="px-3 py-2 text-[10px] font-black text-red-600 hover:bg-red-50">Delete</button>
                         </div>`).join('')}
                         <div data-engineering-detail-history-empty class="hidden px-3 py-2 text-xs font-bold text-slate-400">No matching history values.</div>
                     </div>
                 </div>`;
             }
             return input;
+        }
+        function renderProductMasterDetailBulkEditorControl(product = {}, template = {}, fieldKey = '') {
+            const value = String(productMasterDetailValue(product, template.category, fieldKey) ?? '');
+            const disabled = productMasterDetailFieldKind(template.category, fieldKey) === 'previewOnly';
+            const datalistId = productMasterDetailFieldDatalistId(template, fieldKey);
+            const options = productMasterDetailFieldValueOptions(template, fieldKey);
+            const rawChoices = Array.from(new Set([...options, value].map(option => String(option ?? '').trim()).filter(Boolean)));
+            const inputId = `engineering-detail-bulk-${productMasterDetailSafeDomId(`${template.id || 'template'}-${product.id || 'product'}-${fieldKey}`)}`;
+            const commonAttrs = `data-engineering-detail-product="${htmlSafe(product.id || '')}" data-engineering-detail-field="${htmlSafe(fieldKey)}" data-engineering-detail-template-field="${htmlSafe(fieldKey)}" data-engineering-detail-value-options="${htmlSafe(datalistId)}"`;
+            return renderProductMasterDetailHistoryInputControl({
+                inputId,
+                value,
+                choices: rawChoices,
+                commonAttrs,
+                template,
+                fieldKey,
+                disabled,
+                inputClass: `w-full min-w-[160px] border border-slate-200 rounded-lg px-2 py-2 text-xs outline-none focus:border-purple-500 ${disabled ? 'bg-slate-50 text-slate-400' : 'bg-white'}`
+            });
         }
         function toggleProductMasterDetailBulkHistoryMenu(button) {
             const targetId = button?.dataset?.engineeringDetailHistoryTarget || '';
@@ -3046,12 +3069,21 @@
                         </div>
                     </div>`;
                 }
-                const datalistId = `engineering-detail-search-options-${productMasterDetailSafeDomId(`${template.id || 'template'}-${fieldKey}`)}`;
                 const options = productMasterDetailFieldValueOptions(template, fieldKey);
+                const inputId = `engineering-detail-search-${productMasterDetailSafeDomId(`${template.id || 'template'}-${fieldKey}`)}`;
+                const input = renderProductMasterDetailHistoryInputControl({
+                    inputId,
+                    value: '',
+                    choices: options,
+                    commonAttrs: `data-engineering-detail-search-value="${safeKey}" data-engineering-detail-template-field="${safeKey}"`,
+                    placeholder: 'Any',
+                    template,
+                    fieldKey,
+                    inputClass: 'w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-purple-500 bg-white'
+                });
                 return `<div data-engineering-detail-search-field="${safeKey}" data-engineering-detail-search-kind="text" class="rounded-2xl border border-slate-200 p-3">
                     <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">${htmlSafe(label)}</label>
-                    <input data-engineering-detail-search-value="${safeKey}" list="${htmlSafe(datalistId)}" placeholder="Any" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-purple-500">
-                    <datalist id="${htmlSafe(datalistId)}">${options.map(value => `<option value="${htmlSafe(value)}"></option>`).join('')}</datalist>
+                    ${input}
                 </div>`;
             }).join('') || '<div class="md:col-span-2 rounded-2xl border border-dashed border-slate-200 p-4 text-center text-xs text-slate-400">No fields in this template yet.</div>';
             if (results) results.innerHTML = '<div class="p-6 text-center text-xs text-slate-400">Fill detail conditions, then search products.</div>';
@@ -3084,7 +3116,7 @@
                 const input = row.querySelector('[data-engineering-detail-search-value]');
                 const value = String(input?.value || '').trim();
                 if (!value) return;
-                const options = Array.from(row.querySelectorAll('datalist option')).map(option => String(option.value || '').trim().toLowerCase()).filter(Boolean);
+                const options = Array.from(row.querySelectorAll('[data-engineering-detail-history-option]')).map(option => String(option.dataset.engineeringDetailHistoryValue || '').trim().toLowerCase()).filter(Boolean);
                 filters.push({ fieldKey, kind: 'text', value, exact: options.includes(value.toLowerCase()) });
             });
             return { filters, invalidMessage };

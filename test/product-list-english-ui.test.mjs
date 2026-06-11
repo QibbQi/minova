@@ -338,6 +338,8 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'id="engineering-workspace-product-master"',
     'id="engineering-mode-standard"',
     'id="engineering-mode-matrix"',
+    'id="engineering-cert-view-mode"',
+    'id="engineering-cert-edit-mode"',
     'id="engineering-add-record-button"',
     'id="engineering-search-products-primary"',
     'id="engineering-standard-search-filters"',
@@ -351,6 +353,10 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'id="engineering-standard-list"',
     'id="engineering-standard-product-results"',
     'id="engineering-class-filter"',
+    'id="engineering-architecture-class-toolbar"',
+    'id="engineering-architecture-class-edit-actions"',
+    'id="engineering-add-architecture-class"',
+    'id="engineering-delete-architecture-class"',
     'id="engineering-level-filters"',
     'id="engineering-category-filters"',
     'id="engineering-cert-list"',
@@ -386,7 +392,12 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'sm:grid-cols-[minmax(0,1fr)_180px_minmax(0,1fr)_auto_auto]',
     'whitespace-nowrap min-w-[96px]',
     'Product mode',
-    'Detail mode'
+    'Detail mode',
+    'Class & Filters',
+    'View mode',
+    'Edit mode',
+    'Add Class',
+    'Delete Class'
   ].forEach((text) => {
     assert.equal(engineeringTab.includes(text), true, `Missing engineering workspace UI: ${text}`);
   });
@@ -406,9 +417,9 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     assert.equal(engineeringTab.includes(text), true, `Missing engineering workspace switch layout/color: ${text}`);
   });
   assert.ok(
-    engineeringTab.indexOf('id="engineering-add-record-button"') > engineeringTab.indexOf('id="engineering-mode-matrix"')
-      && engineeringTab.indexOf('id="engineering-add-record-button"') < engineeringTab.indexOf('id="engineering-quote-source-default"'),
-    'Add Record should sit beside the mode selector before quote defaults'
+    engineeringTab.indexOf('id="engineering-add-record-button"') > engineeringTab.indexOf('id="engineering-cert-edit-mode"')
+      && engineeringTab.indexOf('id="engineering-add-record-button"') < engineeringTab.indexOf('id="engineering-standard-match-card"'),
+    'Add Record should live with certification edit controls before matched products'
   );
   assert.ok(
     engineeringTab.indexOf('id="engineering-search-products-primary"') > engineeringTab.indexOf('id="engineering-open-quotation"')
@@ -494,6 +505,11 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'function syncEngineeringProductCategoryInput',
     'function readEngineeringDetailProductCategory',
     'function renderEngineeringWorkspace',
+    'function setEngineeringCertificationEditMode',
+    'function syncEngineeringCertificationEditChrome',
+    'function renderEngineeringArchitectureClassOptions',
+    'function addEngineeringArchitectureClass',
+    'function deleteEngineeringArchitectureClass',
     'function setEngineeringWorkspaceView',
     'function setEngineeringWorkspaceMode',
     'function renderEngineeringProductMasterWorkspace',
@@ -511,6 +527,7 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'function getEngineeringRequirementLinkedProducts',
     'function canManageEngineeringRecord',
     'MINOVA_ENGINEERING_QUOTE_DEFAULTS_KEY',
+    'MINOVA_ENGINEERING_CLASS_STORAGE_KEY',
     'PRODUCT_MASTER_DETAIL_HISTORY_HIDDEN_STORAGE_KEY',
     "getFifoBatchesForProduct(productId)[0]",
     "ids.every(id => selected.has(id))",
@@ -519,6 +536,7 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'engineeringStandardSelectedIds.delete(id)',
     "const visibleIds = new Set(rows.map(record => String(record.id || '').trim()).filter(Boolean))",
     "document.getElementById('engineering-standard-search-filters')",
+    "document.getElementById('engineering-architecture-class-edit-actions')",
     "document.getElementById('engineering-standard-match-card')",
     "document.getElementById('engineering-search-products-primary')",
     "classList.toggle('hidden', !inCertification || engineeringWorkspaceMode !== 'standard')",
@@ -626,6 +644,16 @@ test('engineering workspace exposes certification matrix filters and seeded cata
   const standardSearch = html.match(/function searchEngineeringStandardProducts\(\) \{([\s\S]*?)\n\s*\}\n\s*window\.searchEngineeringStandardProducts/);
   assert.ok(standardSearch, 'Standard Search Product handler should exist');
   assert.equal(standardSearch[1].includes('openEngineeringStandardProductModal'), false, 'Standard Search Product should render inline results without opening a modal');
+
+  const standardListRenderer = html.match(/function renderEngineeringStandardList\(rows = \[\]\) \{([\s\S]*?)\n\s*\}\n\s*function pruneEngineeringStandardSelectionToRows/);
+  assert.ok(standardListRenderer, 'Standard record table renderer should exist');
+  assert.match(standardListRenderer[1], /engineeringCertificationEditMode/, 'Standard record actions should depend on certification edit mode');
+  assert.match(standardListRenderer[1], /openEngineeringRequirementEditor/, 'Standard record edit action should open the requirement editor in edit mode');
+
+  const matrixListRenderer = html.match(/function renderEngineeringMatrixList\(rows = \[\]\) \{([\s\S]*?)\n\s*\}\n\s*function engineeringProductMasterFilterValue/);
+  assert.ok(matrixListRenderer, 'Matrix record table renderer should exist');
+  assert.match(matrixListRenderer[1], /engineeringCertificationEditMode/, 'Matrix record actions should depend on certification edit mode');
+  assert.match(matrixListRenderer[1], /deleteEngineeringRequirementRecord/, 'Matrix record delete action should be available in edit mode');
 
   const detailSearchResults = html.match(/function renderEngineeringDetailProductSearchResults\(matches = \[\], template = engineeringDetailProductSearchTemplate\(\), filters = \[\]\) \{([\s\S]*?)\n\s*\}\n\s*window\.renderEngineeringDetailProductSearchResults/);
   assert.ok(detailSearchResults, 'Detail Search result renderer should exist');

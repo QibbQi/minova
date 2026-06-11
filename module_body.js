@@ -2073,8 +2073,10 @@
             return 'bg-slate-50 text-slate-500 border-slate-100';
         }
         const MINOVA_ENGINEERING_QUOTE_DEFAULTS_KEY = 'minova_engineering_quote_defaults_v1';
+        const MINOVA_ENGINEERING_CLASS_STORAGE_KEY = 'minova_engineering_architecture_classes_v1';
         let engineeringWorkspaceView = 'certification';
         let engineeringWorkspaceMode = 'standard';
+        let engineeringCertificationEditMode = false;
         let engineeringProductMasterMode = 'product';
         let engineeringStandardSelectedIds = new Set();
         const ENGINEERING_PRODUCT_MASTER_DETAIL_GROUPS = {
@@ -2331,6 +2333,106 @@
             try { localStorage.setItem(MINOVA_ENGINEERING_QUOTE_DEFAULTS_KEY, JSON.stringify({ source, priceType })); } catch (e) {}
             loadEngineeringQuoteDefaultsToUi();
         };
+        function normalizeEngineeringClassId(value = '') {
+            return String(value || '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 16);
+        }
+        function normalizeEngineeringClassCategories(value = []) {
+            const raw = Array.isArray(value) ? value : String(value || '').split(',');
+            const allowed = new Set(CERTIFICATION_SOURCE_CATEGORIES);
+            const categories = raw.map(item => normalizeCertificationSourceCategory(item)).filter(item => allowed.has(item));
+            return Array.from(new Set(categories));
+        }
+        function saveEngineeringArchitectureClasses() {
+            const custom = Object.entries(ENGINEERING_CLASS_DEFINITIONS)
+                .filter(([, cls]) => cls?.custom)
+                .map(([id, cls]) => ({
+                    id,
+                    label: String(cls.label || id).trim(),
+                    categories: normalizeEngineeringClassCategories(cls.categories),
+                    note: String(cls.note || '').trim()
+                }));
+            try { localStorage.setItem(MINOVA_ENGINEERING_CLASS_STORAGE_KEY, JSON.stringify(custom)); } catch (e) {}
+        }
+        function loadEngineeringArchitectureClasses() {
+            try {
+                const parsed = JSON.parse(localStorage.getItem(MINOVA_ENGINEERING_CLASS_STORAGE_KEY) || '[]');
+                (Array.isArray(parsed) ? parsed : []).forEach(item => {
+                    const id = normalizeEngineeringClassId(item.id);
+                    const categories = normalizeEngineeringClassCategories(item.categories);
+                    if (!id || !categories.length) return;
+                    ENGINEERING_CLASS_DEFINITIONS[id] = {
+                        label: String(item.label || id).trim() || id,
+                        categories,
+                        note: String(item.note || '').trim(),
+                        custom: true
+                    };
+                });
+            } catch (e) {}
+        }
+        loadEngineeringArchitectureClasses();
+        function renderEngineeringArchitectureClassOptions() {
+            loadEngineeringArchitectureClasses();
+            const select = document.getElementById('engineering-class-filter');
+            if (!select) return;
+            const previous = select.value || 'A1';
+            select.innerHTML = Object.entries(ENGINEERING_CLASS_DEFINITIONS).map(([id, cls]) => `<option value="${htmlSafe(id)}">${htmlSafe(cls.label || id)}</option>`).join('');
+            select.value = ENGINEERING_CLASS_DEFINITIONS[previous] ? previous : 'A1';
+        }
+        window.renderEngineeringArchitectureClassOptions = renderEngineeringArchitectureClassOptions;
+        function syncEngineeringCertificationEditChrome() {
+            const viewBtn = document.getElementById('engineering-cert-view-mode');
+            const editBtn = document.getElementById('engineering-cert-edit-mode');
+            const addRecord = document.getElementById('engineering-add-record-button');
+            const classActions = document.getElementById('engineering-architecture-class-edit-actions');
+            const viewClass = 'px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white';
+            const idleClass = 'px-4 py-2 rounded-lg text-xs font-black text-slate-500';
+            if (viewBtn) viewBtn.className = engineeringCertificationEditMode ? idleClass : viewClass;
+            if (editBtn) editBtn.className = engineeringCertificationEditMode ? viewClass : idleClass;
+            if (addRecord) addRecord.classList.toggle('hidden', !engineeringCertificationEditMode);
+            if (classActions) {
+                classActions.classList.toggle('hidden', !engineeringCertificationEditMode);
+                classActions.classList.toggle('flex', engineeringCertificationEditMode);
+            }
+        }
+        window.syncEngineeringCertificationEditChrome = syncEngineeringCertificationEditChrome;
+        function setEngineeringCertificationEditMode(mode = 'view') {
+            engineeringCertificationEditMode = mode === 'edit';
+            renderEngineeringWorkspace();
+        }
+        window.setEngineeringCertificationEditMode = setEngineeringCertificationEditMode;
+        function addEngineeringArchitectureClass() {
+            if (!canManageEngineeringRecord()) return alert('No engineering edit permission.');
+            const id = normalizeEngineeringClassId(prompt('Architecture class ID, for example F or B2', 'F') || '');
+            if (!id) return;
+            if (ENGINEERING_CLASS_DEFINITIONS[id]) return alert('Architecture Class already exists.');
+            const label = String(prompt('Architecture class label', `${id} - Custom Architecture`) || '').trim();
+            if (!label) return;
+            const categoryText = prompt('Categories, comma separated: PV_MODULE, INVERTER, BATTERY', 'PV_MODULE,INVERTER,BATTERY') || '';
+            const categories = normalizeEngineeringClassCategories(categoryText);
+            if (!categories.length) return alert('Select at least one valid category.');
+            const note = String(prompt('Applicability note', 'Custom class maintained in Engineering Workspace.') || '').trim();
+            ENGINEERING_CLASS_DEFINITIONS[id] = { label, categories, note, custom: true };
+            saveEngineeringArchitectureClasses();
+            renderEngineeringArchitectureClassOptions();
+            const select = document.getElementById('engineering-class-filter');
+            if (select) select.value = id;
+            renderEngineeringWorkspace();
+        }
+        window.addEngineeringArchitectureClass = addEngineeringArchitectureClass;
+        function deleteEngineeringArchitectureClass() {
+            if (!canManageEngineeringRecord()) return alert('No engineering delete permission.');
+            const select = document.getElementById('engineering-class-filter');
+            const id = normalizeEngineeringClassId(select?.value || '');
+            const cls = ENGINEERING_CLASS_DEFINITIONS[id];
+            if (!id || !cls) return;
+            if (!cls.custom) return alert('Default Architecture Classes cannot be deleted.');
+            if (!confirm(`Delete Architecture Class ${cls.label || id}?`)) return;
+            delete ENGINEERING_CLASS_DEFINITIONS[id];
+            saveEngineeringArchitectureClasses();
+            if (select) select.value = 'A1';
+            renderEngineeringWorkspace();
+        }
+        window.deleteEngineeringArchitectureClass = deleteEngineeringArchitectureClass;
         function syncEngineeringCertificationModeVisibility() {
             const standard = document.getElementById('engineering-standard-panel');
             const matrix = document.getElementById('engineering-matrix-panel');
@@ -2347,6 +2449,7 @@
             if (searchProductBtn) searchProductBtn.classList.toggle('hidden', !inCertification || engineeringWorkspaceMode !== 'standard');
             if (standardBtn) standardBtn.className = engineeringWorkspaceMode === 'standard' ? 'px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white' : 'px-4 py-2 rounded-lg text-xs font-black text-slate-500';
             if (matrixBtn) matrixBtn.className = engineeringWorkspaceMode === 'matrix' ? 'px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white' : 'px-4 py-2 rounded-lg text-xs font-black text-slate-500';
+            syncEngineeringCertificationEditChrome();
         }
         function syncEngineeringWorkspaceViewChrome() {
             const inProductMaster = engineeringWorkspaceView === 'productMaster';
@@ -2474,7 +2577,7 @@
             const renderLevelBox = (levelBox) => {
                 if (!levelBox || levelBox.dataset.ready) return;
                 levelBox.innerHTML = CERTIFICATION_REQUIREMENT_LEVELS.map(level => `
-                    <label class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600">
+                    <label class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600 shadow-sm transition-colors hover:border-purple-200 hover:bg-white">
                         <input type="checkbox" data-engineering-level value="${htmlSafe(level)}" checked onchange="renderEngineeringWorkspace()" class="h-4 w-4 accent-purple-700">
                         <span>${htmlSafe(level)}</span>
                     </label>
@@ -2484,7 +2587,7 @@
             const renderCategoryBox = (catBox) => {
                 if (!catBox || catBox.dataset.ready) return;
                 catBox.innerHTML = CERTIFICATION_SOURCE_CATEGORIES.map(category => `
-                    <label class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600">
+                    <label class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600 shadow-sm transition-colors hover:border-purple-200 hover:bg-white">
                         <input type="checkbox" data-engineering-category value="${htmlSafe(category)}" checked onchange="renderEngineeringWorkspace()" class="h-4 w-4 accent-purple-700">
                         <span>${htmlSafe(category)}</span>
                     </label>
@@ -2532,6 +2635,10 @@
             list.innerHTML = rows.map(record => {
                 const linked = getEngineeringRequirementLinkedProducts(record.id);
                 const checked = engineeringStandardSelectedIds.has(record.id);
+                const editActions = engineeringCertificationEditMode ? `
+                                <button data-engineering-action="edit" onclick="openEngineeringRequirementEditor('${htmlSafe(record.id)}')" class="text-xs font-black text-purple-700 hover:underline">Edit</button>
+                                <button data-engineering-action="delete" onclick="deleteEngineeringRequirementRecord('${htmlSafe(record.id)}')" class="text-xs font-black text-red-600 hover:underline">Delete</button>
+                ` : '';
                 return `
                     <tr class="hover:bg-slate-50 transition-colors">
                         <td class="py-4 px-4"><input type="checkbox" data-engineering-standard-select value="${htmlSafe(record.id)}" ${checked ? 'checked' : ''} onchange="toggleEngineeringStandardSelection('${htmlSafe(record.id)}', this.checked)" class="h-4 w-4 accent-purple-700"></td>
@@ -2542,8 +2649,8 @@
                         <td class="py-4 px-4 text-center"><button onclick="openEngineeringCertDetail('${htmlSafe(record.id)}')" class="text-xs font-black text-slate-700 hover:text-purple-700">${linked.length}</button></td>
                         <td class="py-4 px-4 text-center">
                             <div class="inline-flex items-center gap-2">
-                                <button onclick="openEngineeringCertDetail('${htmlSafe(record.id)}')" class="text-xs font-black text-purple-700 hover:underline">Details</button>
-                                <button data-engineering-action="delete" onclick="deleteEngineeringRequirementRecord('${htmlSafe(record.id)}')" class="text-xs font-black text-red-600 hover:underline">Delete</button>
+                                <button onclick="openEngineeringCertDetail('${htmlSafe(record.id)}')" class="text-xs font-black text-slate-700 hover:text-purple-700 hover:underline">Details</button>
+                                ${editActions}
                             </div>
                         </td>
                     </tr>
@@ -2566,6 +2673,10 @@
             list.innerHTML = rows.map(record => {
                 const evidenceCount = getEngineeringRequirementEvidence(record.id).length;
                 const sourceLink = record.sourceUrl ? `<a href="${htmlSafe(record.sourceUrl)}" target="_blank" rel="noopener" class="text-[10px] font-bold text-blue-600 hover:underline">Source</a>` : '<span class="text-[10px] text-slate-300">No source</span>';
+                const editActions = engineeringCertificationEditMode ? `
+                                <button data-engineering-action="edit" onclick="openEngineeringRequirementEditor('${htmlSafe(record.id)}')" class="text-xs font-black text-purple-700 hover:underline">Edit</button>
+                                <button data-engineering-action="delete" onclick="deleteEngineeringRequirementRecord('${htmlSafe(record.id)}')" class="text-xs font-black text-red-600 hover:underline">Delete</button>
+                ` : '';
                 return `
                     <tr class="hover:bg-slate-50 transition-colors">
                         <td class="py-4 px-4"><div class="font-black text-slate-700">${htmlSafe(record.id)}</div><div class="text-[10px] text-slate-400">${htmlSafe(record.seedVersion || '')}</div></td>
@@ -2575,7 +2686,12 @@
                         <td class="py-4 px-4"><span class="text-xs text-slate-500 max-w-[340px] block truncate" title="${htmlSafe(record.applicabilityCondition)}">${htmlSafe(record.applicabilityCondition || '-')}</span></td>
                         <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(record.evidenceType || '-')}</td>
                         <td class="py-4 px-4 text-center"><span class="text-xs font-black text-slate-700">${evidenceCount}</span></td>
-                        <td class="py-4 px-4 text-center"><button onclick="openEngineeringCertDetail('${htmlSafe(record.id)}')" class="text-xs font-black text-purple-700 hover:underline">Details</button></td>
+                        <td class="py-4 px-4 text-center">
+                            <div class="inline-flex items-center gap-2">
+                                <button onclick="openEngineeringCertDetail('${htmlSafe(record.id)}')" class="text-xs font-black text-slate-700 hover:text-purple-700 hover:underline">Details</button>
+                                ${editActions}
+                            </div>
+                        </td>
                     </tr>
                 `;
             }).join('') || '<tr><td colspan="8" class="py-12 text-center text-slate-400 text-sm">No certification records match the current filters.</td></tr>';
@@ -3380,6 +3496,7 @@
         function renderEngineeringWorkspace() {
             syncEngineeringWorkspaceViewChrome();
             renderEngineeringFilterChips();
+            renderEngineeringArchitectureClassOptions();
             certificationRequirementsCatalog = normalizeCertificationRequirementsCatalog(certificationRequirementsCatalog);
             productCertificationEvidence = normalizeProductCertificationEvidenceList(productCertificationEvidence);
             if (engineeringWorkspaceView === 'productMaster') {

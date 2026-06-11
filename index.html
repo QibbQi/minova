@@ -2472,7 +2472,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             </div>
             <div id="engineering-certification-workspace-panel">
                 <div class="mt-5 flex flex-col xl:flex-row xl:items-end xl:justify-between gap-4">
-                    <div class="flex flex-col sm:flex-row sm:items-end gap-3">
+                    <div class="flex flex-col md:flex-row md:items-end gap-3">
                         <div>
                         <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Mode</label>
                         <div class="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
@@ -2480,7 +2480,14 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             <button id="engineering-mode-matrix" type="button" onclick="setEngineeringWorkspaceMode('matrix')" class="px-4 py-2 rounded-lg text-xs font-black text-slate-500">Matrix mode</button>
                         </div>
                         </div>
-                        <button id="engineering-add-record-button" type="button" data-engineering-action="edit" onclick="openEngineeringRequirementEditor()" class="rounded-xl bg-purple-700 px-4 py-2.5 text-xs font-black text-white hover:bg-purple-800">Add Record</button>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Maintenance</label>
+                            <div id="engineering-architecture-class-toolbar" class="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
+                                <button id="engineering-cert-view-mode" type="button" onclick="setEngineeringCertificationEditMode('view')" class="px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white">View mode</button>
+                                <button id="engineering-cert-edit-mode" type="button" onclick="setEngineeringCertificationEditMode('edit')" class="px-4 py-2 rounded-lg text-xs font-black text-slate-500">Edit mode</button>
+                            </div>
+                        </div>
+                        <button id="engineering-add-record-button" type="button" data-engineering-action="edit" onclick="openEngineeringRequirementEditor()" class="hidden rounded-xl bg-purple-700 px-4 py-2.5 text-xs font-black text-white hover:bg-purple-800">Add Record</button>
                     </div>
                 </div>
                 <div class="mt-4 flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
@@ -2489,14 +2496,16 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     </div>
                     <div id="engineering-filter-note" class="text-[11px] font-bold text-slate-400">Standard mode | select records and search products</div>
                 </div>
-                <div id="engineering-standard-search-filters" class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Requirement Level</label>
+                <div id="engineering-standard-search-filters" class="mt-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                    <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4">
+                    <div class="min-w-0">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">Requirement Level</label>
                         <div id="engineering-standard-level-filters" class="flex flex-wrap gap-2"></div>
                     </div>
-                    <div>
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Category</label>
-                        <div id="engineering-standard-category-filters" class="flex flex-wrap gap-2"></div>
+                    <div class="min-w-0 xl:text-right">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">Category</label>
+                        <div id="engineering-standard-category-filters" class="flex flex-wrap gap-2 xl:justify-end"></div>
+                    </div>
                     </div>
                 </div>
                 <div id="engineering-standard-match-card" class="mt-4 bg-white rounded-2xl border border-slate-200 overflow-hidden">
@@ -2563,9 +2572,15 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         </div>
         <div id="engineering-matrix-panel" class="hidden space-y-4">
             <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
-                <div class="grid grid-cols-1 lg:grid-cols-[1fr_1.2fr_1fr] gap-4">
+                <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-5">
                     <div>
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Architecture Class</label>
+                        <div class="flex items-center justify-between gap-3 mb-2">
+                            <label class="block text-[10px] font-black text-slate-400 uppercase">Class & Filters</label>
+                            <div id="engineering-architecture-class-edit-actions" class="hidden flex-wrap gap-2">
+                                <button id="engineering-add-architecture-class" type="button" data-engineering-action="edit" onclick="addEngineeringArchitectureClass()" class="rounded-xl bg-purple-700 px-3 py-2 text-xs font-black text-white hover:bg-purple-800">Add Class</button>
+                                <button id="engineering-delete-architecture-class" type="button" data-engineering-action="delete" onclick="deleteEngineeringArchitectureClass()" class="rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs font-black text-red-600 hover:bg-red-100">Delete Class</button>
+                            </div>
+                        </div>
                         <select id="engineering-class-filter" onchange="renderEngineeringWorkspace()" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold outline-none bg-white focus:border-purple-500">
                             <option value="A1">A1 - Grid-Tied PV Only</option>
                             <option value="A2">A2 - Grid-Tied PV + Small Battery</option>
@@ -2575,13 +2590,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             <option value="E">E - Utility Scale BESS</option>
                         </select>
                     </div>
-                    <div>
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Requirement Level</label>
+                    <div class="min-w-0">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">Requirement Level</label>
                         <div id="engineering-level-filters" class="flex flex-wrap gap-2"></div>
                     </div>
-                    <div>
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Category</label>
-                        <div id="engineering-category-filters" class="flex flex-wrap gap-2"></div>
+                    <div class="min-w-0 xl:text-right">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">Category</label>
+                        <div id="engineering-category-filters" class="flex flex-wrap gap-2 xl:justify-end"></div>
                     </div>
                 </div>
             </div>
@@ -6803,8 +6818,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return 'bg-slate-50 text-slate-500 border-slate-100';
         }
         const MINOVA_ENGINEERING_QUOTE_DEFAULTS_KEY = 'minova_engineering_quote_defaults_v1';
+        const MINOVA_ENGINEERING_CLASS_STORAGE_KEY = 'minova_engineering_architecture_classes_v1';
         let engineeringWorkspaceView = 'certification';
         let engineeringWorkspaceMode = 'standard';
+        let engineeringCertificationEditMode = false;
         let engineeringProductMasterMode = 'product';
         let engineeringStandardSelectedIds = new Set();
         const ENGINEERING_PRODUCT_MASTER_DETAIL_GROUPS = {
@@ -7061,6 +7078,106 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             try { localStorage.setItem(MINOVA_ENGINEERING_QUOTE_DEFAULTS_KEY, JSON.stringify({ source, priceType })); } catch (e) {}
             loadEngineeringQuoteDefaultsToUi();
         };
+        function normalizeEngineeringClassId(value = '') {
+            return String(value || '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 16);
+        }
+        function normalizeEngineeringClassCategories(value = []) {
+            const raw = Array.isArray(value) ? value : String(value || '').split(',');
+            const allowed = new Set(CERTIFICATION_SOURCE_CATEGORIES);
+            const categories = raw.map(item => normalizeCertificationSourceCategory(item)).filter(item => allowed.has(item));
+            return Array.from(new Set(categories));
+        }
+        function saveEngineeringArchitectureClasses() {
+            const custom = Object.entries(ENGINEERING_CLASS_DEFINITIONS)
+                .filter(([, cls]) => cls?.custom)
+                .map(([id, cls]) => ({
+                    id,
+                    label: String(cls.label || id).trim(),
+                    categories: normalizeEngineeringClassCategories(cls.categories),
+                    note: String(cls.note || '').trim()
+                }));
+            try { localStorage.setItem(MINOVA_ENGINEERING_CLASS_STORAGE_KEY, JSON.stringify(custom)); } catch (e) {}
+        }
+        function loadEngineeringArchitectureClasses() {
+            try {
+                const parsed = JSON.parse(localStorage.getItem(MINOVA_ENGINEERING_CLASS_STORAGE_KEY) || '[]');
+                (Array.isArray(parsed) ? parsed : []).forEach(item => {
+                    const id = normalizeEngineeringClassId(item.id);
+                    const categories = normalizeEngineeringClassCategories(item.categories);
+                    if (!id || !categories.length) return;
+                    ENGINEERING_CLASS_DEFINITIONS[id] = {
+                        label: String(item.label || id).trim() || id,
+                        categories,
+                        note: String(item.note || '').trim(),
+                        custom: true
+                    };
+                });
+            } catch (e) {}
+        }
+        loadEngineeringArchitectureClasses();
+        function renderEngineeringArchitectureClassOptions() {
+            loadEngineeringArchitectureClasses();
+            const select = document.getElementById('engineering-class-filter');
+            if (!select) return;
+            const previous = select.value || 'A1';
+            select.innerHTML = Object.entries(ENGINEERING_CLASS_DEFINITIONS).map(([id, cls]) => `<option value="${htmlSafe(id)}">${htmlSafe(cls.label || id)}</option>`).join('');
+            select.value = ENGINEERING_CLASS_DEFINITIONS[previous] ? previous : 'A1';
+        }
+        window.renderEngineeringArchitectureClassOptions = renderEngineeringArchitectureClassOptions;
+        function syncEngineeringCertificationEditChrome() {
+            const viewBtn = document.getElementById('engineering-cert-view-mode');
+            const editBtn = document.getElementById('engineering-cert-edit-mode');
+            const addRecord = document.getElementById('engineering-add-record-button');
+            const classActions = document.getElementById('engineering-architecture-class-edit-actions');
+            const viewClass = 'px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white';
+            const idleClass = 'px-4 py-2 rounded-lg text-xs font-black text-slate-500';
+            if (viewBtn) viewBtn.className = engineeringCertificationEditMode ? idleClass : viewClass;
+            if (editBtn) editBtn.className = engineeringCertificationEditMode ? viewClass : idleClass;
+            if (addRecord) addRecord.classList.toggle('hidden', !engineeringCertificationEditMode);
+            if (classActions) {
+                classActions.classList.toggle('hidden', !engineeringCertificationEditMode);
+                classActions.classList.toggle('flex', engineeringCertificationEditMode);
+            }
+        }
+        window.syncEngineeringCertificationEditChrome = syncEngineeringCertificationEditChrome;
+        function setEngineeringCertificationEditMode(mode = 'view') {
+            engineeringCertificationEditMode = mode === 'edit';
+            renderEngineeringWorkspace();
+        }
+        window.setEngineeringCertificationEditMode = setEngineeringCertificationEditMode;
+        function addEngineeringArchitectureClass() {
+            if (!canManageEngineeringRecord()) return alert('No engineering edit permission.');
+            const id = normalizeEngineeringClassId(prompt('Architecture class ID, for example F or B2', 'F') || '');
+            if (!id) return;
+            if (ENGINEERING_CLASS_DEFINITIONS[id]) return alert('Architecture Class already exists.');
+            const label = String(prompt('Architecture class label', `${id} - Custom Architecture`) || '').trim();
+            if (!label) return;
+            const categoryText = prompt('Categories, comma separated: PV_MODULE, INVERTER, BATTERY', 'PV_MODULE,INVERTER,BATTERY') || '';
+            const categories = normalizeEngineeringClassCategories(categoryText);
+            if (!categories.length) return alert('Select at least one valid category.');
+            const note = String(prompt('Applicability note', 'Custom class maintained in Engineering Workspace.') || '').trim();
+            ENGINEERING_CLASS_DEFINITIONS[id] = { label, categories, note, custom: true };
+            saveEngineeringArchitectureClasses();
+            renderEngineeringArchitectureClassOptions();
+            const select = document.getElementById('engineering-class-filter');
+            if (select) select.value = id;
+            renderEngineeringWorkspace();
+        }
+        window.addEngineeringArchitectureClass = addEngineeringArchitectureClass;
+        function deleteEngineeringArchitectureClass() {
+            if (!canManageEngineeringRecord()) return alert('No engineering delete permission.');
+            const select = document.getElementById('engineering-class-filter');
+            const id = normalizeEngineeringClassId(select?.value || '');
+            const cls = ENGINEERING_CLASS_DEFINITIONS[id];
+            if (!id || !cls) return;
+            if (!cls.custom) return alert('Default Architecture Classes cannot be deleted.');
+            if (!confirm(`Delete Architecture Class ${cls.label || id}?`)) return;
+            delete ENGINEERING_CLASS_DEFINITIONS[id];
+            saveEngineeringArchitectureClasses();
+            if (select) select.value = 'A1';
+            renderEngineeringWorkspace();
+        }
+        window.deleteEngineeringArchitectureClass = deleteEngineeringArchitectureClass;
         function syncEngineeringCertificationModeVisibility() {
             const standard = document.getElementById('engineering-standard-panel');
             const matrix = document.getElementById('engineering-matrix-panel');
@@ -7077,6 +7194,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (searchProductBtn) searchProductBtn.classList.toggle('hidden', !inCertification || engineeringWorkspaceMode !== 'standard');
             if (standardBtn) standardBtn.className = engineeringWorkspaceMode === 'standard' ? 'px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white' : 'px-4 py-2 rounded-lg text-xs font-black text-slate-500';
             if (matrixBtn) matrixBtn.className = engineeringWorkspaceMode === 'matrix' ? 'px-4 py-2 rounded-lg text-xs font-black bg-slate-900 text-white' : 'px-4 py-2 rounded-lg text-xs font-black text-slate-500';
+            syncEngineeringCertificationEditChrome();
         }
         function syncEngineeringWorkspaceViewChrome() {
             const inProductMaster = engineeringWorkspaceView === 'productMaster';
@@ -7204,7 +7322,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const renderLevelBox = (levelBox) => {
                 if (!levelBox || levelBox.dataset.ready) return;
                 levelBox.innerHTML = CERTIFICATION_REQUIREMENT_LEVELS.map(level => `
-                    <label class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600">
+                    <label class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600 shadow-sm transition-colors hover:border-purple-200 hover:bg-white">
                         <input type="checkbox" data-engineering-level value="${htmlSafe(level)}" checked onchange="renderEngineeringWorkspace()" class="h-4 w-4 accent-purple-700">
                         <span>${htmlSafe(level)}</span>
                     </label>
@@ -7214,7 +7332,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const renderCategoryBox = (catBox) => {
                 if (!catBox || catBox.dataset.ready) return;
                 catBox.innerHTML = CERTIFICATION_SOURCE_CATEGORIES.map(category => `
-                    <label class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600">
+                    <label class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600 shadow-sm transition-colors hover:border-purple-200 hover:bg-white">
                         <input type="checkbox" data-engineering-category value="${htmlSafe(category)}" checked onchange="renderEngineeringWorkspace()" class="h-4 w-4 accent-purple-700">
                         <span>${htmlSafe(category)}</span>
                     </label>
@@ -7262,6 +7380,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             list.innerHTML = rows.map(record => {
                 const linked = getEngineeringRequirementLinkedProducts(record.id);
                 const checked = engineeringStandardSelectedIds.has(record.id);
+                const editActions = engineeringCertificationEditMode ? `
+                                <button data-engineering-action="edit" onclick="openEngineeringRequirementEditor('${htmlSafe(record.id)}')" class="text-xs font-black text-purple-700 hover:underline">Edit</button>
+                                <button data-engineering-action="delete" onclick="deleteEngineeringRequirementRecord('${htmlSafe(record.id)}')" class="text-xs font-black text-red-600 hover:underline">Delete</button>
+                ` : '';
                 return `
                     <tr class="hover:bg-slate-50 transition-colors">
                         <td class="py-4 px-4"><input type="checkbox" data-engineering-standard-select value="${htmlSafe(record.id)}" ${checked ? 'checked' : ''} onchange="toggleEngineeringStandardSelection('${htmlSafe(record.id)}', this.checked)" class="h-4 w-4 accent-purple-700"></td>
@@ -7272,8 +7394,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <td class="py-4 px-4 text-center"><button onclick="openEngineeringCertDetail('${htmlSafe(record.id)}')" class="text-xs font-black text-slate-700 hover:text-purple-700">${linked.length}</button></td>
                         <td class="py-4 px-4 text-center">
                             <div class="inline-flex items-center gap-2">
-                                <button onclick="openEngineeringCertDetail('${htmlSafe(record.id)}')" class="text-xs font-black text-purple-700 hover:underline">Details</button>
-                                <button data-engineering-action="delete" onclick="deleteEngineeringRequirementRecord('${htmlSafe(record.id)}')" class="text-xs font-black text-red-600 hover:underline">Delete</button>
+                                <button onclick="openEngineeringCertDetail('${htmlSafe(record.id)}')" class="text-xs font-black text-slate-700 hover:text-purple-700 hover:underline">Details</button>
+                                ${editActions}
                             </div>
                         </td>
                     </tr>
@@ -7296,6 +7418,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             list.innerHTML = rows.map(record => {
                 const evidenceCount = getEngineeringRequirementEvidence(record.id).length;
                 const sourceLink = record.sourceUrl ? `<a href="${htmlSafe(record.sourceUrl)}" target="_blank" rel="noopener" class="text-[10px] font-bold text-blue-600 hover:underline">Source</a>` : '<span class="text-[10px] text-slate-300">No source</span>';
+                const editActions = engineeringCertificationEditMode ? `
+                                <button data-engineering-action="edit" onclick="openEngineeringRequirementEditor('${htmlSafe(record.id)}')" class="text-xs font-black text-purple-700 hover:underline">Edit</button>
+                                <button data-engineering-action="delete" onclick="deleteEngineeringRequirementRecord('${htmlSafe(record.id)}')" class="text-xs font-black text-red-600 hover:underline">Delete</button>
+                ` : '';
                 return `
                     <tr class="hover:bg-slate-50 transition-colors">
                         <td class="py-4 px-4"><div class="font-black text-slate-700">${htmlSafe(record.id)}</div><div class="text-[10px] text-slate-400">${htmlSafe(record.seedVersion || '')}</div></td>
@@ -7305,7 +7431,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <td class="py-4 px-4"><span class="text-xs text-slate-500 max-w-[340px] block truncate" title="${htmlSafe(record.applicabilityCondition)}">${htmlSafe(record.applicabilityCondition || '-')}</span></td>
                         <td class="py-4 px-4 text-xs text-slate-600">${htmlSafe(record.evidenceType || '-')}</td>
                         <td class="py-4 px-4 text-center"><span class="text-xs font-black text-slate-700">${evidenceCount}</span></td>
-                        <td class="py-4 px-4 text-center"><button onclick="openEngineeringCertDetail('${htmlSafe(record.id)}')" class="text-xs font-black text-purple-700 hover:underline">Details</button></td>
+                        <td class="py-4 px-4 text-center">
+                            <div class="inline-flex items-center gap-2">
+                                <button onclick="openEngineeringCertDetail('${htmlSafe(record.id)}')" class="text-xs font-black text-slate-700 hover:text-purple-700 hover:underline">Details</button>
+                                ${editActions}
+                            </div>
+                        </td>
                     </tr>
                 `;
             }).join('') || '<tr><td colspan="8" class="py-12 text-center text-slate-400 text-sm">No certification records match the current filters.</td></tr>';
@@ -8110,6 +8241,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         function renderEngineeringWorkspace() {
             syncEngineeringWorkspaceViewChrome();
             renderEngineeringFilterChips();
+            renderEngineeringArchitectureClassOptions();
             certificationRequirementsCatalog = normalizeCertificationRequirementsCatalog(certificationRequirementsCatalog);
             productCertificationEvidence = normalizeProductCertificationEvidenceList(productCertificationEvidence);
             if (engineeringWorkspaceView === 'productMaster') {

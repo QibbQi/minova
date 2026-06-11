@@ -345,6 +345,7 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'id="engineering-standard-category-filters"',
     'id="engineering-standard-match-card"',
     'id="engineering-refresh-product-results"',
+    'id="engineering-open-quotation"',
     'id="engineering-standard-panel"',
     'id="engineering-matrix-panel"',
     'id="engineering-standard-list"',
@@ -407,9 +408,14 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'Add Record should sit beside the mode selector before quote defaults'
   );
   assert.ok(
-    engineeringTab.indexOf('id="engineering-search-products-primary"') > engineeringTab.indexOf('id="engineering-search"')
-      && engineeringTab.indexOf('id="engineering-search-products-primary"') < engineeringTab.indexOf('id="engineering-filter-note"'),
-    'Primary Search Product button should sit beside the record search box'
+    engineeringTab.indexOf('id="engineering-search-products-primary"') > engineeringTab.indexOf('id="engineering-open-quotation"')
+      && engineeringTab.indexOf('id="engineering-search-products-primary"') < engineeringTab.indexOf('id="engineering-standard-product-results"'),
+    'Primary Search Product button should sit inside Matched Products after Open Quotation'
+  );
+  assert.ok(
+    engineeringTab.indexOf('id="engineering-search"') < engineeringTab.indexOf('id="engineering-filter-note"')
+      && engineeringTab.indexOf('id="engineering-filter-note"') < engineeringTab.indexOf('id="engineering-search-products-primary"'),
+    'Record search box should no longer contain the Search Product action'
   );
   assert.ok(
     engineeringTab.indexOf('id="engineering-quote-source-default"') > engineeringTab.indexOf('id="engineering-standard-match-card"')
@@ -422,8 +428,6 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'Matched Products should sit below Search Product and above the standard record list'
   );
   assert.equal(html.includes('id="engineering-cert-detail-modal"'), true, 'Missing engineering detail modal');
-  assert.equal(html.includes('id="engineering-standard-product-modal"'), true, 'Missing engineering product result modal');
-  assert.equal(html.includes('id="engineering-standard-product-modal-body"'), true, 'Missing engineering product result modal body');
   assert.equal(html.includes('id="engineering-detail-product-search-modal"'), true, 'Missing engineering detail product search modal');
   assert.equal(html.includes('id="engineering-detail-product-search-category"'), true, 'Missing engineering detail product search category filter');
   assert.equal(html.includes('id="engineering-detail-product-search-group"'), true, 'Missing engineering detail product search group filter');
@@ -494,8 +498,6 @@ test('engineering workspace exposes certification matrix filters and seeded cata
     'function deleteEngineeringRequirementRecord',
     'function searchEngineeringStandardProducts',
     'function renderEngineeringMatchedProductRows',
-    'function openEngineeringStandardProductModal',
-    'function closeEngineeringStandardProductModal',
     'function refreshEngineeringProductResults',
     'function addEngineeringProductToQuote',
     'function getEngineeringRequirementLinkedProducts',
@@ -607,6 +609,10 @@ test('engineering workspace exposes certification matrix filters and seeded cata
   ].forEach((text) => {
     assert.equal(html.includes(text), true, `Missing engineering workspace behavior: ${text}`);
   });
+
+  const standardSearch = html.match(/function searchEngineeringStandardProducts\(\) \{([\s\S]*?)\n\s*\}\n\s*window\.searchEngineeringStandardProducts/);
+  assert.ok(standardSearch, 'Standard Search Product handler should exist');
+  assert.equal(standardSearch[1].includes('openEngineeringStandardProductModal'), false, 'Standard Search Product should render inline results without opening a modal');
 
   assert.equal(html.includes('Enter an existing field key to add to this template'), false, 'Add Field should not use the old prompt flow');
   assert.equal(html.includes('Edit field key. Use an existing masterData or technicalSpecs key'), false, 'Edit Field should not use the old prompt flow');

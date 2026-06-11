@@ -2486,7 +2486,6 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 <div class="mt-4 flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
                     <div class="flex flex-col md:flex-row gap-3 md:items-center w-full md:max-w-3xl">
                         <input id="engineering-search" type="search" oninput="renderEngineeringWorkspace()" placeholder="Search record ID, standard, applicability..." class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-purple-500 bg-white">
-                        <button id="engineering-search-products-primary" type="button" onclick="searchEngineeringStandardProducts()" class="rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-black text-white hover:bg-slate-800 md:w-40">Search Product</button>
                     </div>
                     <div id="engineering-filter-note" class="text-[11px] font-bold text-slate-400">Standard mode | select records and search products</div>
                 </div>
@@ -2524,7 +2523,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                                 </select>
                             </div>
                             <button id="engineering-refresh-product-results" type="button" onclick="refreshEngineeringProductResults()" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-500 hover:bg-slate-50">Refresh</button>
-                            <button type="button" onclick="switchTab('quotation')" class="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-50">Open Quotation</button>
+                            <button id="engineering-open-quotation" type="button" onclick="switchTab('quotation')" class="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-50">Open Quotation</button>
+                            <button id="engineering-search-products-primary" type="button" onclick="searchEngineeringStandardProducts()" class="rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white hover:bg-slate-800">Search Product</button>
                         </div>
                     </div>
                     <div id="engineering-standard-product-results" class="divide-y divide-slate-50">
@@ -8134,7 +8134,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (!ids.length) {
                 const message = 'Select at least one standard record.';
                 if (box) box.innerHTML = `<div class="p-8 text-center text-xs text-slate-400">${message}</div>`;
-                openEngineeringStandardProductModal(ids, [], message);
+                closeEngineeringStandardProductModal();
                 return;
             }
             const matches = products.filter(product => {
@@ -8143,7 +8143,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             });
             const content = renderEngineeringMatchedProductRows(matches, ids);
             if (box) box.innerHTML = content;
-            openEngineeringStandardProductModal(ids, matches, matches.length ? '' : 'Unable to find products containing every selected standard record.');
+            closeEngineeringStandardProductModal();
             applyEngineeringPermissions();
         }
         window.searchEngineeringStandardProducts = searchEngineeringStandardProducts;

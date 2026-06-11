@@ -3408,7 +3408,7 @@
             if (!ids.length) {
                 const message = 'Select at least one standard record.';
                 if (box) box.innerHTML = `<div class="p-8 text-center text-xs text-slate-400">${message}</div>`;
-                openEngineeringStandardProductModal(ids, [], message);
+                closeEngineeringStandardProductModal();
                 return;
             }
             const matches = products.filter(product => {
@@ -3417,7 +3417,7 @@
             });
             const content = renderEngineeringMatchedProductRows(matches, ids);
             if (box) box.innerHTML = content;
-            openEngineeringStandardProductModal(ids, matches, matches.length ? '' : 'Unable to find products containing every selected standard record.');
+            closeEngineeringStandardProductModal();
             applyEngineeringPermissions();
         }
         window.searchEngineeringStandardProducts = searchEngineeringStandardProducts;

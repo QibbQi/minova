@@ -2736,9 +2736,16 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             </section>
 
             <section class="lg:col-span-4 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+                <div class="px-4 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
                     <h3 class="text-sm font-black text-slate-800">Live Recommendation</h3>
-                    <span id="epc-recommended-label" class="text-[10px] font-black text-purple-700 uppercase">80% Recommended</span>
+                    <div class="flex items-center gap-2">
+                        <div id="epc-recommendation-target-toggle" class="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1" aria-label="Recommendation target replacement">
+                            <button type="button" data-epc-recommendation-target="50" onclick="setEpcRecommendationTarget(50)" class="px-2.5 py-1.5 rounded-lg text-[10px] font-black text-slate-500 hover:text-purple-700">50%</button>
+                            <button type="button" data-epc-recommendation-target="80" onclick="setEpcRecommendationTarget(80)" class="px-2.5 py-1.5 rounded-lg text-[10px] font-black bg-purple-700 text-white shadow-sm">80%</button>
+                            <button type="button" data-epc-recommendation-target="100" onclick="setEpcRecommendationTarget(100)" class="px-2.5 py-1.5 rounded-lg text-[10px] font-black text-slate-500 hover:text-purple-700">100%</button>
+                        </div>
+                        <span id="epc-recommended-label" class="text-[10px] font-black text-purple-700 uppercase">Recommended</span>
+                    </div>
                 </div>
                 <div class="p-4">
                     <div id="epc-design-kpis" class="grid grid-cols-2 gap-3 mb-4"></div>
@@ -9974,7 +9981,21 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
 
         function getRecommendedEpcScheme(result) {
-            return result.schemes.find(scheme => scheme.id === 'replace-80') || result.schemes[0] || {};
+            return result.schemes.find(scheme => scheme.id === result.recommendedSchemeId) || result.schemes[0] || {};
+        }
+
+        function renderEpcRecommendationTargetToggle(result) {
+            const recommended = getRecommendedEpcScheme(result);
+            const selectedPct = Number(recommended.replacementPct || result.designTargets?.replacementPct || 80);
+            document.querySelectorAll('[data-epc-recommendation-target]').forEach(btn => {
+                const active = Number(btn.dataset.epcRecommendationTarget) === selectedPct;
+                btn.className = active
+                    ? 'px-2.5 py-1.5 rounded-lg text-[10px] font-black bg-purple-700 text-white shadow-sm'
+                    : 'px-2.5 py-1.5 rounded-lg text-[10px] font-black text-slate-500 hover:text-purple-700';
+                btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+            });
+            const label = document.getElementById('epc-recommended-label');
+            if (label) label.textContent = `${formatEpcNumber(selectedPct, 0, '%')} ${recommended.priority || 'Recommended'}`;
         }
 
         function renderEpcProjectSelect() {
@@ -10371,6 +10392,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         function renderEpcDesignResult(project = getActiveEpcDesignProject()) {
             const result = calculateEpcDesignProject(project, { defaults: epcDesignDefaults });
             const recommended = getRecommendedEpcScheme(result);
+            renderEpcRecommendationTargetToggle(result);
             renderEpcKpis(result);
             renderEpcInputSummary(result);
             renderEpcSchemes(result);
@@ -10431,6 +10453,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (window.__lastEpcDesignResult) {
                 renderEpcEnergyFlow(window.__lastEpcDesignResult);
             }
+        };
+
+        window.setEpcRecommendationTarget = (replacementPct) => {
+            const pct = Number(replacementPct) || 80;
+            setInputValue('epc-target-replacement', pct);
+            window.onEpcDesignInputChanged();
         };
 
         function canReadEpcEngineering() {

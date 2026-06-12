@@ -86,6 +86,30 @@ test('EPC design engine creates auditable formula outputs and GSA link inputs', 
   assert.match(buildGlobalSolarAtlasUrl(normalized.site), /2\.960857/);
 });
 
+test('EPC design engine selects the recommended scheme from the current target replacement', () => {
+  const baseProject = buildEpcDesignProjectFromQuickInputs(quarryInputs, {
+    now: '2026-06-12T00:00:00.000Z'
+  });
+  const fifty = calculateEpcDesignProject({
+    ...baseProject,
+    designTargets: { ...baseProject.designTargets, replacementPct: 50 }
+  }, { now: '2026-06-12T00:00:00.000Z' });
+  const hundred = calculateEpcDesignProject({
+    ...baseProject,
+    designTargets: { ...baseProject.designTargets, replacementPct: 100 }
+  }, { now: '2026-06-12T00:00:00.000Z' });
+  const nearest = calculateEpcDesignProject({
+    ...baseProject,
+    designTargets: { ...baseProject.designTargets, replacementPct: 76 }
+  }, { now: '2026-06-12T00:00:00.000Z' });
+
+  assert.equal(fifty.recommendedSchemeId, 'replace-50');
+  assert.equal(hundred.recommendedSchemeId, 'replace-100');
+  assert.equal(nearest.recommendedSchemeId, 'replace-80');
+  assert.ok(fifty.pvStringDesign.modules < hundred.pvStringDesign.modules);
+  assert.ok(fifty.energyFlow.summary.gensetRemainingKwh > hundred.energyFlow.summary.gensetRemainingKwh);
+});
+
 test('EPC PV string design follows the revised workbook module and combiner baseline', () => {
   const design = calculatePvStringDesign({
     targetPvMwp: 4,

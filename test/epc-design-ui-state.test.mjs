@@ -46,6 +46,14 @@ test('EPC design workspace exposes quick detailed map solar and report surfaces'
   }
 });
 
+test('EPC formula trace shows formula data instead of a raw inputs column', () => {
+  assert.match(html, /function formatEpcFormulaData\(inputs = \{\}\)/);
+  assert.match(html, />Formula Data<\/th>/);
+  assert.match(html, /Object\.entries\(inputs \|\| \{\}\)/);
+  assert.doesNotMatch(html, /<th class="px-3 py-2">Inputs<\/th>/);
+  assert.doesNotMatch(html, /JSON\.stringify\(item\.inputs\)/);
+});
+
 test('EPC detailed engineering inputs are permission-gated separately from quick design', () => {
   assert.match(html, /id="epc-detailed-fields"[^>]*data-epc-engineering-section="true"/);
   assert.match(html, /canPerformAction\?\.\('epcDesignEngineering', 'read'\)/);

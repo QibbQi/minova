@@ -10066,6 +10066,17 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             `;
         }
 
+        function formatEpcFormulaData(inputs = {}) {
+            const entries = Object.entries(inputs || {});
+            if (!entries.length) return '<span class="text-slate-400">No formula data</span>';
+            return entries.map(([key, value]) => `
+                <div class="flex flex-wrap gap-x-2 gap-y-0.5 leading-relaxed">
+                    <span class="font-black text-slate-500">${htmlSafe(key)}:</span>
+                    <span class="font-mono text-slate-600 break-all">${htmlSafe(typeof value === 'number' ? formatEpcNumber(value, 4) : String(value))}</span>
+                </div>
+            `).join('');
+        }
+
         function renderEpcTrace(result) {
             const target = document.getElementById('epc-design-formula-trace');
             if (!target) return;
@@ -10073,16 +10084,16 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-xs">
                         <thead class="bg-slate-50 text-slate-500 uppercase">
-                            <tr><th class="px-3 py-2">Output</th><th class="px-3 py-2">Formula</th><th class="px-3 py-2">Inputs</th><th class="px-3 py-2 text-right">Result</th><th class="px-3 py-2">Source</th></tr>
+                            <tr><th class="px-3 py-2 w-[16%]">Output</th><th class="px-3 py-2 w-[28%]">Formula</th><th class="px-3 py-2 w-[34%]">Formula Data</th><th class="px-3 py-2 text-right w-[12%]">Result</th><th class="px-3 py-2 w-[10%]">Source</th></tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
                             ${result.formulaTrace.map(item => `
                                 <tr>
-                                    <td class="px-3 py-3 font-black text-slate-700">${htmlSafe(item.label)}</td>
-                                    <td class="px-3 py-3 font-mono text-[11px] text-slate-600">${htmlSafe(item.formula)}</td>
-                                    <td class="px-3 py-3 text-slate-500">${htmlSafe(JSON.stringify(item.inputs))}</td>
-                                    <td class="px-3 py-3 text-right font-bold">${formatEpcNumber(item.result, 3, item.unit)}</td>
-                                    <td class="px-3 py-3">${htmlSafe(item.assumptionSource)}</td>
+                                    <td class="px-3 py-3 font-black text-slate-700 align-top">${htmlSafe(item.label)}</td>
+                                    <td class="px-3 py-3 font-mono text-[11px] text-slate-600 leading-relaxed whitespace-normal align-top">${htmlSafe(item.formula)}</td>
+                                    <td class="px-3 py-3 text-slate-500 align-top">${formatEpcFormulaData(item.inputs)}</td>
+                                    <td class="px-3 py-3 text-right font-bold align-top">${formatEpcNumber(item.result, 3, item.unit)}</td>
+                                    <td class="px-3 py-3 align-top whitespace-normal">${htmlSafe(item.assumptionSource)}</td>
                                 </tr>
                             `).join('')}
                         </tbody>

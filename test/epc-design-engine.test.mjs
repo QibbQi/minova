@@ -70,6 +70,14 @@ test('EPC design engine creates auditable formula outputs and GSA link inputs', 
 
   assert.equal(normalized.solarResource.specificYieldKwhPerKwpDay, 3.6);
   assert.equal(normalized.solarResource.dataSource, 'Malaysia Default');
+  assert.equal(
+    normalizeEpcDesignProject({ loads: { equipmentType: 'crusher' } }, { now: '2026-06-12T00:00:00.000Z' }).loads.equipmentType,
+    'crusher'
+  );
+  assert.equal(
+    buildEpcDesignProjectFromQuickInputs({ ...quarryInputs, equipmentType: 'conveyor' }, { now: '2026-06-12T00:00:00.000Z' }).loads.equipmentType,
+    'conveyor'
+  );
   assert.equal(trace.unit, 'MWp');
   assert.equal(trace.assumptionSource, 'Malaysia Default');
   assert.equal(trace.isOverride, false);

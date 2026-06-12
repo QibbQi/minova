@@ -94,14 +94,23 @@ test('EPC EMS flow exposes animated system diagram and clickable hour rows', () 
     'epc-flow-pv',
     'epc-flow-inverter',
     'epc-flow-battery',
-    'epc-flow-ems',
     'epc-flow-genset',
     'epc-flow-load',
-    'Water Pump',
-    'Mining Machine'
+    'epc-flow-curtailment',
+    'epc-flow-label',
+    'epc-flow-node-frame',
+    'epc-flow-orthogonal',
+    'epc-load-equipment-type',
+    'data-epc-field="loads.equipmentType"',
+    'Crusher',
+    'Conveyor',
+    'Mining Machine',
+    'Water Pump'
   ]) {
     assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing animated flow snippet: ${snippet}`);
   }
+  assert.doesNotMatch(html, /class="[^"]*epc-flow-node[^"]*epc-flow-ems/, 'EMS should not be rendered as a flow node');
+  assert.doesNotMatch(html, /<text[^>]*>EMS<\/text>/, 'PV should not terminate at an EMS node');
 });
 
 test('EPC design projects persist through app state and sync merge', () => {

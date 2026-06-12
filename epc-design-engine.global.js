@@ -150,6 +150,7 @@ const EPC_DESIGN_VERSION = 'epc-design-v2';
         peakLoadKw: asNumber(loads.peakLoadKw ?? raw.peakLoadKw, 0),
         criticalLoadKw: asNumber(loads.criticalLoadKw ?? raw.criticalLoadKw, 0),
         allowedGensetLoadKw: asNumber(loads.allowedGensetLoadKw ?? raw.allowedGensetLoadKw, 0),
+        equipmentType: String(loads.equipmentType || raw.equipmentType || 'water_pump').trim(),
         loadSource: String(loads.loadSource || 'diesel_reverse').trim()
       },
       solarResource,
@@ -198,7 +199,8 @@ const EPC_DESIGN_VERSION = 'epc-design-v2';
         dieselTotalLiters: inputs.dieselTotalLiters,
         dieselPeriodDays: inputs.dieselPeriodDays,
         dieselPricePerLiter: inputs.dieselPricePerLiter,
-        operationHoursPerDay: inputs.operationHoursPerDay
+        operationHoursPerDay: inputs.operationHoursPerDay,
+        equipmentType: inputs.equipmentType
       },
       solarResource: {
         specificYieldKwhPerKwpDay: inputs.pvYieldKwhPerKwpDay,

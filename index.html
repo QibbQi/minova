@@ -243,7 +243,7 @@
             stroke: #e2e8f0;
         }
         .epc-flow-label text {
-            font-size: 12px;
+            font-size: 11.5px;
             font-weight: 900;
             fill: #334155;
         }
@@ -10141,10 +10141,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         function renderEpcFlowLabel(value, x, y, label = '') {
             if (!(Number(value) > 0)) return '';
             const text = `${label ? `${label} ` : ''}${formatEpcNumber(value, 0, 'kW')}`;
-            const width = Math.max(62, Math.min(128, text.length * 6.4));
+            const width = Math.max(82, Math.min(150, text.length * 7.4 + 18));
             return `
                 <g class="epc-flow-label epc-flow-label-badge" transform="translate(${x} ${y})">
-                    <rect x="${-width / 2}" y="-12" width="${width}" height="20" rx="7"/>
+                    <rect x="${-width / 2}" y="-13" width="${width}" height="22" rx="7"/>
                     <text x="0" y="2" text-anchor="middle">${htmlSafe(text)}</text>
                 </g>
             `;
@@ -10196,7 +10196,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <path class="${flowLineClass(row?.curtailmentKw, 'curtail', 'branch')}" marker-end="url(#epc-arrow-curtail)" d="M512 142 V118 Q512 106 524 106 H632"/>
                         <path class="${flowLineClass(row?.pvToBatteryKw, 'battery', 'branch')}" marker-end="url(#epc-arrow-battery)" d="M512 230 V330 Q512 342 524 342 H632"/>
                         <path class="${flowLineClass(row?.batteryToLoadKw, 'battery', 'branch')}" marker-end="url(#epc-arrow-battery)" d="M752 342 H900 Q918 342 918 324 V218 Q918 202 994 202"/>
-                        <path class="${flowLineClass(row?.gensetToLoadKw, 'genset', 'genset')}" marker-end="url(#epc-arrow-genset)" d="M306 386 V414 Q306 426 326 426 H1060 Q1076 426 1076 410 V238 Q1076 220 994 220"/>
+                        <path class="${flowLineClass(row?.gensetToLoadKw, 'genset', 'genset')}" marker-end="url(#epc-arrow-genset)" d="M306 386 V414 Q306 426 326 426 H1076 V238"/>
 
                         ${renderEpcFlowLabel(row?.pvOutputKw, 202, 106, 'PV')}
                         ${renderEpcFlowLabel(row?.pvToLoadKw, 785, 164, 'Load')}

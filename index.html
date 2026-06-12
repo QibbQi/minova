@@ -2631,9 +2631,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
-                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Peak Load kW</label>
-                            <input id="epc-load-peak" data-epc-field="loads.peakLoadKw" type="number" min="0" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" placeholder="Auto 1.3x avg">
-                            <p class="mt-1 text-[10px] leading-snug text-slate-400">Blank uses Avg Load x Peak Factor; drives PCS, current and LV/MV architecture.</p>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Peak Load Factor</label>
+                            <select id="epc-peak-load-factor" data-epc-field="loads.peakLoadSafetyFactor" data-epc-number="true" onchange="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
+                                <option value="1.1">Stable load - 1.10x</option>
+                                <option value="1.3">Normal variation - 1.30x</option>
+                                <option value="1.5">High surge - 1.50x</option>
+                            </select>
+                            <p class="mt-1 text-[10px] leading-snug text-slate-400">Peak Load = Avg Load x Safety Factor; PCS is then rounded up to the next 0.5MW.</p>
                         </div>
                         <div>
                             <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Genset Allowed kW</label>
@@ -9932,7 +9936,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const draft = JSON.parse(JSON.stringify(current));
             document.querySelectorAll('[data-epc-field]').forEach(input => {
                 const path = input.dataset.epcField;
-                const isNumber = input.type === 'number';
+                const isNumber = input.type === 'number' || input.dataset.epcNumber === 'true';
                 const value = input.type === 'checkbox' ? input.checked : isNumber ? numericInputValue(input.id, 0) : input.value;
                 setNestedValue(draft, path, value);
             });
@@ -9968,7 +9972,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             setInputValue('epc-target-replacement', project.designTargets.replacementPct || 80);
             setInputValue('epc-round-up-sizing', project.designTargets.roundUpSizing);
             setInputValue('epc-available-area', project.site.availableAreaM2 || '');
-            setInputValue('epc-load-peak', project.loads.peakLoadKw || '');
+            setInputValue('epc-peak-load-factor', project.loads.peakLoadSafetyFactor || EPC_DESIGN_DEFAULTS.peakLoadFactor);
             setInputValue('epc-allowed-genset-load', project.loads.allowedGensetLoadKw || '');
             setInputValue('epc-load-equipment-type', project.loads.equipmentType || 'water_pump');
             setInputValue('epc-critical-load', project.loads.criticalLoadKw || '');

@@ -72,9 +72,10 @@ test('EPC workspace guides junior engineers through load PCS battery PV steps', 
     'Step 3 Battery',
     'Step 4 PV & Strings',
     'Step 5 EMS Simulation',
-    'epc-load-peak',
+    'epc-peak-load-factor',
+    'data-epc-field="loads.peakLoadSafetyFactor"',
     'epc-allowed-genset-load',
-    'Blank uses Avg Load x Peak Factor',
+    'Peak Load = Avg Load x Safety Factor',
     'Peak Shaving PCS covers Peak minus this value',
     'Must-run load for backup or island mode',
     'epc-support-hours',
@@ -85,6 +86,7 @@ test('EPC workspace guides junior engineers through load PCS battery PV steps', 
   ]) {
     assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing guided EPC UI snippet: ${snippet}`);
   }
+  assert.doesNotMatch(html, /data-epc-field="loads\.peakLoadKw"/);
 });
 
 test('EPC map controls expose browser IP and manual location fallbacks', () => {

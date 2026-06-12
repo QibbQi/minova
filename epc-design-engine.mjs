@@ -115,6 +115,7 @@ export function normalizeEpcDesignProject(raw = {}, options = {}) {
   const loads = raw.loads || {};
   const designTargets = raw.designTargets || {};
   const electrical = raw.electrical || {};
+  const assumptions = raw.assumptions || {};
   const solarResource = defaultSolarResource(raw.solarResource || {}, defaults);
   const id = String(raw.id || project.id || `epc-${Date.parse(now) || Date.now()}`).trim();
 
@@ -146,6 +147,7 @@ export function normalizeEpcDesignProject(raw = {}, options = {}) {
       operationHoursPerDay: clamp(loads.operationHoursPerDay ?? raw.operationHoursPerDay, 1, 24, 8),
       measuredDailyLoadKwh: asNumber(loads.measuredDailyLoadKwh, 0),
       peakLoadKw: asNumber(loads.peakLoadKw ?? raw.peakLoadKw, 0),
+      peakLoadSafetyFactor: asNumber(loads.peakLoadSafetyFactor ?? raw.peakLoadSafetyFactor ?? assumptions.peakLoadFactor, defaults.peakLoadFactor),
       criticalLoadKw: asNumber(loads.criticalLoadKw ?? raw.criticalLoadKw, 0),
       allowedGensetLoadKw: asNumber(loads.allowedGensetLoadKw ?? raw.allowedGensetLoadKw, 0),
       equipmentType: String(loads.equipmentType || raw.equipmentType || 'water_pump').trim(),
@@ -167,7 +169,7 @@ export function normalizeEpcDesignProject(raw = {}, options = {}) {
     },
     assumptions: {
       ...defaults,
-      ...(raw.assumptions || {})
+      ...assumptions
     },
     calculationAssumptions: {
       ...defaults,
@@ -199,6 +201,7 @@ export function buildEpcDesignProjectFromQuickInputs(inputs = {}, options = {}) 
       dieselPeriodDays: inputs.dieselPeriodDays,
       dieselPricePerLiter: inputs.dieselPricePerLiter,
       operationHoursPerDay: inputs.operationHoursPerDay,
+      peakLoadSafetyFactor: inputs.peakLoadSafetyFactor,
       equipmentType: inputs.equipmentType
     },
     solarResource: {
@@ -234,9 +237,8 @@ function calculateLoad(project, now) {
     ? project.loads.measuredDailyLoadKwh
     : dailyDieselLiters / Math.max(0.001, sfc);
   const averageLoadKw = dailyLoadKwh / Math.max(1, project.loads.operationHoursPerDay);
-  const peakLoadKw = project.loads.peakLoadKw > 0
-    ? project.loads.peakLoadKw
-    : averageLoadKw * asNumber(project.assumptions.peakLoadFactor, EPC_DESIGN_DEFAULTS.peakLoadFactor);
+  const peakLoadSafetyFactor = Math.max(0.01, asNumber(project.loads.peakLoadSafetyFactor, project.assumptions.peakLoadFactor));
+  const peakLoadKw = averageLoadKw * peakLoadSafetyFactor;
   const criticalLoadKw = project.loads.criticalLoadKw > 0 ? project.loads.criticalLoadKw : averageLoadKw;
   return {
     dailyDieselLiters,
@@ -281,13 +283,11 @@ function calculateLoad(project, now) {
       buildFormulaTrace({
         key: 'peakLoadKw',
         label: 'Peak Load',
-        formula: project.loads.peakLoadKw > 0 ? 'Manual Peak Load' : 'Average Load x Peak Load Factor',
-        inputs: project.loads.peakLoadKw > 0
-          ? { manualPeakLoadKw: project.loads.peakLoadKw }
-          : { averageLoadKw: round(averageLoadKw, 4), peakLoadFactor: project.assumptions.peakLoadFactor },
+        formula: 'Average Load x Selected Peak Safety Factor',
+        inputs: { averageLoadKw: round(averageLoadKw, 4), peakLoadSafetyFactor },
         result: round(peakLoadKw, 4),
         unit: 'kW',
-        assumptionSource: project.loads.peakLoadKw > 0 ? 'User Input' : 'Default',
+        assumptionSource: 'User Input',
         now
       }),
       buildFormulaTrace({
@@ -323,9 +323,9 @@ function calculateBessPcsByRole(project, load, pvRecommendedMwp) {
   let pcsRawKw = load.averageLoadKw * pcsSafetyFactor;
   let pcsBasis = 'Average load hybrid support';
 
-  if (role === 'diesel_replacement' && project.loads.peakLoadKw > 0) {
+  if (role === 'diesel_replacement') {
     pcsRawKw = load.peakLoadKw;
-    pcsBasis = 'Manual peak load hybrid support';
+    pcsBasis = 'Peak load factor hybrid support';
   } else if (role === 'pv_smoothing') {
     supportedLoadKw = pvRecommendedMwp * 1000 * smoothingRatio;
     pcsRawKw = supportedLoadKw;
@@ -661,6 +661,7 @@ export function calculateEpcDesignProject(rawProject = {}, options = {}) {
       inputs: {
         bessRole: recommended.bessRole,
         peakLoadKw: round(load.peakLoadKw, 4),
+        peakLoadSafetyFactor: project.loads.peakLoadSafetyFactor,
         allowedGensetLoadKw: project.loads.allowedGensetLoadKw,
         pcsBasis: recommended.pcsBasis
       },

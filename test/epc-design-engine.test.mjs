@@ -48,7 +48,7 @@ test('EPC design engine reproduces the quarry workbook sizing baseline', () => {
   assert.equal(recommended.replacementPct, 80);
   assert.equal(recommended.pvRecommendedMwp.toFixed(2), '3.90');
   assert.equal(recommended.bessRecommendedMwh.toFixed(2), '4.49');
-  assert.equal(recommended.pcsRecommendedMw.toFixed(2), '3.00');
+  assert.equal(recommended.pcsRecommendedMw.toFixed(2), '2.50');
   assert.equal(recommended.monthlyDieselSavedLiters.toFixed(0), '98902');
   assert.equal(recommended.monthlySavings.toFixed(2), '461872.77');
 
@@ -56,7 +56,7 @@ test('EPC design engine reproduces the quarry workbook sizing baseline', () => {
   assert.equal(result.electrical.mvRecommended, true);
   assert.match(result.electrical.recommendation, /11kV/);
   assert.ok(result.formulaTrace.some((item) => item.key === 'dailyLoadKwh' && item.formula.includes('Daily Diesel / SFC')));
-  assert.ok(result.formulaTrace.some((item) => item.key === 'peakLoadKw' && item.formula.includes('Average Load x Peak Load Factor')));
+  assert.ok(result.formulaTrace.some((item) => item.key === 'peakLoadKw' && item.formula.includes('Average Load x Selected Peak Safety Factor')));
   assert.ok(result.formulaTrace.some((item) => item.key === 'criticalLoadKw' && item.formula.includes('Average Load fallback')));
 });
 
@@ -125,15 +125,15 @@ test('EPC design engine can round up PV BESS and PCS before downstream calculati
   assert.equal(rounded.designTargets.roundUpSizing, true);
   assert.equal(recommended.pvRecommendedMwp.toFixed(2), '4.00');
   assert.equal(recommended.bessRecommendedMwh.toFixed(2), '4.50');
-  assert.equal(recommended.pcsRecommendedMw.toFixed(2), '3.00');
-  assert.equal(recommended.cRate.toFixed(2), '0.67');
+  assert.equal(recommended.pcsRecommendedMw.toFixed(2), '2.50');
+  assert.equal(recommended.cRate.toFixed(2), '0.56');
   assert.equal(rounded.pvStringDesign.modules, Math.ceil((4 * 1000000) / EPC_DESIGN_DEFAULTS.moduleWp));
   assert.equal(recommended.requiredAreaM2, 4 * EPC_DESIGN_DEFAULTS.groundPvAreaM2PerMwp);
   const roundUpTrace = rounded.formulaTrace.find((item) => item.key === 'replace-80.roundUpSizing');
   assert.equal(roundUpTrace.inputs.roundUpStep, 0.5);
 });
 
-test('EPC diesel replacement PCS follows manual peak load before round up', () => {
+test('EPC diesel replacement PCS follows selected peak load safety factor before round up', () => {
   const baseProject = buildEpcDesignProjectFromQuickInputs({
     ...quarryInputs
   }, {
@@ -141,15 +141,18 @@ test('EPC diesel replacement PCS follows manual peak load before round up', () =
   });
   const rounded = calculateEpcDesignProject({
     ...baseProject,
-    loads: { ...baseProject.loads, peakLoadKw: 2001 },
+    loads: { ...baseProject.loads, peakLoadSafetyFactor: 1.3 },
     designTargets: { ...baseProject.designTargets, roundUpSizing: true }
   }, { now: '2026-06-12T00:00:00.000Z' });
   const recommended = rounded.schemes.find((scheme) => scheme.id === 'replace-80');
+  const peakTrace = rounded.formulaTrace.find((item) => item.key === 'peakLoadKw');
   const pcsTrace = rounded.formulaTrace.find((item) => item.key === 'pcsRecommendedMw');
 
-  assert.equal(recommended.pcsBasis, 'Manual peak load hybrid support');
+  assert.equal(rounded.load.peakLoadKw.toFixed(2), '2480.18');
+  assert.equal(recommended.pcsBasis, 'Peak load factor hybrid support');
   assert.equal(recommended.pcsRecommendedMw.toFixed(2), '2.50');
-  assert.equal(pcsTrace.inputs.peakLoadKw, 2001);
+  assert.equal(peakTrace.inputs.peakLoadSafetyFactor, 1.3);
+  assert.equal(pcsTrace.inputs.peakLoadKw, 2480.1837);
 });
 
 test('EPC PV string design follows the revised workbook module and combiner baseline', () => {
@@ -186,7 +189,7 @@ test('EPC design engine sizes BESS and PCS by selected operating role', () => {
     ...base,
     loads: {
       ...base.loads,
-      peakLoadKw: 2480,
+      peakLoadSafetyFactor: 1.3,
       criticalLoadKw: 900,
       allowedGensetLoadKw: 1500
     }
@@ -205,7 +208,7 @@ test('EPC design engine sizes BESS and PCS by selected operating role', () => {
   }, { now: '2026-06-12T00:00:00.000Z' }).schemes.find((scheme) => scheme.id === 'replace-80');
 
   assert.equal(peak.pcsBasis, 'Peak load minus allowed genset load');
-  assert.equal(peak.supportedLoadKw, 980);
+  assert.equal(peak.supportedLoadKw.toFixed(4), '980.1837');
   assert.equal(peak.pcsRecommendedMw, 1);
   assert.equal(peak.bessRecommendedMwh.toFixed(2), '1.21');
   assert.equal(peak.cRate.toFixed(2), '0.82');

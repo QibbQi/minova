@@ -112,6 +112,27 @@ test('EPC design engine selects the recommended scheme from the current target r
   assert.ok(fifty.energyFlow.summary.gensetRemainingKwh > hundred.energyFlow.summary.gensetRemainingKwh);
 });
 
+test('EPC design engine can round up PV BESS and PCS before downstream calculations', () => {
+  const baseProject = buildEpcDesignProjectFromQuickInputs(quarryInputs, {
+    now: '2026-06-12T00:00:00.000Z'
+  });
+  const rounded = calculateEpcDesignProject({
+    ...baseProject,
+    designTargets: { ...baseProject.designTargets, roundUpSizing: true }
+  }, { now: '2026-06-12T00:00:00.000Z' });
+  const recommended = rounded.schemes.find((scheme) => scheme.id === 'replace-80');
+
+  assert.equal(rounded.designTargets.roundUpSizing, true);
+  assert.equal(recommended.pvRecommendedMwp.toFixed(2), '4.00');
+  assert.equal(recommended.bessRecommendedMwh.toFixed(2), '4.50');
+  assert.equal(recommended.pcsRecommendedMw.toFixed(2), '3.00');
+  assert.equal(recommended.cRate.toFixed(2), '0.67');
+  assert.equal(rounded.pvStringDesign.modules, Math.ceil((4 * 1000000) / EPC_DESIGN_DEFAULTS.moduleWp));
+  assert.equal(recommended.requiredAreaM2, 4 * EPC_DESIGN_DEFAULTS.groundPvAreaM2PerMwp);
+  const roundUpTrace = rounded.formulaTrace.find((item) => item.key === 'replace-80.roundUpSizing');
+  assert.equal(roundUpTrace.inputs.roundUpStep, 0.5);
+});
+
 test('EPC PV string design follows the revised workbook module and combiner baseline', () => {
   const design = calculatePvStringDesign({
     targetPvMwp: 4,

@@ -157,7 +157,8 @@ const EPC_DESIGN_VERSION = 'epc-design-v2';
       designTargets: {
         replacementPct: clamp(designTargets.replacementPct ?? raw.targetReplacementPct, 0, 100, 80),
         bessRole: normalizeBessRole(designTargets.bessRole || raw.bessRole || 'diesel_replacement'),
-        supportHours: asNumber(designTargets.supportHours ?? raw.supportHours, defaults.bessAutonomyHours)
+        supportHours: asNumber(designTargets.supportHours ?? raw.supportHours, defaults.bessAutonomyHours),
+        roundUpSizing: Boolean(designTargets.roundUpSizing ?? raw.roundUpSizing)
       },
       electrical: {
         voltageKv: asNumber(electrical.voltageKv, defaults.lvVoltageKv),
@@ -365,8 +366,22 @@ const EPC_DESIGN_VERSION = 'epc-design-v2';
     const margin = asNumber(project.assumptions.pvSizingMargin, EPC_DESIGN_DEFAULTS.pvSizingMargin);
     const targetDailyKwh = load.dailyLoadKwh * (target.replacementPct / 100);
     const pvRawKwp = targetDailyKwh / yieldKwh;
-    const pvRecommendedMwp = (pvRawKwp * margin) / 1000;
-    const bessPcs = calculateBessPcsByRole(project, load, pvRecommendedMwp);
+    const pvRawRecommendedMwp = (pvRawKwp * margin) / 1000;
+    const roundUpSizing = Boolean(project.designTargets.roundUpSizing);
+    const pvRecommendedMwp = roundUpSizing ? roundUpStep(pvRawRecommendedMwp, 0.5) : pvRawRecommendedMwp;
+    const rawBessPcs = calculateBessPcsByRole(project, load, pvRecommendedMwp);
+    const bessRecommendedMwh = roundUpSizing ? roundUpStep(rawBessPcs.bessRecommendedMwh, 0.5) : rawBessPcs.bessRecommendedMwh;
+    const pcsRecommendedMw = roundUpSizing ? roundUpStep(rawBessPcs.pcsRecommendedMw, 0.5) : rawBessPcs.pcsRecommendedMw;
+    const batteryKwh = Math.max(0.001, bessRecommendedMwh * 1000);
+    const pcsKw = pcsRecommendedMw * 1000;
+    const bessPcs = {
+      ...rawBessPcs,
+      bessRecommendedMwh,
+      pcsRecommendedMw,
+      cRate: pcsKw / batteryKwh,
+      equivalentDurationHours: batteryKwh / Math.max(0.001, pcsKw),
+      usableDurationAtSupportedLoadHours: (batteryKwh * asNumber(project.assumptions.bessDod, EPC_DESIGN_DEFAULTS.bessDod) * asNumber(project.assumptions.bessDischargeEfficiency, EPC_DESIGN_DEFAULTS.bessDischargeEfficiency)) / Math.max(0.001, rawBessPcs.supportedLoadKw)
+    };
     const requiredAreaM2 = pvRecommendedMwp * asNumber(project.assumptions.groundPvAreaM2PerMwp, EPC_DESIGN_DEFAULTS.groundPvAreaM2PerMwp);
     const monthlyDieselSavedLiters = load.dailyDieselLiters * (target.replacementPct / 100) * 30;
     const monthlySavings = monthlyDieselSavedLiters * project.loads.dieselPricePerLiter;
@@ -392,7 +407,25 @@ const EPC_DESIGN_VERSION = 'epc-design-v2';
           unit: 'kWh/day',
           assumptionSource: 'Design Target',
           now
-        })
+        }),
+        ...(roundUpSizing ? [buildFormulaTrace({
+          key: `${target.id}.roundUpSizing`,
+          label: `${target.label} Round Up Sizing`,
+          formula: 'Ceil PV / BESS / PCS to engineering step',
+          inputs: {
+            pvRawRecommendedMwp: round(pvRawRecommendedMwp, 4),
+            bessRawRecommendedMwh: round(rawBessPcs.bessRecommendedMwh, 4),
+            pcsRawRecommendedMw: round(rawBessPcs.pcsRecommendedMw, 4),
+            pvRoundedMwp: round(pvRecommendedMwp, 4),
+            bessRoundedMwh: round(bessRecommendedMwh, 4),
+            pcsRoundedMw: round(pcsRecommendedMw, 4),
+            roundUpStep: 0.5
+          },
+          result: round(pvRecommendedMwp, 4),
+          unit: 'MWp',
+          assumptionSource: 'User Input',
+          now
+        })] : [])
       ]
     };
   }
@@ -589,6 +622,7 @@ const EPC_DESIGN_VERSION = 'epc-design-v2';
     const energyFlow = calculateEnergyFlow(project, load, recommended);
     const formulaTrace = [
       ...load.trace,
+      ...recommended.formulaTrace,
       buildFormulaTrace({
         key: 'pvRecommendedMwp',
         label: 'Recommended PV Capacity',

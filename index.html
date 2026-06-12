@@ -2742,6 +2742,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 <div class="px-4 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
                     <h3 class="text-sm font-black text-slate-800">Live Recommendation</h3>
                     <div class="flex items-center gap-2">
+                        <label class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-black text-slate-600">
+                            <input id="epc-round-up-sizing" data-epc-field="designTargets.roundUpSizing" type="checkbox" onchange="onEpcDesignInputChanged()" class="h-3.5 w-3.5 accent-purple-700">
+                            <span>Round up</span>
+                        </label>
                         <div id="epc-recommendation-target-toggle" class="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1" aria-label="Recommendation target replacement">
                             <button type="button" data-epc-recommendation-target="50" onclick="setEpcRecommendationTarget(50)" class="px-2.5 py-1.5 rounded-lg text-[10px] font-black text-slate-500 hover:text-purple-700">50%</button>
                             <button type="button" data-epc-recommendation-target="80" onclick="setEpcRecommendationTarget(80)" class="px-2.5 py-1.5 rounded-lg text-[10px] font-black bg-purple-700 text-white shadow-sm">80%</button>
@@ -9929,7 +9933,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             document.querySelectorAll('[data-epc-field]').forEach(input => {
                 const path = input.dataset.epcField;
                 const isNumber = input.type === 'number';
-                const value = isNumber ? numericInputValue(input.id, 0) : input.value;
+                const value = input.type === 'checkbox' ? input.checked : isNumber ? numericInputValue(input.id, 0) : input.value;
                 setNestedValue(draft, path, value);
             });
             draft.mode = epcDesignMode;
@@ -9944,6 +9948,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         function setInputValue(id, value) {
             const el = document.getElementById(id);
             if (!el) return;
+            if (el.type === 'checkbox') {
+                el.checked = Boolean(value);
+                return;
+            }
             el.value = value ?? '';
         }
 
@@ -9958,6 +9966,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             setInputValue('epc-diesel-price', project.loads.dieselPricePerLiter || '');
             setInputValue('epc-operation-hours', project.loads.operationHoursPerDay || 8);
             setInputValue('epc-target-replacement', project.designTargets.replacementPct || 80);
+            setInputValue('epc-round-up-sizing', project.designTargets.roundUpSizing);
             setInputValue('epc-available-area', project.site.availableAreaM2 || '');
             setInputValue('epc-load-peak', project.loads.peakLoadKw || '');
             setInputValue('epc-allowed-genset-load', project.loads.allowedGensetLoadKw || '');

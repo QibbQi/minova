@@ -325,7 +325,10 @@ const EPC_DESIGN_VERSION = 'epc-design-v2';
     let pcsRawKw = load.averageLoadKw * pcsSafetyFactor;
     let pcsBasis = 'Average load hybrid support';
 
-    if (role === 'pv_smoothing') {
+    if (role === 'diesel_replacement' && project.loads.peakLoadKw > 0) {
+      pcsRawKw = load.peakLoadKw;
+      pcsBasis = 'Manual peak load hybrid support';
+    } else if (role === 'pv_smoothing') {
       supportedLoadKw = pvRecommendedMwp * 1000 * smoothingRatio;
       pcsRawKw = supportedLoadKw;
       pcsBasis = 'PV fluctuation portion';

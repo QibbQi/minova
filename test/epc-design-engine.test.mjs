@@ -133,6 +133,25 @@ test('EPC design engine can round up PV BESS and PCS before downstream calculati
   assert.equal(roundUpTrace.inputs.roundUpStep, 0.5);
 });
 
+test('EPC diesel replacement PCS follows manual peak load before round up', () => {
+  const baseProject = buildEpcDesignProjectFromQuickInputs({
+    ...quarryInputs
+  }, {
+    now: '2026-06-12T00:00:00.000Z'
+  });
+  const rounded = calculateEpcDesignProject({
+    ...baseProject,
+    loads: { ...baseProject.loads, peakLoadKw: 2001 },
+    designTargets: { ...baseProject.designTargets, roundUpSizing: true }
+  }, { now: '2026-06-12T00:00:00.000Z' });
+  const recommended = rounded.schemes.find((scheme) => scheme.id === 'replace-80');
+  const pcsTrace = rounded.formulaTrace.find((item) => item.key === 'pcsRecommendedMw');
+
+  assert.equal(recommended.pcsBasis, 'Manual peak load hybrid support');
+  assert.equal(recommended.pcsRecommendedMw.toFixed(2), '2.50');
+  assert.equal(pcsTrace.inputs.peakLoadKw, 2001);
+});
+
 test('EPC PV string design follows the revised workbook module and combiner baseline', () => {
   const design = calculatePvStringDesign({
     targetPvMwp: 4,

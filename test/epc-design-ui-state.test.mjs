@@ -113,6 +113,25 @@ test('EPC EMS flow exposes animated system diagram and clickable hour rows', () 
   assert.doesNotMatch(html, /<text[^>]*>EMS<\/text>/, 'PV should not terminate at an EMS node');
 });
 
+test('EPC energy flow uses compact non-overlapping lane layout', () => {
+  for (const snippet of [
+    'viewBox="0 0 1180 460"',
+    'epc-flow-node-card',
+    'epc-flow-lane-main',
+    'epc-flow-lane-branch',
+    'epc-flow-lane-genset',
+    'epc-flow-label-badge',
+    'markerWidth="6"',
+    'markerHeight="6"',
+    'stroke-width: 3.2',
+    'stroke-dasharray: 7 9',
+    'renderEpcFlowNode'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing lane layout snippet: ${snippet}`);
+  }
+  assert.doesNotMatch(html, /text x="59" y="124"[^>]*>\$\{formatEpcNumber\(row\?\./, 'node kW values should be inside compact cards, not below node labels');
+});
+
 test('EPC design projects persist through app state and sync merge', () => {
   for (const snippet of [
     'let epcDesignProjects = []',

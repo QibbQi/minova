@@ -276,6 +276,30 @@ function calculateLoad(project, now) {
         unit: 'kW',
         assumptionSource: project.loads.loadSource,
         now
+      }),
+      buildFormulaTrace({
+        key: 'peakLoadKw',
+        label: 'Peak Load',
+        formula: project.loads.peakLoadKw > 0 ? 'Manual Peak Load' : 'Average Load x Peak Load Factor',
+        inputs: project.loads.peakLoadKw > 0
+          ? { manualPeakLoadKw: project.loads.peakLoadKw }
+          : { averageLoadKw: round(averageLoadKw, 4), peakLoadFactor: project.assumptions.peakLoadFactor },
+        result: round(peakLoadKw, 4),
+        unit: 'kW',
+        assumptionSource: project.loads.peakLoadKw > 0 ? 'User Input' : 'Default',
+        now
+      }),
+      buildFormulaTrace({
+        key: 'criticalLoadKw',
+        label: 'Critical Load',
+        formula: project.loads.criticalLoadKw > 0 ? 'Manual Critical Load' : 'Average Load fallback',
+        inputs: project.loads.criticalLoadKw > 0
+          ? { manualCriticalLoadKw: project.loads.criticalLoadKw }
+          : { averageLoadKw: round(averageLoadKw, 4) },
+        result: round(criticalLoadKw, 4),
+        unit: 'kW',
+        assumptionSource: project.loads.criticalLoadKw > 0 ? 'User Input' : 'Default',
+        now
       })
     ]
   };

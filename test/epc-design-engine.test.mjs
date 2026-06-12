@@ -56,6 +56,8 @@ test('EPC design engine reproduces the quarry workbook sizing baseline', () => {
   assert.equal(result.electrical.mvRecommended, true);
   assert.match(result.electrical.recommendation, /11kV/);
   assert.ok(result.formulaTrace.some((item) => item.key === 'dailyLoadKwh' && item.formula.includes('Daily Diesel / SFC')));
+  assert.ok(result.formulaTrace.some((item) => item.key === 'peakLoadKw' && item.formula.includes('Average Load x Peak Load Factor')));
+  assert.ok(result.formulaTrace.some((item) => item.key === 'criticalLoadKw' && item.formula.includes('Average Load fallback')));
 });
 
 test('EPC design engine creates auditable formula outputs and GSA link inputs', () => {

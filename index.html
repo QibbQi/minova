@@ -2633,10 +2633,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <div>
                             <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Peak Load kW</label>
                             <input id="epc-load-peak" data-epc-field="loads.peakLoadKw" type="number" min="0" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" placeholder="Auto 1.3x avg">
+                            <p class="mt-1 text-[10px] leading-snug text-slate-400">Blank uses Avg Load x Peak Factor; drives PCS, current and LV/MV architecture.</p>
                         </div>
                         <div>
                             <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Genset Allowed kW</label>
                             <input id="epc-allowed-genset-load" data-epc-field="loads.allowedGensetLoadKw" type="number" min="0" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                            <p class="mt-1 text-[10px] leading-snug text-slate-400">Diesel power intentionally kept online; Peak Shaving PCS covers Peak minus this value.</p>
                         </div>
                     </div>
                     <div>
@@ -2690,6 +2692,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <div>
                             <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Critical Load kW</label>
                             <input id="epc-critical-load" data-epc-field="loads.criticalLoadKw" type="number" min="0" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                            <p class="mt-1 text-[10px] leading-snug text-slate-400">Must-run load for backup or island mode; blank falls back to average load.</p>
                         </div>
                         <div class="grid grid-cols-3 gap-2">
                             <div>

@@ -125,7 +125,11 @@ test('EPC energy flow uses compact non-overlapping lane layout', () => {
     'markerHeight="6"',
     'stroke-width: 3.2',
     'stroke-dasharray: 7 9',
-    'renderEpcFlowNode'
+    'renderEpcFlowNode',
+    'M512 142 V118 Q512 106 524 106 H632',
+    'M512 230 V330 Q512 342 524 342 H632',
+    'M306 386 V414 Q306 426 326 426 H1060',
+    'circle cx="42" cy="52" r="5.5"'
   ]) {
     assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing lane layout snippet: ${snippet}`);
   }

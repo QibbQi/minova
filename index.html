@@ -10127,7 +10127,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 return '<path d="M28 52h58" stroke="#0891b2" stroke-width="6" stroke-linecap="round"/><circle cx="36" cy="52" r="8" fill="#cffafe" stroke="#0891b2" stroke-width="3"/><circle cx="78" cy="52" r="8" fill="#cffafe" stroke="#0891b2" stroke-width="3"/><path d="M34 33h34l16 19" fill="none" stroke="#0891b2" stroke-width="3" stroke-linejoin="round"/>';
             }
             if (type === 'machine') {
-                return '<rect x="28" y="29" width="56" height="28" rx="7" fill="#cffafe" stroke="#0891b2" stroke-width="3"/><circle cx="40" cy="60" r="7" fill="#ecfeff" stroke="#0891b2" stroke-width="3"/><circle cx="72" cy="60" r="7" fill="#ecfeff" stroke="#0891b2" stroke-width="3"/><path d="M36 24h24l12 5" stroke="#0891b2" stroke-width="3" stroke-linecap="round"/>';
+                return '<rect x="30" y="22" width="52" height="25" rx="6" fill="#cffafe" stroke="#0891b2" stroke-width="3"/><circle cx="42" cy="52" r="5.5" fill="#ecfeff" stroke="#0891b2" stroke-width="2.6"/><circle cx="70" cy="52" r="5.5" fill="#ecfeff" stroke="#0891b2" stroke-width="2.6"/><path d="M37 18h22l11 4" stroke="#0891b2" stroke-width="2.8" stroke-linecap="round"/>';
             }
             if (type === 'line') {
                 return '<rect x="27" y="22" width="58" height="38" rx="7" fill="#cffafe" stroke="#0891b2" stroke-width="3"/><path d="M37 34h36M37 45h28M37 56h36" stroke="#0891b2" stroke-width="3" stroke-linecap="round"/>';
@@ -10193,17 +10193,17 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <path class="${flowLineClass(row?.pvOutputKw, 'pv', 'main')}" marker-end="url(#epc-arrow-pv)" d="M156 186 H242"/>
                         <path class="${flowLineClass(row?.pvOutputKw, 'pv', 'main')}" marker-end="url(#epc-arrow-pv)" d="M362 186 H448"/>
                         <path class="${flowLineClass(row?.pvToLoadKw, 'pv', 'main')}" marker-end="url(#epc-arrow-pv)" d="M568 186 H994"/>
-                        <path class="${flowLineClass(row?.curtailmentKw, 'curtail', 'branch')}" marker-end="url(#epc-arrow-curtail)" d="M568 164 H604 Q622 164 622 142 V100 Q622 86 632 86"/>
-                        <path class="${flowLineClass(row?.pvToBatteryKw, 'battery', 'branch')}" marker-end="url(#epc-arrow-battery)" d="M512 230 V258 Q512 276 530 276 H632"/>
+                        <path class="${flowLineClass(row?.curtailmentKw, 'curtail', 'branch')}" marker-end="url(#epc-arrow-curtail)" d="M512 142 V118 Q512 106 524 106 H632"/>
+                        <path class="${flowLineClass(row?.pvToBatteryKw, 'battery', 'branch')}" marker-end="url(#epc-arrow-battery)" d="M512 230 V330 Q512 342 524 342 H632"/>
                         <path class="${flowLineClass(row?.batteryToLoadKw, 'battery', 'branch')}" marker-end="url(#epc-arrow-battery)" d="M752 342 H900 Q918 342 918 324 V218 Q918 202 994 202"/>
-                        <path class="${flowLineClass(row?.gensetToLoadKw, 'genset', 'genset')}" marker-end="url(#epc-arrow-genset)" d="M362 342 H394 Q412 342 412 414 H966 Q984 414 984 396 V236 Q984 220 994 220"/>
+                        <path class="${flowLineClass(row?.gensetToLoadKw, 'genset', 'genset')}" marker-end="url(#epc-arrow-genset)" d="M306 386 V414 Q306 426 326 426 H1060 Q1076 426 1076 410 V238 Q1076 220 994 220"/>
 
                         ${renderEpcFlowLabel(row?.pvOutputKw, 202, 106, 'PV')}
                         ${renderEpcFlowLabel(row?.pvToLoadKw, 785, 164, 'Load')}
-                        ${renderEpcFlowLabel(row?.curtailmentKw, 596, 130, 'Curtail')}
-                        ${renderEpcFlowLabel(row?.pvToBatteryKw, 566, 256, 'Charge')}
+                        ${renderEpcFlowLabel(row?.curtailmentKw, 572, 94, 'Curtail')}
+                        ${renderEpcFlowLabel(row?.pvToBatteryKw, 572, 324, 'Charge')}
                         ${renderEpcFlowLabel(row?.batteryToLoadKw, 840, 316, 'Batt')}
-                        ${renderEpcFlowLabel(row?.gensetToLoadKw, 500, 394, 'Gen')}
+                        ${renderEpcFlowLabel(row?.gensetToLoadKw, 520, 408, 'Gen')}
 
                         ${renderEpcFlowNode({
                             className: 'epc-flow-sun',

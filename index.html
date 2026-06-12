@@ -188,6 +188,46 @@
         .brand-yellow-action:hover { filter: brightness(0.96); }
         .brand-yellow-inactive:hover { background-color: rgba(255, 255, 255, 0.3); }
 
+        .epc-flow-diagram {
+            border-radius: 1rem;
+            border: 1px solid #e2e8f0;
+            background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+            overflow: hidden;
+        }
+        .epc-flow-svg {
+            width: 100%;
+            min-height: 340px;
+            display: block;
+        }
+        .epc-flow-node rect,
+        .epc-flow-node circle {
+            filter: drop-shadow(0 8px 14px rgba(15, 23, 42, 0.12));
+        }
+        .epc-flow-line {
+            stroke: #cbd5e1;
+            stroke-width: 5;
+            stroke-linecap: round;
+            fill: none;
+            opacity: 0.42;
+        }
+        .epc-flow-line-active {
+            stroke-dasharray: 10 12;
+            animation: epc-flow-current 0.9s linear infinite;
+            opacity: 1;
+        }
+        .epc-flow-line-pv { stroke: #f59e0b; }
+        .epc-flow-line-battery { stroke: #22c55e; }
+        .epc-flow-line-genset { stroke: #64748b; }
+        .epc-flow-line-curtail { stroke: #ef4444; }
+        .epc-flow-hour-active {
+            background: #fffbeb;
+            outline: 2px solid #FFC107;
+            outline-offset: -2px;
+        }
+        @keyframes epc-flow-current {
+            to { stroke-dashoffset: -44; }
+        }
+
         @media print {
             input, textarea { border: none !important; outline: none !important; resize: none !important; }
             #section-after-details[data-split-enabled="true"] { page-break-before: always !important; break-before: page !important; }
@@ -6052,6 +6092,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         let epcDesignActiveProjectId = '';
         let epcDesignMode = 'quick';
         let epcDesignPanelTab = 'inputs';
+        let epcSelectedFlowHour = 13;
         let epcDesignMap = null;
         let epcDesignMarker = null;
         let epcGoogleMapsPromise = null;
@@ -10020,12 +10061,116 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             `;
         }
 
+        function flowLineClass(value, type) {
+            return `epc-flow-line epc-flow-line-${type}${Number(value) > 0 ? ' epc-flow-line-active' : ''}`;
+        }
+
+        function renderEpcFlowDiagram(result, row) {
+            const hour = row?.hour ?? 13;
+            const pvPct = row?.pvOutputKw > 0 ? Math.min(100, (row.pvOutputKw / Math.max(1, getRecommendedEpcScheme(result).pvRecommendedMwp * 1000)) * 100) : 0;
+            const sunLabel = pvPct < 25 ? 'Weak sun' : pvPct > 75 ? 'Strong sun' : 'Moderate sun';
+            const flowSummary = [
+                row?.pvToLoadKw > 0 ? `PV -> load ${formatEpcNumber(row.pvToLoadKw, 0, 'kW')}` : '',
+                row?.pvToBatteryKw > 0 ? `PV -> battery ${formatEpcNumber(row.pvToBatteryKw, 0, 'kW')}` : '',
+                row?.batteryToLoadKw > 0 ? `Battery -> load ${formatEpcNumber(row.batteryToLoadKw, 0, 'kW')}` : '',
+                row?.gensetToLoadKw > 0 ? `Genset -> load ${formatEpcNumber(row.gensetToLoadKw, 0, 'kW')}` : '',
+                row?.curtailmentKw > 0 ? `Curtailment ${formatEpcNumber(row.curtailmentKw, 0, 'kW')}` : ''
+            ].filter(Boolean).join(' | ') || 'No active flow at selected hour.';
+            return `
+                <div id="epc-flow-diagram" class="epc-flow-diagram mb-4">
+                    <div class="px-4 py-3 border-b border-slate-100 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                        <div>
+                            <div class="text-sm font-black text-slate-800">Animated EMS Flow - ${htmlSafe(hour)}:00</div>
+                            <div id="epc-flow-summary" class="text-xs text-slate-500">${htmlSafe(flowSummary)}</div>
+                        </div>
+                        <div class="text-[11px] font-black text-purple-700 uppercase">${htmlSafe(sunLabel)} | SOC ${formatEpcNumber(row?.socPct || 0, 1, '%')}</div>
+                    </div>
+                    <svg id="epc-flow-svg" class="epc-flow-svg" viewBox="0 0 980 360" role="img" aria-label="Animated EMS energy flow diagram">
+                        <defs>
+                            <marker id="epc-arrow-pv" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#f59e0b"/></marker>
+                            <marker id="epc-arrow-battery" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#22c55e"/></marker>
+                            <marker id="epc-arrow-genset" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#64748b"/></marker>
+                            <marker id="epc-arrow-curtail" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#ef4444"/></marker>
+                        </defs>
+
+                        <path class="${flowLineClass(row?.pvOutputKw, 'pv')}" marker-end="url(#epc-arrow-pv)" d="M120 78 C190 70, 225 95, 270 122"/>
+                        <path class="${flowLineClass(row?.pvToLoadKw, 'pv')}" marker-end="url(#epc-arrow-pv)" d="M350 135 C430 120, 505 130, 575 158"/>
+                        <path class="${flowLineClass(row?.pvToBatteryKw, 'battery')}" marker-end="url(#epc-arrow-battery)" d="M360 150 C430 205, 470 240, 540 255"/>
+                        <path class="${flowLineClass(row?.batteryToLoadKw, 'battery')}" marker-end="url(#epc-arrow-battery)" d="M610 250 C700 236, 730 205, 790 180"/>
+                        <path class="${flowLineClass(row?.gensetToLoadKw, 'genset')}" marker-end="url(#epc-arrow-genset)" d="M200 290 C360 330, 650 300, 790 200"/>
+                        <path class="${flowLineClass(row?.curtailmentKw, 'curtail')}" marker-end="url(#epc-arrow-curtail)" d="M355 118 C430 70, 520 58, 610 75"/>
+
+                        <g class="epc-flow-node epc-flow-sun" transform="translate(70 44)">
+                            <circle cx="42" cy="42" r="32" fill="#FFC107"/>
+                            <g stroke="#FFC107" stroke-width="5" stroke-linecap="round">
+                                <path d="M42 0v16M42 68v16M0 42h16M68 42h16M12 12l12 12M60 60l12 12M72 12L60 24M24 60L12 72"/>
+                            </g>
+                            <text x="42" y="104" text-anchor="middle" class="text-[11px] font-black" fill="#334155">SUN ${formatEpcNumber(pvPct, 0, '%')}</text>
+                        </g>
+
+                        <g class="epc-flow-node epc-flow-pv" transform="translate(245 98)">
+                            <rect x="0" y="0" width="110" height="70" rx="10" fill="#dbeafe" stroke="#2563eb"/>
+                            <path d="M12 22h86M12 44h86M36 8v54M72 8v54" stroke="#2563eb" stroke-width="3"/>
+                            <text x="55" y="96" text-anchor="middle" class="text-[11px] font-black" fill="#334155">SOLAR PANEL</text>
+                            <text x="55" y="112" text-anchor="middle" class="text-[10px] font-bold" fill="#64748b">${formatEpcNumber(row?.pvOutputKw || 0, 0, 'kW')}</text>
+                        </g>
+
+                        <g class="epc-flow-node epc-flow-inverter" transform="translate(430 112)">
+                            <rect x="0" y="0" width="92" height="58" rx="12" fill="#ede9fe" stroke="#7c3aed"/>
+                            <path d="M20 34c10-16 22-16 32 0s22 16 32 0" fill="none" stroke="#7c3aed" stroke-width="4"/>
+                            <text x="46" y="84" text-anchor="middle" class="text-[11px] font-black" fill="#334155">INVERTER</text>
+                        </g>
+
+                        <g class="epc-flow-node epc-flow-ems" transform="translate(600 126)">
+                            <rect x="0" y="0" width="98" height="70" rx="14" fill="#f5f3ff" stroke="#582C83" stroke-width="3"/>
+                            <path d="M25 24h48M25 38h48M25 52h30" stroke="#582C83" stroke-width="4" stroke-linecap="round"/>
+                            <text x="49" y="96" text-anchor="middle" class="text-[11px] font-black" fill="#334155">EMS</text>
+                        </g>
+
+                        <g class="epc-flow-node epc-flow-load" transform="translate(790 120)">
+                            <rect x="0" y="0" width="126" height="78" rx="14" fill="#ecfeff" stroke="#0891b2"/>
+                            <circle cx="34" cy="40" r="17" fill="#cffafe" stroke="#0891b2" stroke-width="3"/>
+                            <path d="M24 40h20M34 30v20M70 26h34M70 42h34M70 58h24" stroke="#0891b2" stroke-width="4" stroke-linecap="round"/>
+                            <text x="63" y="104" text-anchor="middle" class="text-[11px] font-black" fill="#334155">Water Pump</text>
+                            <text x="63" y="120" text-anchor="middle" class="text-[10px] font-bold" fill="#64748b">Mining Machine</text>
+                            <text x="63" y="136" text-anchor="middle" class="text-[10px] font-bold" fill="#64748b">${formatEpcNumber(row?.loadKw || 0, 0, 'kW')}</text>
+                        </g>
+
+                        <g class="epc-flow-node epc-flow-battery" transform="translate(540 228)">
+                            <rect x="0" y="0" width="112" height="64" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="3"/>
+                            <rect x="112" y="22" width="10" height="20" rx="3" fill="#16a34a"/>
+                            <rect x="12" y="14" width="${Math.max(10, Math.min(88, (row?.socPct || 0) * 0.88))}" height="36" rx="7" fill="#22c55e"/>
+                            <text x="56" y="90" text-anchor="middle" class="text-[11px] font-black" fill="#334155">BATTERY</text>
+                            <text x="56" y="106" text-anchor="middle" class="text-[10px] font-bold" fill="#64748b">SOC ${formatEpcNumber(row?.socPct || 0, 1, '%')}</text>
+                        </g>
+
+                        <g class="epc-flow-node epc-flow-genset" transform="translate(118 258)">
+                            <rect x="0" y="0" width="110" height="64" rx="12" fill="#f1f5f9" stroke="#64748b" stroke-width="3"/>
+                            <circle cx="32" cy="32" r="16" fill="#e2e8f0" stroke="#64748b" stroke-width="3"/>
+                            <path d="M62 24h30M62 40h20" stroke="#64748b" stroke-width="4" stroke-linecap="round"/>
+                            <text x="55" y="90" text-anchor="middle" class="text-[11px] font-black" fill="#334155">GENSET</text>
+                            <text x="55" y="106" text-anchor="middle" class="text-[10px] font-bold" fill="#64748b">${formatEpcNumber(row?.gensetToLoadKw || 0, 0, 'kW')}</text>
+                        </g>
+
+                        <g transform="translate(615 46)">
+                            <rect width="118" height="54" rx="12" fill="#fee2e2" stroke="#ef4444"/>
+                            <text x="59" y="24" text-anchor="middle" class="text-[11px] font-black" fill="#991b1b">CURTAILMENT</text>
+                            <text x="59" y="40" text-anchor="middle" class="text-[10px] font-bold" fill="#991b1b">${formatEpcNumber(row?.curtailmentKw || 0, 0, 'kW')}</text>
+                        </g>
+                    </svg>
+                </div>
+            `;
+        }
+
         function renderEpcEnergyFlow(result) {
             const target = document.getElementById('epc-energy-flow-table');
             if (!target) return;
             const rows = result.energyFlow?.rows || [];
             const stringDesign = result.pvStringDesign || {};
+            if (!rows.some(row => row.hour === epcSelectedFlowHour)) epcSelectedFlowHour = rows[0]?.hour || 13;
+            const selectedRow = rows.find(row => row.hour === epcSelectedFlowHour) || rows[0] || {};
             target.innerHTML = `
+                ${renderEpcFlowDiagram(result, selectedRow)}
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                     <div class="rounded-xl border border-slate-100 bg-slate-50 p-3"><div class="text-[10px] font-black text-slate-400 uppercase">Modules</div><div class="text-lg font-black text-slate-800">${formatEpcNumber(stringDesign.modules, 0)}</div></div>
                     <div class="rounded-xl border border-slate-100 bg-slate-50 p-3"><div class="text-[10px] font-black text-slate-400 uppercase">Strings</div><div class="text-lg font-black text-slate-800">${formatEpcNumber(stringDesign.strings, 0)}</div></div>
@@ -10049,8 +10194,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         </thead>
                         <tbody class="divide-y divide-slate-100">
                             ${rows.map(row => `
-                                <tr>
-                                    <td class="px-3 py-3 font-black text-slate-700">${htmlSafe(row.hour)}:00</td>
+                                <tr data-epc-flow-hour="${htmlSafe(row.hour)}" onclick="selectEpcEnergyFlowHour(${Number(row.hour)})" class="cursor-pointer hover:bg-slate-50 ${row.hour === epcSelectedFlowHour ? 'epc-flow-hour-active' : ''}">
+                                    <td class="px-3 py-3">
+                                        <button type="button" data-epc-flow-hour-button="${htmlSafe(row.hour)}" onclick="event.stopPropagation(); selectEpcEnergyFlowHour(${Number(row.hour)})" class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-black text-slate-700 hover:border-yellow-400 hover:bg-yellow-50">${htmlSafe(row.hour)}:00</button>
+                                    </td>
                                     <td class="px-3 py-3 text-right">${formatEpcNumber(row.pvOutputKw, 0)}</td>
                                     <td class="px-3 py-3 text-right">${formatEpcNumber(row.loadKw, 0)}</td>
                                     <td class="px-3 py-3 text-right">${formatEpcNumber(row.pvToLoadKw, 0)}</td>
@@ -10159,6 +10306,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         window.selectEpcDesignProject = (id) => {
             epcDesignActiveProjectId = String(id || '');
             renderEpcDesignWorkspace();
+        };
+
+        window.selectEpcEnergyFlowHour = (hour) => {
+            epcSelectedFlowHour = Number(hour) || epcSelectedFlowHour;
+            if (window.__lastEpcDesignResult) {
+                renderEpcEnergyFlow(window.__lastEpcDesignResult);
+            }
         };
 
         function canReadEpcEngineering() {

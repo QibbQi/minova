@@ -79,6 +79,31 @@ test('EPC map controls expose browser IP and manual location fallbacks', () => {
   }
 });
 
+test('EPC EMS flow exposes animated system diagram and clickable hour rows', () => {
+  for (const snippet of [
+    'epc-flow-diagram',
+    'epc-flow-svg',
+    'epc-flow-summary',
+    'selectEpcEnergyFlowHour',
+    'data-epc-flow-hour',
+    'data-epc-flow-hour-button',
+    'epc-flow-line',
+    'epc-flow-line-active',
+    'epc-flow-node',
+    'epc-flow-sun',
+    'epc-flow-pv',
+    'epc-flow-inverter',
+    'epc-flow-battery',
+    'epc-flow-ems',
+    'epc-flow-genset',
+    'epc-flow-load',
+    'Water Pump',
+    'Mining Machine'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing animated flow snippet: ${snippet}`);
+  }
+});
+
 test('EPC design projects persist through app state and sync merge', () => {
   for (const snippet of [
     'let epcDesignProjects = []',

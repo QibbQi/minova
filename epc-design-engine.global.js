@@ -1,7 +1,7 @@
 // Browser global companion for epc-design-engine.mjs. Keep exported names aligned with the module.
 (function(root) {
-const EPC_DESIGN_VERSION = 'epc-design-v1';
-  
+const EPC_DESIGN_VERSION = 'epc-design-v2';
+
   const EPC_DESIGN_DEFAULTS = Object.freeze({
     dieselSfcLPerKwh: 0.27,
     dieselSfcLowLPerKwh: 0.23,
@@ -15,45 +15,63 @@ const EPC_DESIGN_VERSION = 'epc-design-v1';
     bessDischargeEfficiency: 0.95,
     bessAutonomyHours: 1.9,
     pcsSafetyFactor: 1.5,
+    peakLoadFactor: 1.3,
+    islandPcsSafetyFactor: 1.2,
+    pvSmoothingPcsRatio: 0.2,
+    minSocPct: 25,
+    maxSocPct: 95,
     powerFactor: 0.95,
     lvVoltageKv: 0.415,
     lvHighCurrentWarningA: 2500,
     mvTriggerMwp: 3,
+    mvDistanceWarningM: 200,
     mvTriggerDistanceM: 500,
     groundPvAreaM2PerMwp: 11500,
     moduleWp: 580,
     modulesPerString: 26,
-    combinerInputs: 16
+    combinerInputs: 16,
+    inverterArchitecture: 'central',
+    totalStringInputs: 0
   });
-  
+
   const SCHEME_TARGETS = [
     { id: 'replace-50', label: '50% Diesel Replacement', replacementPct: 50, priority: 'Conservative' },
     { id: 'replace-80', label: '80% Recommended Replacement', replacementPct: 80, priority: 'Recommended' },
     { id: 'replace-100', label: '100% Theoretical Replacement', replacementPct: 100, priority: 'Theoretical' }
   ];
-  
+
   function asNumber(value, fallback = 0) {
     const n = Number(value);
     return Number.isFinite(n) ? n : fallback;
   }
-  
+
   function clamp(value, min, max, fallback = min) {
     const n = asNumber(value, fallback);
     return Math.min(max, Math.max(min, n));
   }
-  
+
   function round(value, digits = 2) {
     const n = asNumber(value, 0);
     const factor = 10 ** digits;
     return Math.round(n * factor) / factor;
   }
-  
+
   function isoNow(now) {
     if (now instanceof Date) return now.toISOString();
     if (typeof now === 'string' && now) return now;
     return new Date().toISOString();
   }
-  
+
+  function normalizeBessRole(value) {
+    const raw = String(value || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+    if (raw.includes('island') || raw.includes('off_grid') || raw.includes('full')) return 'island_mode';
+    if (raw.includes('peak')) return 'peak_shaving';
+    if (raw.includes('smooth')) return 'pv_smoothing';
+    if (raw.includes('backup')) return 'backup';
+    if (raw.includes('diesel') || raw.includes('hybrid') || raw.includes('saving')) return 'diesel_replacement';
+    return raw || 'diesel_replacement';
+  }
+
   function buildFormulaTrace({ key, label, formula, inputs, result, unit, assumptionSource = 'Default', now, isOverride = false, overrideReason = '' }) {
     return {
       key,
@@ -69,7 +87,7 @@ const EPC_DESIGN_VERSION = 'epc-design-v1';
       overrideReason: String(overrideReason || '')
     };
   }
-  
+
   function defaultSolarResource(input = {}, defaults = EPC_DESIGN_DEFAULTS) {
     const importedYield = asNumber(input.specificYieldKwhPerKwpDay ?? input.pvYieldKwhPerKwpDay, NaN);
     const specificYield = Number.isFinite(importedYield) && importedYield > 0
@@ -82,12 +100,15 @@ const EPC_DESIGN_VERSION = 'epc-design-v1';
       dniKwhM2Day: asNumber(input.dniKwhM2Day, 0),
       temperatureC: asNumber(input.temperatureC, 0),
       monthlyYield: Array.isArray(input.monthlyYield) ? input.monthlyYield.map(v => asNumber(v, 0)) : [],
+      hourlyPvProfile: Array.isArray(input.hourlyPvProfile)
+        ? input.hourlyPvProfile.map(item => ({ hour: asNumber(item.hour, 0), pvMw: asNumber(item.pvMw, 0) }))
+        : [],
       dataSource: String(input.dataSource || (imported ? 'Global Solar Atlas Import' : 'Malaysia Default')),
       retrievalDate: String(input.retrievalDate || ''),
       assumptionSource: imported ? String(input.dataSource || 'User Imported') : 'Malaysia Default'
     };
   }
-  
+
   function normalizeEpcDesignProject(raw = {}, options = {}) {
     const defaults = { ...EPC_DESIGN_DEFAULTS, ...(options.defaults || raw.defaults || {}) };
     const now = isoNow(options.now || raw.updatedAt || raw.createdAt);
@@ -98,7 +119,7 @@ const EPC_DESIGN_VERSION = 'epc-design-v1';
     const electrical = raw.electrical || {};
     const solarResource = defaultSolarResource(raw.solarResource || {}, defaults);
     const id = String(raw.id || project.id || `epc-${Date.parse(now) || Date.now()}`).trim();
-  
+
     return {
       id,
       mode: String(raw.mode || 'quick'),
@@ -119,23 +140,30 @@ const EPC_DESIGN_VERSION = 'epc-design-v1';
         gridMode: String(site.gridMode || raw.gridMode || 'hybrid').trim()
       },
       gensets: Array.isArray(raw.gensets) ? raw.gensets : [],
+      loadProfile: Array.isArray(raw.loadProfile) ? raw.loadProfile : Array.isArray(raw.load_profile) ? raw.load_profile : [],
       loads: {
         dieselTotalLiters: asNumber(loads.dieselTotalLiters ?? raw.dieselTotalLiters, 0),
         dieselPeriodDays: Math.max(1, asNumber(loads.dieselPeriodDays ?? raw.dieselPeriodDays, 1)),
         dieselPricePerLiter: asNumber(loads.dieselPricePerLiter ?? raw.dieselPricePerLiter, 0),
         operationHoursPerDay: clamp(loads.operationHoursPerDay ?? raw.operationHoursPerDay, 1, 24, 8),
         measuredDailyLoadKwh: asNumber(loads.measuredDailyLoadKwh, 0),
+        peakLoadKw: asNumber(loads.peakLoadKw ?? raw.peakLoadKw, 0),
+        criticalLoadKw: asNumber(loads.criticalLoadKw ?? raw.criticalLoadKw, 0),
+        allowedGensetLoadKw: asNumber(loads.allowedGensetLoadKw ?? raw.allowedGensetLoadKw, 0),
         loadSource: String(loads.loadSource || 'diesel_reverse').trim()
       },
       solarResource,
       designTargets: {
         replacementPct: clamp(designTargets.replacementPct ?? raw.targetReplacementPct, 0, 100, 80),
-        bessRole: String(designTargets.bessRole || 'PV smoothing + diesel saving').trim()
+        bessRole: normalizeBessRole(designTargets.bessRole || raw.bessRole || 'diesel_replacement'),
+        supportHours: asNumber(designTargets.supportHours ?? raw.supportHours, defaults.bessAutonomyHours)
       },
       electrical: {
         voltageKv: asNumber(electrical.voltageKv, defaults.lvVoltageKv),
         powerFactor: clamp(electrical.powerFactor, 0.1, 1, defaults.powerFactor),
-        distanceToInterconnectionM: asNumber(electrical.distanceToInterconnectionM ?? site.distanceToInterconnectionM, 0)
+        distanceToInterconnectionM: asNumber(electrical.distanceToInterconnectionM ?? site.distanceToInterconnectionM, 0),
+        existingMvVoltageKv: asNumber(electrical.existingMvVoltageKv, 0),
+        newMvSystem: Boolean(electrical.newMvSystem)
       },
       assumptions: {
         ...defaults,
@@ -150,7 +178,7 @@ const EPC_DESIGN_VERSION = 'epc-design-v1';
       updatedAt: now
     };
   }
-  
+
   function buildEpcDesignProjectFromQuickInputs(inputs = {}, options = {}) {
     return normalizeEpcDesignProject({
       project: {
@@ -184,7 +212,7 @@ const EPC_DESIGN_VERSION = 'epc-design-v1';
       updatedAt: options.now
     }, options);
   }
-  
+
   function dataQualityScore(project) {
     let score = 0;
     if (project.site.latitude && project.site.longitude) score += 18;
@@ -197,7 +225,7 @@ const EPC_DESIGN_VERSION = 'epc-design-v1';
     if (project.electrical.distanceToInterconnectionM > 0) score += 5;
     return Math.min(100, score);
   }
-  
+
   function calculateLoad(project, now) {
     const sfc = asNumber(project.assumptions.dieselSfcLPerKwh, EPC_DESIGN_DEFAULTS.dieselSfcLPerKwh);
     const dailyDieselLiters = project.loads.dieselTotalLiters / Math.max(1, project.loads.dieselPeriodDays);
@@ -205,10 +233,16 @@ const EPC_DESIGN_VERSION = 'epc-design-v1';
       ? project.loads.measuredDailyLoadKwh
       : dailyDieselLiters / Math.max(0.001, sfc);
     const averageLoadKw = dailyLoadKwh / Math.max(1, project.loads.operationHoursPerDay);
+    const peakLoadKw = project.loads.peakLoadKw > 0
+      ? project.loads.peakLoadKw
+      : averageLoadKw * asNumber(project.assumptions.peakLoadFactor, EPC_DESIGN_DEFAULTS.peakLoadFactor);
+    const criticalLoadKw = project.loads.criticalLoadKw > 0 ? project.loads.criticalLoadKw : averageLoadKw;
     return {
       dailyDieselLiters,
       dailyLoadKwh,
       averageLoadKw,
+      peakLoadKw,
+      criticalLoadKw,
       monthlyDieselLiters: dailyDieselLiters * 30,
       annualDieselLiters: dailyDieselLiters * 365,
       monthlyDieselCost: dailyDieselLiters * 30 * project.loads.dieselPricePerLiter,
@@ -246,35 +280,77 @@ const EPC_DESIGN_VERSION = 'epc-design-v1';
       ]
     };
   }
-  
+
   function roundUpStep(value, step) {
     if (!Number.isFinite(value) || value <= 0) return 0;
     return Math.ceil(value / step) * step;
   }
-  
+
+  function calculateBessPcsByRole(project, load, pvRecommendedMwp) {
+    const role = normalizeBessRole(project.designTargets.bessRole);
+    const supportHours = Math.max(0.1, asNumber(project.designTargets.supportHours, project.assumptions.bessAutonomyHours));
+    const dod = asNumber(project.assumptions.bessDod, EPC_DESIGN_DEFAULTS.bessDod);
+    const efficiency = asNumber(project.assumptions.bessDischargeEfficiency, EPC_DESIGN_DEFAULTS.bessDischargeEfficiency);
+    const pcsSafetyFactor = asNumber(project.assumptions.pcsSafetyFactor, EPC_DESIGN_DEFAULTS.pcsSafetyFactor);
+    const islandSafetyFactor = asNumber(project.assumptions.islandPcsSafetyFactor, EPC_DESIGN_DEFAULTS.islandPcsSafetyFactor);
+    const smoothingRatio = asNumber(project.assumptions.pvSmoothingPcsRatio, EPC_DESIGN_DEFAULTS.pvSmoothingPcsRatio);
+    let supportedLoadKw = load.averageLoadKw;
+    let pcsRawKw = load.averageLoadKw * pcsSafetyFactor;
+    let pcsBasis = 'Average load hybrid support';
+
+    if (role === 'pv_smoothing') {
+      supportedLoadKw = pvRecommendedMwp * 1000 * smoothingRatio;
+      pcsRawKw = supportedLoadKw;
+      pcsBasis = 'PV fluctuation portion';
+    } else if (role === 'peak_shaving') {
+      supportedLoadKw = Math.max(0, load.peakLoadKw - asNumber(project.loads.allowedGensetLoadKw, 0));
+      pcsRawKw = supportedLoadKw;
+      pcsBasis = 'Peak load minus allowed genset load';
+    } else if (role === 'backup') {
+      supportedLoadKw = load.criticalLoadKw;
+      pcsRawKw = supportedLoadKw * islandSafetyFactor;
+      pcsBasis = 'Critical load backup with safety factor';
+    } else if (role === 'island_mode') {
+      supportedLoadKw = load.peakLoadKw;
+      pcsRawKw = load.peakLoadKw * islandSafetyFactor;
+      pcsBasis = 'Total peak load with island safety factor';
+    }
+
+    const bessRecommendedMwh = (supportedLoadKw * supportHours) / Math.max(0.001, dod * efficiency) / 1000;
+    const pcsRecommendedMw = roundUpStep(pcsRawKw / 1000, 0.5);
+    const batteryKwh = Math.max(0.001, bessRecommendedMwh * 1000);
+    const pcsKw = pcsRecommendedMw * 1000;
+    const cRate = pcsKw / batteryKwh;
+    return {
+      bessRole: role,
+      pcsBasis,
+      supportedLoadKw,
+      supportHours,
+      bessRecommendedMwh,
+      pcsRecommendedMw,
+      cRate,
+      equivalentDurationHours: batteryKwh / Math.max(0.001, pcsKw),
+      usableDurationAtSupportedLoadHours: (batteryKwh * dod * efficiency) / Math.max(0.001, supportedLoadKw)
+    };
+  }
+
   function calculateScheme(project, load, target, now) {
     const yieldKwh = Math.max(0.001, asNumber(project.solarResource.specificYieldKwhPerKwpDay, EPC_DESIGN_DEFAULTS.malaysiaYieldBase));
     const margin = asNumber(project.assumptions.pvSizingMargin, EPC_DESIGN_DEFAULTS.pvSizingMargin);
-    const dod = asNumber(project.assumptions.bessDod, EPC_DESIGN_DEFAULTS.bessDod);
-    const efficiency = asNumber(project.assumptions.bessDischargeEfficiency, EPC_DESIGN_DEFAULTS.bessDischargeEfficiency);
-    const autonomyHours = asNumber(project.assumptions.bessAutonomyHours, EPC_DESIGN_DEFAULTS.bessAutonomyHours);
-    const pcsSafetyFactor = asNumber(project.assumptions.pcsSafetyFactor, EPC_DESIGN_DEFAULTS.pcsSafetyFactor);
     const targetDailyKwh = load.dailyLoadKwh * (target.replacementPct / 100);
     const pvRawKwp = targetDailyKwh / yieldKwh;
     const pvRecommendedMwp = (pvRawKwp * margin) / 1000;
-    const bessRecommendedMwh = (load.averageLoadKw * autonomyHours) / Math.max(0.001, dod * efficiency) / 1000;
-    const pcsRecommendedMw = roundUpStep((load.averageLoadKw * pcsSafetyFactor) / 1000, 0.5);
+    const bessPcs = calculateBessPcsByRole(project, load, pvRecommendedMwp);
     const requiredAreaM2 = pvRecommendedMwp * asNumber(project.assumptions.groundPvAreaM2PerMwp, EPC_DESIGN_DEFAULTS.groundPvAreaM2PerMwp);
     const monthlyDieselSavedLiters = load.dailyDieselLiters * (target.replacementPct / 100) * 30;
     const monthlySavings = monthlyDieselSavedLiters * project.loads.dieselPricePerLiter;
-  
+
     return {
       ...target,
+      ...bessPcs,
       targetDailyKwh,
       pvRawKwp,
       pvRecommendedMwp,
-      bessRecommendedMwh,
-      pcsRecommendedMw,
       requiredAreaM2,
       areaUtilizationPct: project.site.availableAreaM2 > 0 ? (requiredAreaM2 / project.site.availableAreaM2) * 100 : 0,
       monthlyDieselSavedLiters,
@@ -294,30 +370,51 @@ const EPC_DESIGN_VERSION = 'epc-design-v1';
       ]
     };
   }
-  
+
+  function calculateCurrentA(powerKw, voltageKv, pf) {
+    return powerKw > 0 && voltageKv > 0 && pf > 0
+      ? powerKw / (Math.sqrt(3) * voltageKv * pf)
+      : 0;
+  }
+
   function calculateElectrical(project, recommended) {
     const pf = asNumber(project.electrical.powerFactor, EPC_DESIGN_DEFAULTS.powerFactor);
     const voltageKv = asNumber(project.electrical.voltageKv, EPC_DESIGN_DEFAULTS.lvVoltageKv);
     const roundedPvMwp = roundUpStep(recommended?.pvRecommendedMwp || 0, 0.5);
     const designKw = Math.max(roundedPvMwp * 1000, (recommended?.pcsRecommendedMw || 0) * 1000);
-    const lvCurrentA = designKw > 0 && voltageKv > 0 && pf > 0
-      ? designKw / (Math.sqrt(3) * voltageKv * pf)
-      : 0;
+    const lvCurrentA = calculateCurrentA(designKw, voltageKv, pf);
     const distance = Math.max(project.site.distanceToInterconnectionM || 0, project.electrical.distanceToInterconnectionM || 0);
+    const voltageOptions = [0.415, 6.6, 11].map(optionVoltage => ({
+      voltageKv: optionVoltage,
+      currentA: calculateCurrentA(designKw, optionVoltage, pf)
+    }));
+    const flags = [];
+    if (pf < 0.9) flags.push('PF below 0.90: current, voltage drop and transformer/cable sizing increase; evaluate SVG/capacitor bank/VFD.');
+    if (lvCurrentA > asNumber(project.assumptions.lvHighCurrentWarningA, EPC_DESIGN_DEFAULTS.lvHighCurrentWarningA)) flags.push('High 415V current: avoid one large LV busbar without detailed study.');
+    if (designKw > 500 && distance > asNumber(project.assumptions.mvDistanceWarningM, EPC_DESIGN_DEFAULTS.mvDistanceWarningM)) flags.push('Evaluate MV: load above 500kW and distance above 200m.');
+    if (designKw > 500 && distance > asNumber(project.assumptions.mvTriggerDistanceM, EPC_DESIGN_DEFAULTS.mvTriggerDistanceM)) flags.push('Strong MV recommendation: load above 500kW and distance above 500m.');
     const mvRecommended = lvCurrentA > asNumber(project.assumptions.lvHighCurrentWarningA, EPC_DESIGN_DEFAULTS.lvHighCurrentWarningA)
       || roundedPvMwp >= asNumber(project.assumptions.mvTriggerMwp, EPC_DESIGN_DEFAULTS.mvTriggerMwp)
-      || (designKw > 500 && distance > asNumber(project.assumptions.mvTriggerDistanceM, EPC_DESIGN_DEFAULTS.mvTriggerDistanceM));
+      || (designKw > 500 && distance > asNumber(project.assumptions.mvDistanceWarningM, EPC_DESIGN_DEFAULTS.mvDistanceWarningM));
+    let architecture = '415V Centralized';
+    if (designKw < 300 && distance < 100) architecture = '415V Direct';
+    else if (designKw <= 1000 && distance < 200) architecture = 'Distributed 415V';
+    else if (mvRecommended && asNumber(project.electrical.existingMvVoltageKv, 0) === 6.6) architecture = '6.6kV Existing MV Integration';
+    else if (mvRecommended) architecture = '11kV Ring Main / MV Transformer';
     return {
       designKw,
       roundedPvMwp,
       lvCurrentA,
+      voltageOptions,
+      flags,
       mvRecommended,
+      architecture,
       recommendation: mvRecommended
         ? 'Recommend 11kV MV integration or transformer-based architecture; LV-only 415V current is high.'
         : 'LV integration is feasible for concept stage; verify cable voltage drop and protection study.'
     };
   }
-  
+
   function buildBoq(project, recommended) {
     return [
       { package: 'PV', item: 'PV modules and mounting', quantity: round(recommended.pvRecommendedMwp, 2), unit: 'MWp', mandatory: true },
@@ -329,7 +426,7 @@ const EPC_DESIGN_VERSION = 'epc-design-v1';
       { package: 'Services', item: 'Site survey, SLD, protection and civil/fire review', quantity: 1, unit: 'lot', mandatory: true }
     ];
   }
-  
+
   function buildRisks(project, load, electrical, recommended) {
     const risks = [];
     if (project.loads.loadSource !== 'measured_profile') {
@@ -349,7 +446,92 @@ const EPC_DESIGN_VERSION = 'epc-design-v1';
     }
     return risks;
   }
-  
+
+  function defaultHourlyLoadProfile(load) {
+    return [9, 10, 11, 12, 13, 14, 15, 16, 17].map(hour => ({ hour, loadKw: load.averageLoadKw }));
+  }
+
+  function defaultHourlyPvProfile(recommended) {
+    const factors = {
+      9: 0.18,
+      10: 0.42,
+      11: 0.68,
+      12: 0.9,
+      13: 0.88,
+      14: 0.72,
+      15: 0.52,
+      16: 0.28,
+      17: 0.08
+    };
+    return Object.entries(factors).map(([hour, factor]) => ({
+      hour: Number(hour),
+      pvMw: (recommended.pvRecommendedMwp || 0) * factor
+    }));
+  }
+
+  function normalizeHourMap(profile, valueKey) {
+    const map = new Map();
+    for (const item of Array.isArray(profile) ? profile : []) {
+      const hour = Math.round(asNumber(item.hour, NaN));
+      if (!Number.isFinite(hour)) continue;
+      map.set(hour, asNumber(item[valueKey], 0));
+    }
+    return map;
+  }
+
+  function calculateEnergyFlow(project, load, recommended) {
+    const loadProfile = project.loadProfile.length ? project.loadProfile : defaultHourlyLoadProfile(load);
+    const pvProfile = Array.isArray(project.solarResource.hourlyPvProfile) && project.solarResource.hourlyPvProfile.length
+      ? project.solarResource.hourlyPvProfile
+      : defaultHourlyPvProfile(recommended);
+    const loadMap = normalizeHourMap(loadProfile, 'loadKw');
+    const pvMap = normalizeHourMap(pvProfile, 'pvMw');
+    const hours = [...new Set([...loadMap.keys(), ...pvMap.keys()])].sort((a, b) => a - b);
+    const batteryKwh = Math.max(0, recommended.bessRecommendedMwh * 1000);
+    const pcsKw = Math.max(0, recommended.pcsRecommendedMw * 1000);
+    const minSoc = clamp(project.assumptions.minSocPct, 0, 99, EPC_DESIGN_DEFAULTS.minSocPct) / 100;
+    const maxSoc = clamp(project.assumptions.maxSocPct, 1, 100, EPC_DESIGN_DEFAULTS.maxSocPct) / 100;
+    let socKwh = batteryKwh * Math.min(maxSoc, Math.max(minSoc, 0.5));
+    const rows = hours.map(hour => {
+      const pvOutputKw = (pvMap.get(hour) || 0) * 1000;
+      const loadKw = loadMap.get(hour) || load.averageLoadKw;
+      const pvToLoadKw = Math.min(pvOutputKw, loadKw);
+      const surplusPvKw = Math.max(0, pvOutputKw - loadKw);
+      const loadDeficitKw = Math.max(0, loadKw - pvOutputKw);
+      const batteryHeadroomKwh = Math.max(0, batteryKwh * maxSoc - socKwh);
+      const pvToBatteryKw = Math.min(surplusPvKw, pcsKw, batteryHeadroomKwh);
+      socKwh += pvToBatteryKw;
+      const batteryAvailableKwh = Math.max(0, socKwh - batteryKwh * minSoc);
+      const batteryToLoadKw = Math.min(loadDeficitKw, pcsKw, batteryAvailableKwh);
+      socKwh -= batteryToLoadKw;
+      const gensetToLoadKw = Math.max(0, loadDeficitKw - batteryToLoadKw);
+      const curtailmentKw = Math.max(0, surplusPvKw - pvToBatteryKw);
+      return {
+        hour,
+        pvOutputKw: round(pvOutputKw, 2),
+        loadKw: round(loadKw, 2),
+        pvToLoadKw: round(pvToLoadKw, 2),
+        pvToBatteryKw: round(pvToBatteryKw, 2),
+        batteryToLoadKw: round(batteryToLoadKw, 2),
+        gensetToLoadKw: round(gensetToLoadKw, 2),
+        curtailmentKw: round(curtailmentKw, 2),
+        socPct: batteryKwh > 0 ? round((socKwh / batteryKwh) * 100, 1) : 0
+      };
+    });
+    const sum = key => rows.reduce((total, row) => total + row[key], 0);
+    return {
+      method: 'EMS order: PV -> Load, Excess PV -> Battery, Battery -> Load, Genset -> Load, curtail surplus.',
+      rows,
+      summary: {
+        pvDirectKwh: round(sum('pvToLoadKw'), 2),
+        pvToBatteryKwh: round(sum('pvToBatteryKw'), 2),
+        batteryToLoadKwh: round(sum('batteryToLoadKw'), 2),
+        gensetRemainingKwh: round(sum('gensetToLoadKw'), 2),
+        curtailmentKwh: round(sum('curtailmentKw'), 2)
+      }
+    };
+  }
+
   function calculateEpcDesignProject(rawProject = {}, options = {}) {
     const project = normalizeEpcDesignProject(rawProject, options);
     const now = isoNow(options.now);
@@ -357,8 +539,17 @@ const EPC_DESIGN_VERSION = 'epc-design-v1';
     const schemes = SCHEME_TARGETS.map(target => calculateScheme(project, load, target, now));
     const recommended = schemes.find(scheme => scheme.id === 'replace-80') || schemes[0];
     const electrical = calculateElectrical(project, recommended);
+    const pvStringDesign = calculatePvStringDesign({
+      targetPvMwp: recommended.pvRecommendedMwp,
+      moduleWp: project.assumptions.moduleWp,
+      modulesPerString: project.assumptions.modulesPerString,
+      combinerInputs: project.assumptions.combinerInputs,
+      inverterArchitecture: project.assumptions.inverterArchitecture,
+      totalStringInputs: project.assumptions.totalStringInputs
+    });
     const boq = buildBoq(project, recommended);
     const risks = buildRisks(project, load, electrical, recommended);
+    const energyFlow = calculateEnergyFlow(project, load, recommended);
     const formulaTrace = [
       ...load.trace,
       buildFormulaTrace({
@@ -378,10 +569,11 @@ const EPC_DESIGN_VERSION = 'epc-design-v1';
       buildFormulaTrace({
         key: 'bessRecommendedMwh',
         label: 'Recommended BESS Energy',
-        formula: 'Average Load x Autonomy Hours / (DoD x Discharge Efficiency) / 1000',
+        formula: 'Supported Load x Support Hours / (DoD x Discharge Efficiency) / 1000',
         inputs: {
-          averageLoadKw: round(load.averageLoadKw, 4),
-          autonomyHours: project.assumptions.bessAutonomyHours,
+          bessRole: recommended.bessRole,
+          supportedLoadKw: round(recommended.supportedLoadKw, 4),
+          supportHours: recommended.supportHours,
           dod: project.assumptions.bessDod,
           dischargeEfficiency: project.assumptions.bessDischargeEfficiency
         },
@@ -393,10 +585,12 @@ const EPC_DESIGN_VERSION = 'epc-design-v1';
       buildFormulaTrace({
         key: 'pcsRecommendedMw',
         label: 'Recommended PCS',
-        formula: 'Average Load x PCS Safety Factor, rounded up to 0.5MW',
+        formula: `${recommended.pcsBasis}, rounded up to 0.5MW`,
         inputs: {
-          averageLoadKw: round(load.averageLoadKw, 4),
-          pcsSafetyFactor: project.assumptions.pcsSafetyFactor
+          bessRole: recommended.bessRole,
+          peakLoadKw: round(load.peakLoadKw, 4),
+          allowedGensetLoadKw: project.loads.allowedGensetLoadKw,
+          pcsBasis: recommended.pcsBasis
         },
         result: round(recommended.pcsRecommendedMw, 4),
         unit: 'MW',
@@ -404,7 +598,7 @@ const EPC_DESIGN_VERSION = 'epc-design-v1';
         now
       })
     ];
-  
+
     return {
       ...project,
       load,
@@ -412,6 +606,8 @@ const EPC_DESIGN_VERSION = 'epc-design-v1';
       schemes,
       recommendedSchemeId: recommended.id,
       electrical,
+      energyFlow,
+      pvStringDesign,
       boq,
       risks,
       dataQualityScore: dataQualityScore(project),
@@ -425,34 +621,53 @@ const EPC_DESIGN_VERSION = 'epc-design-v1';
       disclaimer: 'Concept and budgetary sizing only. Final design requires measured load curve, SLD, solar simulation, voltage drop, short-circuit/protection, civil/fire review, latest certification rules and manufacturer data.'
     };
   }
-  
-  function calculatePvStringDesign({ targetPvMwp = 0, moduleWp = EPC_DESIGN_DEFAULTS.moduleWp, modulesPerString = EPC_DESIGN_DEFAULTS.modulesPerString, combinerInputs = EPC_DESIGN_DEFAULTS.combinerInputs } = {}) {
+
+  function calculatePvStringDesign({
+    targetPvMwp = 0,
+    moduleWp = EPC_DESIGN_DEFAULTS.moduleWp,
+    modulesPerString = EPC_DESIGN_DEFAULTS.modulesPerString,
+    combinerInputs = EPC_DESIGN_DEFAULTS.combinerInputs,
+    inverterArchitecture = 'central',
+    totalStringInputs = 0,
+    minimumExpectedModulesPerString = 18
+  } = {}) {
     const modules = Math.ceil((asNumber(targetPvMwp, 0) * 1000000) / Math.max(1, asNumber(moduleWp, EPC_DESIGN_DEFAULTS.moduleWp)));
     const strings = Math.ceil(modules / Math.max(1, asNumber(modulesPerString, EPC_DESIGN_DEFAULTS.modulesPerString)));
-    const combiners = Math.ceil(strings / Math.max(1, asNumber(combinerInputs, EPC_DESIGN_DEFAULTS.combinerInputs)));
+    const architecture = String(inverterArchitecture || 'central');
+    const combiners = architecture === 'string'
+      ? 0
+      : Math.ceil(strings / Math.max(1, asNumber(combinerInputs, EPC_DESIGN_DEFAULTS.combinerInputs)));
+    const inputCount = asNumber(totalStringInputs, 0);
+    const warnings = [];
+    if (inputCount > 0 && modules / inputCount < asNumber(minimumExpectedModulesPerString, 18)) {
+      warnings.push('Review module/string ratio: total string inputs imply unusually low modules per string.');
+    }
     return {
       moduleWp: asNumber(moduleWp, EPC_DESIGN_DEFAULTS.moduleWp),
       modules,
       modulesPerString: asNumber(modulesPerString, EPC_DESIGN_DEFAULTS.modulesPerString),
       strings,
       combinerInputs: asNumber(combinerInputs, EPC_DESIGN_DEFAULTS.combinerInputs),
-      combiners
+      combiners,
+      inverterArchitecture: architecture,
+      totalStringInputs: inputCount,
+      warnings
     };
   }
-  
+
   function buildGlobalSolarAtlasUrl(site = {}) {
     const lat = asNumber(site.latitude, 0);
     const lng = asNumber(site.longitude, 0);
     const zoom = 11;
     return `https://globalsolaratlas.info/map?c=${lat.toFixed(6)},${lng.toFixed(6)},${zoom}&s=${lat.toFixed(6)},${lng.toFixed(6)}&m=site`;
   }
-  
+
   function normalizeEpcDesignProjectList(value = [], options = {}) {
     return (Array.isArray(value) ? value : [])
       .map(item => normalizeEpcDesignProject(item, options))
       .filter(item => item.id);
   }
-  
+
   if (root.document?.documentElement) {
     root.document.documentElement.dataset.epcDesignEngine = EPC_DESIGN_VERSION;
   }

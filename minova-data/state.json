@@ -1,6 +1,6 @@
 {
   "v": 1,
-  "updatedAt": "2026-06-12T09:51:29.800Z",
+  "updatedAt": "2026-06-12T15:42:50.770Z",
   "data": {
     "products": [
       {
@@ -1961,15 +1961,23 @@
       "bessDischargeEfficiency": 0.95,
       "bessAutonomyHours": 1.9,
       "pcsSafetyFactor": 1.5,
+      "peakLoadFactor": 1.3,
+      "islandPcsSafetyFactor": 1.2,
+      "pvSmoothingPcsRatio": 0.2,
+      "minSocPct": 25,
+      "maxSocPct": 95,
       "powerFactor": 0.95,
       "lvVoltageKv": 0.415,
       "lvHighCurrentWarningA": 2500,
       "mvTriggerMwp": 3,
+      "mvDistanceWarningM": 200,
       "mvTriggerDistanceM": 500,
       "groundPvAreaM2PerMwp": 11500,
       "moduleWp": 580,
       "modulesPerString": 26,
-      "combinerInputs": 16
+      "combinerInputs": 16,
+      "inverterArchitecture": "central",
+      "totalStringInputs": 0
     }
   }
 }

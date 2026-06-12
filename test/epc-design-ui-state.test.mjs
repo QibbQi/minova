@@ -15,7 +15,7 @@ test('EPC design tab is placed between Product List and Engineering Workspace', 
   assert.ok(engineeringPos > epcPos, 'Engineering tab is after EPC tab');
   assert.match(html, /id="tab-epcdesign"[^>]*aria-label="Hybrid EPC Design"/);
   assert.match(html, /id="tab-epcdesign"[\s\S]*?<svg/);
-  assert.match(html, /<script src="\.\/epc-design-engine\.global\.js\?v=epc-design-v1"><\/script>\s*<script type="module">\s*const \{/);
+  assert.match(html, /<script src="\.\/epc-design-engine\.global\.js\?v=epc-design-v2"><\/script>\s*<script type="module">\s*const \{/);
   assert.doesNotMatch(html, /<script type="module">\s*import \{\s*EPC_DESIGN_DEFAULTS/);
 });
 
@@ -45,6 +45,38 @@ test('EPC detailed engineering inputs are permission-gated separately from quick
   assert.match(html, /canPerformAction\?\.\('epcDesignEngineering', 'read'\)/);
   assert.match(html, /canPerformAction\?\.\('epcDesignEngineering', 'edit'\)/);
   assert.match(html, /const engineeringOnly = !!el\.closest\('#epc-detailed-fields'\)/);
+});
+
+test('EPC workspace guides junior engineers through load PCS battery PV steps', () => {
+  for (const snippet of [
+    'epc-wizard-steps',
+    'Step 1 Load',
+    'Step 2 PCS',
+    'Step 3 Battery',
+    'Step 4 PV & Strings',
+    'Step 5 EMS Simulation',
+    'epc-load-peak',
+    'epc-allowed-genset-load',
+    'epc-support-hours',
+    'epc-module-wp',
+    'epc-modules-per-string',
+    'epc-combiner-inputs',
+    'epc-energy-flow-table'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing guided EPC UI snippet: ${snippet}`);
+  }
+});
+
+test('EPC map controls expose browser IP and manual location fallbacks', () => {
+  for (const snippet of [
+    'Use Current Location',
+    'Use IP Location',
+    'window.useEpcIpLocation',
+    'ipapi.co/json',
+    'Location permission was denied'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing location fallback snippet: ${snippet}`);
+  }
 });
 
 test('EPC design projects persist through app state and sync merge', () => {

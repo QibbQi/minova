@@ -2477,6 +2477,29 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             </div>
         </div>
 
+        <div id="epc-wizard-steps" class="grid grid-cols-1 md:grid-cols-5 gap-2 mb-5">
+            <div class="rounded-2xl border border-purple-100 bg-white p-3">
+                <div class="text-[10px] font-black text-purple-700 uppercase">Step 1 Load</div>
+                <div class="text-xs text-slate-500 mt-1">Daily kWh, average kW, peak kW.</div>
+            </div>
+            <div class="rounded-2xl border border-slate-200 bg-white p-3">
+                <div class="text-[10px] font-black text-purple-700 uppercase">Step 2 PCS</div>
+                <div class="text-xs text-slate-500 mt-1">Instant charge/discharge power.</div>
+            </div>
+            <div class="rounded-2xl border border-slate-200 bg-white p-3">
+                <div class="text-[10px] font-black text-purple-700 uppercase">Step 3 Battery</div>
+                <div class="text-xs text-slate-500 mt-1">Support hours, DoD, C-rate.</div>
+            </div>
+            <div class="rounded-2xl border border-slate-200 bg-white p-3">
+                <div class="text-[10px] font-black text-purple-700 uppercase">Step 4 PV & Strings</div>
+                <div class="text-xs text-slate-500 mt-1">Module count, string count, combiner.</div>
+            </div>
+            <div class="rounded-2xl border border-slate-200 bg-white p-3">
+                <div class="text-[10px] font-black text-purple-700 uppercase">Step 5 EMS Simulation</div>
+                <div class="text-xs text-slate-500 mt-1">Hourly PV/load/BESS/genset flow.</div>
+            </div>
+        </div>
+
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-5">
             <section class="lg:col-span-3 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                 <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
@@ -2538,6 +2561,32 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             <input id="epc-available-area" data-epc-field="site.availableAreaM2" type="number" min="0" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                         </div>
                     </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Peak Load kW</label>
+                            <input id="epc-load-peak" data-epc-field="loads.peakLoadKw" type="number" min="0" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" placeholder="Auto 1.3x avg">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Genset Allowed kW</label>
+                            <input id="epc-allowed-genset-load" data-epc-field="loads.allowedGensetLoadKw" type="number" min="0" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">BESS Role</label>
+                            <select id="epc-bess-role" data-epc-field="designTargets.bessRole" onchange="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
+                                <option value="diesel_replacement">Diesel Replacement</option>
+                                <option value="peak_shaving">Peak Shaving</option>
+                                <option value="pv_smoothing">PV Smoothing</option>
+                                <option value="backup">Backup</option>
+                                <option value="island_mode">Island Mode</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Support Hours</label>
+                            <input id="epc-support-hours" data-epc-field="designTargets.supportHours" type="number" min="0.1" step="0.1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        </div>
+                    </div>
                     <div id="epc-detailed-fields" data-epc-engineering-section="true" class="space-y-3 hidden border-t border-slate-100 pt-4">
                         <div class="grid grid-cols-2 gap-2">
                             <div>
@@ -2560,8 +2609,22 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             </div>
                         </div>
                         <div>
-                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">BESS Role / EMS Note</label>
-                            <textarea id="epc-bess-role" data-epc-field="designTargets.bessRole" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 min-h-[70px]" placeholder="PV smoothing, peak shaving, diesel saving, backup..."></textarea>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Critical Load kW</label>
+                            <input id="epc-critical-load" data-epc-field="loads.criticalLoadKw" type="number" min="0" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        </div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Module Wp</label>
+                                <input id="epc-module-wp" data-epc-field="assumptions.moduleWp" type="number" min="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">/ String</label>
+                                <input id="epc-modules-per-string" data-epc-field="assumptions.modulesPerString" type="number" min="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Combiner</label>
+                                <input id="epc-combiner-inputs" data-epc-field="assumptions.combinerInputs" type="number" min="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2570,7 +2633,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             <section class="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                 <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-3">
                     <h3 class="text-sm font-black text-slate-800">Map & Solar Resource</h3>
-                    <button type="button" onclick="useEpcCurrentLocation()" class="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 text-xs font-black hover:bg-blue-100">Use Current Location</button>
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" onclick="useEpcCurrentLocation()" class="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 text-xs font-black hover:bg-blue-100">Use Current Location</button>
+                        <button type="button" onclick="useEpcIpLocation()" class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 text-xs font-black hover:bg-slate-50">Use IP Location</button>
+                    </div>
                 </div>
                 <div class="p-4 space-y-4">
                     <div id="epc-design-map" class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 min-h-[280px] flex items-center justify-center text-center text-xs font-bold text-slate-400 p-6">
@@ -2609,6 +2675,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 <button type="button" data-epc-panel-tab="formula" onclick="setEpcPanelTab('formula')" class="px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-50">Formula Trace</button>
                 <button type="button" data-epc-panel-tab="boq" onclick="setEpcPanelTab('boq')" class="px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-50">BOQ</button>
                 <button type="button" data-epc-panel-tab="risks" onclick="setEpcPanelTab('risks')" class="px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-50">Risks</button>
+                <button type="button" data-epc-panel-tab="flow" onclick="setEpcPanelTab('flow')" class="px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-50">EMS Flow</button>
                 <button type="button" data-epc-panel-tab="reports" onclick="setEpcPanelTab('reports')" class="px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-50">Reports</button>
             </div>
             <div class="p-4">
@@ -2617,6 +2684,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 <div id="epc-design-formula-trace" data-epc-panel="formula" class="hidden"></div>
                 <div id="epc-design-boq" data-epc-panel="boq" class="hidden"></div>
                 <div id="epc-design-risks" data-epc-panel="risks" class="hidden"></div>
+                <div id="epc-energy-flow-table" data-epc-panel="flow" class="hidden"></div>
                 <div id="epc-design-reports" data-epc-panel="reports" class="hidden"></div>
             </div>
         </div>
@@ -4955,12 +5023,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-    <script src="./epc-design-engine.global.js?v=epc-design-v1"></script>
+    <script src="./epc-design-engine.global.js?v=epc-design-v2"></script>
     <script type="module">
         const {
             EPC_DESIGN_DEFAULTS,
             buildGlobalSolarAtlasUrl,
             calculateEpcDesignProject,
+            calculatePvStringDesign,
             normalizeEpcDesignProject,
             normalizeEpcDesignProjectList
         } = window.MinovaEpcDesignEngine;
@@ -9800,11 +9869,18 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             setInputValue('epc-operation-hours', project.loads.operationHoursPerDay || 8);
             setInputValue('epc-target-replacement', project.designTargets.replacementPct || 80);
             setInputValue('epc-available-area', project.site.availableAreaM2 || '');
+            setInputValue('epc-load-peak', project.loads.peakLoadKw || '');
+            setInputValue('epc-allowed-genset-load', project.loads.allowedGensetLoadKw || '');
+            setInputValue('epc-critical-load', project.loads.criticalLoadKw || '');
+            setInputValue('epc-support-hours', project.designTargets.supportHours || EPC_DESIGN_DEFAULTS.bessAutonomyHours);
             setInputValue('epc-sfc', project.assumptions.dieselSfcLPerKwh || EPC_DESIGN_DEFAULTS.dieselSfcLPerKwh);
             setInputValue('epc-pv-yield', project.solarResource.specificYieldKwhPerKwpDay || EPC_DESIGN_DEFAULTS.malaysiaYieldBase);
             setInputValue('epc-bess-dod', project.assumptions.bessDod || EPC_DESIGN_DEFAULTS.bessDod);
             setInputValue('epc-power-factor', project.electrical.powerFactor || EPC_DESIGN_DEFAULTS.powerFactor);
             setInputValue('epc-bess-role', project.designTargets.bessRole || '');
+            setInputValue('epc-module-wp', project.assumptions.moduleWp || EPC_DESIGN_DEFAULTS.moduleWp);
+            setInputValue('epc-modules-per-string', project.assumptions.modulesPerString || EPC_DESIGN_DEFAULTS.modulesPerString);
+            setInputValue('epc-combiner-inputs', project.assumptions.combinerInputs || EPC_DESIGN_DEFAULTS.combinerInputs);
             setInputValue('epc-solar-ghi', project.solarResource.ghiKwhM2Day || '');
             setInputValue('epc-solar-dni', project.solarResource.dniKwhM2Day || '');
             setInputValue('epc-solar-temp', project.solarResource.temperatureC || '');
@@ -9860,6 +9936,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                                 <th class="px-3 py-2 text-right">PV MWp</th>
                                 <th class="px-3 py-2 text-right">BESS MWh</th>
                                 <th class="px-3 py-2 text-right">PCS MW</th>
+                                <th class="px-3 py-2 text-right">C-rate</th>
+                                <th class="px-3 py-2 text-right">Duration h</th>
                                 <th class="px-3 py-2 text-right">Area m2</th>
                                 <th class="px-3 py-2 text-right">Diesel Saved L/mo</th>
                                 <th class="px-3 py-2 text-right">Savings RM/mo</th>
@@ -9873,6 +9951,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                                     <td class="px-3 py-3 text-right">${formatEpcNumber(scheme.pvRecommendedMwp, 2)}</td>
                                     <td class="px-3 py-3 text-right">${formatEpcNumber(scheme.bessRecommendedMwh, 2)}</td>
                                     <td class="px-3 py-3 text-right">${formatEpcNumber(scheme.pcsRecommendedMw, 2)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(scheme.cRate, 2)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(scheme.equivalentDurationHours, 2)}</td>
                                     <td class="px-3 py-3 text-right">${formatEpcNumber(scheme.requiredAreaM2, 0)}</td>
                                     <td class="px-3 py-3 text-right">${formatEpcNumber(scheme.monthlyDieselSavedLiters, 0)}</td>
                                     <td class="px-3 py-3 text-right">${formatEpcNumber(scheme.monthlySavings, 0)}</td>
@@ -9940,6 +10020,55 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             `;
         }
 
+        function renderEpcEnergyFlow(result) {
+            const target = document.getElementById('epc-energy-flow-table');
+            if (!target) return;
+            const rows = result.energyFlow?.rows || [];
+            const stringDesign = result.pvStringDesign || {};
+            target.innerHTML = `
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                    <div class="rounded-xl border border-slate-100 bg-slate-50 p-3"><div class="text-[10px] font-black text-slate-400 uppercase">Modules</div><div class="text-lg font-black text-slate-800">${formatEpcNumber(stringDesign.modules, 0)}</div></div>
+                    <div class="rounded-xl border border-slate-100 bg-slate-50 p-3"><div class="text-[10px] font-black text-slate-400 uppercase">Strings</div><div class="text-lg font-black text-slate-800">${formatEpcNumber(stringDesign.strings, 0)}</div></div>
+                    <div class="rounded-xl border border-slate-100 bg-slate-50 p-3"><div class="text-[10px] font-black text-slate-400 uppercase">Combiners</div><div class="text-lg font-black text-slate-800">${formatEpcNumber(stringDesign.combiners, 0)}</div></div>
+                    <div class="rounded-xl border border-slate-100 bg-slate-50 p-3"><div class="text-[10px] font-black text-slate-400 uppercase">C-rate</div><div class="text-lg font-black text-slate-800">${formatEpcNumber(getRecommendedEpcScheme(result).cRate, 2, 'C')}</div></div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs whitespace-nowrap">
+                        <thead class="bg-slate-50 text-slate-500 uppercase">
+                            <tr>
+                                <th class="px-3 py-2">Hour</th>
+                                <th class="px-3 py-2 text-right">PV kW</th>
+                                <th class="px-3 py-2 text-right">Load kW</th>
+                                <th class="px-3 py-2 text-right">PV Load</th>
+                                <th class="px-3 py-2 text-right">PV Battery</th>
+                                <th class="px-3 py-2 text-right">Battery Load</th>
+                                <th class="px-3 py-2 text-right">Genset</th>
+                                <th class="px-3 py-2 text-right">Curtailment</th>
+                                <th class="px-3 py-2 text-right">SOC</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            ${rows.map(row => `
+                                <tr>
+                                    <td class="px-3 py-3 font-black text-slate-700">${htmlSafe(row.hour)}:00</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(row.pvOutputKw, 0)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(row.loadKw, 0)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(row.pvToLoadKw, 0)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(row.pvToBatteryKw, 0)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(row.batteryToLoadKw, 0)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(row.gensetToLoadKw, 0)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(row.curtailmentKw, 0)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(row.socPct, 1, '%')}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-3 text-[11px] font-bold text-slate-400">${htmlSafe(result.energyFlow?.method || '')}</div>
+                ${(stringDesign.warnings || []).map(warning => `<div class="mt-2 rounded-xl border border-yellow-200 bg-yellow-50 p-3 text-xs font-bold text-yellow-800">${htmlSafe(warning)}</div>`).join('')}
+            `;
+        }
+
         function renderEpcReports(result) {
             const target = document.getElementById('epc-design-reports');
             if (!target) return;
@@ -9983,6 +10112,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             renderEpcTrace(result);
             renderEpcBoq(result);
             renderEpcRisks(result);
+            renderEpcEnergyFlow(result);
             renderEpcReports(result);
             const quality = document.getElementById('epc-design-quality');
             if (quality) quality.textContent = `Data quality: ${result.dataQualityScore}/100`;
@@ -9993,7 +10123,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 rec.innerHTML = `
                     <div class="text-base font-black text-slate-800 mb-2">${htmlSafe(recommended.label || 'Recommended Scheme')}</div>
                     <div class="text-xs text-slate-500 leading-relaxed">
-                        PV ${formatEpcNumber(recommended.pvRecommendedMwp, 2, 'MWp')}, BESS ${formatEpcNumber(recommended.bessRecommendedMwh, 2, 'MWh')}, PCS ${formatEpcNumber(recommended.pcsRecommendedMw, 2, 'MW')}. ${htmlSafe(result.electrical.recommendation)}
+                        Load ${formatEpcNumber(result.load.averageLoadKw, 0, 'kW avg')} / ${formatEpcNumber(result.load.peakLoadKw, 0, 'kW peak')} -> PCS ${formatEpcNumber(recommended.pcsRecommendedMw, 2, 'MW')} -> BESS ${formatEpcNumber(recommended.bessRecommendedMwh, 2, 'MWh')} (${formatEpcNumber(recommended.cRate, 2, 'C')}) -> PV ${formatEpcNumber(recommended.pvRecommendedMwp, 2, 'MWp')}. ${htmlSafe(result.electrical.architecture)}. ${htmlSafe(result.electrical.recommendation)}
                     </div>
                     <div class="mt-3 text-[11px] text-slate-400">${htmlSafe(result.disclaimer)}</div>
                 `;
@@ -10162,6 +10292,29 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 position => setEpcLocation(position.coords.latitude, position.coords.longitude),
                 () => alert('Location permission was denied or unavailable. Please input coordinates manually.')
             );
+        };
+
+        window.useEpcIpLocation = async () => {
+            const mapEl = document.getElementById('epc-design-map');
+            try {
+                if (mapEl) mapEl.textContent = 'Checking approximate IP location...';
+                const res = await fetch('https://ipapi.co/json/');
+                if (!res.ok) throw new Error('ip_location_failed');
+                const data = await res.json();
+                const lat = Number(data.latitude);
+                const lng = Number(data.longitude);
+                if (!Number.isFinite(lat) || !Number.isFinite(lng)) throw new Error('ip_location_missing_coordinates');
+                setEpcLocation(lat, lng);
+                const project = captureEpcDesignFromDom();
+                project.site.state = project.site.state || data.region || '';
+                project.site.country = project.site.country || data.country_name || 'Malaysia';
+                updateEpcProject(project);
+                syncEpcDesignInputs(project);
+                if (mapEl && !getEpcGoogleMapsKey()) mapEl.innerHTML = `Approximate IP location applied: ${lat.toFixed(5)}, ${lng.toFixed(5)}. Manual coordinates remain the preferred site record.`;
+            } catch (e) {
+                if (mapEl && !getEpcGoogleMapsKey()) mapEl.innerHTML = 'IP location was unavailable. Please input coordinates manually or use the map after configuring Google Maps.';
+                alert('IP location was unavailable. Please input coordinates manually.');
+            }
         };
 
         window.openEpcGlobalSolarAtlas = () => {

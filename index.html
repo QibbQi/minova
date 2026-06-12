@@ -772,6 +772,7 @@
                 <button onclick="switchTab('pvcalc')" id="tab-pvcalc" aria-label="PV + ESS Calculator" title="PV + ESS Calculator" data-tab-label="PV + ESS Calculator" class="app-shell-tab px-6 py-2 hover:text-purple-700 transition-all text-sm leading-tight text-center text-slate-500 hover:text-blue-600"><span class="tab-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 10h16"/><path d="M6 6h12l2 8H4z"/><path d="M8 18h8"/><path d="M12 14v4"/></svg></span></button>
                 <button onclick="switchTab('costcalc')" id="tab-costcalc" aria-label="Quote Settings" title="Quote Settings" data-tab-label="Quote Settings" class="app-shell-tab px-6 py-2 hover:text-purple-700 transition-all text-sm leading-tight text-center text-slate-500 hover:text-blue-600" style=""><span class="tab-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M12 3v3"/><path d="M12 18v3"/><path d="M4.22 6.22l2.12 2.12"/><path d="M17.66 17.66l2.12 2.12"/><path d="M3 12h3"/><path d="M18 12h3"/><circle cx="12" cy="12" r="4"/></svg></span></button>
                 <button onclick="switchTab('database')" id="tab-database" aria-label="Product List" title="Product List" data-tab-label="Product List" class="app-shell-tab px-6 py-2 hover:text-purple-700 transition-all text-sm leading-tight text-center tab-active" style=""><span class="tab-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/><path d="M8 4v16"/></svg></span></button>
+                <button onclick="switchTab('epcdesign')" id="tab-epcdesign" aria-label="Hybrid EPC Design" title="Hybrid EPC Design" data-tab-label="Hybrid EPC Design" class="app-shell-tab px-6 py-2 hover:text-purple-700 transition-all text-sm leading-tight text-center text-slate-500 hover:text-blue-600" style=""><span class="tab-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 17l4-5 4 3 4-7 4 9"/><path d="M3 20h18"/><path d="M8 7h3"/><path d="M9.5 5.5v3"/><path d="M16 6h4"/></svg></span></button>
                 <button onclick="switchTab('engineering')" id="tab-engineering" aria-label="Engineering Workspace" title="Engineering Workspace" data-tab-label="Engineering Workspace" class="app-shell-tab px-6 py-2 hover:text-purple-700 transition-all text-sm leading-tight text-center text-slate-500 hover:text-blue-600" style=""><span class="tab-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 19h16"/><path d="M7 16l6-10 4 7"/><path d="M9 13h7"/><path d="M14 6l2-2 3 3-2 2"/></svg></span></button>
                 <button onclick="switchTab('pricelist')" id="tab-pricelist" aria-label="Price List" title="Price List" data-tab-label="Price List" style="" class="app-shell-tab px-6 py-2 hover:text-purple-700 transition-all text-sm leading-tight text-center text-slate-500 hover:text-blue-600"><span class="tab-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M5 6h14"/><path d="M5 12h14"/><path d="M5 18h10"/><path d="M17 16l2 2 3-4"/></svg></span></button>
                 <button onclick="switchTab('inventory')" id="tab-inventory" aria-label="Inventory Mgmt" title="Inventory Mgmt" data-tab-label="Inventory Mgmt" class="app-shell-tab px-6 py-2 hover:text-purple-700 transition-all text-sm leading-tight text-center text-slate-500 hover:text-blue-600" style=""><span class="tab-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 8l8-4 8 4-8 4z"/><path d="M4 8v8l8 4 8-4V8"/><path d="M12 12v8"/></svg></span></button>
@@ -2444,6 +2445,179 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <tr><td colspan="10" class="py-12 text-center text-slate-400 text-sm">No compatibility rules yet.</td></tr>
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </main>
+
+    <main id="view-epcdesign" class="max-w-6xl mx-auto px-4 mb-20 hidden" style="display: none;">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-5">
+            <div class="px-6 py-5 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <div class="min-w-0">
+                    <p class="text-[10px] font-black text-purple-700 uppercase tracking-widest mb-1">Hybrid EPC Design</p>
+                    <h2 class="text-2xl font-black text-slate-800 leading-tight">Genset Replacement PV + BESS + Diesel Workspace</h2>
+                    <p class="text-xs text-slate-400 mt-1">Concept design with formula trace, assumptions, risks, BOQ, and permission-gated reports.</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <select id="epc-design-project-select" onchange="selectEpcDesignProject(this.value)" class="border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none bg-white min-w-[220px]">
+                        <option value="">New EPC Design</option>
+                    </select>
+                    <button type="button" onclick="createEpcDesignProject()" class="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-black hover:bg-black">New</button>
+                    <button type="button" onclick="saveCurrentEpcDesignProject()" class="px-3 py-2 rounded-xl bg-purple-700 text-white text-xs font-black hover:bg-purple-800">Save</button>
+                    <button type="button" onclick="downloadEpcDesignReport('customer')" data-epc-download="customer" class="px-3 py-2 rounded-xl brand-yellow-action border text-xs font-black">Customer Summary</button>
+                    <button type="button" onclick="downloadEpcDesignReport('engineering')" data-epc-download="engineering" class="px-3 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-black hover:bg-slate-50">Engineering Calc</button>
+                </div>
+            </div>
+            <div class="px-6 py-4 bg-slate-50/60 border-b border-slate-100 flex flex-col md:flex-row md:items-center gap-3">
+                <div class="inline-flex rounded-xl border brand-yellow-surface p-1 w-fit">
+                    <button id="epc-mode-quick" type="button" onclick="setEpcDesignMode('quick')" class="px-4 py-2 rounded-lg text-xs font-black bg-purple-700 text-white shadow-sm">Quick Design</button>
+                    <button id="epc-mode-detailed" type="button" onclick="setEpcDesignMode('detailed')" class="px-4 py-2 rounded-lg text-xs font-black text-purple-700 brand-yellow-inactive">Detailed Design</button>
+                </div>
+                <div id="epc-design-quality" class="text-xs font-bold text-slate-500">Data quality: --</div>
+                <div id="epc-design-save-status" class="text-xs font-bold text-slate-400 md:ml-auto">Draft not saved</div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-5">
+            <section class="lg:col-span-3 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+                    <h3 class="text-sm font-black text-slate-800">Inputs</h3>
+                    <span id="epc-input-mode-label" class="text-[10px] font-black text-purple-700 uppercase">Quick Design</span>
+                </div>
+                <div class="p-4 space-y-4">
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Project</label>
+                        <input id="epc-project-name" data-epc-field="project.name" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" placeholder="Malaysia Quarry Hybrid Study">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Country</label>
+                            <input id="epc-country" data-epc-field="site.country" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" value="Malaysia">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">State</label>
+                            <input id="epc-state" data-epc-field="site.state" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" placeholder="Selangor">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Latitude</label>
+                            <input id="epc-latitude" data-epc-field="site.latitude" type="number" step="0.000001" oninput="onEpcDesignInputChanged({ map: true })" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Longitude</label>
+                            <input id="epc-longitude" data-epc-field="site.longitude" type="number" step="0.000001" oninput="onEpcDesignInputChanged({ map: true })" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Diesel Liters</label>
+                            <input id="epc-diesel-total" data-epc-field="loads.dieselTotalLiters" type="number" min="0" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Period Days</label>
+                            <input id="epc-diesel-days" data-epc-field="loads.dieselPeriodDays" type="number" min="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Diesel RM/L</label>
+                            <input id="epc-diesel-price" data-epc-field="loads.dieselPricePerLiter" type="number" min="0" step="0.01" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Hours/Day</label>
+                            <input id="epc-operation-hours" data-epc-field="loads.operationHoursPerDay" type="number" min="1" max="24" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Target %</label>
+                            <input id="epc-target-replacement" data-epc-field="designTargets.replacementPct" type="number" min="0" max="100" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Area m2</label>
+                            <input id="epc-available-area" data-epc-field="site.availableAreaM2" type="number" min="0" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        </div>
+                    </div>
+                    <div id="epc-detailed-fields" data-epc-engineering-section="true" class="space-y-3 hidden border-t border-slate-100 pt-4">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">SFC L/kWh</label>
+                                <input id="epc-sfc" data-epc-field="assumptions.dieselSfcLPerKwh" type="number" step="0.01" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">PV Yield</label>
+                                <input id="epc-pv-yield" data-epc-field="solarResource.specificYieldKwhPerKwpDay" type="number" step="0.1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">DoD</label>
+                                <input id="epc-bess-dod" data-epc-field="assumptions.bessDod" type="number" step="0.01" min="0" max="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">PF</label>
+                                <input id="epc-power-factor" data-epc-field="electrical.powerFactor" type="number" step="0.01" min="0.1" max="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">BESS Role / EMS Note</label>
+                            <textarea id="epc-bess-role" data-epc-field="designTargets.bessRole" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 min-h-[70px]" placeholder="PV smoothing, peak shaving, diesel saving, backup..."></textarea>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-3">
+                    <h3 class="text-sm font-black text-slate-800">Map & Solar Resource</h3>
+                    <button type="button" onclick="useEpcCurrentLocation()" class="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 text-xs font-black hover:bg-blue-100">Use Current Location</button>
+                </div>
+                <div class="p-4 space-y-4">
+                    <div id="epc-design-map" class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 min-h-[280px] flex items-center justify-center text-center text-xs font-bold text-slate-400 p-6">
+                        Configure Google Maps browser key in EPC defaults, or use manual coordinates.
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                        <input id="epc-solar-ghi" data-epc-field="solarResource.ghiKwhM2Day" type="number" step="0.01" oninput="onEpcDesignInputChanged()" class="border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" placeholder="GHI kWh/m2/day">
+                        <input id="epc-solar-dni" data-epc-field="solarResource.dniKwhM2Day" type="number" step="0.01" oninput="onEpcDesignInputChanged()" class="border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" placeholder="DNI kWh/m2/day">
+                        <input id="epc-solar-temp" data-epc-field="solarResource.temperatureC" type="number" step="0.1" oninput="onEpcDesignInputChanged()" class="border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" placeholder="Temp C">
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button type="button" onclick="openEpcGlobalSolarAtlas()" class="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-black hover:bg-black">Open Global Solar Atlas</button>
+                        <button type="button" onclick="importEpcSolarResource()" class="px-3 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-black hover:bg-slate-50">Import pasted GSA values</button>
+                        <span id="epc-solar-source" class="text-xs font-bold text-slate-400">Solar source: Malaysia Default</span>
+                    </div>
+                    <textarea id="epc-solar-import" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-purple-500 min-h-[72px]" placeholder="Paste GSA/PVsyst values, e.g. PVOUT 3.72, GHI 4.8, DNI 4.1, TEMP 27."></textarea>
+                </div>
+            </section>
+
+            <section class="lg:col-span-4 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+                    <h3 class="text-sm font-black text-slate-800">Live Recommendation</h3>
+                    <span id="epc-recommended-label" class="text-[10px] font-black text-purple-700 uppercase">80% Recommended</span>
+                </div>
+                <div class="p-4">
+                    <div id="epc-design-kpis" class="grid grid-cols-2 gap-3 mb-4"></div>
+                    <div id="epc-design-recommendation" class="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600"></div>
+                </div>
+            </section>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="px-4 py-3 border-b border-slate-100 flex flex-wrap gap-2">
+                <button type="button" data-epc-panel-tab="inputs" onclick="setEpcPanelTab('inputs')" class="px-3 py-2 rounded-lg text-xs font-black bg-slate-900 text-white">Inputs</button>
+                <button type="button" data-epc-panel-tab="schemes" onclick="setEpcPanelTab('schemes')" class="px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-50">Schemes</button>
+                <button type="button" data-epc-panel-tab="formula" onclick="setEpcPanelTab('formula')" class="px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-50">Formula Trace</button>
+                <button type="button" data-epc-panel-tab="boq" onclick="setEpcPanelTab('boq')" class="px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-50">BOQ</button>
+                <button type="button" data-epc-panel-tab="risks" onclick="setEpcPanelTab('risks')" class="px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-50">Risks</button>
+                <button type="button" data-epc-panel-tab="reports" onclick="setEpcPanelTab('reports')" class="px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-50">Reports</button>
+            </div>
+            <div class="p-4">
+                <div id="epc-design-input-summary" data-epc-panel="inputs"></div>
+                <div id="epc-design-schemes" data-epc-panel="schemes" class="hidden"></div>
+                <div id="epc-design-formula-trace" data-epc-panel="formula" class="hidden"></div>
+                <div id="epc-design-boq" data-epc-panel="boq" class="hidden"></div>
+                <div id="epc-design-risks" data-epc-panel="risks" class="hidden"></div>
+                <div id="epc-design-reports" data-epc-panel="reports" class="hidden"></div>
             </div>
         </div>
     </main>
@@ -4781,7 +4955,17 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="./epc-design-engine.global.js?v=epc-design-v1"></script>
     <script type="module">
+        const {
+            EPC_DESIGN_DEFAULTS,
+            buildGlobalSolarAtlasUrl,
+            calculateEpcDesignProject,
+            normalizeEpcDesignProject,
+            normalizeEpcDesignProjectList
+        } = window.MinovaEpcDesignEngine;
+        document.documentElement.dataset.epcDesignWorkspace = 'booted';
+
         const localStorage = (() => {
             const memory = new Map();
             let native = null;
@@ -5356,7 +5540,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             ? 'Backup'
                             : 'Hidden';
                     btn.className = `${btnBaseClass} ${s.connected ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700' : syncAuthorized ? 'bg-purple-700 hover:bg-purple-800 text-white border-purple-800' : 'bg-red-600 hover:bg-red-700 text-white border-red-700'}`;
-                    const restrictedTabs = ['quotation', 'costcalc', 'database', 'engineering', 'pricelist', 'inventory', 'transport'];
+                    const restrictedTabs = ['quotation', 'costcalc', 'database', 'epcdesign', 'engineering', 'pricelist', 'inventory', 'transport'];
                     for (const t of restrictedTabs) {
                         const tabBtn = document.getElementById(`tab-${t}`);
                         if (tabBtn) tabBtn.style.display = dataUnlocked ? '' : 'none';
@@ -5794,6 +5978,14 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         let installerQuoteSettings = null;
         let installerQuoteRegion = 'peninsular';
         let nonStockPricingStrategies = {};
+        let epcDesignProjects = [];
+        let epcDesignDefaults = { ...EPC_DESIGN_DEFAULTS };
+        let epcDesignActiveProjectId = '';
+        let epcDesignMode = 'quick';
+        let epcDesignPanelTab = 'inputs';
+        let epcDesignMap = null;
+        let epcDesignMarker = null;
+        let epcGoogleMapsPromise = null;
         function safeJsonParseLoose(raw, fallback) {
             try { return raw ? JSON.parse(raw) : fallback; } catch { return fallback; }
         }
@@ -9393,6 +9585,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     installerProfitSettings = normalizeInstallerProfitSettings(embedded.data.installerProfitSettings || installerProfitSettings || null);
                     installerQuoteSettings = normalizeInstallerQuoteSettings(embedded.data.installerQuoteSettings || installerQuoteSettings || null);
                     nonStockPricingStrategies = normalizeNonStockPricingStrategies(embedded.data.nonStockPricingStrategies || safeJsonParseLoose(localStorage.getItem('minova_non_stock_pricing_v1'), {}));
+                    epcDesignDefaults = normalizeEpcDesignDefaults(embedded.data.epcDesignDefaults || safeJsonParseLoose(localStorage.getItem('minova_epc_design_defaults_v1'), {}));
+                    epcDesignProjects = normalizeEpcDesignProjectList(embedded.data.epcDesignProjects || safeJsonParseLoose(localStorage.getItem('minova_epc_design_projects_v1'), []), { defaults: epcDesignDefaults });
                     normalizeProductClassificationData();
                     try {
                         if (embeddedAt) localStorage.setItem('minova_embedded_updatedAt', String(embeddedAt));
@@ -9412,6 +9606,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         localStorage.setItem('minova_installer_profit_v1', JSON.stringify(installerProfitSettings));
                         localStorage.setItem('minova_installer_quote_settings_v1', JSON.stringify(installerQuoteSettings));
                         localStorage.setItem('minova_non_stock_pricing_v1', JSON.stringify(nonStockPricingStrategies));
+                        localStorage.setItem('minova_epc_design_defaults_v1', JSON.stringify(epcDesignDefaults));
+                        localStorage.setItem('minova_epc_design_projects_v1', JSON.stringify(epcDesignProjects));
                     } catch (e) {}
                     companyCerts = embedded.data.companyCerts && typeof embedded.data.companyCerts === 'object' ? embedded.data.companyCerts : companyCerts;
                     transportRecords = Array.isArray(embedded.data.transportRecords) ? embedded.data.transportRecords : [];
@@ -9466,6 +9662,14 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 nonStockPricingStrategies = normalizeNonStockPricingStrategies(JSON.parse(raw));
             }
         } catch (e) {}
+        try {
+            const raw = localStorage.getItem('minova_epc_design_defaults_v1');
+            if (raw) epcDesignDefaults = normalizeEpcDesignDefaults(JSON.parse(raw));
+        } catch (e) {}
+        try {
+            const raw = localStorage.getItem('minova_epc_design_projects_v1');
+            if (raw) epcDesignProjects = normalizeEpcDesignProjectList(JSON.parse(raw), { defaults: epcDesignDefaults });
+        } catch (e) {}
         normalizeProductUnitFields();
         try {
             const raw = localStorage.getItem('minova_suppliers_v1');
@@ -9504,7 +9708,570 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         normalizeProductClassificationData();
         saveSubcategoryIndex();
 
-        const TOP_LEVEL_TABS = ['quotation', 'database', 'engineering', 'pricelist', 'pvcalc', 'costcalc', 'inventory', 'transport', 'admin'];
+        function normalizeEpcDesignDefaults(value) {
+            return { ...EPC_DESIGN_DEFAULTS, ...(value && typeof value === 'object' ? value : {}) };
+        }
+
+        function getEpcDefaultProject() {
+            return normalizeEpcDesignProject({
+                mode: epcDesignMode,
+                project: { name: 'New Hybrid EPC Design', stage: 'Concept' },
+                site: { country: 'Malaysia', gridMode: 'hybrid' },
+                loads: { dieselPeriodDays: 1, operationHoursPerDay: 8 },
+                designTargets: { replacementPct: 80 },
+                assumptions: epcDesignDefaults,
+                solarResource: { dataSource: 'Malaysia Default' }
+            }, { defaults: epcDesignDefaults });
+        }
+
+        function getActiveEpcDesignProject() {
+            if (!Array.isArray(epcDesignProjects)) epcDesignProjects = [];
+            let current = epcDesignProjects.find(project => project.id === epcDesignActiveProjectId);
+            if (!current) {
+                current = epcDesignProjects[0] || getEpcDefaultProject();
+                epcDesignActiveProjectId = current.id;
+                if (!epcDesignProjects.length) epcDesignProjects = [current];
+            }
+            return normalizeEpcDesignProject(current, { defaults: epcDesignDefaults });
+        }
+
+        function updateEpcProject(nextProject, { persist = false } = {}) {
+            const normalized = normalizeEpcDesignProject(nextProject, { defaults: epcDesignDefaults });
+            epcDesignActiveProjectId = normalized.id;
+            const idx = epcDesignProjects.findIndex(project => project.id === normalized.id);
+            if (idx >= 0) epcDesignProjects[idx] = normalized;
+            else epcDesignProjects.unshift(normalized);
+            try { localStorage.setItem('minova_epc_design_projects_v1', JSON.stringify(epcDesignProjects)); } catch (e) {}
+            if (persist) persistEntityToD1('epc_design_project', normalized.id, normalized);
+            return normalized;
+        }
+
+        function setNestedValue(target, path, value) {
+            const parts = String(path || '').split('.').filter(Boolean);
+            let cursor = target;
+            parts.slice(0, -1).forEach(part => {
+                if (!cursor[part] || typeof cursor[part] !== 'object') cursor[part] = {};
+                cursor = cursor[part];
+            });
+            const key = parts[parts.length - 1];
+            if (!key) return;
+            cursor[key] = value;
+        }
+
+        function numericInputValue(id, fallback = 0) {
+            const raw = document.getElementById(id)?.value;
+            const n = Number(raw);
+            return Number.isFinite(n) ? n : fallback;
+        }
+
+        function captureEpcDesignFromDom() {
+            const current = getActiveEpcDesignProject();
+            const draft = JSON.parse(JSON.stringify(current));
+            document.querySelectorAll('[data-epc-field]').forEach(input => {
+                const path = input.dataset.epcField;
+                const isNumber = input.type === 'number';
+                const value = isNumber ? numericInputValue(input.id, 0) : input.value;
+                setNestedValue(draft, path, value);
+            });
+            draft.mode = epcDesignMode;
+            draft.updatedAt = new Date().toISOString();
+            draft.assumptions = { ...epcDesignDefaults, ...(draft.assumptions || {}) };
+            if (!draft.solarResource?.dataSource) {
+                draft.solarResource = { ...(draft.solarResource || {}), dataSource: 'Malaysia Default' };
+            }
+            return updateEpcProject(draft);
+        }
+
+        function setInputValue(id, value) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.value = value ?? '';
+        }
+
+        function syncEpcDesignInputs(project) {
+            setInputValue('epc-project-name', project.project.name);
+            setInputValue('epc-country', project.site.country);
+            setInputValue('epc-state', project.site.state);
+            setInputValue('epc-latitude', project.site.latitude || '');
+            setInputValue('epc-longitude', project.site.longitude || '');
+            setInputValue('epc-diesel-total', project.loads.dieselTotalLiters || '');
+            setInputValue('epc-diesel-days', project.loads.dieselPeriodDays || 1);
+            setInputValue('epc-diesel-price', project.loads.dieselPricePerLiter || '');
+            setInputValue('epc-operation-hours', project.loads.operationHoursPerDay || 8);
+            setInputValue('epc-target-replacement', project.designTargets.replacementPct || 80);
+            setInputValue('epc-available-area', project.site.availableAreaM2 || '');
+            setInputValue('epc-sfc', project.assumptions.dieselSfcLPerKwh || EPC_DESIGN_DEFAULTS.dieselSfcLPerKwh);
+            setInputValue('epc-pv-yield', project.solarResource.specificYieldKwhPerKwpDay || EPC_DESIGN_DEFAULTS.malaysiaYieldBase);
+            setInputValue('epc-bess-dod', project.assumptions.bessDod || EPC_DESIGN_DEFAULTS.bessDod);
+            setInputValue('epc-power-factor', project.electrical.powerFactor || EPC_DESIGN_DEFAULTS.powerFactor);
+            setInputValue('epc-bess-role', project.designTargets.bessRole || '');
+            setInputValue('epc-solar-ghi', project.solarResource.ghiKwhM2Day || '');
+            setInputValue('epc-solar-dni', project.solarResource.dniKwhM2Day || '');
+            setInputValue('epc-solar-temp', project.solarResource.temperatureC || '');
+        }
+
+        function formatEpcNumber(value, digits = 2, unit = '') {
+            const n = Number(value);
+            if (!Number.isFinite(n)) return `--${unit ? ` ${unit}` : ''}`;
+            return `${n.toLocaleString(undefined, { maximumFractionDigits: digits, minimumFractionDigits: digits })}${unit ? ` ${unit}` : ''}`;
+        }
+
+        function getRecommendedEpcScheme(result) {
+            return result.schemes.find(scheme => scheme.id === 'replace-80') || result.schemes[0] || {};
+        }
+
+        function renderEpcProjectSelect() {
+            const select = document.getElementById('epc-design-project-select');
+            if (!select) return;
+            select.innerHTML = epcDesignProjects.map(project => `<option value="${htmlSafe(project.id)}">${htmlSafe(project.project?.name || project.id)}</option>`).join('');
+            select.value = epcDesignActiveProjectId || epcDesignProjects[0]?.id || '';
+        }
+
+        function renderEpcKpis(result) {
+            const recommended = getRecommendedEpcScheme(result);
+            const items = [
+                ['Daily Load', formatEpcNumber(result.load.dailyLoadKwh, 0, 'kWh')],
+                ['Avg Load', formatEpcNumber(result.load.averageLoadKw, 0, 'kW')],
+                ['PV', formatEpcNumber(recommended.pvRecommendedMwp, 2, 'MWp')],
+                ['BESS', formatEpcNumber(recommended.bessRecommendedMwh, 2, 'MWh')],
+                ['PCS', formatEpcNumber(recommended.pcsRecommendedMw, 2, 'MW')],
+                ['Savings', `RM ${formatEpcNumber(recommended.monthlySavings, 0)}/mo`]
+            ];
+            const target = document.getElementById('epc-design-kpis');
+            if (!target) return;
+            target.innerHTML = items.map(([label, value]) => `
+                <div class="rounded-xl border border-slate-100 bg-slate-50 p-3 min-w-0">
+                    <div class="text-[10px] font-black text-slate-400 uppercase">${htmlSafe(label)}</div>
+                    <div class="text-lg font-black text-slate-800 leading-tight">${htmlSafe(value)}</div>
+                </div>
+            `).join('');
+        }
+
+        function renderEpcSchemes(result) {
+            const target = document.getElementById('epc-design-schemes');
+            if (!target) return;
+            target.innerHTML = `
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs whitespace-nowrap">
+                        <thead class="bg-slate-50 text-slate-500 uppercase">
+                            <tr>
+                                <th class="px-3 py-2">Scheme</th>
+                                <th class="px-3 py-2 text-right">Target kWh/day</th>
+                                <th class="px-3 py-2 text-right">PV MWp</th>
+                                <th class="px-3 py-2 text-right">BESS MWh</th>
+                                <th class="px-3 py-2 text-right">PCS MW</th>
+                                <th class="px-3 py-2 text-right">Area m2</th>
+                                <th class="px-3 py-2 text-right">Diesel Saved L/mo</th>
+                                <th class="px-3 py-2 text-right">Savings RM/mo</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            ${result.schemes.map(scheme => `
+                                <tr class="${scheme.id === 'replace-80' ? 'bg-yellow-50' : ''}">
+                                    <td class="px-3 py-3 font-black text-slate-700">${htmlSafe(scheme.label)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(scheme.targetDailyKwh, 0)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(scheme.pvRecommendedMwp, 2)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(scheme.bessRecommendedMwh, 2)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(scheme.pcsRecommendedMw, 2)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(scheme.requiredAreaM2, 0)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(scheme.monthlyDieselSavedLiters, 0)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(scheme.monthlySavings, 0)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function renderEpcTrace(result) {
+            const target = document.getElementById('epc-design-formula-trace');
+            if (!target) return;
+            target.innerHTML = `
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-50 text-slate-500 uppercase">
+                            <tr><th class="px-3 py-2">Output</th><th class="px-3 py-2">Formula</th><th class="px-3 py-2">Inputs</th><th class="px-3 py-2 text-right">Result</th><th class="px-3 py-2">Source</th></tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            ${result.formulaTrace.map(item => `
+                                <tr>
+                                    <td class="px-3 py-3 font-black text-slate-700">${htmlSafe(item.label)}</td>
+                                    <td class="px-3 py-3 font-mono text-[11px] text-slate-600">${htmlSafe(item.formula)}</td>
+                                    <td class="px-3 py-3 text-slate-500">${htmlSafe(JSON.stringify(item.inputs))}</td>
+                                    <td class="px-3 py-3 text-right font-bold">${formatEpcNumber(item.result, 3, item.unit)}</td>
+                                    <td class="px-3 py-3">${htmlSafe(item.assumptionSource)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function renderEpcBoq(result) {
+            const target = document.getElementById('epc-design-boq');
+            if (!target) return;
+            target.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    ${result.boq.map(item => `
+                        <div class="rounded-xl border border-slate-200 p-3">
+                            <div class="text-[10px] font-black text-purple-700 uppercase">${htmlSafe(item.package)}</div>
+                            <div class="text-sm font-black text-slate-800">${htmlSafe(item.item)}</div>
+                            <div class="text-xs text-slate-500 mt-1">${formatEpcNumber(item.quantity, 2, item.unit)} ${item.mandatory ? '| Mandatory' : '| Optional'}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function renderEpcRisks(result) {
+            const target = document.getElementById('epc-design-risks');
+            if (!target) return;
+            target.innerHTML = `
+                <div class="space-y-2">
+                    ${result.risks.map(risk => `
+                        <div class="rounded-xl border ${risk.level === 'High' ? 'border-red-200 bg-red-50 text-red-700' : 'border-yellow-200 bg-yellow-50 text-yellow-800'} p-3 text-xs">
+                            <span class="font-black">${htmlSafe(risk.level)} | ${htmlSafe(risk.area)}:</span>
+                            <span>${htmlSafe(risk.issue)}</span>
+                        </div>
+                    `).join('') || '<div class="text-sm text-slate-400">No major concept risks detected yet.</div>'}
+                </div>
+            `;
+        }
+
+        function renderEpcReports(result) {
+            const target = document.getElementById('epc-design-reports');
+            if (!target) return;
+            target.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <button type="button" onclick="downloadEpcDesignReport('customer')" data-epc-download="customer" class="rounded-xl border border-slate-200 p-4 text-left hover:bg-slate-50">
+                        <div class="text-sm font-black text-slate-800">Customer Summary</div>
+                        <div class="text-xs text-slate-400 mt-1">Scheme, savings, key assumptions and disclaimer.</div>
+                    </button>
+                    <button type="button" onclick="downloadEpcDesignReport('sales')" data-epc-download="sales" class="rounded-xl border border-slate-200 p-4 text-left hover:bg-slate-50">
+                        <div class="text-sm font-black text-slate-800">Sales Quote Input</div>
+                        <div class="text-xs text-slate-400 mt-1">BOQ quantities for quotation preparation.</div>
+                    </button>
+                    <button type="button" onclick="downloadEpcDesignReport('engineering')" data-epc-download="engineering" class="rounded-xl border border-slate-200 p-4 text-left hover:bg-slate-50">
+                        <div class="text-sm font-black text-slate-800">Engineering Calculation</div>
+                        <div class="text-xs text-slate-400 mt-1">Full JSON handoff with formula trace.</div>
+                    </button>
+                </div>
+            `;
+            applyEpcDesignPermissions();
+        }
+
+        function renderEpcInputSummary(result) {
+            const target = document.getElementById('epc-design-input-summary');
+            if (!target) return;
+            target.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                    <div class="rounded-xl border border-slate-200 p-3"><span class="font-black text-slate-700">Location</span><br>${htmlSafe(result.site.country)} ${htmlSafe(result.site.state)}<br>${formatEpcNumber(result.site.latitude, 6)}, ${formatEpcNumber(result.site.longitude, 6)}</div>
+                    <div class="rounded-xl border border-slate-200 p-3"><span class="font-black text-slate-700">Load Source</span><br>${htmlSafe(result.loads.loadSource)}<br>${formatEpcNumber(result.loads.dieselTotalLiters, 0, 'L')} / ${formatEpcNumber(result.loads.dieselPeriodDays, 0, 'days')}</div>
+                    <div class="rounded-xl border border-slate-200 p-3"><span class="font-black text-slate-700">Solar Resource</span><br>${htmlSafe(result.solar.dataSource)}<br>${formatEpcNumber(result.solar.specificYieldKwhPerKwpDay, 2, 'kWh/kWp/day')}</div>
+                </div>
+            `;
+        }
+
+        function renderEpcDesignResult(project = getActiveEpcDesignProject()) {
+            const result = calculateEpcDesignProject(project, { defaults: epcDesignDefaults });
+            const recommended = getRecommendedEpcScheme(result);
+            renderEpcKpis(result);
+            renderEpcInputSummary(result);
+            renderEpcSchemes(result);
+            renderEpcTrace(result);
+            renderEpcBoq(result);
+            renderEpcRisks(result);
+            renderEpcReports(result);
+            const quality = document.getElementById('epc-design-quality');
+            if (quality) quality.textContent = `Data quality: ${result.dataQualityScore}/100`;
+            const source = document.getElementById('epc-solar-source');
+            if (source) source.textContent = `Solar source: ${result.solar.dataSource}`;
+            const rec = document.getElementById('epc-design-recommendation');
+            if (rec) {
+                rec.innerHTML = `
+                    <div class="text-base font-black text-slate-800 mb-2">${htmlSafe(recommended.label || 'Recommended Scheme')}</div>
+                    <div class="text-xs text-slate-500 leading-relaxed">
+                        PV ${formatEpcNumber(recommended.pvRecommendedMwp, 2, 'MWp')}, BESS ${formatEpcNumber(recommended.bessRecommendedMwh, 2, 'MWh')}, PCS ${formatEpcNumber(recommended.pcsRecommendedMw, 2, 'MW')}. ${htmlSafe(result.electrical.recommendation)}
+                    </div>
+                    <div class="mt-3 text-[11px] text-slate-400">${htmlSafe(result.disclaimer)}</div>
+                `;
+            }
+            window.__lastEpcDesignResult = result;
+            setEpcPanelTab(epcDesignPanelTab);
+            return result;
+        }
+
+        function renderEpcDesignWorkspace() {
+            epcDesignDefaults = normalizeEpcDesignDefaults(epcDesignDefaults);
+            epcDesignProjects = normalizeEpcDesignProjectList(epcDesignProjects, { defaults: epcDesignDefaults });
+            const project = getActiveEpcDesignProject();
+            renderEpcProjectSelect();
+            syncEpcDesignInputs(project);
+            setEpcDesignMode(project.mode || epcDesignMode, { render: false });
+            renderEpcDesignResult(project);
+            initEpcDesignMap();
+            applyEpcDesignPermissions();
+        }
+
+        window.renderEpcDesignWorkspace = renderEpcDesignWorkspace;
+
+        window.createEpcDesignProject = () => {
+            const project = getEpcDefaultProject();
+            project.id = `epc-${Date.now()}`;
+            project.project.id = project.id;
+            project.project.name = `Hybrid EPC Design ${new Date().toISOString().slice(0, 10)}`;
+            updateEpcProject(project);
+            renderEpcDesignWorkspace();
+        };
+
+        window.selectEpcDesignProject = (id) => {
+            epcDesignActiveProjectId = String(id || '');
+            renderEpcDesignWorkspace();
+        };
+
+        function canReadEpcEngineering() {
+            return window.__minovaAuth?.canPerformAction?.('epcDesignEngineering', 'read') ?? true;
+        }
+
+        function canEditEpcEngineering() {
+            return window.__minovaAuth?.canPerformAction?.('epcDesignEngineering', 'edit') ?? true;
+        }
+
+        window.setEpcDesignMode = (mode, options = {}) => {
+            const wantsDetailed = mode === 'detailed';
+            if (wantsDetailed && !canReadEpcEngineering()) {
+                epcDesignMode = 'quick';
+                if (options.render !== false) alert('Detailed EPC engineering inputs require engineering permission.');
+            } else {
+                epcDesignMode = wantsDetailed ? 'detailed' : 'quick';
+            }
+            document.getElementById('epc-detailed-fields')?.classList.toggle('hidden', epcDesignMode !== 'detailed' || !canReadEpcEngineering());
+            document.getElementById('epc-input-mode-label') && (document.getElementById('epc-input-mode-label').textContent = epcDesignMode === 'detailed' ? 'Detailed Design' : 'Quick Design');
+            const quick = document.getElementById('epc-mode-quick');
+            const detailed = document.getElementById('epc-mode-detailed');
+            if (quick && detailed) {
+                quick.className = epcDesignMode === 'quick' ? 'px-4 py-2 rounded-lg text-xs font-black bg-purple-700 text-white shadow-sm' : 'px-4 py-2 rounded-lg text-xs font-black text-purple-700 brand-yellow-inactive';
+                detailed.className = epcDesignMode === 'detailed' ? 'px-4 py-2 rounded-lg text-xs font-black bg-purple-700 text-white shadow-sm' : 'px-4 py-2 rounded-lg text-xs font-black text-purple-700 brand-yellow-inactive';
+                detailed.disabled = !canReadEpcEngineering();
+                detailed.classList.toggle('opacity-50', !canReadEpcEngineering());
+                detailed.title = canReadEpcEngineering() ? '' : 'Engineering permission required';
+            }
+            if (options.render !== false) {
+                const project = captureEpcDesignFromDom();
+                project.mode = epcDesignMode;
+                updateEpcProject(project);
+                renderEpcDesignResult(project);
+            }
+        };
+
+        window.onEpcDesignInputChanged = (options = {}) => {
+            const project = captureEpcDesignFromDom();
+            renderEpcDesignResult(project);
+            if (options.map) updateEpcMapMarker(project.site);
+            const status = document.getElementById('epc-design-save-status');
+            if (status) status.textContent = 'Draft changed locally';
+        };
+
+        window.saveCurrentEpcDesignProject = () => {
+            const project = captureEpcDesignFromDom();
+            updateEpcProject(project, { persist: true });
+            saveToLocal();
+            const status = document.getElementById('epc-design-save-status');
+            if (status) status.textContent = 'Saved locally and queued for D1';
+        };
+
+        window.setEpcPanelTab = (tab) => {
+            epcDesignPanelTab = String(tab || 'inputs');
+            document.querySelectorAll('[data-epc-panel]').forEach(panel => panel.classList.toggle('hidden', panel.dataset.epcPanel !== epcDesignPanelTab));
+            document.querySelectorAll('[data-epc-panel-tab]').forEach(btn => {
+                const active = btn.dataset.epcPanelTab === epcDesignPanelTab;
+                btn.className = active
+                    ? 'px-3 py-2 rounded-lg text-xs font-black bg-slate-900 text-white'
+                    : 'px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-50';
+            });
+        };
+
+        function getEpcGoogleMapsKey() {
+            return String(epcDesignDefaults.googleMapsBrowserKey || epcDesignDefaults.googleMapsApiKey || window.MINOVA_GOOGLE_MAPS_BROWSER_KEY || '').trim();
+        }
+
+        function loadEpcGoogleMaps() {
+            if (window.google?.maps) return Promise.resolve(window.google.maps);
+            if (epcGoogleMapsPromise) return epcGoogleMapsPromise;
+            const key = getEpcGoogleMapsKey();
+            if (!key) return Promise.reject(new Error('missing_google_maps_key'));
+            epcGoogleMapsPromise = new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}`;
+                script.async = true;
+                script.defer = true;
+                script.onload = () => resolve(window.google.maps);
+                script.onerror = () => reject(new Error('google_maps_load_failed'));
+                document.head.appendChild(script);
+            });
+            return epcGoogleMapsPromise;
+        }
+
+        function updateEpcMapMarker(site = getActiveEpcDesignProject().site) {
+            if (!epcDesignMap || !epcDesignMarker || !window.google?.maps) return;
+            const lat = Number(site.latitude || 0);
+            const lng = Number(site.longitude || 0);
+            if (!lat || !lng) return;
+            const position = { lat, lng };
+            epcDesignMarker.setPosition(position);
+            epcDesignMap.setCenter(position);
+        }
+
+        function setEpcLocation(lat, lng) {
+            setInputValue('epc-latitude', Number(lat).toFixed(6));
+            setInputValue('epc-longitude', Number(lng).toFixed(6));
+            window.onEpcDesignInputChanged({ map: true });
+        }
+
+        function initEpcDesignMap() {
+            const mapEl = document.getElementById('epc-design-map');
+            if (!mapEl) return;
+            if (!getEpcGoogleMapsKey()) {
+                mapEl.innerHTML = 'Google Maps browser key is not configured. Manual coordinates, current location, and Global Solar Atlas link remain available.';
+                return;
+            }
+            loadEpcGoogleMaps().then(() => {
+                const site = getActiveEpcDesignProject().site;
+                const position = { lat: Number(site.latitude || 3.139), lng: Number(site.longitude || 101.6869) };
+                if (!epcDesignMap) {
+                    epcDesignMap = new google.maps.Map(mapEl, { center: position, zoom: site.latitude && site.longitude ? 12 : 7, mapTypeId: 'satellite' });
+                    epcDesignMarker = new google.maps.Marker({ position, map: epcDesignMap, draggable: true });
+                    epcDesignMap.addListener('click', event => setEpcLocation(event.latLng.lat(), event.latLng.lng()));
+                    epcDesignMarker.addListener('dragend', event => setEpcLocation(event.latLng.lat(), event.latLng.lng()));
+                } else {
+                    updateEpcMapMarker(site);
+                }
+            }).catch(() => {
+                mapEl.innerHTML = 'Google Maps could not load. Check the browser key, billing, and HTTP referrer restriction.';
+            });
+        }
+
+        window.useEpcCurrentLocation = () => {
+            if (!navigator.geolocation) {
+                alert('Geolocation is not available in this browser. Please input latitude and longitude manually.');
+                return;
+            }
+            navigator.geolocation.getCurrentPosition(
+                position => setEpcLocation(position.coords.latitude, position.coords.longitude),
+                () => alert('Location permission was denied or unavailable. Please input coordinates manually.')
+            );
+        };
+
+        window.openEpcGlobalSolarAtlas = () => {
+            const project = captureEpcDesignFromDom();
+            window.open(buildGlobalSolarAtlasUrl(project.site), '_blank', 'noopener');
+        };
+
+        window.importEpcSolarResource = () => {
+            const raw = document.getElementById('epc-solar-import')?.value || '';
+            const findValue = (labels) => {
+                for (const label of labels) {
+                    const m = raw.match(new RegExp(`${label}[^0-9.-]*([0-9]+(?:\\.[0-9]+)?)`, 'i'));
+                    if (m) return Number(m[1]);
+                }
+                return 0;
+            };
+            const pvout = findValue(['PVOUT', 'specific yield', 'yield']);
+            const ghi = findValue(['GHI']);
+            const dni = findValue(['DNI']);
+            const temp = findValue(['TEMP', 'temperature']);
+            if (pvout) setInputValue('epc-pv-yield', pvout);
+            if (ghi) setInputValue('epc-solar-ghi', ghi);
+            if (dni) setInputValue('epc-solar-dni', dni);
+            if (temp) setInputValue('epc-solar-temp', temp);
+            const project = captureEpcDesignFromDom();
+            project.solarResource.dataSource = 'Global Solar Atlas Import';
+            project.solarResource.retrievalDate = new Date().toISOString().slice(0, 10);
+            updateEpcProject(project);
+            renderEpcDesignWorkspace();
+        };
+
+        function canDownloadEpcReport(kind) {
+            const resource = kind === 'engineering' ? 'epcDesignEngineering' : 'epcDesign';
+            return window.__minovaAuth?.canPerformAction?.(resource, 'download') ?? true;
+        }
+
+        function makeEpcReportHtml(result, kind) {
+            const recommended = getRecommendedEpcScheme(result);
+            return `<!doctype html><html><head><meta charset="utf-8"><title>${htmlSafe(result.project.name)} - ${htmlSafe(kind)}</title><style>body{font-family:Arial,sans-serif;color:#1f2937;margin:32px}h1{color:#582C83}table{border-collapse:collapse;width:100%;margin:16px 0}td,th{border:1px solid #e5e7eb;padding:8px;text-align:left}.note{color:#64748b;font-size:12px}</style></head><body>
+                <h1>${htmlSafe(result.project.name)} - ${htmlSafe(kind)}</h1>
+                <p class="note">${htmlSafe(result.disclaimer)}</p>
+                <table><tbody>
+                    <tr><th>Recommended Scheme</th><td>${htmlSafe(recommended.label)}</td></tr>
+                    <tr><th>PV</th><td>${formatEpcNumber(recommended.pvRecommendedMwp, 2, 'MWp')}</td></tr>
+                    <tr><th>BESS</th><td>${formatEpcNumber(recommended.bessRecommendedMwh, 2, 'MWh')}</td></tr>
+                    <tr><th>PCS</th><td>${formatEpcNumber(recommended.pcsRecommendedMw, 2, 'MW')}</td></tr>
+                    <tr><th>Monthly Savings</th><td>RM ${formatEpcNumber(recommended.monthlySavings, 0)}</td></tr>
+                    <tr><th>Solar Source</th><td>${htmlSafe(result.solar.dataSource)}</td></tr>
+                    <tr><th>Electrical</th><td>${htmlSafe(result.electrical.recommendation)}</td></tr>
+                </tbody></table>
+                <h2>Risks</h2><ul>${result.risks.map(r => `<li><b>${htmlSafe(r.level)} ${htmlSafe(r.area)}:</b> ${htmlSafe(r.issue)}</li>`).join('')}</ul>
+                <h2>Next Verification</h2><ul>${result.nextVerification.map(item => `<li>${htmlSafe(item)}</li>`).join('')}</ul>
+            </body></html>`;
+        }
+
+        function downloadBlob(filename, type, content) {
+            const blob = new Blob([content], { type });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+
+        window.downloadEpcDesignReport = (kind = 'customer') => {
+            if (!canDownloadEpcReport(kind)) {
+                alert('You do not have permission to download this EPC design report.');
+                return;
+            }
+            const project = captureEpcDesignFromDom();
+            const result = calculateEpcDesignProject(project, { defaults: epcDesignDefaults });
+            const safeName = (result.project.name || 'epc-design').replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-|-$/g, '') || 'epc-design';
+            if (kind === 'engineering') {
+                downloadBlob(`${safeName}-engineering-calculation.json`, 'application/json', JSON.stringify(result, null, 2));
+            } else {
+                downloadBlob(`${safeName}-${kind}-summary.html`, 'text/html', makeEpcReportHtml(result, kind));
+            }
+        };
+
+        window.applyEpcDesignPermissions = () => {
+            document.querySelectorAll('[data-epc-download]').forEach(button => {
+                const kind = button.dataset.epcDownload || 'customer';
+                const allowed = canDownloadEpcReport(kind);
+                button.disabled = !allowed;
+                button.classList.toggle('opacity-50', !allowed);
+                button.title = allowed ? '' : 'Download permission required';
+            });
+            const view = document.getElementById('view-epcdesign');
+            if (!view) return;
+            const canEditProject = window.__minovaAuth?.canPerformAction?.('epcDesign', 'edit') ?? true;
+            const canViewEngineering = canReadEpcEngineering();
+            const canEditEngineering = canEditEpcEngineering();
+            const detailedBtn = document.getElementById('epc-mode-detailed');
+            if (detailedBtn) {
+                detailedBtn.disabled = !canViewEngineering;
+                detailedBtn.classList.toggle('opacity-50', !canViewEngineering);
+                detailedBtn.title = canViewEngineering ? '' : 'Engineering permission required';
+            }
+            document.getElementById('epc-detailed-fields')?.classList.toggle('hidden', epcDesignMode !== 'detailed' || !canViewEngineering);
+            view.querySelectorAll('input, textarea, select').forEach(el => {
+                if (el.id === 'epc-design-project-select') return;
+                const engineeringOnly = !!el.closest('#epc-detailed-fields');
+                el.disabled = engineeringOnly ? !canEditEngineering : !canEditProject;
+            });
+        };
+
+        const TOP_LEVEL_TABS = ['quotation', 'database', 'epcdesign', 'engineering', 'pricelist', 'pvcalc', 'costcalc', 'inventory', 'transport', 'admin'];
 
         function getActiveTopLevelTab() {
             for (const tab of TOP_LEVEL_TABS) {
@@ -9526,6 +10293,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     updateDatalists();
                 } else if (key === 'engineering') {
                     renderEngineeringWorkspace();
+                } else if (key === 'epcdesign') {
+                    renderEpcDesignWorkspace();
                 } else if (key === 'inventory') {
                     renderInventory();
                     renderNonStockPricingStrategies();
@@ -9562,7 +10331,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const run = () => {
                 window.__minovaDeferredRenderScheduled = false;
                 const active = getActiveTopLevelTab();
-                ['database', 'engineering', 'inventory', 'transport', 'pricelist', 'costcalc'].forEach(tab => {
+                ['database', 'epcdesign', 'engineering', 'inventory', 'transport', 'pricelist', 'costcalc'].forEach(tab => {
                     if (tab !== active) renderTopLevelData(tab);
                 });
             };
@@ -9579,6 +10348,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             updatePickerFilters();
             try { renderCompanyCertUploadSelectors(); renderCompanyCertList(); } catch (e) {}
             try { if (getActiveTopLevelTab() === 'engineering') renderEngineeringWorkspace(); } catch (e) {}
+            try { if (getActiveTopLevelTab() === 'epcdesign') renderEpcDesignWorkspace(); } catch (e) {}
             renderTopLevelData(getActiveTopLevelTab(), { force: true });
             scheduleDeferredTopLevelRenders();
         }
@@ -9619,6 +10389,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             installerProfitSettings = normalizeInstallerProfitSettings(data?.installerProfitSettings || installerProfitSettings || null);
             installerQuoteSettings = normalizeInstallerQuoteSettings(data?.installerQuoteSettings || installerQuoteSettings || null);
             nonStockPricingStrategies = normalizeNonStockPricingStrategies(data?.nonStockPricingStrategies || nonStockPricingStrategies || {});
+            epcDesignDefaults = normalizeEpcDesignDefaults(data?.epcDesignDefaults || epcDesignDefaults || {});
+            epcDesignProjects = normalizeEpcDesignProjectList(data?.epcDesignProjects || epcDesignProjects || [], { defaults: epcDesignDefaults });
             normalizeProductClassificationData();
             try {
                 if (stampMs) localStorage.setItem('minova_embedded_updatedAt', String(stampMs));
@@ -9639,6 +10411,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 localStorage.setItem('minova_installer_profit_v1', JSON.stringify(installerProfitSettings));
                 localStorage.setItem('minova_installer_quote_settings_v1', JSON.stringify(installerQuoteSettings));
                 localStorage.setItem('minova_non_stock_pricing_v1', JSON.stringify(nonStockPricingStrategies));
+                localStorage.setItem('minova_epc_design_defaults_v1', JSON.stringify(epcDesignDefaults));
+                localStorage.setItem('minova_epc_design_projects_v1', JSON.stringify(epcDesignProjects));
             } catch (e) {}
             // companyCerts 也从 applyStateFromData 恢复（保持同步）
             if (data.companyCerts && typeof data.companyCerts === 'object') {
@@ -9729,10 +10503,14 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             saveSubcategoryIndex();
             ensureProfitSettingsCoverage();
             nonStockPricingStrategies = normalizeNonStockPricingStrategies(nonStockPricingStrategies);
+            epcDesignDefaults = normalizeEpcDesignDefaults(epcDesignDefaults);
+            epcDesignProjects = normalizeEpcDesignProjectList(epcDesignProjects, { defaults: epcDesignDefaults });
             try { localStorage.setItem('minova_profit_settings_v1', JSON.stringify(profitSettings)); } catch (e) {}
             try { localStorage.setItem('minova_installer_quote_settings_v1', JSON.stringify(normalizeInstallerQuoteSettings(installerQuoteSettings))); } catch (e) {}
             try { localStorage.setItem('minova_installer_profit_v1', JSON.stringify(normalizeInstallerProfitSettings(installerProfitSettings))); } catch (e) {}
             try { localStorage.setItem('minova_non_stock_pricing_v1', JSON.stringify(nonStockPricingStrategies)); } catch (e) {}
+            try { localStorage.setItem('minova_epc_design_defaults_v1', JSON.stringify(epcDesignDefaults)); } catch (e) {}
+            try { localStorage.setItem('minova_epc_design_projects_v1', JSON.stringify(epcDesignProjects)); } catch (e) {}
             refreshAfterDataChange();
             try { if (!suppressGitHubSync) window.__minovaSync?.enqueueSnapshot('state update'); } catch (e) {}
         }
@@ -9758,7 +10536,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 profitSettings,
                 installerProfitSettings,
                 installerQuoteSettings,
-                nonStockPricingStrategies
+                nonStockPricingStrategies,
+                epcDesignProjects,
+                epcDesignDefaults
             }
         });
 
@@ -10160,7 +10940,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const localFileMode = window.location.protocol === 'file:';
             const connected = !!window.__minovaSync?.getStatus?.()?.connected;
             const authMode = !!window.__minovaAuth?.state?.user || document.body.classList.contains('minova-authenticated');
-            const restrictedTabs = ['quotation', 'costcalc', 'database', 'engineering', 'pricelist', 'inventory', 'transport'];
+            const restrictedTabs = ['quotation', 'costcalc', 'database', 'epcdesign', 'engineering', 'pricelist', 'inventory', 'transport'];
             if (restrictedTabs.includes(tab) && !connected && !localFileMode && !authMode) {
                 tab = 'pvcalc';
             }
@@ -18702,7 +19482,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 profitSettings,
                 installerProfitSettings,
                 installerQuoteSettings,
-                nonStockPricingStrategies
+                nonStockPricingStrategies,
+                epcDesignProjects,
+                epcDesignDefaults
             }),
             applyRemoteState: (data) => {
                 applyStateFromData(data, Date.now());
@@ -18733,7 +19515,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     profitSettings,
                     installerProfitSettings,
                     installerQuoteSettings,
-                    nonStockPricingStrategies
+                    nonStockPricingStrategies,
+                    epcDesignProjects,
+                    epcDesignDefaults
                 }
             };
             const json = JSON.stringify(snapshot).replaceAll('<', '\\u003c');

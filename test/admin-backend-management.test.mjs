@@ -49,7 +49,7 @@ test('permission sanitization filters unknown tabs resources and actions', () =>
     watermark: { enabled: false }
   });
 
-  assert.deepEqual(permission.tabs, ['quotation']);
+  assert.deepEqual(permission.tabs, ['quotation', 'epcdesign']);
   assert.deepEqual(permission.actions.quotes, ['read', 'edit']);
   assert.equal(permission.actions.unknownResource, undefined);
   assert.deepEqual(permission.sensitiveFields, ['margin']);

@@ -100,6 +100,7 @@ const TAB_LABELS = {
   pvcalc: 'PV + ESS Calculator',
   costcalc: 'Quote Settings',
   database: 'Product List',
+  epcdesign: 'Hybrid EPC Design',
   engineering: 'Engineering Workspace',
   pricelist: 'Price List',
   inventory: 'Inventory Mgmt',
@@ -114,6 +115,8 @@ const RESOURCE_LABELS = {
   inventory: 'Inventory',
   transport: 'Transport',
   suppliers: 'Suppliers',
+  epcDesign: 'Hybrid EPC Design',
+  epcDesignEngineering: 'EPC Engineering',
   engineering: 'Engineering',
   quoteSettings: 'Quote Settings',
   admin: 'Admin Backend'
@@ -153,6 +156,8 @@ const BUSINESS_DOMAIN_LABELS = {
   certification_requirement: 'Certification Requirements',
   product_certification_evidence: 'Product Certification Evidence',
   product_master_detail_template: 'Product Master Detail Templates',
+  epc_design_project: 'Hybrid EPC Design Projects',
+  epc_design_defaults: 'Hybrid EPC Design Defaults',
   market_price: 'Price List',
   inventory: 'Inventory',
   inventory_history: 'Inventory History',
@@ -343,6 +348,8 @@ const BUSINESS_RESOURCE_BY_DOMAIN = {
   certification_requirement: 'engineering',
   product_certification_evidence: 'engineering',
   product_master_detail_template: 'engineering',
+  epc_design_project: 'epcDesign',
+  epc_design_defaults: 'epcDesignEngineering',
   inventory: 'inventory',
   inventory_history: 'inventory',
   sales_record: 'inventory',
@@ -366,6 +373,7 @@ function canDeleteBusinessDomain(domain) {
 function businessSettingWriteResource(key) {
   if (['market_price_settings', 'subcategories_by_category', 'non_stock_pricing_strategies'].includes(key)) return 'priceList';
   if (['profit_settings', 'installer_profit_settings', 'installer_quote_settings'].includes(key)) return 'quoteSettings';
+  if (key === 'epc_design_defaults') return 'epcDesignEngineering';
   return '';
 }
 
@@ -1006,6 +1014,7 @@ async function logout() {
 function renderTabIcon(tab) {
   const icons = {
     admin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7z"/><path d="M9 12l2 2 4-5"/></svg>',
+    epcdesign: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 17l4-5 4 3 4-7 4 9"/><path d="M3 20h18"/><path d="M8 7h3"/><path d="M9.5 5.5v3"/><path d="M16 6h4"/></svg>',
     engineering: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 19h16"/><path d="M7 16l6-10 4 7"/><path d="M9 13h7"/><path d="M14 6l2-2 3 3-2 2"/></svg>'
   };
   return `<span class="tab-icon-wrap">${icons[tab] || icons.admin}</span>`;
@@ -1343,9 +1352,11 @@ function applyPermissions() {
   if (pdfBtn) pdfBtn.style.display = canPerformAction(state.permission, 'quotes', 'download') ? '' : 'none';
   lockResourceView('view-quotation', 'quotes');
   lockResourceView('view-database', 'products');
+  lockResourceView('view-epcdesign', 'epcDesign');
   lockResourceView('view-inventory', 'inventory');
   lockResourceView('view-transport', 'transport');
   lockResourceView('view-costcalc', 'quoteSettings');
+  window.applyEpcDesignPermissions?.();
   window.applyEngineeringPermissions?.();
   applySensitiveFieldMasks();
   if (isAdminViewVisible()) loadAdminPanel();

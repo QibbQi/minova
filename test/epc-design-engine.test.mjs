@@ -314,6 +314,26 @@ test('EPC energy flow follows PV schedule while genset hours keep average load u
   assert.equal(changedResult.schemes.find((scheme) => scheme.id === 'replace-80').targetDailyKwh.toFixed(2), '13736.40');
 });
 
+test('EPC energy flow rolls SOC over from previous day instead of restarting battery at 50 percent', () => {
+  const project = buildEpcDesignProjectFromQuickInputs({
+    ...quarryInputs,
+    operationHoursPerDay: 8,
+    operationStartTime: '18:00',
+    operationFinishTime: '20:00'
+  }, {
+    defaults: EPC_DESIGN_DEFAULTS,
+    now: '2026-06-12T00:00:00.000Z'
+  });
+  const result = calculateEpcDesignProject(project, { now: '2026-06-12T00:00:00.000Z' });
+  const firstRow = result.energyFlow.rows[0];
+
+  assert.equal(firstRow.hourLabel, '18:00-19:00');
+  assert.equal(firstRow.pvOutputKw, 0);
+  assert.equal(firstRow.batteryToLoadKw, 0);
+  assert.equal(firstRow.gensetToLoadKw.toFixed(0), firstRow.loadKw.toFixed(0));
+  assert.equal(firstRow.socPct, EPC_DESIGN_DEFAULTS.minSocPct);
+});
+
 test('EPC design engine makes PF and distance affect LV MV architecture output', () => {
   const project = buildEpcDesignProjectFromQuickInputs(quarryInputs, {
     defaults: EPC_DESIGN_DEFAULTS,

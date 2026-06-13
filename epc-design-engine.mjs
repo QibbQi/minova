@@ -643,35 +643,48 @@ function calculateEnergyFlow(project, load, recommended) {
   const pcsKw = Math.max(0, recommended.pcsRecommendedMw * 1000);
   const minSoc = clamp(project.assumptions.minSocPct, 0, 99, EPC_DESIGN_DEFAULTS.minSocPct) / 100;
   const maxSoc = clamp(project.assumptions.maxSocPct, 1, 100, EPC_DESIGN_DEFAULTS.maxSocPct) / 100;
-  let socKwh = batteryKwh * Math.min(maxSoc, Math.max(minSoc, 0.5));
-  const rows = flowWindows.map(window => {
-    const pvOutputKw = (pvMap.get(window.hour) || 0) * 1000;
-    const loadKw = loadMap.get(window.hour) || load.averageLoadKw;
-    const pvToLoadKw = Math.min(pvOutputKw, loadKw);
-    const surplusPvKw = Math.max(0, pvOutputKw - loadKw);
-    const loadDeficitKw = Math.max(0, loadKw - pvOutputKw);
-    const batteryHeadroomKwh = Math.max(0, batteryKwh * maxSoc - socKwh);
-    const pvToBatteryKw = Math.min(surplusPvKw, pcsKw, batteryHeadroomKwh);
-    socKwh += pvToBatteryKw;
-    const batteryAvailableKwh = Math.max(0, socKwh - batteryKwh * minSoc);
-    const batteryToLoadKw = Math.min(loadDeficitKw, pcsKw, batteryAvailableKwh);
-    socKwh -= batteryToLoadKw;
-    const gensetToLoadKw = Math.max(0, loadDeficitKw - batteryToLoadKw);
-    const curtailmentKw = Math.max(0, surplusPvKw - pvToBatteryKw);
-    return {
-      hour: window.hour,
-      hourLabel: window.hourLabel,
-      flowKey: window.flowKey,
-      pvOutputKw: round(pvOutputKw, 2),
-      loadKw: round(loadKw, 2),
-      pvToLoadKw: round(pvToLoadKw, 2),
-      pvToBatteryKw: round(pvToBatteryKw, 2),
-      batteryToLoadKw: round(batteryToLoadKw, 2),
-      gensetToLoadKw: round(gensetToLoadKw, 2),
-      curtailmentKw: round(curtailmentKw, 2),
-      socPct: batteryKwh > 0 ? round((socKwh / batteryKwh) * 100, 1) : 0
-    };
-  });
+  const minSocKwh = batteryKwh * minSoc;
+  const maxSocKwh = batteryKwh * maxSoc;
+  const simulateRows = (initialSocKwh, includeRows = true) => {
+    let socKwh = Math.min(maxSocKwh, Math.max(minSocKwh, initialSocKwh));
+    const rows = [];
+    for (const window of flowWindows) {
+      const pvOutputKw = (pvMap.get(window.hour) || 0) * 1000;
+      const loadKw = loadMap.get(window.hour) || load.averageLoadKw;
+      const pvToLoadKw = Math.min(pvOutputKw, loadKw);
+      const surplusPvKw = Math.max(0, pvOutputKw - loadKw);
+      const loadDeficitKw = Math.max(0, loadKw - pvOutputKw);
+      const batteryHeadroomKwh = Math.max(0, maxSocKwh - socKwh);
+      const pvToBatteryKw = Math.min(surplusPvKw, pcsKw, batteryHeadroomKwh);
+      socKwh += pvToBatteryKw;
+      const batteryAvailableKwh = Math.max(0, socKwh - minSocKwh);
+      const batteryToLoadKw = Math.min(loadDeficitKw, pcsKw, batteryAvailableKwh);
+      socKwh -= batteryToLoadKw;
+      const gensetToLoadKw = Math.max(0, loadDeficitKw - batteryToLoadKw);
+      const curtailmentKw = Math.max(0, surplusPvKw - pvToBatteryKw);
+      if (includeRows) {
+        rows.push({
+          hour: window.hour,
+          hourLabel: window.hourLabel,
+          flowKey: window.flowKey,
+          pvOutputKw: round(pvOutputKw, 2),
+          loadKw: round(loadKw, 2),
+          pvToLoadKw: round(pvToLoadKw, 2),
+          pvToBatteryKw: round(pvToBatteryKw, 2),
+          batteryToLoadKw: round(batteryToLoadKw, 2),
+          gensetToLoadKw: round(gensetToLoadKw, 2),
+          curtailmentKw: round(curtailmentKw, 2),
+          socPct: batteryKwh > 0 ? round((socKwh / batteryKwh) * 100, 1) : 0
+        });
+      }
+    }
+    return { rows, socKwh };
+  };
+  let rolloverSocKwh = minSocKwh;
+  for (let i = 0; i < 7; i += 1) {
+    rolloverSocKwh = simulateRows(rolloverSocKwh, false).socKwh;
+  }
+  const rows = simulateRows(rolloverSocKwh, true).rows;
   const sum = key => rows.reduce((total, row) => total + row[key], 0);
   return {
     method: 'EMS order: PV -> Load, Excess PV -> Battery, Battery -> Load, Genset -> Load, curtail surplus.',

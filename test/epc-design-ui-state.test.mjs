@@ -74,13 +74,11 @@ test('EPC workspace guides junior engineers through load PCS battery PV steps', 
     'Step 5 EMS Simulation',
     'epc-day-start-time',
     'epc-day-finish-time',
-    'epc-night-work-enabled',
-    'Work in night time',
-    'epc-night-work-fields',
-    'epc-night-operation-hours',
-    'epc-night-start-time',
-    'epc-night-finish-time',
-    'updateEpcNightWorkVisibility',
+    'epc-change-working-time-row',
+    'epc-change-working-time',
+    'change working time',
+    'onEpcScheduleInputChanged',
+    'updateEpcWorkingTimeVisibility',
     'epc-peak-load-factor',
     'data-epc-field="loads.peakLoadSafetyFactor"',
     'epc-allowed-genset-load',
@@ -96,6 +94,8 @@ test('EPC workspace guides junior engineers through load PCS battery PV steps', 
     assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing guided EPC UI snippet: ${snippet}`);
   }
   assert.doesNotMatch(html, /data-epc-field="loads\.peakLoadKw"/);
+  assert.doesNotMatch(html, /epc-night-work-enabled/);
+  assert.doesNotMatch(html, /Work in night time/);
 });
 
 test('EPC map controls expose browser IP and manual location fallbacks', () => {

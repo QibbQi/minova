@@ -281,40 +281,37 @@ test('EPC design engine exposes hourly PV load battery and curtailment simulatio
   assert.match(result.energyFlow.method, /PV -> Load/);
 });
 
-test('EPC energy flow follows day and optional night operating windows', () => {
+test('EPC energy flow follows PV schedule while genset hours keep average load unless changed', () => {
   const dayProject = buildEpcDesignProjectFromQuickInputs({
     ...quarryInputs,
     operationHoursPerDay: 8,
-    operationStartTime: '09:00'
+    operationStartTime: '09:00',
+    operationFinishTime: '18:00'
   }, {
     defaults: EPC_DESIGN_DEFAULTS,
     now: '2026-06-12T00:00:00.000Z'
   });
   const dayResult = calculateEpcDesignProject(dayProject, { now: '2026-06-12T00:00:00.000Z' });
 
-  assert.equal(dayResult.loads.operationFinishTime, '17:00');
-  assert.equal(dayResult.loads.totalOperationHoursPerDay, 8);
-  assert.equal(dayResult.energyFlow.rows.length, 8);
+  assert.equal(dayResult.loads.operationFinishTime, '18:00');
+  assert.equal(dayResult.loads.scheduleWorkingHours, 9);
+  assert.equal(dayResult.load.averageLoadKw.toFixed(2), '1907.83');
+  assert.equal(dayResult.load.dailyLoadKwh.toFixed(2), '15262.67');
+  assert.equal(dayResult.energyFlow.rows.length, 9);
   assert.equal(dayResult.energyFlow.rows[0].hourLabel, '09:00-10:00');
-  assert.equal(dayResult.energyFlow.rows.at(-1).hourLabel, '16:00-17:00');
-  assert.ok(!dayResult.energyFlow.rows.some((row) => row.hour === 18));
+  assert.equal(dayResult.energyFlow.rows.at(-1).hourLabel, '17:00-18:00');
 
-  const nightResult = calculateEpcDesignProject({
+  const changedResult = calculateEpcDesignProject({
     ...dayProject,
     loads: {
       ...dayProject.loads,
-      nightWorkEnabled: true,
-      nightOperationHoursPerDay: 6,
-      nightStartTime: '18:00'
+      changeWorkingTime: true
     }
   }, { now: '2026-06-12T00:00:00.000Z' });
 
-  assert.equal(nightResult.loads.nightOperationFinishTime, '00:00+1');
-  assert.equal(nightResult.loads.totalOperationHoursPerDay, 14);
-  assert.equal(nightResult.load.averageLoadKw.toFixed(2), (nightResult.load.dailyLoadKwh / 14).toFixed(2));
-  assert.equal(nightResult.energyFlow.rows.length, 14);
-  assert.equal(nightResult.energyFlow.rows[8].hourLabel, '18:00-19:00');
-  assert.equal(nightResult.energyFlow.rows.at(-1).hourLabel, '23:00-00:00+1');
+  assert.equal(changedResult.load.averageLoadKw.toFixed(2), '1907.83');
+  assert.equal(changedResult.load.dailyLoadKwh.toFixed(2), '17170.50');
+  assert.equal(changedResult.schemes.find((scheme) => scheme.id === 'replace-80').targetDailyKwh.toFixed(2), '13736.40');
 });
 
 test('EPC design engine makes PF and distance affect LV MV architecture output', () => {

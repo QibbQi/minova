@@ -88,28 +88,29 @@ function addHoursToTime(startTime, hours) {
   return formatMinutes(end, Math.floor(end / 1440));
 }
 
+function hoursBetweenTimes(startTime, finishTime) {
+  const start = timeToMinutes(startTime);
+  let finish = timeToMinutes(finishTime, addHoursToTime(startTime, 1));
+  if (finish <= start) finish += 1440;
+  return round((finish - start) / 60, 4);
+}
+
 function buildOperatingWindows(loads) {
   const windows = [];
-  const addWindow = (startTime, hours, period) => {
-    const count = Math.max(0, Math.ceil(asNumber(hours, 0)));
-    const startMinutes = timeToMinutes(startTime);
-    for (let i = 0; i < count; i += 1) {
-      const segmentStart = startMinutes + i * 60;
-      const segmentEnd = segmentStart + 60;
-      const startDay = Math.floor(segmentStart / 1440);
-      const endDay = Math.floor(segmentEnd / 1440);
-      const hour = Math.floor((((segmentStart % 1440) + 1440) % 1440) / 60);
-      windows.push({
-        hour,
-        hourLabel: `${formatMinutes(segmentStart, startDay)}-${formatMinutes(segmentEnd, endDay)}`,
-        flowKey: `${period}-${i}-${hour}`,
-        period
-      });
-    }
-  };
-  addWindow(loads.operationStartTime, loads.operationHoursPerDay, 'day');
-  if (loads.nightWorkEnabled && loads.nightOperationHoursPerDay > 0) {
-    addWindow(loads.nightStartTime, loads.nightOperationHoursPerDay, 'night');
+  const count = Math.max(1, Math.ceil(asNumber(loads.scheduleWorkingHours, loads.operationHoursPerDay)));
+  const startMinutes = timeToMinutes(loads.operationStartTime);
+  for (let i = 0; i < count; i += 1) {
+    const segmentStart = startMinutes + i * 60;
+    const segmentEnd = segmentStart + 60;
+    const startDay = Math.floor(segmentStart / 1440);
+    const endDay = Math.floor(segmentEnd / 1440);
+    const hour = Math.floor((((segmentStart % 1440) + 1440) % 1440) / 60);
+    windows.push({
+      hour,
+      hourLabel: `${formatMinutes(segmentStart, startDay)}-${formatMinutes(segmentEnd, endDay)}`,
+      flowKey: `schedule-${i}-${hour}`,
+      period: 'schedule'
+    });
   }
   return windows;
 }
@@ -173,12 +174,9 @@ export function normalizeEpcDesignProject(raw = {}, options = {}) {
   const solarResource = defaultSolarResource(raw.solarResource || {}, defaults);
   const id = String(raw.id || project.id || `epc-${Date.parse(now) || Date.now()}`).trim();
   const dayHours = clamp(loads.operationHoursPerDay ?? raw.operationHoursPerDay, 1, 24, 8);
-  const nightWorkEnabled = Boolean(loads.nightWorkEnabled ?? raw.nightWorkEnabled);
-  const nightHours = nightWorkEnabled
-    ? Math.min(24 - dayHours, clamp(loads.nightOperationHoursPerDay ?? raw.nightOperationHoursPerDay, 0, 24, 6))
-    : 0;
   const operationStartTime = normalizeTime(loads.operationStartTime ?? raw.operationStartTime, '09:00');
-  const nightStartTime = normalizeTime(loads.nightStartTime ?? raw.nightStartTime, '18:00');
+  const operationFinishTime = normalizeTime(loads.operationFinishTime ?? raw.operationFinishTime, addHoursToTime(operationStartTime, dayHours));
+  const scheduleWorkingHours = Math.min(24, Math.max(1, hoursBetweenTimes(operationStartTime, operationFinishTime)));
 
   return {
     id,
@@ -207,12 +205,9 @@ export function normalizeEpcDesignProject(raw = {}, options = {}) {
       dieselPricePerLiter: asNumber(loads.dieselPricePerLiter ?? raw.dieselPricePerLiter, 0),
       operationHoursPerDay: dayHours,
       operationStartTime,
-      operationFinishTime: addHoursToTime(operationStartTime, dayHours),
-      nightWorkEnabled,
-      nightOperationHoursPerDay: nightHours,
-      nightStartTime,
-      nightOperationFinishTime: addHoursToTime(nightStartTime, nightHours),
-      totalOperationHoursPerDay: dayHours + nightHours,
+      operationFinishTime,
+      scheduleWorkingHours,
+      changeWorkingTime: Boolean(loads.changeWorkingTime ?? raw.changeWorkingTime),
       measuredDailyLoadKwh: asNumber(loads.measuredDailyLoadKwh, 0),
       peakLoadKw: asNumber(loads.peakLoadKw ?? raw.peakLoadKw, 0),
       peakLoadSafetyFactor: asNumber(loads.peakLoadSafetyFactor ?? raw.peakLoadSafetyFactor ?? assumptions.peakLoadFactor, defaults.peakLoadFactor),
@@ -270,9 +265,8 @@ export function buildEpcDesignProjectFromQuickInputs(inputs = {}, options = {}) 
       dieselPricePerLiter: inputs.dieselPricePerLiter,
       operationHoursPerDay: inputs.operationHoursPerDay,
       operationStartTime: inputs.operationStartTime,
-      nightWorkEnabled: inputs.nightWorkEnabled,
-      nightOperationHoursPerDay: inputs.nightOperationHoursPerDay,
-      nightStartTime: inputs.nightStartTime,
+      operationFinishTime: inputs.operationFinishTime,
+      changeWorkingTime: inputs.changeWorkingTime,
       peakLoadSafetyFactor: inputs.peakLoadSafetyFactor,
       equipmentType: inputs.equipmentType
     },
@@ -305,10 +299,13 @@ function dataQualityScore(project) {
 function calculateLoad(project, now) {
   const sfc = asNumber(project.assumptions.dieselSfcLPerKwh, EPC_DESIGN_DEFAULTS.dieselSfcLPerKwh);
   const dailyDieselLiters = project.loads.dieselTotalLiters / Math.max(1, project.loads.dieselPeriodDays);
-  const dailyLoadKwh = project.loads.measuredDailyLoadKwh > 0
+  const gensetDailyLoadKwh = project.loads.measuredDailyLoadKwh > 0
     ? project.loads.measuredDailyLoadKwh
     : dailyDieselLiters / Math.max(0.001, sfc);
-  const averageLoadKw = dailyLoadKwh / Math.max(1, project.loads.totalOperationHoursPerDay || project.loads.operationHoursPerDay);
+  const averageLoadKw = gensetDailyLoadKwh / Math.max(1, project.loads.operationHoursPerDay);
+  const dailyLoadKwh = project.loads.changeWorkingTime
+    ? averageLoadKw * project.loads.scheduleWorkingHours
+    : gensetDailyLoadKwh;
   const peakLoadSafetyFactor = Math.max(0.01, asNumber(project.loads.peakLoadSafetyFactor, project.assumptions.peakLoadFactor));
   const peakLoadKw = averageLoadKw * peakLoadSafetyFactor;
   const criticalLoadKw = project.loads.criticalLoadKw > 0 ? project.loads.criticalLoadKw : averageLoadKw;
@@ -335,8 +332,10 @@ function calculateLoad(project, now) {
       buildFormulaTrace({
         key: 'dailyLoadKwh',
         label: 'Daily Load',
-        formula: project.loads.measuredDailyLoadKwh > 0 ? 'Measured Daily Load' : 'Daily Diesel / SFC',
-        inputs: { dailyDieselLiters: round(dailyDieselLiters, 4), sfcLPerKwh: sfc },
+        formula: project.loads.changeWorkingTime ? 'Original Genset Avg Load x PV Working Hours' : project.loads.measuredDailyLoadKwh > 0 ? 'Measured Daily Load' : 'Daily Diesel / SFC',
+        inputs: project.loads.changeWorkingTime
+          ? { originalGensetAverageLoadKw: round(averageLoadKw, 4), scheduleWorkingHours: project.loads.scheduleWorkingHours }
+          : { dailyDieselLiters: round(dailyDieselLiters, 4), sfcLPerKwh: sfc },
         result: round(dailyLoadKwh, 4),
         unit: 'kWh/day',
         assumptionSource: project.loads.loadSource,
@@ -345,8 +344,8 @@ function calculateLoad(project, now) {
       buildFormulaTrace({
         key: 'averageLoadKw',
         label: 'Average Load',
-        formula: 'Daily Load / Operation Hours',
-        inputs: { dailyLoadKwh: round(dailyLoadKwh, 4), operationHoursPerDay: project.loads.operationHoursPerDay, nightOperationHoursPerDay: project.loads.nightOperationHoursPerDay, totalOperationHoursPerDay: project.loads.totalOperationHoursPerDay },
+        formula: 'Original Genset Daily Load / Original Genset Hours',
+        inputs: { gensetDailyLoadKwh: round(gensetDailyLoadKwh, 4), operationHoursPerDay: project.loads.operationHoursPerDay, scheduleWorkingHours: project.loads.scheduleWorkingHours, changeWorkingTime: project.loads.changeWorkingTime },
         result: round(averageLoadKw, 4),
         unit: 'kW',
         assumptionSource: project.loads.loadSource,

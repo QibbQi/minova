@@ -2616,39 +2616,25 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         </div>
                         <div>
                             <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Hours/Day</label>
-                            <input id="epc-operation-hours" data-epc-field="loads.operationHoursPerDay" type="number" min="1" max="24" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                            <input id="epc-operation-hours" data-epc-field="loads.operationHoursPerDay" type="number" min="1" max="24" oninput="onEpcScheduleInputChanged('hours')" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                         </div>
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Start Time</label>
-                            <input id="epc-day-start-time" data-epc-field="loads.operationStartTime" type="time" onchange="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                            <input id="epc-day-start-time" data-epc-field="loads.operationStartTime" type="time" onchange="onEpcScheduleInputChanged('start')" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                         </div>
                         <div>
                             <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Finish Time</label>
-                            <input id="epc-day-finish-time" type="text" readonly class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-slate-50 text-slate-500 outline-none">
+                            <input id="epc-day-finish-time" data-epc-field="loads.operationFinishTime" type="time" onchange="onEpcScheduleInputChanged('finish')" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                         </div>
                     </div>
-                    <div class="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                        <label class="flex items-center justify-between gap-3 text-xs font-black text-slate-700">
-                            <span>Work in night time</span>
-                            <input id="epc-night-work-enabled" data-epc-field="loads.nightWorkEnabled" type="checkbox" onchange="onEpcDesignInputChanged()" class="h-4 w-4 accent-purple-700">
+                    <div id="epc-change-working-time-row" class="hidden rounded-xl border border-yellow-200 bg-yellow-50 p-3">
+                        <label class="flex items-center justify-between gap-3 text-xs font-black text-yellow-900">
+                            <span>change working time</span>
+                            <input id="epc-change-working-time" data-epc-field="loads.changeWorkingTime" type="checkbox" onchange="onEpcDesignInputChanged()" class="h-4 w-4 accent-purple-700">
                         </label>
-                        <div id="epc-night-work-fields" class="hidden mt-3 grid grid-cols-3 gap-2">
-                            <div>
-                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Hours/Day</label>
-                                <input id="epc-night-operation-hours" data-epc-field="loads.nightOperationHoursPerDay" type="number" min="0" max="24" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Start Time</label>
-                                <input id="epc-night-start-time" data-epc-field="loads.nightStartTime" type="time" onchange="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Finish Time</label>
-                                <input id="epc-night-finish-time" type="text" readonly class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white text-slate-500 outline-none">
-                            </div>
-                        </div>
-                        <p class="mt-2 text-[10px] leading-snug text-slate-400">Day and night operating hours are capped at 24 hours total; night rows appear in EMS Flow only when enabled.</p>
+                        <p class="mt-2 text-[10px] leading-snug text-yellow-800">When checked, original genset average load is multiplied by the new PV working hours to update Daily Load and downstream sizing.</p>
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
@@ -9915,7 +9901,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 mode: epcDesignMode,
                 project: { name: 'New Hybrid EPC Design', stage: 'Concept' },
                 site: { country: 'Malaysia', gridMode: 'hybrid' },
-                loads: { dieselPeriodDays: 1, operationHoursPerDay: 8, operationStartTime: '09:00', nightWorkEnabled: false, nightOperationHoursPerDay: 6, nightStartTime: '18:00', equipmentType: 'water_pump' },
+                loads: { dieselPeriodDays: 1, operationHoursPerDay: 8, operationStartTime: '09:00', operationFinishTime: '17:00', changeWorkingTime: false, equipmentType: 'water_pump' },
                 designTargets: { replacementPct: 80 },
                 assumptions: epcDesignDefaults,
                 solarResource: { dataSource: 'Malaysia Default' }
@@ -9990,9 +9976,76 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             el.value = value ?? '';
         }
 
-        function updateEpcNightWorkVisibility(project = getActiveEpcDesignProject()) {
-            const nightFields = document.getElementById('epc-night-work-fields');
-            if (nightFields) nightFields.classList.toggle('hidden', !project.loads.nightWorkEnabled);
+        function epcTimeToMinutes(value, fallback = '09:00') {
+            const raw = String(value || fallback || '09:00');
+            const match = raw.match(/^(\d{1,2}):?(\d{2})?/);
+            if (!match) return epcTimeToMinutes(fallback, '09:00');
+            const hour = Math.min(23, Math.max(0, Number(match[1]) || 0));
+            const minute = Math.min(59, Math.max(0, Number(match[2] || 0) || 0));
+            return hour * 60 + minute;
+        }
+
+        function epcMinutesToTime(minutes) {
+            const normalized = ((Math.round(minutes) % 1440) + 1440) % 1440;
+            const hour = Math.floor(normalized / 60);
+            const minute = normalized % 60;
+            return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+        }
+
+        function epcAddHoursToTime(startTime, hours) {
+            return epcMinutesToTime(epcTimeToMinutes(startTime) + (Number(hours) || 0) * 60);
+        }
+
+        function epcHoursBetween(startTime, finishTime) {
+            const start = epcTimeToMinutes(startTime);
+            let finish = epcTimeToMinutes(finishTime, epcAddHoursToTime(startTime, 1));
+            if (finish <= start) finish += 1440;
+            return Math.round(((finish - start) / 60) * 100) / 100;
+        }
+
+        function updateEpcWorkingTimeVisibility(project = getActiveEpcDesignProject()) {
+            const row = document.getElementById('epc-change-working-time-row');
+            const check = document.getElementById('epc-change-working-time');
+            if (!row) return;
+            const baseHours = Number(project.loads.operationHoursPerDay) || 8;
+            const scheduleHours = Number(project.loads.scheduleWorkingHours) || baseHours;
+            const changed = Math.abs(scheduleHours - baseHours) > 0.01;
+            row.classList.toggle('hidden', !changed && !project.loads.changeWorkingTime);
+            if (check) check.checked = !!project.loads.changeWorkingTime;
+        }
+
+        window.onEpcScheduleInputChanged = (source = '') => {
+            const hoursEl = document.getElementById('epc-operation-hours');
+            const startEl = document.getElementById('epc-day-start-time');
+            const finishEl = document.getElementById('epc-day-finish-time');
+            const changeEl = document.getElementById('epc-change-working-time');
+            if (!hoursEl || !startEl || !finishEl) return window.onEpcDesignInputChanged();
+            const hours = Math.min(24, Math.max(1, Number(hoursEl.value) || 8));
+            hoursEl.value = hours;
+            if (source === 'hours' || source === 'start') {
+                finishEl.value = epcAddHoursToTime(startEl.value || '09:00', hours);
+                if (source === 'start') {
+                    const minute = epcTimeToMinutes(startEl.value || '09:00') % 60;
+                    const finishHour = Math.floor(epcTimeToMinutes(finishEl.value || '17:00') / 60);
+                    finishEl.value = epcMinutesToTime(finishHour * 60 + minute);
+                }
+            } else if (source === 'finish') {
+                const minute = epcTimeToMinutes(finishEl.value || '17:00') % 60;
+                const startHour = Math.floor(epcTimeToMinutes(startEl.value || '09:00') / 60);
+                startEl.value = epcMinutesToTime(startHour * 60 + minute);
+            }
+            const scheduleHours = epcHoursBetween(startEl.value, finishEl.value);
+            const changed = Math.abs(scheduleHours - hours) > 0.01;
+            if (changed && changeEl && !changeEl.checked) {
+                const ok = confirm(`PV working time is ${scheduleHours}h, while original genset Hours/Day is ${hours}h. Enable "change working time" and recalculate Daily Load from the new working hours?`);
+                if (ok) {
+                    changeEl.checked = true;
+                } else {
+                    finishEl.value = epcAddHoursToTime(startEl.value || '09:00', hours);
+                    changeEl.checked = false;
+                }
+            }
+            window.onEpcDesignInputChanged();
         }
 
         function syncEpcDesignInputs(project) {
@@ -10007,11 +10060,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             setInputValue('epc-operation-hours', project.loads.operationHoursPerDay || 8);
             setInputValue('epc-day-start-time', project.loads.operationStartTime || '09:00');
             setInputValue('epc-day-finish-time', project.loads.operationFinishTime || '17:00');
-            setInputValue('epc-night-work-enabled', project.loads.nightWorkEnabled);
-            setInputValue('epc-night-operation-hours', project.loads.nightOperationHoursPerDay || 6);
-            setInputValue('epc-night-start-time', project.loads.nightStartTime || '18:00');
-            setInputValue('epc-night-finish-time', project.loads.nightOperationFinishTime || '00:00+1');
-            updateEpcNightWorkVisibility(project);
+            setInputValue('epc-change-working-time', project.loads.changeWorkingTime);
+            updateEpcWorkingTimeVisibility(project);
             setInputValue('epc-target-replacement', project.designTargets.replacementPct || 80);
             setInputValue('epc-round-up-sizing', project.designTargets.roundUpSizing);
             setInputValue('epc-available-area', project.site.availableAreaM2 || '');

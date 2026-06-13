@@ -122,6 +122,9 @@ test('EPC workspace guides junior engineers through load PCS battery PV steps', 
     'epc-peak-load-factor',
     'data-epc-field="loads.peakLoadSafetyFactor"',
     'epc-allowed-genset-load',
+    'data-epc-help="peak-load-factor"',
+    'data-epc-help="allowed-genset-load"',
+    'data-epc-help="critical-load"',
     'Peak Load = Avg Load x Safety Factor',
     'Peak Shaving PCS covers Peak minus this value',
     'Must-run load for backup or island mode',
@@ -146,7 +149,18 @@ test('EPC map controls expose browser IP and manual location fallbacks', () => {
     'epc-map-current-location',
     'epc-map-pin-location',
     'epc-solar-pvout',
-    'PVOUT from GSA kWh/kWp/day',
+    'data-epc-solar-metric="pvout"',
+    'data-epc-solar-metric="ghi"',
+    'data-epc-solar-metric="dni"',
+    'data-epc-solar-metric="temp"',
+    'data-epc-help="solar-pvout"',
+    'data-epc-help="solar-ghi"',
+    'data-epc-help="solar-dni"',
+    'data-epc-help="solar-temp"',
+    'Specific photovoltaic power output from GSA',
+    'Global horizontal irradiation from GSA',
+    'Direct normal irradiation from GSA',
+    'Ambient temperature from GSA',
     'project.solarResource.gsaPvoutKwhPerKwpDay',
     'window.fetchEpcGlobalSolarAtlasResource',
     'parseGlobalSolarAtlasSolarResource',
@@ -157,6 +171,48 @@ test('EPC map controls expose browser IP and manual location fallbacks', () => {
   ]) {
     assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing location fallback snippet: ${snippet}`);
   }
+  assert.doesNotMatch(html, /epc-solar-import/);
+  assert.doesNotMatch(html, /Import pasted GSA values/);
+  assert.doesNotMatch(html, /Paste GSA\/PVsyst values/);
+  assert.doesNotMatch(html, /window\.importEpcSolarResource/);
+});
+
+test('EPC detailed inputs expose title pointers instead of inline helper paragraphs', () => {
+  for (const snippet of [
+    'data-epc-help="detail-inputs"',
+    'data-epc-help="target-replacement"',
+    'data-epc-help="available-area"',
+    'data-epc-help="peak-load-factor"',
+    'data-epc-help="allowed-genset-load"',
+    'data-epc-help="load-equipment-type"',
+    'data-epc-help="bess-role"',
+    'data-epc-help="sfc"',
+    'data-epc-help="pv-yield"',
+    'data-epc-help="bess-dod"',
+    'data-epc-help="power-factor"',
+    'data-epc-help="critical-load"',
+    'data-epc-help="modules-per-string"',
+    'data-epc-help="combiner-inputs"',
+    'Detailed Design uses Target % here as the calculation standard.',
+    'Target diesel replacement percentage used as the detailed design standard.',
+    'Available site area for PV layout feasibility and land-use checks.',
+    'Peak Load = Avg Load x Safety Factor; PCS is then rounded up to the next 0.5MW.',
+    'Diesel power intentionally kept online; Peak Shaving PCS covers Peak minus this value.',
+    'Select the operating load type so the model can keep recommendations tied to the site duty.',
+    'Defines the battery operating purpose used by sizing, recommendation, and risk notes.',
+    'Diesel generator specific fuel consumption used to convert diesel liters into electrical load.',
+    'Daily PV yield used for PV sizing; this should follow GSA PVOUT when solar data is fetched.',
+    'Usable battery depth of discharge applied to BESS capacity sizing.',
+    'Power factor used for AC current and voltage architecture checks.',
+    'Must-run load for backup or island mode; blank falls back to average load.',
+    'PV modules per string used for string count and combiner sizing.',
+    'Combiner input count used to estimate combiner quantity from total strings.'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing detail helper snippet: ${snippet}`);
+  }
+  assert.doesNotMatch(html, /<p class="mt-1 text-\[10px\] leading-snug text-slate-400">Peak Load = Avg Load x Safety Factor/);
+  assert.doesNotMatch(html, /<p class="mt-1 text-\[10px\] leading-snug text-slate-400">Diesel power intentionally kept online/);
+  assert.doesNotMatch(html, /<p class="mt-1 text-\[10px\] leading-snug text-slate-400">Must-run load for backup or island mode/);
 });
 
 test('EPC EMS flow exposes animated system diagram and clickable hour rows', () => {

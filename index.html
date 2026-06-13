@@ -188,6 +188,83 @@
         .brand-yellow-action:hover { filter: brightness(0.96); }
         .brand-yellow-inactive:hover { background-color: rgba(255, 255, 255, 0.3); }
 
+        .epc-field-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            max-width: 100%;
+        }
+        .epc-help-dot {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1rem;
+            height: 1rem;
+            flex: 0 0 1rem;
+            border-radius: 9999px;
+            border: 1px solid #cbd5e1;
+            background: #fff;
+            color: #94a3b8;
+            font-size: 0.58rem;
+            font-weight: 900;
+            line-height: 1;
+            text-transform: none;
+            cursor: help;
+        }
+        .epc-help-dot::before,
+        .epc-help-dot::after {
+            position: absolute;
+            left: 50%;
+            z-index: 80;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 120ms ease, transform 120ms ease;
+        }
+        .epc-help-dot::before {
+            content: "";
+            top: calc(100% + 0.22rem);
+            width: 0.55rem;
+            height: 0.55rem;
+            background: #0f172a;
+            transform: translateX(-50%) translateY(-0.2rem) rotate(45deg);
+        }
+        .epc-help-dot::after {
+            content: attr(data-tip);
+            top: calc(100% + 0.5rem);
+            width: min(15rem, 72vw);
+            transform: translateX(-50%) translateY(-0.2rem);
+            white-space: normal;
+            border-radius: 0.65rem;
+            background: #0f172a;
+            color: #fff;
+            padding: 0.55rem 0.7rem;
+            font-size: 0.68rem;
+            font-weight: 800;
+            line-height: 1.35;
+            letter-spacing: 0;
+            text-align: left;
+            text-transform: none;
+            box-shadow: 0 14px 30px rgba(15, 23, 42, 0.22);
+        }
+        .epc-help-dot:hover,
+        .epc-help-dot:focus-visible {
+            border-color: #7c3aed;
+            color: #7c3aed;
+            outline: none;
+        }
+        .epc-help-dot:hover::before,
+        .epc-help-dot:hover::after,
+        .epc-help-dot:focus-visible::before,
+        .epc-help-dot:focus-visible::after {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        .epc-help-dot:hover::before,
+        .epc-help-dot:focus-visible::before {
+            transform: translateX(-50%) translateY(0) rotate(45deg);
+        }
+
         .epc-flow-diagram {
             border-radius: 1rem;
             border: 1px solid #e2e8f0;
@@ -2683,18 +2760,28 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <div id="epc-map-pin-location" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-bold text-slate-500">Pin location: --</div>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-2">
-                        <input id="epc-solar-pvout" type="number" step="0.01" readonly class="border border-slate-200 rounded-xl bg-slate-100 px-3 py-2 text-sm font-bold text-slate-600 outline-none" placeholder="PVOUT from GSA kWh/kWp/day">
-                        <input id="epc-solar-ghi" data-epc-field="solarResource.ghiKwhM2Day" type="number" step="0.01" oninput="onEpcDesignInputChanged()" class="border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" placeholder="GHI kWh/m2/day">
-                        <input id="epc-solar-dni" data-epc-field="solarResource.dniKwhM2Day" type="number" step="0.01" oninput="onEpcDesignInputChanged()" class="border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" placeholder="DNI kWh/m2/day">
-                        <input id="epc-solar-temp" data-epc-field="solarResource.temperatureC" type="number" step="0.1" oninput="onEpcDesignInputChanged()" class="border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" placeholder="Temp C">
+                        <div>
+                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1">PVOUT <span data-epc-help="solar-pvout" class="epc-help-dot" tabindex="0" data-tip="Specific photovoltaic power output from GSA, converted from annual kWh/kWp to kWh/kWp/day.">i</span></label>
+                            <input id="epc-solar-pvout" data-epc-solar-metric="pvout" type="number" step="0.01" readonly class="w-full border border-slate-200 rounded-xl bg-slate-100 px-3 py-2 text-sm font-bold text-slate-600 outline-none" placeholder="kWh/kWp/day">
+                        </div>
+                        <div>
+                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1">GHI <span data-epc-help="solar-ghi" class="epc-help-dot" tabindex="0" data-tip="Global horizontal irradiation from GSA, converted to kWh/m2/day.">i</span></label>
+                            <input id="epc-solar-ghi" data-epc-solar-metric="ghi" data-epc-field="solarResource.ghiKwhM2Day" type="number" step="0.01" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" placeholder="kWh/m2/day">
+                        </div>
+                        <div>
+                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1">DNI <span data-epc-help="solar-dni" class="epc-help-dot" tabindex="0" data-tip="Direct normal irradiation from GSA, converted to kWh/m2/day.">i</span></label>
+                            <input id="epc-solar-dni" data-epc-solar-metric="dni" data-epc-field="solarResource.dniKwhM2Day" type="number" step="0.01" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" placeholder="kWh/m2/day">
+                        </div>
+                        <div>
+                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1">TEMP C <span data-epc-help="solar-temp" class="epc-help-dot" tabindex="0" data-tip="Ambient temperature from GSA, used as site context for EPC review.">i</span></label>
+                            <input id="epc-solar-temp" data-epc-solar-metric="temp" data-epc-field="solarResource.temperatureC" type="number" step="0.1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" placeholder="C">
+                        </div>
                     </div>
                     <div class="flex flex-wrap items-center gap-2">
                         <button type="button" onclick="openEpcGlobalSolarAtlas()" class="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-black hover:bg-black">Open Global Solar Atlas</button>
                         <button type="button" onclick="fetchEpcGlobalSolarAtlasResource()" class="px-3 py-2 rounded-xl bg-blue-600 text-white text-xs font-black hover:bg-blue-700">Fetch GSA Solar Data</button>
-                        <button type="button" onclick="importEpcSolarResource()" class="px-3 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-black hover:bg-slate-50">Import pasted GSA values</button>
                         <span id="epc-solar-source" class="text-xs font-bold text-slate-400">Solar source: Malaysia Default</span>
                     </div>
-                    <textarea id="epc-solar-import" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-purple-500 min-h-[72px]" placeholder="Paste GSA/PVsyst values, e.g. PVOUT 3.72, GHI 4.8, DNI 4.1, TEMP 27."></textarea>
                 </div>
             </section>
 
@@ -2724,8 +2811,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         <section id="epc-detail-inputs-panel" data-epc-detail-inputs-panel="true" class="hidden bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-5">
             <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-3">
                 <div>
-                    <h3 class="text-sm font-black text-slate-800">Detail Inputs</h3>
-                    <p class="text-[11px] text-slate-400 mt-0.5">Detailed Design uses Target % here as the calculation standard.</p>
+                    <h3 class="epc-field-label text-sm font-black text-slate-800">Detail Inputs <span data-epc-help="detail-inputs" class="epc-help-dot" tabindex="0" data-tip="Detailed Design uses Target % here as the calculation standard.">i</span></h3>
                 </div>
                 <span class="text-[10px] font-black uppercase text-purple-700">Engineering</span>
             </div>
@@ -2733,32 +2819,30 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 <div id="epc-advanced-inputs" data-epc-advanced-section="true" class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-3 p-4">
                     <div class="grid grid-cols-2 gap-2">
                         <div>
-                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Target %</label>
+                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1">Target % <span data-epc-help="target-replacement" class="epc-help-dot" tabindex="0" data-tip="Target diesel replacement percentage used as the detailed design standard.">i</span></label>
                             <input id="epc-target-replacement" data-epc-field="designTargets.replacementPct" type="number" min="0" max="100" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                         </div>
                         <div>
-                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Area m2</label>
+                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1">Area m2 <span data-epc-help="available-area" class="epc-help-dot" tabindex="0" data-tip="Available site area for PV layout feasibility and land-use checks.">i</span></label>
                             <input id="epc-available-area" data-epc-field="site.availableAreaM2" type="number" min="0" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                         </div>
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
-                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Peak Load Factor</label>
+                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1">Peak Load Factor <span data-epc-help="peak-load-factor" class="epc-help-dot" tabindex="0" data-tip="Peak Load = Avg Load x Safety Factor; PCS is then rounded up to the next 0.5MW.">i</span></label>
                             <select id="epc-peak-load-factor" data-epc-field="loads.peakLoadSafetyFactor" data-epc-number="true" onchange="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
                                 <option value="1.1">Stable load - 1.10x</option>
                                 <option value="1.3">Normal variation - 1.30x</option>
                                 <option value="1.5">High surge - 1.50x</option>
                             </select>
-                            <p class="mt-1 text-[10px] leading-snug text-slate-400">Peak Load = Avg Load x Safety Factor; PCS is then rounded up to the next 0.5MW.</p>
                         </div>
                         <div>
-                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Genset Allowed kW</label>
+                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1">Genset Allowed kW <span data-epc-help="allowed-genset-load" class="epc-help-dot" tabindex="0" data-tip="Diesel power intentionally kept online; Peak Shaving PCS covers Peak minus this value.">i</span></label>
                             <input id="epc-allowed-genset-load" data-epc-field="loads.allowedGensetLoadKw" type="number" min="0" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
-                            <p class="mt-1 text-[10px] leading-snug text-slate-400">Diesel power intentionally kept online; Peak Shaving PCS covers Peak minus this value.</p>
                         </div>
                     </div>
                     <div>
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Operating Equipment</label>
+                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1">Operating Equipment <span data-epc-help="load-equipment-type" class="epc-help-dot" tabindex="0" data-tip="Select the operating load type so the model can keep recommendations tied to the site duty.">i</span></label>
                         <select id="epc-load-equipment-type" data-epc-field="loads.equipmentType" onchange="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
                             <option value="water_pump">Water Pump</option>
                             <option value="crusher">Crusher</option>
@@ -2769,7 +2853,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         </select>
                     </div>
                     <div>
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">BESS Role</label>
+                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1">BESS Role <span data-epc-help="bess-role" class="epc-help-dot" tabindex="0" data-tip="Defines the battery operating purpose used by sizing, recommendation, and risk notes.">i</span></label>
                         <select id="epc-bess-role" data-epc-field="designTargets.bessRole" onchange="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
                             <option value="diesel_replacement">Diesel Replacement</option>
                             <option value="peak_shaving">Peak Shaving</option>
@@ -2780,36 +2864,35 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
-                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">SFC L/kWh</label>
+                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1">SFC L/kWh <span data-epc-help="sfc" class="epc-help-dot" tabindex="0" data-tip="Diesel generator specific fuel consumption used to convert diesel liters into electrical load.">i</span></label>
                             <input id="epc-sfc" data-epc-field="assumptions.dieselSfcLPerKwh" type="number" step="0.01" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                         </div>
                         <div>
-                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">PV Yield</label>
+                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1">PV Yield <span data-epc-help="pv-yield" class="epc-help-dot" tabindex="0" data-tip="Daily PV yield used for PV sizing; this should follow GSA PVOUT when solar data is fetched.">i</span></label>
                             <input id="epc-pv-yield" data-epc-field="solarResource.specificYieldKwhPerKwpDay" type="number" step="0.1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                         </div>
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
-                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">DoD</label>
+                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1">DoD <span data-epc-help="bess-dod" class="epc-help-dot" tabindex="0" data-tip="Usable battery depth of discharge applied to BESS capacity sizing.">i</span></label>
                             <input id="epc-bess-dod" data-epc-field="assumptions.bessDod" type="number" step="0.01" min="0" max="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                         </div>
                         <div>
-                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">PF</label>
+                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1">PF <span data-epc-help="power-factor" class="epc-help-dot" tabindex="0" data-tip="Power factor used for AC current and voltage architecture checks.">i</span></label>
                             <input id="epc-power-factor" data-epc-field="electrical.powerFactor" type="number" step="0.01" min="0.1" max="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                         </div>
                     </div>
                     <div>
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Critical Load kW</label>
+                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1">Critical Load kW <span data-epc-help="critical-load" class="epc-help-dot" tabindex="0" data-tip="Must-run load for backup or island mode; blank falls back to average load.">i</span></label>
                         <input id="epc-critical-load" data-epc-field="loads.criticalLoadKw" type="number" min="0" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
-                        <p class="mt-1 text-[10px] leading-snug text-slate-400">Must-run load for backup or island mode; blank falls back to average load.</p>
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
-                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">/ String</label>
+                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1">/ String <span data-epc-help="modules-per-string" class="epc-help-dot" tabindex="0" data-tip="PV modules per string used for string count and combiner sizing.">i</span></label>
                             <input id="epc-modules-per-string" data-epc-field="assumptions.modulesPerString" type="number" min="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                         </div>
                         <div>
-                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Combiner</label>
+                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1">Combiner <span data-epc-help="combiner-inputs" class="epc-help-dot" tabindex="0" data-tip="Combiner input count used to estimate combiner quantity from total strings.">i</span></label>
                             <input id="epc-combiner-inputs" data-epc-field="assumptions.combinerInputs" type="number" min="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                         </div>
                     </div>
@@ -10940,40 +11023,11 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     lastError = e;
                 }
             }
-            setEpcSolarStatus('Solar source: GSA auto fetch unavailable; use Open GSA or paste values', 'error');
+            setEpcSolarStatus('Solar source: GSA auto fetch unavailable; use Open GSA or enter values manually', 'error');
             if (!options.silent) {
-                alert(`Global Solar Atlas data could not be fetched automatically (${lastError?.message || 'unknown error'}). Open GSA and paste PVOUT/GHI/DNI/TEMP values if needed.`);
+                alert(`Global Solar Atlas data could not be fetched automatically (${lastError?.message || 'unknown error'}). Open GSA and enter PVOUT/GHI/DNI/TEMP values manually if needed.`);
             }
             return null;
-        };
-
-        window.importEpcSolarResource = () => {
-            const raw = document.getElementById('epc-solar-import')?.value || '';
-            const findValue = (labels) => {
-                for (const label of labels) {
-                    const m = raw.match(new RegExp(`${label}[^0-9.-]*([0-9]+(?:\\.[0-9]+)?)`, 'i'));
-                    if (m) return Number(m[1]);
-                }
-                return 0;
-            };
-            const pvout = findValue(['PVOUT', 'specific yield', 'yield']);
-            const ghi = findValue(['GHI']);
-            const dni = findValue(['DNI']);
-            const temp = findValue(['TEMP', 'temperature']);
-            if (pvout) {
-                setInputValue('epc-pv-yield', pvout);
-                setInputValue('epc-solar-pvout', pvout);
-            }
-            if (ghi) setInputValue('epc-solar-ghi', ghi);
-            if (dni) setInputValue('epc-solar-dni', dni);
-            if (temp) setInputValue('epc-solar-temp', temp);
-            const project = captureEpcDesignFromDom();
-            project.solarResource.dataSource = 'Global Solar Atlas Import';
-            if (pvout) project.solarResource.gsaPvoutKwhPerKwpDay = pvout;
-            project.solarResource.retrievalDate = new Date().toISOString().slice(0, 10);
-            updateEpcProject(project);
-            renderEpcDesignWorkspace();
-            setEpcSolarStatus(`Solar source: Global Solar Atlas Import (${project.solarResource.retrievalDate})`, 'ok');
         };
 
         function canDownloadEpcReport(kind) {

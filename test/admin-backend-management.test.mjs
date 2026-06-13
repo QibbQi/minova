@@ -245,6 +245,7 @@ test('worker role permissions use latest rows and do not amplify duplicate D1 re
   assert.match(workerSource, /const LATEST_PERMISSION_ROWS_SQL = `[\s\S]*MAX\(id\)[\s\S]*GROUP BY role_id/);
   assert.match(workerSource, /const SELECT_LATEST_PERMISSION_ID_SQL = 'SELECT id FROM permissions WHERE role_id = \? ORDER BY id DESC LIMIT 1';/);
   assert.match(workerSource, /CREATE INDEX IF NOT EXISTS idx_permissions_role_id_id ON permissions\(role_id, id\)/);
+  assert.match(workerSource, /CREATE UNIQUE INDEX IF NOT EXISTS idx_permissions_role_id_unique ON permissions\(role_id\)/);
   assert.match(workerSource, /if \(!latestPermission\?\.id\) \{[\s\S]*INSERT INTO permissions \(role_id, permission_json\) VALUES \(\?, \?\)/);
   assert.match(workerSource, /UPDATE permissions SET permission_json = \? WHERE id = \?/);
   assert.doesNotMatch(workerSource, /INSERT INTO permissions \(role_id, permission_json\)[\s\S]*\.run\(\)\.catch\(async \(\) =>/);

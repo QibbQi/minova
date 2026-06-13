@@ -269,6 +269,7 @@ async function ensureBusinessTables(db) {
 
 async function ensurePermissionIndexes(db) {
   await db.prepare('CREATE INDEX IF NOT EXISTS idx_permissions_role_id_id ON permissions(role_id, id)').run();
+  await db.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_permissions_role_id_unique ON permissions(role_id)').run();
 }
 
 async function login(request, env) {

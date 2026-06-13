@@ -62,6 +62,60 @@ const EPC_DESIGN_VERSION = 'epc-design-v2';
     return new Date().toISOString();
   }
 
+  function normalizeTime(value, fallback = '09:00') {
+    const raw = String(value || fallback || '09:00').trim();
+    const match = raw.match(/^(\d{1,2})(?::?(\d{2}))?/);
+    if (!match) return fallback;
+    const hour = Math.min(23, Math.max(0, Math.trunc(asNumber(match[1], 0))));
+    const minute = Math.min(59, Math.max(0, Math.trunc(asNumber(match[2] ?? 0, 0))));
+    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  }
+
+  function timeToMinutes(value, fallback = '09:00') {
+    const [hour, minute] = normalizeTime(value, fallback).split(':').map(Number);
+    return hour * 60 + minute;
+  }
+
+  function formatMinutes(minutes, dayOffset = 0) {
+    const normalized = ((Math.round(minutes) % 1440) + 1440) % 1440;
+    const hour = Math.floor(normalized / 60);
+    const minute = normalized % 60;
+    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}${dayOffset > 0 ? `+${dayOffset}` : ''}`;
+  }
+
+  function addHoursToTime(startTime, hours) {
+    const start = timeToMinutes(startTime);
+    const delta = Math.round(asNumber(hours, 0) * 60);
+    const end = start + delta;
+    return formatMinutes(end, Math.floor(end / 1440));
+  }
+
+  function buildOperatingWindows(loads) {
+    const windows = [];
+    const addWindow = (startTime, hours, period) => {
+      const count = Math.max(0, Math.ceil(asNumber(hours, 0)));
+      const startMinutes = timeToMinutes(startTime);
+      for (let i = 0; i < count; i += 1) {
+        const segmentStart = startMinutes + i * 60;
+        const segmentEnd = segmentStart + 60;
+        const startDay = Math.floor(segmentStart / 1440);
+        const endDay = Math.floor(segmentEnd / 1440);
+        const hour = Math.floor((((segmentStart % 1440) + 1440) % 1440) / 60);
+        windows.push({
+          hour,
+          hourLabel: `${formatMinutes(segmentStart, startDay)}-${formatMinutes(segmentEnd, endDay)}`,
+          flowKey: `${period}-${i}-${hour}`,
+          period
+        });
+      }
+    };
+    addWindow(loads.operationStartTime, loads.operationHoursPerDay, 'day');
+    if (loads.nightWorkEnabled && loads.nightOperationHoursPerDay > 0) {
+      addWindow(loads.nightStartTime, loads.nightOperationHoursPerDay, 'night');
+    }
+    return windows;
+  }
+
   function normalizeBessRole(value) {
     const raw = String(value || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
     if (raw.includes('island') || raw.includes('off_grid') || raw.includes('full')) return 'island_mode';
@@ -120,6 +174,13 @@ const EPC_DESIGN_VERSION = 'epc-design-v2';
     const assumptions = raw.assumptions || {};
     const solarResource = defaultSolarResource(raw.solarResource || {}, defaults);
     const id = String(raw.id || project.id || `epc-${Date.parse(now) || Date.now()}`).trim();
+    const dayHours = clamp(loads.operationHoursPerDay ?? raw.operationHoursPerDay, 1, 24, 8);
+    const nightWorkEnabled = Boolean(loads.nightWorkEnabled ?? raw.nightWorkEnabled);
+    const nightHours = nightWorkEnabled
+      ? Math.min(24 - dayHours, clamp(loads.nightOperationHoursPerDay ?? raw.nightOperationHoursPerDay, 0, 24, 6))
+      : 0;
+    const operationStartTime = normalizeTime(loads.operationStartTime ?? raw.operationStartTime, '09:00');
+    const nightStartTime = normalizeTime(loads.nightStartTime ?? raw.nightStartTime, '18:00');
 
     return {
       id,
@@ -146,7 +207,14 @@ const EPC_DESIGN_VERSION = 'epc-design-v2';
         dieselTotalLiters: asNumber(loads.dieselTotalLiters ?? raw.dieselTotalLiters, 0),
         dieselPeriodDays: Math.max(1, asNumber(loads.dieselPeriodDays ?? raw.dieselPeriodDays, 1)),
         dieselPricePerLiter: asNumber(loads.dieselPricePerLiter ?? raw.dieselPricePerLiter, 0),
-        operationHoursPerDay: clamp(loads.operationHoursPerDay ?? raw.operationHoursPerDay, 1, 24, 8),
+        operationHoursPerDay: dayHours,
+        operationStartTime,
+        operationFinishTime: addHoursToTime(operationStartTime, dayHours),
+        nightWorkEnabled,
+        nightOperationHoursPerDay: nightHours,
+        nightStartTime,
+        nightOperationFinishTime: addHoursToTime(nightStartTime, nightHours),
+        totalOperationHoursPerDay: dayHours + nightHours,
         measuredDailyLoadKwh: asNumber(loads.measuredDailyLoadKwh, 0),
         peakLoadKw: asNumber(loads.peakLoadKw ?? raw.peakLoadKw, 0),
         peakLoadSafetyFactor: asNumber(loads.peakLoadSafetyFactor ?? raw.peakLoadSafetyFactor ?? assumptions.peakLoadFactor, defaults.peakLoadFactor),
@@ -203,6 +271,10 @@ const EPC_DESIGN_VERSION = 'epc-design-v2';
         dieselPeriodDays: inputs.dieselPeriodDays,
         dieselPricePerLiter: inputs.dieselPricePerLiter,
         operationHoursPerDay: inputs.operationHoursPerDay,
+        operationStartTime: inputs.operationStartTime,
+        nightWorkEnabled: inputs.nightWorkEnabled,
+        nightOperationHoursPerDay: inputs.nightOperationHoursPerDay,
+        nightStartTime: inputs.nightStartTime,
         peakLoadSafetyFactor: inputs.peakLoadSafetyFactor,
         equipmentType: inputs.equipmentType
       },
@@ -238,7 +310,7 @@ const EPC_DESIGN_VERSION = 'epc-design-v2';
     const dailyLoadKwh = project.loads.measuredDailyLoadKwh > 0
       ? project.loads.measuredDailyLoadKwh
       : dailyDieselLiters / Math.max(0.001, sfc);
-    const averageLoadKw = dailyLoadKwh / Math.max(1, project.loads.operationHoursPerDay);
+    const averageLoadKw = dailyLoadKwh / Math.max(1, project.loads.totalOperationHoursPerDay || project.loads.operationHoursPerDay);
     const peakLoadSafetyFactor = Math.max(0.01, asNumber(project.loads.peakLoadSafetyFactor, project.assumptions.peakLoadFactor));
     const peakLoadKw = averageLoadKw * peakLoadSafetyFactor;
     const criticalLoadKw = project.loads.criticalLoadKw > 0 ? project.loads.criticalLoadKw : averageLoadKw;
@@ -276,7 +348,7 @@ const EPC_DESIGN_VERSION = 'epc-design-v2';
           key: 'averageLoadKw',
           label: 'Average Load',
           formula: 'Daily Load / Operation Hours',
-          inputs: { dailyLoadKwh: round(dailyLoadKwh, 4), operationHoursPerDay: project.loads.operationHoursPerDay },
+          inputs: { dailyLoadKwh: round(dailyLoadKwh, 4), operationHoursPerDay: project.loads.operationHoursPerDay, nightOperationHoursPerDay: project.loads.nightOperationHoursPerDay, totalOperationHoursPerDay: project.loads.totalOperationHoursPerDay },
           result: round(averageLoadKw, 4),
           unit: 'kW',
           assumptionSource: project.loads.loadSource,
@@ -520,8 +592,11 @@ const EPC_DESIGN_VERSION = 'epc-design-v2';
     return risks;
   }
 
-  function defaultHourlyLoadProfile(load) {
-    return [9, 10, 11, 12, 13, 14, 15, 16, 17].map(hour => ({ hour, loadKw: load.averageLoadKw }));
+  function defaultHourlyLoadProfile(project, load) {
+    return buildOperatingWindows(project.loads).map(window => ({
+      ...window,
+      loadKw: load.averageLoadKw
+    }));
   }
 
   function defaultHourlyPvProfile(recommended) {
@@ -553,21 +628,28 @@ const EPC_DESIGN_VERSION = 'epc-design-v2';
   }
 
   function calculateEnergyFlow(project, load, recommended) {
-    const loadProfile = project.loadProfile.length ? project.loadProfile : defaultHourlyLoadProfile(load);
+    const loadProfile = project.loadProfile.length ? project.loadProfile : defaultHourlyLoadProfile(project, load);
     const pvProfile = Array.isArray(project.solarResource.hourlyPvProfile) && project.solarResource.hourlyPvProfile.length
       ? project.solarResource.hourlyPvProfile
       : defaultHourlyPvProfile(recommended);
     const loadMap = normalizeHourMap(loadProfile, 'loadKw');
     const pvMap = normalizeHourMap(pvProfile, 'pvMw');
-    const hours = [...new Set([...loadMap.keys(), ...pvMap.keys()])].sort((a, b) => a - b);
+    const flowWindows = loadProfile.map((item, index) => {
+      const hour = Math.round(asNumber(item.hour, NaN));
+      return {
+        hour,
+        hourLabel: item.hourLabel || `${formatMinutes(hour * 60)}-${formatMinutes(hour * 60 + 60, hour >= 23 ? 1 : 0)}`,
+        flowKey: item.flowKey || `load-${index}-${hour}`
+      };
+    }).filter(item => Number.isFinite(item.hour));
     const batteryKwh = Math.max(0, recommended.bessRecommendedMwh * 1000);
     const pcsKw = Math.max(0, recommended.pcsRecommendedMw * 1000);
     const minSoc = clamp(project.assumptions.minSocPct, 0, 99, EPC_DESIGN_DEFAULTS.minSocPct) / 100;
     const maxSoc = clamp(project.assumptions.maxSocPct, 1, 100, EPC_DESIGN_DEFAULTS.maxSocPct) / 100;
     let socKwh = batteryKwh * Math.min(maxSoc, Math.max(minSoc, 0.5));
-    const rows = hours.map(hour => {
-      const pvOutputKw = (pvMap.get(hour) || 0) * 1000;
-      const loadKw = loadMap.get(hour) || load.averageLoadKw;
+    const rows = flowWindows.map(window => {
+      const pvOutputKw = (pvMap.get(window.hour) || 0) * 1000;
+      const loadKw = loadMap.get(window.hour) || load.averageLoadKw;
       const pvToLoadKw = Math.min(pvOutputKw, loadKw);
       const surplusPvKw = Math.max(0, pvOutputKw - loadKw);
       const loadDeficitKw = Math.max(0, loadKw - pvOutputKw);
@@ -580,7 +662,9 @@ const EPC_DESIGN_VERSION = 'epc-design-v2';
       const gensetToLoadKw = Math.max(0, loadDeficitKw - batteryToLoadKw);
       const curtailmentKw = Math.max(0, surplusPvKw - pvToBatteryKw);
       return {
-        hour,
+        hour: window.hour,
+        hourLabel: window.hourLabel,
+        flowKey: window.flowKey,
         pvOutputKw: round(pvOutputKw, 2),
         loadKw: round(loadKw, 2),
         pvToLoadKw: round(pvToLoadKw, 2),

@@ -2621,6 +2621,37 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Start Time</label>
+                            <input id="epc-day-start-time" data-epc-field="loads.operationStartTime" type="time" onchange="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Finish Time</label>
+                            <input id="epc-day-finish-time" type="text" readonly class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-slate-50 text-slate-500 outline-none">
+                        </div>
+                    </div>
+                    <div class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                        <label class="flex items-center justify-between gap-3 text-xs font-black text-slate-700">
+                            <span>Work in night time</span>
+                            <input id="epc-night-work-enabled" data-epc-field="loads.nightWorkEnabled" type="checkbox" onchange="onEpcDesignInputChanged()" class="h-4 w-4 accent-purple-700">
+                        </label>
+                        <div id="epc-night-work-fields" class="hidden mt-3 grid grid-cols-3 gap-2">
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Hours/Day</label>
+                                <input id="epc-night-operation-hours" data-epc-field="loads.nightOperationHoursPerDay" type="number" min="0" max="24" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Start Time</label>
+                                <input id="epc-night-start-time" data-epc-field="loads.nightStartTime" type="time" onchange="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Finish Time</label>
+                                <input id="epc-night-finish-time" type="text" readonly class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white text-slate-500 outline-none">
+                            </div>
+                        </div>
+                        <p class="mt-2 text-[10px] leading-snug text-slate-400">Day and night operating hours are capped at 24 hours total; night rows appear in EMS Flow only when enabled.</p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
                             <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Target %</label>
                             <input id="epc-target-replacement" data-epc-field="designTargets.replacementPct" type="number" min="0" max="100" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                         </div>
@@ -9884,7 +9915,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 mode: epcDesignMode,
                 project: { name: 'New Hybrid EPC Design', stage: 'Concept' },
                 site: { country: 'Malaysia', gridMode: 'hybrid' },
-                loads: { dieselPeriodDays: 1, operationHoursPerDay: 8, equipmentType: 'water_pump' },
+                loads: { dieselPeriodDays: 1, operationHoursPerDay: 8, operationStartTime: '09:00', nightWorkEnabled: false, nightOperationHoursPerDay: 6, nightStartTime: '18:00', equipmentType: 'water_pump' },
                 designTargets: { replacementPct: 80 },
                 assumptions: epcDesignDefaults,
                 solarResource: { dataSource: 'Malaysia Default' }
@@ -9959,6 +9990,11 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             el.value = value ?? '';
         }
 
+        function updateEpcNightWorkVisibility(project = getActiveEpcDesignProject()) {
+            const nightFields = document.getElementById('epc-night-work-fields');
+            if (nightFields) nightFields.classList.toggle('hidden', !project.loads.nightWorkEnabled);
+        }
+
         function syncEpcDesignInputs(project) {
             setInputValue('epc-project-name', project.project.name);
             setInputValue('epc-country', project.site.country);
@@ -9969,6 +10005,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             setInputValue('epc-diesel-days', project.loads.dieselPeriodDays || 1);
             setInputValue('epc-diesel-price', project.loads.dieselPricePerLiter || '');
             setInputValue('epc-operation-hours', project.loads.operationHoursPerDay || 8);
+            setInputValue('epc-day-start-time', project.loads.operationStartTime || '09:00');
+            setInputValue('epc-day-finish-time', project.loads.operationFinishTime || '17:00');
+            setInputValue('epc-night-work-enabled', project.loads.nightWorkEnabled);
+            setInputValue('epc-night-operation-hours', project.loads.nightOperationHoursPerDay || 6);
+            setInputValue('epc-night-start-time', project.loads.nightStartTime || '18:00');
+            setInputValue('epc-night-finish-time', project.loads.nightOperationFinishTime || '00:00+1');
+            updateEpcNightWorkVisibility(project);
             setInputValue('epc-target-replacement', project.designTargets.replacementPct || 80);
             setInputValue('epc-round-up-sizing', project.designTargets.roundUpSizing);
             setInputValue('epc-available-area', project.site.availableAreaM2 || '');
@@ -10211,6 +10254,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
         function renderEpcFlowDiagram(result, row) {
             const hour = row?.hour ?? 13;
+            const hourLabel = row?.hourLabel || `${hour}:00`;
             const equipment = getEpcLoadEquipmentMeta(result);
             const pvPct = row?.pvOutputKw > 0 ? Math.min(100, (row.pvOutputKw / Math.max(1, getRecommendedEpcScheme(result).pvRecommendedMwp * 1000)) * 100) : 0;
             const sunLabel = pvPct < 25 ? 'Weak sun' : pvPct > 75 ? 'Strong sun' : 'Moderate sun';
@@ -10225,7 +10269,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 <div id="epc-flow-diagram" class="epc-flow-diagram mb-4">
                     <div class="px-4 py-3 border-b border-slate-100 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                         <div>
-                            <div class="text-sm font-black text-slate-800">Animated Energy Flow - ${htmlSafe(hour)}:00</div>
+                            <div class="text-sm font-black text-slate-800">Animated Energy Flow - ${htmlSafe(hourLabel)}</div>
                             <div id="epc-flow-summary" class="text-xs text-slate-500">${htmlSafe(flowSummary)}</div>
                         </div>
                         <div class="text-[11px] font-black text-purple-700 uppercase">${htmlSafe(sunLabel)} | SOC ${formatEpcNumber(row?.socPct || 0, 1, '%')}</div>
@@ -10333,8 +10377,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (!target) return;
             const rows = result.energyFlow?.rows || [];
             const stringDesign = result.pvStringDesign || {};
-            if (!rows.some(row => row.hour === epcSelectedFlowHour)) epcSelectedFlowHour = rows[0]?.hour || 13;
-            const selectedRow = rows.find(row => row.hour === epcSelectedFlowHour) || rows[0] || {};
+            const rowKey = row => String(row.flowKey || row.hour);
+            if (!rows.some(row => rowKey(row) === String(epcSelectedFlowHour))) epcSelectedFlowHour = rowKey(rows[0] || { hour: 13 });
+            const selectedRow = rows.find(row => rowKey(row) === String(epcSelectedFlowHour)) || rows[0] || {};
             target.innerHTML = `
                 ${renderEpcFlowDiagram(result, selectedRow)}
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
@@ -10360,9 +10405,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         </thead>
                         <tbody class="divide-y divide-slate-100">
                             ${rows.map(row => `
-                                <tr data-epc-flow-hour="${htmlSafe(row.hour)}" onclick="selectEpcEnergyFlowHour(${Number(row.hour)})" class="cursor-pointer hover:bg-slate-50 ${row.hour === epcSelectedFlowHour ? 'epc-flow-hour-active' : ''}">
+                                <tr data-epc-flow-hour="${htmlSafe(row.flowKey || row.hour)}" onclick='selectEpcEnergyFlowHour(${JSON.stringify(String(row.flowKey || row.hour))})' class="cursor-pointer hover:bg-slate-50 ${rowKey(row) === String(epcSelectedFlowHour) ? 'epc-flow-hour-active' : ''}">
                                     <td class="px-3 py-3">
-                                        <button type="button" data-epc-flow-hour-button="${htmlSafe(row.hour)}" onclick="event.stopPropagation(); selectEpcEnergyFlowHour(${Number(row.hour)})" class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-black text-slate-700 hover:border-yellow-400 hover:bg-yellow-50">${htmlSafe(row.hour)}:00</button>
+                                        <button type="button" data-epc-flow-hour-button="${htmlSafe(row.flowKey || row.hour)}" onclick='event.stopPropagation(); selectEpcEnergyFlowHour(${JSON.stringify(String(row.flowKey || row.hour))})' class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-black text-slate-700 hover:border-yellow-400 hover:bg-yellow-50">${htmlSafe(row.hourLabel || `${row.hour}:00`)}</button>
                                     </td>
                                     <td class="px-3 py-3 text-right">${formatEpcNumber(row.pvOutputKw, 0)}</td>
                                     <td class="px-3 py-3 text-right">${formatEpcNumber(row.loadKw, 0)}</td>
@@ -10476,7 +10521,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         };
 
         window.selectEpcEnergyFlowHour = (hour) => {
-            epcSelectedFlowHour = Number(hour) || epcSelectedFlowHour;
+            epcSelectedFlowHour = String(hour || epcSelectedFlowHour);
             if (window.__lastEpcDesignResult) {
                 renderEpcEnergyFlow(window.__lastEpcDesignResult);
             }

@@ -1,8 +1,11 @@
 // Browser global companion for epc-design-engine.mjs. Keep exported names aligned with the module.
 (function(root) {
 const EPC_DESIGN_VERSION = 'epc-design-v2';
+const GLOBAL_SOLAR_ATLAS_API_BASE = 'https://2eueu84zmf.execute-api.eu-west-1.amazonaws.com/prod/';
 
   const EPC_DESIGN_DEFAULTS = Object.freeze({
+    googleMapsBrowserKey: 'AIzaSyANofvEcKkP15p13BCmIMpGvWyuDTtlUKM',
+    globalSolarAtlasApiBase: GLOBAL_SOLAR_ATLAS_API_BASE,
     dieselSfcLPerKwh: 0.27,
     dieselSfcLowLPerKwh: 0.23,
     dieselSfcHighLPerKwh: 0.35,
@@ -54,6 +57,11 @@ const EPC_DESIGN_VERSION = 'epc-design-v2';
     const n = asNumber(value, 0);
     const factor = 10 ** digits;
     return Math.round(n * factor) / factor;
+  }
+
+  function coordinate(value) {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
   }
 
   function isoNow(now) {
@@ -842,10 +850,82 @@ const EPC_DESIGN_VERSION = 'epc-design-v2';
   }
 
   function buildGlobalSolarAtlasUrl(site = {}) {
-    const lat = asNumber(site.latitude, 0);
-    const lng = asNumber(site.longitude, 0);
+    const lat = coordinate(site.latitude) ?? 0;
+    const lng = coordinate(site.longitude) ?? 0;
     const zoom = 11;
     return `https://globalsolaratlas.info/map?c=${lat.toFixed(6)},${lng.toFixed(6)},${zoom}&s=${lat.toFixed(6)},${lng.toFixed(6)}&m=site`;
+  }
+
+  function buildGlobalSolarAtlasApiUrls(site = {}, options = {}) {
+    const lat = coordinate(site.latitude);
+    const lng = coordinate(site.longitude);
+    if (lat === null || lng === null) return [];
+    const base = String(options.apiBase || options.globalSolarAtlasApiBase || GLOBAL_SOLAR_ATLAS_API_BASE).trim().replace(/\/?$/, '/');
+    const latText = lat.toFixed(6);
+    const lngText = lng.toFixed(6);
+    return [
+      `${base}location?lat=${latText}&lng=${lngText}`,
+      `${base}location?latitude=${latText}&longitude=${lngText}`,
+      `${base}location/${latText}/${lngText}`,
+      `${base}location/${latText},${lngText}`
+    ];
+  }
+
+  function findSolarValue(payload, aliases = []) {
+    const wanted = new Set(aliases.map(alias => String(alias).toLowerCase()));
+    const seen = new Set();
+    const visit = (value) => {
+      if (!value || typeof value !== 'object' || seen.has(value)) return undefined;
+      seen.add(value);
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          const found = visit(item);
+          if (found !== undefined) return found;
+        }
+        return undefined;
+      }
+      for (const [key, item] of Object.entries(value)) {
+        if (wanted.has(String(key).toLowerCase())) {
+          const n = Number(item);
+          if (Number.isFinite(n)) return n;
+        }
+      }
+      for (const item of Object.values(value)) {
+        const found = visit(item);
+        if (found !== undefined) return found;
+      }
+      return undefined;
+    };
+    return visit(payload);
+  }
+
+  function dailySolarValue(value, digits = 2) {
+    const n = Number(value);
+    if (!Number.isFinite(n) || n <= 0) return 0;
+    return round(n > 25 ? n / 365 : n, digits);
+  }
+
+  function parseGlobalSolarAtlasSolarResource(payload = {}, options = {}) {
+    const pvout = findSolarValue(payload, [
+      'PVOUT_specific',
+      'PVOUT_csi',
+      'PVOUT',
+      'PVOUT_total',
+      'specificYieldKwhPerKwpDay',
+      'pvYieldKwhPerKwpDay'
+    ]);
+    const ghi = findSolarValue(payload, ['GHI', 'ghiKwhM2Day']);
+    const dni = findSolarValue(payload, ['DNI', 'dniKwhM2Day']);
+    const temp = findSolarValue(payload, ['TEMP', 'temperatureC', 'temperature']);
+    const resource = {
+      specificYieldKwhPerKwpDay: dailySolarValue(pvout, 2),
+      ghiKwhM2Day: dailySolarValue(ghi, 2),
+      dniKwhM2Day: dailySolarValue(dni, 2),
+      temperatureC: Number.isFinite(Number(temp)) ? round(temp, 1) : 0,
+      dataSource: String(options.dataSource || 'Global Solar Atlas'),
+      retrievalDate: isoNow(options.now).slice(0, 10)
+    };
+    return Object.values(resource).some(value => Number(value) > 0) ? resource : null;
   }
 
   function normalizeEpcDesignProjectList(value = [], options = {}) {
@@ -865,6 +945,8 @@ const EPC_DESIGN_VERSION = 'epc-design-v2';
     calculateEpcDesignProject,
     calculatePvStringDesign,
     buildGlobalSolarAtlasUrl,
+    buildGlobalSolarAtlasApiUrls,
+    parseGlobalSolarAtlasSolarResource,
     normalizeEpcDesignProjectList
   };
 })(window);

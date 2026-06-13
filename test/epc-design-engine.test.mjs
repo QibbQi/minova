@@ -3,11 +3,13 @@ import assert from 'node:assert/strict';
 
 import {
   EPC_DESIGN_DEFAULTS,
+  buildGlobalSolarAtlasApiUrls,
   buildEpcDesignProjectFromQuickInputs,
   buildGlobalSolarAtlasUrl,
   calculateEpcDesignProject,
   calculatePvStringDesign,
-  normalizeEpcDesignProject
+  normalizeEpcDesignProject,
+  parseGlobalSolarAtlasSolarResource
 } from '../epc-design-engine.mjs';
 
 const quarryInputs = {
@@ -86,6 +88,50 @@ test('EPC design engine creates auditable formula outputs and GSA link inputs', 
   assert.equal(trace.calculationVersion, 'epc-design-v2');
   assert.match(buildGlobalSolarAtlasUrl(normalized.site), /globalsolaratlas\.info/);
   assert.match(buildGlobalSolarAtlasUrl(normalized.site), /2\.960857/);
+});
+
+test('EPC design engine builds Global Solar Atlas API candidates from site coordinates', () => {
+  const urls = buildGlobalSolarAtlasApiUrls({
+    latitude: 2.9608574,
+    longitude: 101.5725644
+  }, {
+    apiBase: 'https://example.test/prod/'
+  });
+
+  assert.ok(urls.length >= 3);
+  assert.equal(new Set(urls).size, urls.length);
+  assert.match(urls[0], /^https:\/\/example\.test\/prod\/location/);
+  assert.match(urls[0], /lat=2\.960857/);
+  assert.match(urls[0], /lng=101\.572564/);
+  assert.ok(urls.some(url => url.includes('/location/2.960857/101.572564')));
+});
+
+test('EPC design engine parses Global Solar Atlas solar resource values for EPC sizing', () => {
+  const parsed = parseGlobalSolarAtlasSolarResource({
+    data: {
+      lta: {
+        annual: {
+          data: {
+            PVOUT_specific: 3.186,
+            GHI: 1642.5,
+            DNI: 1423.5,
+            TEMP: 26.8
+          }
+        }
+      }
+    }
+  }, {
+    now: '2026-06-13T00:00:00.000Z'
+  });
+
+  assert.deepEqual(parsed, {
+    specificYieldKwhPerKwpDay: 3.19,
+    ghiKwhM2Day: 4.5,
+    dniKwhM2Day: 3.9,
+    temperatureC: 26.8,
+    dataSource: 'Global Solar Atlas',
+    retrievalDate: '2026-06-13'
+  });
 });
 
 test('EPC design engine selects the recommended scheme from the current target replacement', () => {

@@ -1949,6 +1949,8 @@
     "productMasterDetailTemplates": [],
     "epcDesignProjects": [],
     "epcDesignDefaults": {
+      "googleMapsBrowserKey": "AIzaSyANofvEcKkP15p13BCmIMpGvWyuDTtlUKM",
+      "globalSolarAtlasApiBase": "https://2eueu84zmf.execute-api.eu-west-1.amazonaws.com/prod/",
       "dieselSfcLPerKwh": 0.27,
       "dieselSfcLowLPerKwh": 0.23,
       "dieselSfcHighLPerKwh": 0.35,

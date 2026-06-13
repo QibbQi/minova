@@ -2675,16 +2675,22 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     </div>
                 </div>
                 <div class="p-4 space-y-4">
-                    <div id="epc-design-map" class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 min-h-[280px] flex items-center justify-center text-center text-xs font-bold text-slate-400 p-6">
+                    <div id="epc-design-map" class="relative rounded-2xl border border-slate-200 bg-slate-50 min-h-[280px] overflow-hidden text-xs font-bold text-slate-400">
                         Configure Google Maps browser key in EPC defaults, or use manual coordinates.
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <div id="epc-map-current-location" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-bold text-slate-500">Current location: --</div>
+                        <div id="epc-map-pin-location" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-bold text-slate-500">Pin location: --</div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-2">
+                        <input id="epc-solar-pvout" type="number" step="0.01" oninput="setEpcSolarPvoutInput(this.value)" class="border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" placeholder="PVOUT kWh/kWp/day">
                         <input id="epc-solar-ghi" data-epc-field="solarResource.ghiKwhM2Day" type="number" step="0.01" oninput="onEpcDesignInputChanged()" class="border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" placeholder="GHI kWh/m2/day">
                         <input id="epc-solar-dni" data-epc-field="solarResource.dniKwhM2Day" type="number" step="0.01" oninput="onEpcDesignInputChanged()" class="border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" placeholder="DNI kWh/m2/day">
                         <input id="epc-solar-temp" data-epc-field="solarResource.temperatureC" type="number" step="0.1" oninput="onEpcDesignInputChanged()" class="border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" placeholder="Temp C">
                     </div>
                     <div class="flex flex-wrap items-center gap-2">
                         <button type="button" onclick="openEpcGlobalSolarAtlas()" class="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-black hover:bg-black">Open Global Solar Atlas</button>
+                        <button type="button" onclick="fetchEpcGlobalSolarAtlasResource()" class="px-3 py-2 rounded-xl bg-blue-600 text-white text-xs font-black hover:bg-blue-700">Fetch GSA Solar Data</button>
                         <button type="button" onclick="importEpcSolarResource()" class="px-3 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-black hover:bg-slate-50">Import pasted GSA values</button>
                         <span id="epc-solar-source" class="text-xs font-bold text-slate-400">Solar source: Malaysia Default</span>
                     </div>
@@ -5170,11 +5176,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
     <script type="module">
         const {
             EPC_DESIGN_DEFAULTS,
+            buildGlobalSolarAtlasApiUrls,
             buildGlobalSolarAtlasUrl,
             calculateEpcDesignProject,
             calculatePvStringDesign,
             normalizeEpcDesignProject,
-            normalizeEpcDesignProjectList
+            normalizeEpcDesignProjectList,
+            parseGlobalSolarAtlasSolarResource
         } = window.MinovaEpcDesignEngine;
         document.documentElement.dataset.epcDesignWorkspace = 'booted';
 
@@ -10005,6 +10013,11 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             el.value = value ?? '';
         }
 
+        window.setEpcSolarPvoutInput = (value) => {
+            setInputValue('epc-pv-yield', value);
+            window.onEpcDesignInputChanged();
+        };
+
         function epcTimeToMinutes(value, fallback = '09:00') {
             const raw = String(value || fallback || '09:00');
             const match = raw.match(/^(\d{1,2}):?(\d{2})?/);
@@ -10132,6 +10145,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             setInputValue('epc-support-hours', project.designTargets.supportHours || EPC_DESIGN_DEFAULTS.bessAutonomyHours);
             setInputValue('epc-sfc', project.assumptions.dieselSfcLPerKwh || EPC_DESIGN_DEFAULTS.dieselSfcLPerKwh);
             setInputValue('epc-pv-yield', project.solarResource.specificYieldKwhPerKwpDay || EPC_DESIGN_DEFAULTS.malaysiaYieldBase);
+            setInputValue('epc-solar-pvout', project.solarResource.specificYieldKwhPerKwpDay || EPC_DESIGN_DEFAULTS.malaysiaYieldBase);
             setInputValue('epc-bess-dod', project.assumptions.bessDod || EPC_DESIGN_DEFAULTS.bessDod);
             setInputValue('epc-power-factor', project.electrical.powerFactor || EPC_DESIGN_DEFAULTS.powerFactor);
             setInputValue('epc-bess-role', project.designTargets.bessRole || '');
@@ -10747,6 +10761,58 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return String(epcDesignDefaults.googleMapsBrowserKey || epcDesignDefaults.googleMapsApiKey || window.MINOVA_GOOGLE_MAPS_BROWSER_KEY || '').trim();
         }
 
+        function formatEpcCoordinates(lat, lng) {
+            const latN = Number(lat);
+            const lngN = Number(lng);
+            if (!Number.isFinite(latN) || !Number.isFinite(lngN)) return '--';
+            return `${latN.toFixed(6)}, ${lngN.toFixed(6)}`;
+        }
+
+        function setEpcLocationReadout(id, label, lat, lng) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.textContent = `${label}: ${formatEpcCoordinates(lat, lng)}`;
+        }
+
+        function updateEpcPinReadout(site = getActiveEpcDesignProject().site) {
+            const lat = Number(site.latitude);
+            const lng = Number(site.longitude);
+            if (Number.isFinite(lat) && Number.isFinite(lng) && (lat || lng)) {
+                setEpcLocationReadout('epc-map-pin-location', 'Pin location', lat, lng);
+            }
+        }
+
+        function setEpcSolarStatus(message, tone = 'muted') {
+            const el = document.getElementById('epc-solar-source');
+            if (!el) return;
+            el.textContent = message;
+            el.className = tone === 'error'
+                ? 'text-xs font-bold text-red-500'
+                : tone === 'ok'
+                    ? 'text-xs font-bold text-green-600'
+                    : 'text-xs font-bold text-slate-400';
+        }
+
+        function applyEpcSolarResource(resource) {
+            if (!resource) return null;
+            if (resource.specificYieldKwhPerKwpDay) {
+                setInputValue('epc-pv-yield', resource.specificYieldKwhPerKwpDay);
+                setInputValue('epc-solar-pvout', resource.specificYieldKwhPerKwpDay);
+            }
+            if (resource.ghiKwhM2Day) setInputValue('epc-solar-ghi', resource.ghiKwhM2Day);
+            if (resource.dniKwhM2Day) setInputValue('epc-solar-dni', resource.dniKwhM2Day);
+            if (resource.temperatureC) setInputValue('epc-solar-temp', resource.temperatureC);
+            const project = captureEpcDesignFromDom();
+            project.solarResource = {
+                ...(project.solarResource || {}),
+                ...resource,
+                dataSource: resource.dataSource || 'Global Solar Atlas'
+            };
+            updateEpcProject(project);
+            renderEpcDesignWorkspace();
+            return project;
+        }
+
         function loadEpcGoogleMaps() {
             if (window.google?.maps) return Promise.resolve(window.google.maps);
             if (epcGoogleMapsPromise) return epcGoogleMapsPromise;
@@ -10766,18 +10832,23 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
         function updateEpcMapMarker(site = getActiveEpcDesignProject().site) {
             if (!epcDesignMap || !epcDesignMarker || !window.google?.maps) return;
-            const lat = Number(site.latitude || 0);
-            const lng = Number(site.longitude || 0);
-            if (!lat || !lng) return;
+            const lat = Number(site.latitude);
+            const lng = Number(site.longitude);
+            if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
             const position = { lat, lng };
             epcDesignMarker.setPosition(position);
             epcDesignMap.setCenter(position);
+            updateEpcPinReadout(site);
         }
 
-        function setEpcLocation(lat, lng) {
+        function setEpcLocation(lat, lng, options = {}) {
             setInputValue('epc-latitude', Number(lat).toFixed(6));
             setInputValue('epc-longitude', Number(lng).toFixed(6));
+            setEpcLocationReadout('epc-map-pin-location', options.label || 'Pin location', lat, lng);
             window.onEpcDesignInputChanged({ map: true });
+            if (options.fetchSolar !== false && window.fetchEpcGlobalSolarAtlasResource) {
+                window.fetchEpcGlobalSolarAtlasResource({ silent: true });
+            }
         }
 
         function initEpcDesignMap() {
@@ -10809,7 +10880,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 return;
             }
             navigator.geolocation.getCurrentPosition(
-                position => setEpcLocation(position.coords.latitude, position.coords.longitude),
+                position => {
+                    setEpcLocationReadout('epc-map-current-location', 'Current location', position.coords.latitude, position.coords.longitude);
+                    setEpcLocation(position.coords.latitude, position.coords.longitude, { label: 'Pin location' });
+                },
                 () => alert('Location permission was denied or unavailable. Please input coordinates manually.')
             );
         };
@@ -10824,6 +10898,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 const lat = Number(data.latitude);
                 const lng = Number(data.longitude);
                 if (!Number.isFinite(lat) || !Number.isFinite(lng)) throw new Error('ip_location_missing_coordinates');
+                setEpcLocationReadout('epc-map-current-location', 'IP location', lat, lng);
                 setEpcLocation(lat, lng);
                 const project = captureEpcDesignFromDom();
                 project.site.state = project.site.state || data.region || '';
@@ -10842,6 +10917,41 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             window.open(buildGlobalSolarAtlasUrl(project.site), '_blank', 'noopener');
         };
 
+        window.fetchEpcGlobalSolarAtlasResource = async (options = {}) => {
+            const project = captureEpcDesignFromDom();
+            const urls = buildGlobalSolarAtlasApiUrls(project.site, {
+                apiBase: epcDesignDefaults.globalSolarAtlasApiBase
+            });
+            if (!urls.length) {
+                setEpcSolarStatus('Solar source: input latitude and longitude first', 'error');
+                if (!options.silent) alert('Please input latitude and longitude before fetching Global Solar Atlas data.');
+                return null;
+            }
+            setEpcSolarStatus('Solar source: fetching Global Solar Atlas...', 'muted');
+            let lastError = null;
+            for (const url of urls) {
+                try {
+                    const res = await fetch(url, { headers: { Accept: 'application/json' } });
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    const payload = await res.json();
+                    const parsed = parseGlobalSolarAtlasSolarResource(payload);
+                    if (parsed) {
+                        const updated = applyEpcSolarResource(parsed);
+                        setEpcSolarStatus(`Solar source: Global Solar Atlas (${parsed.retrievalDate})`, 'ok');
+                        return updated;
+                    }
+                    lastError = new Error('missing_solar_values');
+                } catch (e) {
+                    lastError = e;
+                }
+            }
+            setEpcSolarStatus('Solar source: GSA auto fetch unavailable; use Open GSA or paste values', 'error');
+            if (!options.silent) {
+                alert(`Global Solar Atlas data could not be fetched automatically (${lastError?.message || 'unknown error'}). Open GSA and paste PVOUT/GHI/DNI/TEMP values if needed.`);
+            }
+            return null;
+        };
+
         window.importEpcSolarResource = () => {
             const raw = document.getElementById('epc-solar-import')?.value || '';
             const findValue = (labels) => {
@@ -10855,7 +10965,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const ghi = findValue(['GHI']);
             const dni = findValue(['DNI']);
             const temp = findValue(['TEMP', 'temperature']);
-            if (pvout) setInputValue('epc-pv-yield', pvout);
+            if (pvout) {
+                setInputValue('epc-pv-yield', pvout);
+                setInputValue('epc-solar-pvout', pvout);
+            }
             if (ghi) setInputValue('epc-solar-ghi', ghi);
             if (dni) setInputValue('epc-solar-dni', dni);
             if (temp) setInputValue('epc-solar-temp', temp);
@@ -10864,6 +10977,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             project.solarResource.retrievalDate = new Date().toISOString().slice(0, 10);
             updateEpcProject(project);
             renderEpcDesignWorkspace();
+            setEpcSolarStatus(`Solar source: Global Solar Atlas Import (${project.solarResource.retrievalDate})`, 'ok');
         };
 
         function canDownloadEpcReport(kind) {

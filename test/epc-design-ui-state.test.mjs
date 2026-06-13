@@ -142,6 +142,13 @@ test('EPC map controls expose browser IP and manual location fallbacks', () => {
   for (const snippet of [
     'Use Current Location',
     'Use IP Location',
+    'Fetch GSA Solar Data',
+    'epc-map-current-location',
+    'epc-map-pin-location',
+    'epc-solar-pvout',
+    'window.fetchEpcGlobalSolarAtlasResource',
+    'parseGlobalSolarAtlasSolarResource',
+    'buildGlobalSolarAtlasApiUrls',
     'window.useEpcIpLocation',
     'ipapi.co/json',
     'Location permission was denied'

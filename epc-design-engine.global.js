@@ -515,6 +515,21 @@ const EPC_DESIGN_VERSION = 'epc-design-v2';
       }, schemes[0]);
   }
 
+  function getSchemeTargetsForProject(project) {
+    const targetPct = round(clamp(project.designTargets.replacementPct, 0, 100, 80), 4);
+    const hasPreset = SCHEME_TARGETS.some(target => Number(target.replacementPct) === targetPct);
+    if (project.mode !== 'detailed' || hasPreset) return SCHEME_TARGETS;
+    return [
+      ...SCHEME_TARGETS,
+      {
+        id: 'replace-target',
+        label: `${round(targetPct, 2)}% Target Replacement`,
+        replacementPct: targetPct,
+        priority: 'Target'
+      }
+    ];
+  }
+
   function calculateCurrentA(powerKw, voltageKv, pf) {
     return powerKw > 0 && voltageKv > 0 && pf > 0
       ? powerKw / (Math.sqrt(3) * voltageKv * pf)
@@ -705,7 +720,7 @@ const EPC_DESIGN_VERSION = 'epc-design-v2';
     const project = normalizeEpcDesignProject(rawProject, options);
     const now = isoNow(options.now);
     const load = calculateLoad(project, now);
-    const schemes = SCHEME_TARGETS.map(target => calculateScheme(project, load, target, now));
+    const schemes = getSchemeTargetsForProject(project).map(target => calculateScheme(project, load, target, now));
     const recommended = pickRecommendedScheme(schemes, project.designTargets.replacementPct);
     const electrical = calculateElectrical(project, recommended);
     const pvStringDesign = calculatePvStringDesign({

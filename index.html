@@ -2629,13 +2629,16 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             <input id="epc-day-finish-time" data-epc-field="loads.operationFinishTime" type="time" onchange="onEpcScheduleInputChanged('finish')" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                         </div>
                     </div>
-                    <div id="epc-change-working-time-row" class="hidden rounded-xl border border-yellow-200 bg-yellow-50 p-3">
-                        <label class="flex items-center justify-between gap-3 text-xs font-black text-yellow-900">
-                            <span>change working time</span>
+                    <div id="epc-change-working-time-row" class="rounded-xl border border-slate-200 bg-slate-50 p-2.5" title="When checked, original genset average load is multiplied by the new PV working hours to update Daily Load and downstream sizing.">
+                        <label class="flex items-center justify-between gap-3 text-xs font-black text-slate-700">
+                            <span class="inline-flex items-center gap-1.5">
+                                change working time
+                                <span class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="When checked, original genset average load is multiplied by the new PV working hours to update Daily Load and downstream sizing.">i</span>
+                            </span>
                             <input id="epc-change-working-time" data-epc-field="loads.changeWorkingTime" type="checkbox" onchange="onEpcDesignInputChanged()" class="h-4 w-4 accent-purple-700">
                         </label>
-                        <p class="mt-2 text-[10px] leading-snug text-yellow-800">When checked, original genset average load is multiplied by the new PV working hours to update Daily Load and downstream sizing.</p>
                     </div>
+                    <div id="epc-advanced-inputs" data-epc-advanced-section="true" class="hidden rounded-2xl border border-slate-100 bg-slate-50/60 p-3 space-y-3">
                     <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Target %</label>
@@ -2729,6 +2732,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                                 <input id="epc-combiner-inputs" data-epc-field="assumptions.combinerInputs" type="number" min="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                             </div>
                         </div>
+                    </div>
                     </div>
                 </div>
             </section>
@@ -10010,8 +10014,20 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const baseHours = Number(project.loads.operationHoursPerDay) || 8;
             const scheduleHours = Number(project.loads.scheduleWorkingHours) || baseHours;
             const changed = Math.abs(scheduleHours - baseHours) > 0.01;
-            row.classList.toggle('hidden', !changed && !project.loads.changeWorkingTime);
+            row.classList.remove('hidden');
+            row.classList.toggle('border-yellow-200', changed || project.loads.changeWorkingTime);
+            row.classList.toggle('bg-yellow-50', changed || project.loads.changeWorkingTime);
+            row.classList.toggle('border-slate-200', !changed && !project.loads.changeWorkingTime);
+            row.classList.toggle('bg-slate-50', !changed && !project.loads.changeWorkingTime);
             if (check) check.checked = !!project.loads.changeWorkingTime;
+        }
+
+        function updateEpcModeSpecificUi() {
+            const canViewEngineering = canReadEpcEngineering();
+            const detailed = epcDesignMode === 'detailed' && canViewEngineering;
+            document.getElementById('epc-advanced-inputs')?.classList.toggle('hidden', !detailed);
+            document.getElementById('epc-detailed-fields')?.classList.toggle('hidden', !detailed);
+            document.getElementById('epc-recommendation-target-toggle')?.classList.toggle('hidden', epcDesignMode === 'detailed');
         }
 
         window.onEpcScheduleInputChanged = (source = '') => {
@@ -10096,6 +10112,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         function renderEpcRecommendationTargetToggle(result) {
             const recommended = getRecommendedEpcScheme(result);
             const selectedPct = Number(recommended.replacementPct || result.designTargets?.replacementPct || 80);
+            updateEpcModeSpecificUi();
             document.querySelectorAll('[data-epc-recommendation-target]').forEach(btn => {
                 const active = Number(btn.dataset.epcRecommendationTarget) === selectedPct;
                 btn.className = active
@@ -10635,7 +10652,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             } else {
                 epcDesignMode = wantsDetailed ? 'detailed' : 'quick';
             }
-            document.getElementById('epc-detailed-fields')?.classList.toggle('hidden', epcDesignMode !== 'detailed' || !canReadEpcEngineering());
+            updateEpcModeSpecificUi();
             document.getElementById('epc-input-mode-label') && (document.getElementById('epc-input-mode-label').textContent = epcDesignMode === 'detailed' ? 'Detailed Design' : 'Quick Design');
             const quick = document.getElementById('epc-mode-quick');
             const detailed = document.getElementById('epc-mode-detailed');
@@ -10874,7 +10891,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 detailedBtn.classList.toggle('opacity-50', !canViewEngineering);
                 detailedBtn.title = canViewEngineering ? '' : 'Engineering permission required';
             }
-            document.getElementById('epc-detailed-fields')?.classList.toggle('hidden', epcDesignMode !== 'detailed' || !canViewEngineering);
+            updateEpcModeSpecificUi();
             view.querySelectorAll('input, textarea, select').forEach(el => {
                 if (el.id === 'epc-design-project-select') return;
                 const engineeringOnly = !!el.closest('#epc-detailed-fields');

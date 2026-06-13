@@ -104,10 +104,21 @@ test('EPC design engine selects the recommended scheme from the current target r
     ...baseProject,
     designTargets: { ...baseProject.designTargets, replacementPct: 76 }
   }, { now: '2026-06-12T00:00:00.000Z' });
+  const detailedTarget = calculateEpcDesignProject({
+    ...baseProject,
+    mode: 'detailed',
+    designTargets: { ...baseProject.designTargets, replacementPct: 85 }
+  }, { now: '2026-06-12T00:00:00.000Z' });
 
   assert.equal(fifty.recommendedSchemeId, 'replace-50');
   assert.equal(hundred.recommendedSchemeId, 'replace-100');
   assert.equal(nearest.recommendedSchemeId, 'replace-80');
+  assert.equal(detailedTarget.recommendedSchemeId, 'replace-target');
+  assert.equal(detailedTarget.schemes.find(scheme => scheme.id === 'replace-target').replacementPct, 85);
+  assert.equal(
+    detailedTarget.schemes.find(scheme => scheme.id === 'replace-target').targetDailyKwh.toFixed(2),
+    (detailedTarget.load.dailyLoadKwh * 0.85).toFixed(2)
+  );
   assert.ok(fifty.pvStringDesign.modules < hundred.pvStringDesign.modules);
   assert.ok(fifty.energyFlow.summary.gensetRemainingKwh > hundred.energyFlow.summary.gensetRemainingKwh);
 });

@@ -58,10 +58,20 @@ test('EPC formula trace shows formula data instead of a raw inputs column', () =
 });
 
 test('EPC detailed engineering inputs are permission-gated separately from quick design', () => {
+  assert.match(html, /id="epc-advanced-inputs"[^>]*data-epc-advanced-section="true"/);
   assert.match(html, /id="epc-detailed-fields"[^>]*data-epc-engineering-section="true"/);
   assert.match(html, /canPerformAction\?\.\('epcDesignEngineering', 'read'\)/);
   assert.match(html, /canPerformAction\?\.\('epcDesignEngineering', 'edit'\)/);
   assert.match(html, /const engineeringOnly = !!el\.closest\('#epc-detailed-fields'\)/);
+});
+
+test('EPC quick and detailed modes keep inputs and target controls scoped', () => {
+  assert.match(html, /function updateEpcModeSpecificUi\(\)/);
+  assert.match(html, /document\.getElementById\('epc-advanced-inputs'\)\?\.classList\.toggle\('hidden', !detailed\)/);
+  assert.match(html, /document\.getElementById\('epc-recommendation-target-toggle'\)\?\.classList\.toggle\('hidden', epcDesignMode === 'detailed'\)/);
+  assert.match(html, /id="epc-change-working-time-row" class="rounded-xl border border-slate-200 bg-slate-50 p-2\.5"/);
+  assert.match(html, /title="When checked, original genset average load is multiplied by the new PV working hours to update Daily Load and downstream sizing\."/);
+  assert.doesNotMatch(html, /<p[^>]*>When checked, original genset average load is multiplied by the new PV working hours to update Daily Load and downstream sizing\.<\/p>/);
 });
 
 test('EPC workspace guides junior engineers through load PCS battery PV steps', () => {

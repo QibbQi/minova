@@ -67,11 +67,41 @@ test('EPC detailed engineering inputs are permission-gated separately from quick
 
 test('EPC quick and detailed modes keep inputs and target controls scoped', () => {
   assert.match(html, /function updateEpcModeSpecificUi\(\)/);
+  assert.match(html, /id="epc-detail-inputs-panel"[^>]*data-epc-detail-inputs-panel="true"/);
+  assert.match(html, /document\.getElementById\('epc-detail-inputs-panel'\)\?\.classList\.toggle\('hidden', !detailed\)/);
   assert.match(html, /document\.getElementById\('epc-advanced-inputs'\)\?\.classList\.toggle\('hidden', !detailed\)/);
   assert.match(html, /document\.getElementById\('epc-recommendation-target-toggle'\)\?\.classList\.toggle\('hidden', epcDesignMode === 'detailed'\)/);
   assert.match(html, /id="epc-change-working-time-row" class="rounded-xl border border-slate-200 bg-slate-50 p-2\.5"/);
   assert.match(html, /title="When checked, original genset average load is multiplied by the new PV working hours to update Daily Load and downstream sizing\."/);
   assert.doesNotMatch(html, /<p[^>]*>When checked, original genset average load is multiplied by the new PV working hours to update Daily Load and downstream sizing\.<\/p>/);
+});
+
+test('EPC quick inputs keep support hours and module wattage while detailed inputs expand horizontally below the main workspace', () => {
+  const supportPos = html.indexOf('id="epc-support-hours"');
+  const modulePos = html.indexOf('id="epc-module-wp"');
+  const detailPanelPos = html.indexOf('id="epc-detail-inputs-panel"');
+  const gridEndPos = html.indexOf('<div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">', detailPanelPos);
+
+  assert.ok(supportPos > -1 && modulePos > -1 && detailPanelPos > -1, 'required EPC inputs exist');
+  assert.ok(supportPos < detailPanelPos, 'Support Hours remains in the quick input column');
+  assert.ok(modulePos < detailPanelPos, 'Module Wp remains in the quick input column');
+  assert.ok(detailPanelPos < gridEndPos, 'Detail Inputs panel is before lower tabbed panels');
+  assert.match(html, /id="epc-detail-inputs-panel"[^>]*class="hidden bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-5"/);
+  assert.match(html, /id="epc-advanced-inputs"[^>]*class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-3 p-4"/);
+  assert.doesNotMatch(html, /id="epc-advanced-inputs"[^>]*space-y-3/);
+});
+
+test('EPC wizard steps expose realtime completion ticks', () => {
+  assert.match(html, /data-epc-step="load"/);
+  assert.match(html, /data-epc-step-check="load"/);
+  assert.match(html, /data-epc-step-check="pcs"/);
+  assert.match(html, /data-epc-step-check="battery"/);
+  assert.match(html, /data-epc-step-check="pv"/);
+  assert.match(html, /data-epc-step-check="ems"/);
+  assert.match(html, /function updateEpcWizardStepStatus\(result, project = getActiveEpcDesignProject\(\)\)/);
+  assert.match(html, /epc-step-complete/);
+  assert.match(html, /epc-step-pending/);
+  assert.match(html, /updateEpcWizardStepStatus\(result, project\)/);
 });
 
 test('EPC workspace guides junior engineers through load PCS battery PV steps', () => {

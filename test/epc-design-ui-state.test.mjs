@@ -240,6 +240,36 @@ test('EPC engine preserves the Load Measurement method', () => {
   assert.match(html, /loads:\s*\{[^}]*measurementMethod:\s*'diesel_sfc_estimate'/s);
 });
 
+test('EPC load measurement modes expose method-specific inputs and state', () => {
+  for (const snippet of [
+    'data-epc-load-method-panel="energy_meter"',
+    'data-epc-load-method-panel="equipment_schedule"',
+    'data-epc-load-method-panel="genset_kva_load_factor"',
+    'data-epc-load-method-panel="diesel_sfc_estimate"',
+    'Upload Energy Meter File',
+    'Raw Peak',
+    'Smoothed Peak',
+    'Edit Schedule',
+    'epc-equipment-schedule-modal',
+    'epc-genset-kva',
+    'data-epc-field="loads.gensetKvaInput.gensetKva"',
+    'data-epc-field="loads.gensetKvaInput.powerFactor"',
+    'data-epc-field="loads.gensetKvaInput.loadFactor"',
+    'data-epc-field="loads.gensetKvaInput.runtimeHours"',
+    'data-epc-field="loads.gensetKvaInput.overloadFactor"',
+    'parseEpcEnergyMeterFile',
+    'renderEpcLoadMeasurementPanels',
+    'openEpcEquipmentScheduleModal',
+    'saveEpcEquipmentScheduleRows',
+    'energyMeterSummary',
+    'equipmentSchedule',
+    'gensetKvaInput'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing measurement UI snippet: ${snippet}`);
+  }
+  assert.match(html, /load:\s*result\.load\?\.dailyLoadKwh > 0 && result\.load\?\.averageLoadKw > 0 && result\.load\?\.peakLoadKw > 0/);
+});
+
 test('EPC EMS flow exposes animated system diagram and clickable hour rows', () => {
   for (const snippet of [
     'epc-flow-diagram',

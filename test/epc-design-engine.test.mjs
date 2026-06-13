@@ -90,6 +90,77 @@ test('EPC design engine creates auditable formula outputs and GSA link inputs', 
   assert.match(buildGlobalSolarAtlasUrl(normalized.site), /2\.960857/);
 });
 
+test('EPC load calculation uses Energy Meter summary values', () => {
+  const project = normalizeEpcDesignProject({
+    loads: {
+      measurementMethod: 'energy_meter',
+      energyMeterSummary: {
+        fileName: 'meter.csv',
+        sampleCount: 96,
+        operatingHours: 24,
+        dailyLoadKwh: 9600,
+        averageLoadKw: 400,
+        rawPeakKw: 650,
+        smoothedPeakKw: 610,
+        dataSource: 'Energy Meter CSV'
+      }
+    }
+  }, { now: '2026-06-12T00:00:00.000Z' });
+  const result = calculateEpcDesignProject(project, { now: '2026-06-12T00:00:00.000Z' });
+
+  assert.equal(result.load.dailyLoadKwh, 9600);
+  assert.equal(result.load.averageLoadKw, 400);
+  assert.equal(result.load.peakLoadKw, 610);
+  assert.equal(result.load.rawPeakLoadKw, 650);
+  assert.equal(result.load.measurementMethod, 'energy_meter');
+  assert.equal(result.loads.loadSource, 'Energy Meter CSV');
+  assert.ok(result.formulaTrace.some(item => item.key === 'dailyLoadKwh' && item.formula === 'Energy Meter Parsed Daily kWh'));
+});
+
+test('EPC load calculation simulates Equipment Schedule overlap', () => {
+  const project = normalizeEpcDesignProject({
+    loads: {
+      measurementMethod: 'equipment_schedule',
+      equipmentSchedule: [
+        { equipment: 'Pump A', ratedKw: 100, quantity: 2, startTime: '09:00', finishTime: '11:00', dutyCycle: 1, simultaneityFactor: 1 },
+        { equipment: 'Crusher', ratedKw: 150, quantity: 1, startTime: '10:00', finishTime: '12:00', dutyCycle: 0.8, simultaneityFactor: 1 }
+      ]
+    }
+  }, { now: '2026-06-12T00:00:00.000Z' });
+  const result = calculateEpcDesignProject(project, { now: '2026-06-12T00:00:00.000Z' });
+
+  assert.equal(result.load.dailyLoadKwh, 640);
+  assert.equal(result.load.averageLoadKw.toFixed(2), '213.33');
+  assert.equal(result.load.peakLoadKw, 320);
+  assert.equal(result.load.measurementMethod, 'equipment_schedule');
+  assert.equal(result.loads.loadSource, 'Equipment Schedule');
+  assert.ok(result.formulaTrace.some(item => item.key === 'peakLoadKw' && item.formula === 'Max 15-min overlapping operating load'));
+});
+
+test('EPC load calculation follows Genset kVA runtime formula', () => {
+  const project = normalizeEpcDesignProject({
+    loads: {
+      measurementMethod: 'genset_kva_load_factor',
+      gensetKvaInput: {
+        gensetKva: 750,
+        powerFactor: 0.8,
+        loadFactor: 0.7,
+        runtimeHours: 10,
+        overloadFactor: 0.95
+      }
+    }
+  }, { now: '2026-06-12T00:00:00.000Z' });
+  const result = calculateEpcDesignProject(project, { now: '2026-06-12T00:00:00.000Z' });
+
+  assert.equal(result.load.ratedKw, 600);
+  assert.equal(result.load.dailyLoadKwh, 4200);
+  assert.equal(result.load.averageLoadKw, 420);
+  assert.equal(result.load.peakLoadKw, 570);
+  assert.equal(result.load.measurementMethod, 'genset_kva_load_factor');
+  assert.equal(result.loads.loadSource, 'Genset kVA / load factor');
+  assert.ok(result.formulaTrace.some(item => item.key === 'averageLoadKw' && item.formula === 'Genset kVA x PF x Load Factor'));
+});
+
 test('EPC design engine builds Global Solar Atlas API candidates from site coordinates', () => {
   const urls = buildGlobalSolarAtlasApiUrls({
     latitude: 2.9608574,

@@ -133,6 +133,61 @@ function normalizeBessRole(value) {
   return raw || 'diesel_replacement';
 }
 
+function normalizeMeasurementMethod(value) {
+  const raw = String(value || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+  if (raw.includes('energy') || raw.includes('meter')) return 'energy_meter';
+  if (raw.includes('equipment') || raw.includes('schedule')) return 'equipment_schedule';
+  if (raw.includes('kva') || raw.includes('load_factor')) return 'genset_kva_load_factor';
+  return 'diesel_sfc_estimate';
+}
+
+function normalizeEnergyMeterSummary(value = {}) {
+  const input = value && typeof value === 'object' ? value : {};
+  return {
+    fileName: String(input.fileName || input.name || '').trim(),
+    sampleCount: Math.max(0, Math.trunc(asNumber(input.sampleCount ?? input.samples, 0))),
+    operatingHours: asNumber(input.operatingHours ?? input.hours, 0),
+    dailyLoadKwh: asNumber(input.dailyLoadKwh ?? input.dailyKwh, 0),
+    averageLoadKw: asNumber(input.averageLoadKw ?? input.avgLoadKw, 0),
+    rawPeakKw: asNumber(input.rawPeakKw ?? input.peakLoadKw, 0),
+    smoothedPeakKw: asNumber(input.smoothedPeakKw ?? input.p99PeakKw ?? input.rawPeakKw, 0),
+    dataSource: String(input.dataSource || 'Energy Meter').trim(),
+    parsedAt: String(input.parsedAt || '')
+  };
+}
+
+function normalizeEquipmentScheduleRow(row = {}, index = 0) {
+  const input = row && typeof row === 'object' ? row : {};
+  return {
+    id: String(input.id || `equipment-${index + 1}`).trim(),
+    equipment: String(input.equipment || input.name || `Equipment ${index + 1}`).trim(),
+    ratedKw: asNumber(input.ratedKw ?? input.rated_kw, 0),
+    quantity: Math.max(1, asNumber(input.quantity, 1)),
+    startTime: normalizeTime(input.startTime ?? input.operationStartTime ?? '09:00', '09:00'),
+    finishTime: normalizeTime(input.finishTime ?? input.operationFinishTime ?? '17:00', '17:00'),
+    dutyCycle: clamp(input.dutyCycle ?? input.duty_cycle, 0, 1, 1),
+    simultaneityFactor: clamp(input.simultaneityFactor ?? input.simultaneity_factor, 0, 1, 1)
+  };
+}
+
+function normalizeGensetKvaInput(value = {}) {
+  const input = value && typeof value === 'object' ? value : {};
+  return {
+    gensetKva: asNumber(input.gensetKva ?? input.genset_kva, 0),
+    powerFactor: clamp(input.powerFactor ?? input.pf, 0.1, 1, 0.8),
+    loadFactor: clamp(input.loadFactor ?? input.load_factor, 0, 1.5, 0.7),
+    runtimeHours: clamp(input.runtimeHours ?? input.runtime_hours, 0, 24, 8),
+    overloadFactor: clamp(input.overloadFactor ?? input.overload_factor, 0, 1.5, 0.95)
+  };
+}
+
+function loadSourceForMethod(method, loads = {}) {
+  if (method === 'energy_meter') return loads.energyMeterSummary?.dataSource || 'Energy Meter';
+  if (method === 'equipment_schedule') return 'Equipment Schedule';
+  if (method === 'genset_kva_load_factor') return 'Genset kVA / load factor';
+  return 'Diesel / SFC estimate';
+}
+
 function buildFormulaTrace({ key, label, formula, inputs, result, unit, assumptionSource = 'Default', now, isOverride = false, overrideReason = '' }) {
   return {
     key,
@@ -180,13 +235,19 @@ export function normalizeEpcDesignProject(raw = {}, options = {}) {
   const site = raw.site || {};
   const loads = raw.loads || {};
   const designTargets = raw.designTargets || {};
-  const electrical = raw.electrical || {};
-  const assumptions = raw.assumptions || {};
-  const solarResource = defaultSolarResource(raw.solarResource || {}, defaults);
-  const id = String(raw.id || project.id || `epc-${Date.parse(now) || Date.now()}`).trim();
-  const dayHours = clamp(loads.operationHoursPerDay ?? raw.operationHoursPerDay, 1, 24, 8);
-  const operationStartTime = normalizeTime(loads.operationStartTime ?? raw.operationStartTime, '09:00');
-  const operationFinishTime = normalizeTime(loads.operationFinishTime ?? raw.operationFinishTime, addHoursToTime(operationStartTime, dayHours));
+    const electrical = raw.electrical || {};
+    const assumptions = raw.assumptions || {};
+    const solarResource = defaultSolarResource(raw.solarResource || {}, defaults);
+    const id = String(raw.id || project.id || `epc-${Date.parse(now) || Date.now()}`).trim();
+    const measurementMethod = normalizeMeasurementMethod(loads.measurementMethod ?? raw.measurementMethod);
+    const energyMeterSummary = normalizeEnergyMeterSummary(loads.energyMeterSummary || raw.energyMeterSummary || {});
+    const equipmentSchedule = (Array.isArray(loads.equipmentSchedule) ? loads.equipmentSchedule : Array.isArray(raw.equipmentSchedule) ? raw.equipmentSchedule : [])
+      .map((row, index) => normalizeEquipmentScheduleRow(row, index))
+      .filter(row => row.ratedKw > 0);
+    const gensetKvaInput = normalizeGensetKvaInput(loads.gensetKvaInput || raw.gensetKvaInput || {});
+    const dayHours = clamp(loads.operationHoursPerDay ?? raw.operationHoursPerDay, 1, 24, 8);
+    const operationStartTime = normalizeTime(loads.operationStartTime ?? raw.operationStartTime, '09:00');
+    const operationFinishTime = normalizeTime(loads.operationFinishTime ?? raw.operationFinishTime, addHoursToTime(operationStartTime, dayHours));
   const scheduleWorkingHours = Math.min(24, Math.max(1, hoursBetweenTimes(operationStartTime, operationFinishTime)));
 
   return {
@@ -210,10 +271,11 @@ export function normalizeEpcDesignProject(raw = {}, options = {}) {
     },
     gensets: Array.isArray(raw.gensets) ? raw.gensets : [],
     loadProfile: Array.isArray(raw.loadProfile) ? raw.loadProfile : Array.isArray(raw.load_profile) ? raw.load_profile : [],
-    loads: {
-      dieselTotalLiters: asNumber(loads.dieselTotalLiters ?? raw.dieselTotalLiters, 0),
-      dieselPeriodDays: Math.max(1, asNumber(loads.dieselPeriodDays ?? raw.dieselPeriodDays, 1)),
-      dieselPricePerLiter: asNumber(loads.dieselPricePerLiter ?? raw.dieselPricePerLiter, 0),
+      loads: {
+        measurementMethod,
+        dieselTotalLiters: asNumber(loads.dieselTotalLiters ?? raw.dieselTotalLiters, 0),
+        dieselPeriodDays: Math.max(1, asNumber(loads.dieselPeriodDays ?? raw.dieselPeriodDays, 1)),
+        dieselPricePerLiter: asNumber(loads.dieselPricePerLiter ?? raw.dieselPricePerLiter, 0),
       operationHoursPerDay: dayHours,
       operationStartTime,
       operationFinishTime,
@@ -222,12 +284,14 @@ export function normalizeEpcDesignProject(raw = {}, options = {}) {
       measuredDailyLoadKwh: asNumber(loads.measuredDailyLoadKwh, 0),
       peakLoadKw: asNumber(loads.peakLoadKw ?? raw.peakLoadKw, 0),
       peakLoadSafetyFactor: asNumber(loads.peakLoadSafetyFactor ?? raw.peakLoadSafetyFactor ?? assumptions.peakLoadFactor, defaults.peakLoadFactor),
-      criticalLoadKw: asNumber(loads.criticalLoadKw ?? raw.criticalLoadKw, 0),
-      allowedGensetLoadKw: asNumber(loads.allowedGensetLoadKw ?? raw.allowedGensetLoadKw, 0),
-      equipmentType: String(loads.equipmentType || raw.equipmentType || 'water_pump').trim(),
-      measurementMethod: String(loads.measurementMethod || raw.measurementMethod || 'diesel_sfc_estimate').trim(),
-      loadSource: String(loads.loadSource || 'diesel_reverse').trim()
-    },
+        criticalLoadKw: asNumber(loads.criticalLoadKw ?? raw.criticalLoadKw, 0),
+        allowedGensetLoadKw: asNumber(loads.allowedGensetLoadKw ?? raw.allowedGensetLoadKw, 0),
+        equipmentType: String(loads.equipmentType || raw.equipmentType || 'water_pump').trim(),
+        energyMeterSummary,
+        equipmentSchedule,
+        gensetKvaInput,
+        loadSource: String(loadSourceForMethod(measurementMethod, { energyMeterSummary }) || 'Diesel / SFC estimate').trim()
+      },
     solarResource,
     designTargets: {
       replacementPct: clamp(designTargets.replacementPct ?? raw.targetReplacementPct, 0, 100, 80),
@@ -298,7 +362,10 @@ export function buildEpcDesignProjectFromQuickInputs(inputs = {}, options = {}) 
 function dataQualityScore(project) {
   let score = 0;
   if (project.site.latitude && project.site.longitude) score += 18;
-  if (project.loads.measuredDailyLoadKwh > 0) score += 30;
+  if (project.loads.measurementMethod === 'energy_meter' && project.loads.energyMeterSummary.dailyLoadKwh > 0) score += 30;
+  else if (project.loads.measurementMethod === 'equipment_schedule' && project.loads.equipmentSchedule.length) score += 24;
+  else if (project.loads.measurementMethod === 'genset_kva_load_factor' && project.loads.gensetKvaInput.gensetKva > 0) score += 20;
+  else if (project.loads.measuredDailyLoadKwh > 0) score += 30;
   else if (project.loads.dieselTotalLiters > 0 && project.loads.dieselPeriodDays > 0) score += 22;
   if (project.solarResource.dataSource !== 'Malaysia Default') score += 22;
   else score += 10;
@@ -308,7 +375,23 @@ function dataQualityScore(project) {
   return Math.min(100, score);
 }
 
-function calculateLoad(project, now) {
+function decorateLoadResult(project, load, trace) {
+  const dailyDieselLiters = project.loads.dieselTotalLiters / Math.max(1, project.loads.dieselPeriodDays);
+  const averageLoadKw = asNumber(load.averageLoadKw, 0);
+  return {
+    dailyDieselLiters,
+    monthlyDieselLiters: dailyDieselLiters * 30,
+    annualDieselLiters: dailyDieselLiters * 365,
+    monthlyDieselCost: dailyDieselLiters * 30 * project.loads.dieselPricePerLiter,
+    criticalLoadKw: project.loads.criticalLoadKw > 0 ? project.loads.criticalLoadKw : averageLoadKw,
+    measurementMethod: project.loads.measurementMethod,
+    loadSource: load.loadSource || project.loads.loadSource,
+    ...load,
+    trace
+  };
+}
+
+function calculateDieselSfcLoad(project, now) {
   const sfc = asNumber(project.assumptions.dieselSfcLPerKwh, EPC_DESIGN_DEFAULTS.dieselSfcLPerKwh);
   const dailyDieselLiters = project.loads.dieselTotalLiters / Math.max(1, project.loads.dieselPeriodDays);
   const gensetDailyLoadKwh = project.loads.measuredDailyLoadKwh > 0
@@ -321,16 +404,14 @@ function calculateLoad(project, now) {
   const peakLoadSafetyFactor = Math.max(0.01, asNumber(project.loads.peakLoadSafetyFactor, project.assumptions.peakLoadFactor));
   const peakLoadKw = averageLoadKw * peakLoadSafetyFactor;
   const criticalLoadKw = project.loads.criticalLoadKw > 0 ? project.loads.criticalLoadKw : averageLoadKw;
-  return {
+  return decorateLoadResult(project, {
     dailyDieselLiters,
     dailyLoadKwh,
     averageLoadKw,
     peakLoadKw,
     criticalLoadKw,
-    monthlyDieselLiters: dailyDieselLiters * 30,
-    annualDieselLiters: dailyDieselLiters * 365,
-    monthlyDieselCost: dailyDieselLiters * 30 * project.loads.dieselPricePerLiter,
-    trace: [
+    loadSource: project.loads.loadSource
+  }, [
       buildFormulaTrace({
         key: 'dailyDieselLiters',
         label: 'Daily Diesel',
@@ -385,8 +466,168 @@ function calculateLoad(project, now) {
         assumptionSource: project.loads.criticalLoadKw > 0 ? 'User Input' : 'Default',
         now
       })
-    ]
-  };
+    ]);
+}
+
+function calculateEnergyMeterLoad(project, now) {
+  const summary = project.loads.energyMeterSummary || {};
+  const dailyLoadKwh = asNumber(summary.dailyLoadKwh, 0);
+  const operatingHours = Math.max(1, asNumber(summary.operatingHours || project.loads.operationHoursPerDay, project.loads.operationHoursPerDay || 24));
+  const averageLoadKw = asNumber(summary.averageLoadKw, 0) > 0 ? asNumber(summary.averageLoadKw, 0) : dailyLoadKwh / operatingHours;
+  const rawPeakLoadKw = asNumber(summary.rawPeakKw, 0);
+  const peakLoadKw = asNumber(summary.smoothedPeakKw, 0) > 0 ? asNumber(summary.smoothedPeakKw, 0) : rawPeakLoadKw;
+  return decorateLoadResult(project, {
+    dailyLoadKwh,
+    averageLoadKw,
+    peakLoadKw,
+    rawPeakLoadKw,
+    operatingHours,
+    loadSource: summary.dataSource || 'Energy Meter'
+  }, [
+    buildFormulaTrace({
+      key: 'dailyLoadKwh',
+      label: 'Daily Load',
+      formula: 'Energy Meter Parsed Daily kWh',
+      inputs: { fileName: summary.fileName, sampleCount: summary.sampleCount },
+      result: round(dailyLoadKwh, 4),
+      unit: 'kWh/day',
+      assumptionSource: summary.dataSource || 'Energy Meter',
+      now
+    }),
+    buildFormulaTrace({
+      key: 'averageLoadKw',
+      label: 'Average Load',
+      formula: 'Energy Meter Daily kWh / Operating Hours',
+      inputs: { dailyLoadKwh: round(dailyLoadKwh, 4), operatingHours },
+      result: round(averageLoadKw, 4),
+      unit: 'kW',
+      assumptionSource: summary.dataSource || 'Energy Meter',
+      now
+    }),
+    buildFormulaTrace({
+      key: 'peakLoadKw',
+      label: 'Peak Load',
+      formula: 'Energy Meter p99 / Smoothed Peak',
+      inputs: { rawPeakKw: rawPeakLoadKw, smoothedPeakKw: peakLoadKw },
+      result: round(peakLoadKw, 4),
+      unit: 'kW',
+      assumptionSource: summary.dataSource || 'Energy Meter',
+      now
+    })
+  ]);
+}
+
+function calculateEquipmentScheduleLoad(project, now) {
+  const stepMinutes = 15;
+  const intervalLoads = new Map();
+  for (const row of project.loads.equipmentSchedule || []) {
+    const start = timeToMinutes(row.startTime);
+    let finish = timeToMinutes(row.finishTime, row.startTime);
+    if (finish <= start) finish += 1440;
+    const kw = row.ratedKw * row.quantity * row.dutyCycle * row.simultaneityFactor;
+    for (let minute = start; minute < finish; minute += stepMinutes) {
+      const key = Math.floor(minute / stepMinutes);
+      intervalLoads.set(key, (intervalLoads.get(key) || 0) + kw);
+    }
+  }
+  const intervalHours = stepMinutes / 60;
+  const intervalValues = [...intervalLoads.values()];
+  const dailyLoadKwh = intervalValues.reduce((sum, kw) => sum + kw * intervalHours, 0);
+  const operatingHours = intervalValues.length * intervalHours;
+  const averageLoadKw = operatingHours > 0 ? dailyLoadKwh / operatingHours : 0;
+  const peakLoadKw = intervalValues.reduce((max, kw) => Math.max(max, kw), 0);
+  return decorateLoadResult(project, {
+    dailyLoadKwh: round(dailyLoadKwh, 4),
+    averageLoadKw: round(averageLoadKw, 4),
+    peakLoadKw: round(peakLoadKw, 4),
+    operatingHours: round(operatingHours, 4),
+    loadSource: 'Equipment Schedule'
+  }, [
+    buildFormulaTrace({
+      key: 'dailyLoadKwh',
+      label: 'Daily Load',
+      formula: 'Σ 15-min Operating Load',
+      inputs: { equipmentCount: project.loads.equipmentSchedule.length, intervalMinutes: stepMinutes },
+      result: round(dailyLoadKwh, 4),
+      unit: 'kWh/day',
+      assumptionSource: 'Equipment Schedule',
+      now
+    }),
+    buildFormulaTrace({
+      key: 'averageLoadKw',
+      label: 'Average Load',
+      formula: 'Equipment Schedule Daily kWh / Active Operating Hours',
+      inputs: { dailyLoadKwh: round(dailyLoadKwh, 4), operatingHours: round(operatingHours, 4) },
+      result: round(averageLoadKw, 4),
+      unit: 'kW',
+      assumptionSource: 'Equipment Schedule',
+      now
+    }),
+    buildFormulaTrace({
+      key: 'peakLoadKw',
+      label: 'Peak Load',
+      formula: 'Max 15-min overlapping operating load',
+      inputs: { equipmentCount: project.loads.equipmentSchedule.length, intervalMinutes: stepMinutes },
+      result: round(peakLoadKw, 4),
+      unit: 'kW',
+      assumptionSource: 'Equipment Schedule',
+      now
+    })
+  ]);
+}
+
+function calculateGensetKvaLoad(project, now) {
+  const input = project.loads.gensetKvaInput || {};
+  const ratedKw = input.gensetKva * input.powerFactor;
+  const averageLoadKw = ratedKw * input.loadFactor;
+  const dailyLoadKwh = averageLoadKw * input.runtimeHours;
+  const peakLoadKw = ratedKw * input.overloadFactor;
+  return decorateLoadResult(project, {
+    ratedKw: round(ratedKw, 4),
+    dailyLoadKwh: round(dailyLoadKwh, 4),
+    averageLoadKw: round(averageLoadKw, 4),
+    peakLoadKw: round(peakLoadKw, 4),
+    operatingHours: input.runtimeHours,
+    loadSource: 'Genset kVA / load factor'
+  }, [
+    buildFormulaTrace({
+      key: 'averageLoadKw',
+      label: 'Average Load',
+      formula: 'Genset kVA x PF x Load Factor',
+      inputs: { gensetKva: input.gensetKva, powerFactor: input.powerFactor, loadFactor: input.loadFactor },
+      result: round(averageLoadKw, 4),
+      unit: 'kW',
+      assumptionSource: 'Genset kVA / load factor',
+      now
+    }),
+    buildFormulaTrace({
+      key: 'dailyLoadKwh',
+      label: 'Daily Load',
+      formula: 'Genset Average Load x Runtime Hours',
+      inputs: { averageLoadKw: round(averageLoadKw, 4), runtimeHours: input.runtimeHours },
+      result: round(dailyLoadKwh, 4),
+      unit: 'kWh/day',
+      assumptionSource: 'Genset kVA / load factor',
+      now
+    }),
+    buildFormulaTrace({
+      key: 'peakLoadKw',
+      label: 'Peak Load',
+      formula: 'Genset Rated kW x Overload Factor',
+      inputs: { ratedKw: round(ratedKw, 4), overloadFactor: input.overloadFactor },
+      result: round(peakLoadKw, 4),
+      unit: 'kW',
+      assumptionSource: 'Genset kVA / load factor',
+      now
+    })
+  ]);
+}
+
+function calculateLoad(project, now) {
+  if (project.loads.measurementMethod === 'energy_meter') return calculateEnergyMeterLoad(project, now);
+  if (project.loads.measurementMethod === 'equipment_schedule') return calculateEquipmentScheduleLoad(project, now);
+  if (project.loads.measurementMethod === 'genset_kva_load_factor') return calculateGensetKvaLoad(project, now);
+  return calculateDieselSfcLoad(project, now);
 }
 
 function roundUpStep(value, step) {
@@ -598,8 +839,8 @@ function buildBoq(project, recommended) {
 
 function buildRisks(project, load, electrical, recommended) {
   const risks = [];
-  if (project.loads.loadSource !== 'measured_profile') {
-    risks.push({ level: 'High', area: 'Load', issue: 'Sizing is based on diesel reverse calculation; measured load curve is required before guarantee.' });
+  if (project.loads.measurementMethod !== 'energy_meter') {
+    risks.push({ level: 'High', area: 'Load', issue: 'Sizing is not based on measured meter data; measured load curve is required before guarantee.' });
   }
   if (project.solarResource.dataSource === 'Malaysia Default') {
     risks.push({ level: 'Medium', area: 'Solar', issue: 'Solar resource uses Malaysia default yield; import Global Solar Atlas or PVsyst data for precise design.' });

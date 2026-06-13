@@ -2674,6 +2674,67 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             <option value="diesel_sfc_estimate">Diesel / SFC estimate</option>
                         </select>
                     </div>
+                    <div data-epc-load-method-panel="energy_meter" class="hidden rounded-2xl border border-blue-100 bg-blue-50/60 p-3 space-y-3">
+                        <input id="epc-energy-meter-file" type="file" accept=".csv,.xlsx,.xls" class="hidden" onchange="parseEpcEnergyMeterFile(this.files?.[0])">
+                        <button type="button" onclick="document.getElementById('epc-energy-meter-file')?.click()" class="w-full px-3 py-2 rounded-xl bg-blue-600 text-white text-xs font-black hover:bg-blue-700">Upload Energy Meter File</button>
+                        <div id="epc-energy-meter-status" class="text-[11px] font-bold text-slate-500">No meter file parsed.</div>
+                        <div class="grid grid-cols-2 gap-2 text-[11px]">
+                            <div class="rounded-xl border border-blue-100 bg-white p-2"><div class="font-black text-slate-400 uppercase">Daily</div><div id="epc-meter-daily" class="font-black text-slate-800">--</div></div>
+                            <div class="rounded-xl border border-blue-100 bg-white p-2"><div class="font-black text-slate-400 uppercase">Avg</div><div id="epc-meter-avg" class="font-black text-slate-800">--</div></div>
+                            <div class="rounded-xl border border-blue-100 bg-white p-2"><div class="font-black text-slate-400 uppercase">Raw Peak</div><div id="epc-meter-raw-peak" class="font-black text-slate-800">--</div></div>
+                            <div class="rounded-xl border border-blue-100 bg-white p-2"><div class="font-black text-slate-400 uppercase">Smoothed Peak</div><div id="epc-meter-smoothed-peak" class="font-black text-slate-800">--</div></div>
+                        </div>
+                    </div>
+                    <div data-epc-load-method-panel="equipment_schedule" class="hidden rounded-2xl border border-amber-100 bg-amber-50/60 p-3 space-y-3">
+                        <button type="button" onclick="openEpcEquipmentScheduleModal()" class="w-full px-3 py-2 rounded-xl brand-yellow-action border text-xs font-black">Edit Schedule</button>
+                        <div id="epc-equipment-schedule-summary" class="text-[11px] font-bold text-slate-500">No equipment schedule rows.</div>
+                    </div>
+                    <div data-epc-load-method-panel="genset_kva_load_factor" class="hidden rounded-2xl border border-slate-200 bg-slate-50 p-3 space-y-3">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Genset kVA</label>
+                                <input id="epc-genset-kva" data-epc-field="loads.gensetKvaInput.gensetKva" type="number" min="0" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">PF</label>
+                                <input id="epc-genset-pf" data-epc-field="loads.gensetKvaInput.powerFactor" type="number" min="0.1" max="1" step="0.01" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Load Factor</label>
+                                <input id="epc-genset-load-factor" data-epc-field="loads.gensetKvaInput.loadFactor" type="number" min="0" max="1.5" step="0.01" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Runtime Hours</label>
+                                <input id="epc-genset-runtime-hours" data-epc-field="loads.gensetKvaInput.runtimeHours" type="number" min="0" max="24" step="0.1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Overload Factor</label>
+                            <input id="epc-genset-overload-factor" data-epc-field="loads.gensetKvaInput.overloadFactor" type="number" min="0" max="1.5" step="0.01" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        </div>
+                    </div>
+                    <div data-epc-load-method-panel="diesel_sfc_estimate" class="rounded-2xl border border-slate-200 bg-slate-50 p-3 space-y-3">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Diesel Liters</label>
+                                <input id="epc-diesel-total" data-epc-field="loads.dieselTotalLiters" type="number" min="0" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Period Days</label>
+                                <input id="epc-diesel-days" data-epc-field="loads.dieselPeriodDays" type="number" min="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Diesel RM/L</label>
+                                <input id="epc-diesel-price" data-epc-field="loads.dieselPricePerLiter" type="number" min="0" step="0.01" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Hours/Day</label>
+                                <input id="epc-operation-hours" data-epc-field="loads.operationHoursPerDay" type="number" min="1" max="24" oninput="onEpcScheduleInputChanged('hours')" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
+                            </div>
+                        </div>
+                    </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Country</label>
@@ -2692,26 +2753,6 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <div>
                             <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Longitude</label>
                             <input id="epc-longitude" data-epc-field="site.longitude" type="number" step="0.000001" oninput="onEpcDesignInputChanged({ map: true })" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <div>
-                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Diesel Liters</label>
-                            <input id="epc-diesel-total" data-epc-field="loads.dieselTotalLiters" type="number" min="0" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
-                        </div>
-                        <div>
-                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Period Days</label>
-                            <input id="epc-diesel-days" data-epc-field="loads.dieselPeriodDays" type="number" min="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <div>
-                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Diesel RM/L</label>
-                            <input id="epc-diesel-price" data-epc-field="loads.dieselPricePerLiter" type="number" min="0" step="0.01" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
-                        </div>
-                        <div>
-                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Hours/Day</label>
-                            <input id="epc-operation-hours" data-epc-field="loads.operationHoursPerDay" type="number" min="1" max="24" oninput="onEpcScheduleInputChanged('hours')" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                         </div>
                     </div>
                     <div class="grid grid-cols-2 gap-2">
@@ -2902,6 +2943,39 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 </div>
             </div>
         </section>
+
+        <div id="epc-equipment-schedule-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-[240] p-4">
+            <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl overflow-hidden">
+                <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3">
+                    <div>
+                        <h3 class="text-lg font-black text-slate-800">Equipment Schedule</h3>
+                        <p class="text-xs text-slate-400">Rows are simulated at 15-minute overlap intervals.</p>
+                    </div>
+                    <button type="button" onclick="closeEpcEquipmentScheduleModal()" class="px-3 py-2 rounded-xl border border-slate-200 text-xs font-black text-slate-600 hover:bg-slate-50">Close</button>
+                </div>
+                <div class="p-4 overflow-x-auto">
+                    <table class="w-full text-xs">
+                        <thead class="text-[10px] uppercase text-slate-400">
+                            <tr>
+                                <th class="px-2 py-2 text-left">Equipment</th>
+                                <th class="px-2 py-2 text-right">Rated kW</th>
+                                <th class="px-2 py-2 text-right">Qty</th>
+                                <th class="px-2 py-2 text-left">Start</th>
+                                <th class="px-2 py-2 text-left">Finish</th>
+                                <th class="px-2 py-2 text-right">Duty</th>
+                                <th class="px-2 py-2 text-right">Simult.</th>
+                                <th class="px-2 py-2"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="epc-equipment-schedule-rows" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+                <div class="px-5 py-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                    <button type="button" onclick="addEpcEquipmentScheduleRow()" class="px-3 py-2 rounded-xl border border-slate-200 text-xs font-black text-slate-700 hover:bg-slate-50">Add Equipment</button>
+                    <button type="button" onclick="saveEpcEquipmentScheduleRows()" class="px-4 py-2 rounded-xl bg-purple-700 text-white text-xs font-black hover:bg-purple-800">Save Schedule</button>
+                </div>
+            </div>
+        </div>
 
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div class="px-4 py-3 border-b border-slate-100 flex flex-wrap gap-2">
@@ -10024,7 +10098,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 mode: epcDesignMode,
                 project: { name: 'New Hybrid EPC Design', stage: 'Concept' },
                 site: { country: 'Malaysia', gridMode: 'hybrid' },
-                loads: { dieselPeriodDays: 1, operationHoursPerDay: 8, operationStartTime: '09:00', operationFinishTime: '17:00', changeWorkingTime: false, equipmentType: 'water_pump', measurementMethod: 'diesel_sfc_estimate' },
+                loads: { dieselPeriodDays: 1, operationHoursPerDay: 8, operationStartTime: '09:00', operationFinishTime: '17:00', changeWorkingTime: false, equipmentType: 'water_pump', measurementMethod: 'diesel_sfc_estimate', gensetKvaInput: { powerFactor: 0.8, loadFactor: 0.7, runtimeHours: 8, overloadFactor: 0.95 } },
                 designTargets: { replacementPct: 80 },
                 assumptions: epcDesignDefaults,
                 solarResource: { dataSource: 'Malaysia Default' }
@@ -10150,10 +10224,50 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             document.getElementById('epc-recommendation-target-toggle')?.classList.toggle('hidden', epcDesignMode === 'detailed');
         }
 
+        function epcLoadMethodLabel(method = 'diesel_sfc_estimate') {
+            const labels = {
+                energy_meter: 'Energy Meter',
+                equipment_schedule: 'Equipment Schedule',
+                genset_kva_load_factor: 'Genset kVA / load factor',
+                diesel_sfc_estimate: 'Diesel / SFC estimate'
+            };
+            return labels[method] || labels.diesel_sfc_estimate;
+        }
+
+        function renderEpcLoadMeasurementPanels(project = getActiveEpcDesignProject(), result = null) {
+            const method = project.loads.measurementMethod || 'diesel_sfc_estimate';
+            document.querySelectorAll('[data-epc-load-method-panel]').forEach(panel => {
+                panel.classList.toggle('hidden', panel.dataset.epcLoadMethodPanel !== method);
+            });
+            const summary = project.loads.energyMeterSummary || {};
+            const status = document.getElementById('epc-energy-meter-status');
+            if (status) {
+                status.textContent = summary.fileName
+                    ? `${summary.fileName} · ${Number(summary.sampleCount || 0).toLocaleString()} samples`
+                    : 'No meter file parsed.';
+            }
+            const load = result?.load || {};
+            const setText = (id, value) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = value;
+            };
+            setText('epc-meter-daily', summary.dailyLoadKwh ? formatEpcNumber(summary.dailyLoadKwh, 0, 'kWh') : '--');
+            setText('epc-meter-avg', summary.averageLoadKw ? formatEpcNumber(summary.averageLoadKw, 0, 'kW') : '--');
+            setText('epc-meter-raw-peak', summary.rawPeakKw ? formatEpcNumber(summary.rawPeakKw, 0, 'kW') : '--');
+            setText('epc-meter-smoothed-peak', summary.smoothedPeakKw ? formatEpcNumber(summary.smoothedPeakKw, 0, 'kW') : '--');
+            const rows = Array.isArray(project.loads.equipmentSchedule) ? project.loads.equipmentSchedule : [];
+            const scheduleSummary = document.getElementById('epc-equipment-schedule-summary');
+            if (scheduleSummary) {
+                scheduleSummary.textContent = rows.length
+                    ? `${rows.length} rows · ${formatEpcNumber(load.dailyLoadKwh, 0, 'kWh/day')} · peak ${formatEpcNumber(load.peakLoadKw, 0, 'kW')}`
+                    : 'No equipment schedule rows.';
+            }
+        }
+
         function updateEpcWizardStepStatus(result, project = getActiveEpcDesignProject()) {
             const recommended = getRecommendedEpcScheme(result);
             const statuses = {
-                load: result.load?.dailyLoadKwh > 0 && result.load?.averageLoadKw > 0 && project.loads.dieselPeriodDays > 0,
+                load: result.load?.dailyLoadKwh > 0 && result.load?.averageLoadKw > 0 && result.load?.peakLoadKw > 0,
                 pcs: recommended.pcsRecommendedMw > 0,
                 battery: recommended.bessRecommendedMwh > 0 && project.designTargets.supportHours > 0,
                 pv: recommended.pvRecommendedMwp > 0 && project.assumptions.moduleWp > 0 && project.assumptions.modulesPerString > 0 && project.assumptions.combinerInputs > 0,
@@ -10202,6 +10316,177 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             window.onEpcDesignInputChanged();
         }
 
+        function parseEpcNumberCell(value) {
+            if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+            const n = Number(String(value ?? '').replace(/,/g, '').trim());
+            return Number.isFinite(n) ? n : 0;
+        }
+
+        function normalizeEpcHeader(value) {
+            return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+        }
+
+        function findEpcColumnIndex(headers, aliases) {
+            const wanted = aliases.map(normalizeEpcHeader);
+            return headers.findIndex(header => wanted.includes(normalizeEpcHeader(header)));
+        }
+
+        function percentileEpc(values, pct) {
+            const rows = values.filter(value => Number.isFinite(value)).slice().sort((a, b) => a - b);
+            if (!rows.length) return 0;
+            const idx = Math.min(rows.length - 1, Math.max(0, Math.ceil((pct / 100) * rows.length) - 1));
+            return rows[idx];
+        }
+
+        function epcRowsToEnergyMeterSummary(rows, fileName) {
+            if (!Array.isArray(rows) || rows.length < 2) throw new Error('Energy meter file is empty.');
+            const headers = rows[0].map(normalizeEpcHeader);
+            const timeIdx = findEpcColumnIndex(headers, ['timestamp', 'time', 'date_time', 'datetime']);
+            const powerIdx = findEpcColumnIndex(headers, ['power_kw', 'kw', 'load_kw', 'demand_kw']);
+            const energyIdx = findEpcColumnIndex(headers, ['interval_kwh', 'kwh', 'energy_kwh']);
+            if (powerIdx < 0 && energyIdx < 0) throw new Error('Need power_kw or interval_kwh column.');
+            const points = rows.slice(1).map(row => {
+                const timestamp = timeIdx >= 0 ? new Date(row[timeIdx]) : null;
+                const powerKw = powerIdx >= 0 ? parseEpcNumberCell(row[powerIdx]) : null;
+                const intervalKwh = energyIdx >= 0 ? parseEpcNumberCell(row[energyIdx]) : null;
+                return {
+                    timestamp: timestamp && !Number.isNaN(timestamp.getTime()) ? timestamp : null,
+                    powerKw,
+                    intervalKwh
+                };
+            }).filter(point => (point.powerKw !== null && point.powerKw > 0) || (point.intervalKwh !== null && point.intervalKwh > 0));
+            if (!points.length) throw new Error('No valid meter readings found.');
+            const deltas = points.map((point, index) => {
+                const next = points[index + 1]?.timestamp;
+                if (point.timestamp && next) {
+                    const hours = (next.getTime() - point.timestamp.getTime()) / 3600000;
+                    if (hours > 0 && hours <= 24) return hours;
+                }
+                return 0;
+            }).filter(Boolean);
+            const intervalHours = deltas.length ? percentileEpc(deltas, 50) : 0.25;
+            const days = (() => {
+                const dated = points.filter(point => point.timestamp);
+                if (dated.length < 2) return 1;
+                const spanHours = Math.max(intervalHours, (dated.at(-1).timestamp.getTime() - dated[0].timestamp.getTime()) / 3600000 + intervalHours);
+                return Math.max(1, spanHours / 24);
+            })();
+            const kwValues = points.map(point => {
+                if (point.powerKw !== null) return point.powerKw;
+                return point.intervalKwh / Math.max(0.001, intervalHours);
+            });
+            const totalKwh = points.reduce((sum, point) => {
+                if (point.intervalKwh !== null) return sum + point.intervalKwh;
+                return sum + point.powerKw * intervalHours;
+            }, 0);
+            const operatingHours = points.filter((point, index) => kwValues[index] > 0).length * intervalHours / days;
+            const dailyLoadKwh = totalKwh / days;
+            const rawPeakKw = Math.max(...kwValues);
+            const smoothedPeakKw = percentileEpc(kwValues, 99);
+            const averageLoadKw = dailyLoadKwh / Math.max(1, operatingHours);
+            return {
+                fileName,
+                sampleCount: points.length,
+                operatingHours: Math.round(operatingHours * 100) / 100,
+                dailyLoadKwh: Math.round(dailyLoadKwh * 100) / 100,
+                averageLoadKw: Math.round(averageLoadKw * 100) / 100,
+                rawPeakKw: Math.round(rawPeakKw * 100) / 100,
+                smoothedPeakKw: Math.round(smoothedPeakKw * 100) / 100,
+                dataSource: 'Energy Meter',
+                parsedAt: new Date().toISOString()
+            };
+        }
+
+        window.parseEpcEnergyMeterFile = async (file) => {
+            if (!file) return;
+            try {
+                let rows = [];
+                if (/\.xlsx?$/i.test(file.name)) {
+                    if (!window.XLSX) throw new Error('XLSX parser is not loaded.');
+                    const buffer = await file.arrayBuffer();
+                    const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+                } else {
+                    const text = await file.text();
+                    rows = text.trim().split(/\r?\n/).map(line => line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(cell => cell.replace(/^"|"$/g, '').trim()));
+                }
+                const summary = epcRowsToEnergyMeterSummary(rows, file.name);
+                const project = captureEpcDesignFromDom();
+                project.loads.measurementMethod = 'energy_meter';
+                project.loads.energyMeterSummary = summary;
+                project.loads.loadSource = summary.dataSource;
+                updateEpcProject(project);
+                syncEpcDesignInputs(project);
+                renderEpcDesignResult(project);
+                const status = document.getElementById('epc-design-save-status');
+                if (status) status.textContent = 'Energy meter parsed locally';
+            } catch (error) {
+                alert(`Energy meter parse failed: ${String(error?.message || error)}`);
+            }
+        };
+
+        function epcScheduleRowsFromModal() {
+            return [...document.querySelectorAll('[data-epc-equipment-row]')].map(row => ({
+                id: row.dataset.epcEquipmentRow || `equipment-${Date.now()}`,
+                equipment: row.querySelector('[data-epc-equipment-field="equipment"]')?.value || 'Equipment',
+                ratedKw: Number(row.querySelector('[data-epc-equipment-field="ratedKw"]')?.value) || 0,
+                quantity: Number(row.querySelector('[data-epc-equipment-field="quantity"]')?.value) || 1,
+                startTime: row.querySelector('[data-epc-equipment-field="startTime"]')?.value || '09:00',
+                finishTime: row.querySelector('[data-epc-equipment-field="finishTime"]')?.value || '17:00',
+                dutyCycle: Number(row.querySelector('[data-epc-equipment-field="dutyCycle"]')?.value) || 0,
+                simultaneityFactor: Number(row.querySelector('[data-epc-equipment-field="simultaneityFactor"]')?.value) || 0
+            })).filter(row => row.ratedKw > 0);
+        }
+
+        function renderEpcEquipmentScheduleRows(rows = []) {
+            const body = document.getElementById('epc-equipment-schedule-rows');
+            if (!body) return;
+            body.innerHTML = (rows.length ? rows : [{ id: `equipment-${Date.now()}`, equipment: '', ratedKw: '', quantity: 1, startTime: '09:00', finishTime: '17:00', dutyCycle: 1, simultaneityFactor: 1 }]).map((row, index) => `
+                <tr data-epc-equipment-row="${htmlSafe(row.id || `equipment-${index + 1}`)}">
+                    <td class="px-2 py-2"><input data-epc-equipment-field="equipment" value="${htmlSafe(row.equipment || '')}" class="w-40 border border-slate-200 rounded-lg px-2 py-1 outline-none focus:border-purple-500"></td>
+                    <td class="px-2 py-2"><input data-epc-equipment-field="ratedKw" type="number" min="0" value="${htmlSafe(row.ratedKw ?? '')}" class="w-24 border border-slate-200 rounded-lg px-2 py-1 text-right outline-none focus:border-purple-500"></td>
+                    <td class="px-2 py-2"><input data-epc-equipment-field="quantity" type="number" min="1" value="${htmlSafe(row.quantity || 1)}" class="w-20 border border-slate-200 rounded-lg px-2 py-1 text-right outline-none focus:border-purple-500"></td>
+                    <td class="px-2 py-2"><input data-epc-equipment-field="startTime" type="time" value="${htmlSafe(row.startTime || '09:00')}" class="w-28 border border-slate-200 rounded-lg px-2 py-1 outline-none focus:border-purple-500"></td>
+                    <td class="px-2 py-2"><input data-epc-equipment-field="finishTime" type="time" value="${htmlSafe(row.finishTime || '17:00')}" class="w-28 border border-slate-200 rounded-lg px-2 py-1 outline-none focus:border-purple-500"></td>
+                    <td class="px-2 py-2"><input data-epc-equipment-field="dutyCycle" type="number" min="0" max="1" step="0.01" value="${htmlSafe(row.dutyCycle ?? 1)}" class="w-20 border border-slate-200 rounded-lg px-2 py-1 text-right outline-none focus:border-purple-500"></td>
+                    <td class="px-2 py-2"><input data-epc-equipment-field="simultaneityFactor" type="number" min="0" max="1" step="0.01" value="${htmlSafe(row.simultaneityFactor ?? 1)}" class="w-20 border border-slate-200 rounded-lg px-2 py-1 text-right outline-none focus:border-purple-500"></td>
+                    <td class="px-2 py-2 text-right"><button type="button" onclick="this.closest('tr')?.remove()" class="px-2 py-1 rounded-lg border border-slate-200 text-[10px] font-black text-slate-500 hover:bg-slate-50">Delete</button></td>
+                </tr>
+            `).join('');
+        }
+
+        window.openEpcEquipmentScheduleModal = () => {
+            const project = getActiveEpcDesignProject();
+            renderEpcEquipmentScheduleRows(project.loads.equipmentSchedule || []);
+            const modal = document.getElementById('epc-equipment-schedule-modal');
+            modal?.classList.remove('hidden');
+            modal?.classList.add('flex');
+        };
+
+        window.closeEpcEquipmentScheduleModal = () => {
+            const modal = document.getElementById('epc-equipment-schedule-modal');
+            modal?.classList.add('hidden');
+            modal?.classList.remove('flex');
+        };
+
+        window.addEpcEquipmentScheduleRow = () => {
+            renderEpcEquipmentScheduleRows([...epcScheduleRowsFromModal(), { id: `equipment-${Date.now()}`, equipment: '', ratedKw: '', quantity: 1, startTime: '09:00', finishTime: '17:00', dutyCycle: 1, simultaneityFactor: 1 }]);
+        };
+
+        window.saveEpcEquipmentScheduleRows = () => {
+            const project = captureEpcDesignFromDom();
+            project.loads.measurementMethod = 'equipment_schedule';
+            project.loads.equipmentSchedule = epcScheduleRowsFromModal();
+            project.loads.loadSource = 'Equipment Schedule';
+            updateEpcProject(project);
+            syncEpcDesignInputs(project);
+            renderEpcDesignResult(project);
+            window.closeEpcEquipmentScheduleModal();
+            const status = document.getElementById('epc-design-save-status');
+            if (status) status.textContent = 'Equipment schedule updated locally';
+        };
+
         function syncEpcDesignInputs(project) {
             setInputValue('epc-load-measurement-method', project.loads.measurementMethod || 'diesel_sfc_estimate');
             setInputValue('epc-country', project.site.country);
@@ -10212,6 +10497,11 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             setInputValue('epc-diesel-days', project.loads.dieselPeriodDays || 1);
             setInputValue('epc-diesel-price', project.loads.dieselPricePerLiter || '');
             setInputValue('epc-operation-hours', project.loads.operationHoursPerDay || 8);
+            setInputValue('epc-genset-kva', project.loads.gensetKvaInput?.gensetKva || '');
+            setInputValue('epc-genset-pf', project.loads.gensetKvaInput?.powerFactor || 0.8);
+            setInputValue('epc-genset-load-factor', project.loads.gensetKvaInput?.loadFactor || 0.7);
+            setInputValue('epc-genset-runtime-hours', project.loads.gensetKvaInput?.runtimeHours || 8);
+            setInputValue('epc-genset-overload-factor', project.loads.gensetKvaInput?.overloadFactor || 0.95);
             setInputValue('epc-day-start-time', project.loads.operationStartTime || '09:00');
             setInputValue('epc-day-finish-time', project.loads.operationFinishTime || '17:00');
             setInputValue('epc-change-working-time', project.loads.changeWorkingTime);
@@ -10236,6 +10526,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             setInputValue('epc-solar-ghi', project.solarResource.ghiKwhM2Day || '');
             setInputValue('epc-solar-dni', project.solarResource.dniKwhM2Day || '');
             setInputValue('epc-solar-temp', project.solarResource.temperatureC || '');
+            renderEpcLoadMeasurementPanels(project);
         }
 
         function formatEpcNumber(value, digits = 2, unit = '') {
@@ -10697,7 +10988,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             target.innerHTML = `
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
                     <div class="rounded-xl border border-slate-200 p-3"><span class="font-black text-slate-700">Location</span><br>${htmlSafe(result.site.country)} ${htmlSafe(result.site.state)}<br>${formatEpcNumber(result.site.latitude, 6)}, ${formatEpcNumber(result.site.longitude, 6)}</div>
-                    <div class="rounded-xl border border-slate-200 p-3"><span class="font-black text-slate-700">Load Source</span><br>${htmlSafe(result.loads.loadSource)}<br>${formatEpcNumber(result.loads.dieselTotalLiters, 0, 'L')} / ${formatEpcNumber(result.loads.dieselPeriodDays, 0, 'days')}</div>
+                    <div class="rounded-xl border border-slate-200 p-3"><span class="font-black text-slate-700">Load Source</span><br>${htmlSafe(epcLoadMethodLabel(result.loads.measurementMethod))}<br>${htmlSafe(result.load.loadSource || result.loads.loadSource || '')}</div>
                     <div class="rounded-xl border border-slate-200 p-3"><span class="font-black text-slate-700">Solar Resource</span><br>${htmlSafe(result.solar.dataSource)}<br>${formatEpcNumber(result.solar.specificYieldKwhPerKwpDay, 2, 'kWh/kWp/day')}</div>
                 </div>
             `;
@@ -10716,6 +11007,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             renderEpcEnergyFlow(result);
             renderEpcReports(result);
             updateEpcWizardStepStatus(result, project);
+            renderEpcLoadMeasurementPanels(project, result);
             const source = document.getElementById('epc-solar-source');
             if (source) source.textContent = `Solar source: ${result.solar.dataSource}`;
             const rec = document.getElementById('epc-design-recommendation');

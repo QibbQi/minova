@@ -225,6 +225,7 @@ export function normalizeEpcDesignProject(raw = {}, options = {}) {
       criticalLoadKw: asNumber(loads.criticalLoadKw ?? raw.criticalLoadKw, 0),
       allowedGensetLoadKw: asNumber(loads.allowedGensetLoadKw ?? raw.allowedGensetLoadKw, 0),
       equipmentType: String(loads.equipmentType || raw.equipmentType || 'water_pump').trim(),
+      measurementMethod: String(loads.measurementMethod || raw.measurementMethod || 'diesel_sfc_estimate').trim(),
       loadSource: String(loads.loadSource || 'diesel_reverse').trim()
     },
     solarResource,

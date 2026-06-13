@@ -2599,7 +2599,6 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             <div class="px-6 py-5 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                 <div class="min-w-0">
                     <p class="text-[10px] font-black text-purple-700 uppercase tracking-widest mb-1">Hybrid EPC Design</p>
-                    <h2 class="text-2xl font-black text-slate-800 leading-tight">Genset Replacement PV + BESS + Diesel Workspace</h2>
                     <p class="text-xs text-slate-400 mt-1">Concept design with formula trace, assumptions, risks, BOQ, and permission-gated reports.</p>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
@@ -2609,7 +2608,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     <button type="button" onclick="createEpcDesignProject()" class="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-black hover:bg-black">New</button>
                     <button type="button" onclick="saveCurrentEpcDesignProject()" class="px-3 py-2 rounded-xl bg-purple-700 text-white text-xs font-black hover:bg-purple-800">Save</button>
                     <button type="button" onclick="downloadEpcDesignReport('customer')" data-epc-download="customer" class="px-3 py-2 rounded-xl brand-yellow-action border text-xs font-black">Customer Summary</button>
-                    <button type="button" onclick="downloadEpcDesignReport('engineering')" data-epc-download="engineering" class="px-3 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-black hover:bg-slate-50">Engineering Calc</button>
+                    <button type="button" onclick="downloadEpcDesignReport('engineering')" data-epc-download="engineering" class="hidden px-3 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-black hover:bg-slate-50" aria-label="Download engineering calculation"></button>
                 </div>
             </div>
             <div class="px-6 py-4 bg-slate-50/60 border-b border-slate-100 flex flex-col md:flex-row md:items-center gap-3">
@@ -2617,7 +2616,6 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     <button id="epc-mode-quick" type="button" onclick="setEpcDesignMode('quick')" class="px-4 py-2 rounded-lg text-xs font-black bg-purple-700 text-white shadow-sm">Quick Design</button>
                     <button id="epc-mode-detailed" type="button" onclick="setEpcDesignMode('detailed')" class="px-4 py-2 rounded-lg text-xs font-black text-purple-700 brand-yellow-inactive">Detailed Design</button>
                 </div>
-                <div id="epc-design-quality" class="text-xs font-bold text-slate-500">Data quality: --</div>
                 <div id="epc-design-save-status" class="text-xs font-bold text-slate-400 md:ml-auto">Draft not saved</div>
             </div>
         </div>
@@ -2668,8 +2666,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 </div>
                 <div class="p-4 space-y-4">
                     <div>
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Project</label>
-                        <input id="epc-project-name" data-epc-field="project.name" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" placeholder="Malaysia Quarry Hybrid Study">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Load Measurement</label>
+                        <select id="epc-load-measurement-method" data-epc-field="loads.measurementMethod" onchange="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
+                            <option value="energy_meter">Energy Meter</option>
+                            <option value="equipment_schedule">Equipment Schedule</option>
+                            <option value="genset_kva_load_factor">Genset kVA / load factor</option>
+                            <option value="diesel_sfc_estimate">Diesel / SFC estimate</option>
+                        </select>
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
@@ -2811,7 +2814,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         <section id="epc-detail-inputs-panel" data-epc-detail-inputs-panel="true" class="hidden bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-5">
             <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-3">
                 <div>
-                    <h3 class="epc-field-label text-sm font-black text-slate-800">Detail Inputs <span data-epc-help="detail-inputs" class="epc-help-dot" tabindex="0" data-tip="Detailed Design uses Target % here as the calculation standard.">i</span></h3>
+                    <h3 class="epc-field-label text-sm font-black text-slate-800" title="Detailed Design uses Target % here as the calculation standard.">Detail Inputs <span data-epc-help="detail-inputs" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Detailed Design uses Target % here as the calculation standard.">i</span></h3>
                 </div>
                 <span class="text-[10px] font-black uppercase text-purple-700">Engineering</span>
             </div>
@@ -2819,17 +2822,17 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 <div id="epc-advanced-inputs" data-epc-advanced-section="true" class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-3 p-4">
                     <div class="grid grid-cols-2 gap-2">
                         <div>
-                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1">Target % <span data-epc-help="target-replacement" class="epc-help-dot" tabindex="0" data-tip="Target diesel replacement percentage used as the detailed design standard.">i</span></label>
+                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Target diesel replacement percentage used as the detailed design standard.">Target % <span data-epc-help="target-replacement" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Target diesel replacement percentage used as the detailed design standard.">i</span></label>
                             <input id="epc-target-replacement" data-epc-field="designTargets.replacementPct" type="number" min="0" max="100" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                         </div>
                         <div>
-                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1">Area m2 <span data-epc-help="available-area" class="epc-help-dot" tabindex="0" data-tip="Available site area for PV layout feasibility and land-use checks.">i</span></label>
+                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Available site area for PV layout feasibility and land-use checks.">Area m2 <span data-epc-help="available-area" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Available site area for PV layout feasibility and land-use checks.">i</span></label>
                             <input id="epc-available-area" data-epc-field="site.availableAreaM2" type="number" min="0" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                         </div>
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
-                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1">Peak Load Factor <span data-epc-help="peak-load-factor" class="epc-help-dot" tabindex="0" data-tip="Peak Load = Avg Load x Safety Factor; PCS is then rounded up to the next 0.5MW.">i</span></label>
+                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Peak Load = Avg Load x Safety Factor; PCS is then rounded up to the next 0.5MW.">Peak Load Factor <span data-epc-help="peak-load-factor" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Peak Load = Avg Load x Safety Factor; PCS is then rounded up to the next 0.5MW.">i</span></label>
                             <select id="epc-peak-load-factor" data-epc-field="loads.peakLoadSafetyFactor" data-epc-number="true" onchange="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
                                 <option value="1.1">Stable load - 1.10x</option>
                                 <option value="1.3">Normal variation - 1.30x</option>
@@ -2837,12 +2840,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             </select>
                         </div>
                         <div>
-                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1">Genset Allowed kW <span data-epc-help="allowed-genset-load" class="epc-help-dot" tabindex="0" data-tip="Diesel power intentionally kept online; Peak Shaving PCS covers Peak minus this value.">i</span></label>
+                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Diesel power intentionally kept online; Peak Shaving PCS covers Peak minus this value.">Genset Allowed kW <span data-epc-help="allowed-genset-load" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Diesel power intentionally kept online; Peak Shaving PCS covers Peak minus this value.">i</span></label>
                             <input id="epc-allowed-genset-load" data-epc-field="loads.allowedGensetLoadKw" type="number" min="0" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                         </div>
                     </div>
                     <div>
-                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1">Operating Equipment <span data-epc-help="load-equipment-type" class="epc-help-dot" tabindex="0" data-tip="Select the operating load type so the model can keep recommendations tied to the site duty.">i</span></label>
+                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Select the operating load type so the model can keep recommendations tied to the site duty.">Operating Equipment <span data-epc-help="load-equipment-type" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Select the operating load type so the model can keep recommendations tied to the site duty.">i</span></label>
                         <select id="epc-load-equipment-type" data-epc-field="loads.equipmentType" onchange="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
                             <option value="water_pump">Water Pump</option>
                             <option value="crusher">Crusher</option>
@@ -2853,7 +2856,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         </select>
                     </div>
                     <div>
-                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1">BESS Role <span data-epc-help="bess-role" class="epc-help-dot" tabindex="0" data-tip="Defines the battery operating purpose used by sizing, recommendation, and risk notes.">i</span></label>
+                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Defines the battery operating purpose used by sizing, recommendation, and risk notes.">BESS Role <span data-epc-help="bess-role" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Defines the battery operating purpose used by sizing, recommendation, and risk notes.">i</span></label>
                         <select id="epc-bess-role" data-epc-field="designTargets.bessRole" onchange="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
                             <option value="diesel_replacement">Diesel Replacement</option>
                             <option value="peak_shaving">Peak Shaving</option>
@@ -2864,35 +2867,35 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
-                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1">SFC L/kWh <span data-epc-help="sfc" class="epc-help-dot" tabindex="0" data-tip="Diesel generator specific fuel consumption used to convert diesel liters into electrical load.">i</span></label>
+                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Diesel generator specific fuel consumption used to convert diesel liters into electrical load.">SFC L/kWh <span data-epc-help="sfc" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Diesel generator specific fuel consumption used to convert diesel liters into electrical load.">i</span></label>
                             <input id="epc-sfc" data-epc-field="assumptions.dieselSfcLPerKwh" type="number" step="0.01" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                         </div>
                         <div>
-                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1">PV Yield <span data-epc-help="pv-yield" class="epc-help-dot" tabindex="0" data-tip="Daily PV yield used for PV sizing; this should follow GSA PVOUT when solar data is fetched.">i</span></label>
+                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Daily PV yield used for PV sizing; this should follow GSA PVOUT when solar data is fetched.">PV Yield <span data-epc-help="pv-yield" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Daily PV yield used for PV sizing; this should follow GSA PVOUT when solar data is fetched.">i</span></label>
                             <input id="epc-pv-yield" data-epc-field="solarResource.specificYieldKwhPerKwpDay" type="number" step="0.1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                         </div>
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
-                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1">DoD <span data-epc-help="bess-dod" class="epc-help-dot" tabindex="0" data-tip="Usable battery depth of discharge applied to BESS capacity sizing.">i</span></label>
+                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Usable battery depth of discharge applied to BESS capacity sizing.">DoD <span data-epc-help="bess-dod" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Usable battery depth of discharge applied to BESS capacity sizing.">i</span></label>
                             <input id="epc-bess-dod" data-epc-field="assumptions.bessDod" type="number" step="0.01" min="0" max="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                         </div>
                         <div>
-                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1">PF <span data-epc-help="power-factor" class="epc-help-dot" tabindex="0" data-tip="Power factor used for AC current and voltage architecture checks.">i</span></label>
+                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Power factor used for AC current and voltage architecture checks.">PF <span data-epc-help="power-factor" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Power factor used for AC current and voltage architecture checks.">i</span></label>
                             <input id="epc-power-factor" data-epc-field="electrical.powerFactor" type="number" step="0.01" min="0.1" max="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                         </div>
                     </div>
                     <div>
-                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1">Critical Load kW <span data-epc-help="critical-load" class="epc-help-dot" tabindex="0" data-tip="Must-run load for backup or island mode; blank falls back to average load.">i</span></label>
+                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Must-run load for backup or island mode; blank falls back to average load.">Critical Load kW <span data-epc-help="critical-load" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Must-run load for backup or island mode; blank falls back to average load.">i</span></label>
                         <input id="epc-critical-load" data-epc-field="loads.criticalLoadKw" type="number" min="0" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
-                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1">/ String <span data-epc-help="modules-per-string" class="epc-help-dot" tabindex="0" data-tip="PV modules per string used for string count and combiner sizing.">i</span></label>
+                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="PV modules per string used for string count and combiner sizing.">/ String <span data-epc-help="modules-per-string" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="PV modules per string used for string count and combiner sizing.">i</span></label>
                             <input id="epc-modules-per-string" data-epc-field="assumptions.modulesPerString" type="number" min="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                         </div>
                         <div>
-                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1">Combiner <span data-epc-help="combiner-inputs" class="epc-help-dot" tabindex="0" data-tip="Combiner input count used to estimate combiner quantity from total strings.">i</span></label>
+                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Combiner input count used to estimate combiner quantity from total strings.">Combiner <span data-epc-help="combiner-inputs" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Combiner input count used to estimate combiner quantity from total strings.">i</span></label>
                             <input id="epc-combiner-inputs" data-epc-field="assumptions.combinerInputs" type="number" min="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                         </div>
                     </div>
@@ -10021,7 +10024,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 mode: epcDesignMode,
                 project: { name: 'New Hybrid EPC Design', stage: 'Concept' },
                 site: { country: 'Malaysia', gridMode: 'hybrid' },
-                loads: { dieselPeriodDays: 1, operationHoursPerDay: 8, operationStartTime: '09:00', operationFinishTime: '17:00', changeWorkingTime: false, equipmentType: 'water_pump' },
+                loads: { dieselPeriodDays: 1, operationHoursPerDay: 8, operationStartTime: '09:00', operationFinishTime: '17:00', changeWorkingTime: false, equipmentType: 'water_pump', measurementMethod: 'diesel_sfc_estimate' },
                 designTargets: { replacementPct: 80 },
                 assumptions: epcDesignDefaults,
                 solarResource: { dataSource: 'Malaysia Default' }
@@ -10200,7 +10203,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
 
         function syncEpcDesignInputs(project) {
-            setInputValue('epc-project-name', project.project.name);
+            setInputValue('epc-load-measurement-method', project.loads.measurementMethod || 'diesel_sfc_estimate');
             setInputValue('epc-country', project.site.country);
             setInputValue('epc-state', project.site.state);
             setInputValue('epc-latitude', project.site.latitude || '');
@@ -10713,8 +10716,6 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             renderEpcEnergyFlow(result);
             renderEpcReports(result);
             updateEpcWizardStepStatus(result, project);
-            const quality = document.getElementById('epc-design-quality');
-            if (quality) quality.textContent = `Data quality: ${result.dataQualityScore}/100`;
             const source = document.getElementById('epc-solar-source');
             if (source) source.textContent = `Solar source: ${result.solar.dataSource}`;
             const rec = document.getElementById('epc-design-recommendation');

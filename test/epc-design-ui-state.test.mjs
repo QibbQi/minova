@@ -47,6 +47,11 @@ test('EPC design workspace exposes quick detailed map solar and report surfaces'
   ]) {
     assert.match(source, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing EPC UI snippet: ${snippet}`);
   }
+  assert.doesNotMatch(source, /Genset Replacement PV \+ BESS \+ Diesel Workspace/);
+  assert.doesNotMatch(source, /Data quality:/);
+  assert.doesNotMatch(source, /id="epc-design-quality"/);
+  assert.doesNotMatch(source, />Engineering Calc</);
+  assert.match(source, /<button[^>]*data-epc-download="engineering"[^>]*class="[^"]*\bhidden\b/);
 });
 
 test('EPC formula trace shows formula data instead of a raw inputs column', () => {
@@ -86,6 +91,12 @@ test('EPC quick inputs keep support hours and module wattage while detailed inpu
   assert.ok(supportPos < detailPanelPos, 'Support Hours remains in the quick input column');
   assert.ok(modulePos < detailPanelPos, 'Module Wp remains in the quick input column');
   assert.ok(detailPanelPos < gridEndPos, 'Detail Inputs panel is before lower tabbed panels');
+  assert.match(html, /id="epc-load-measurement-method"[^>]*data-epc-field="loads\.measurementMethod"/);
+  assert.match(html, />Load Measurement<\/label>/);
+  assert.match(html, />Diesel \/ SFC estimate<\/option>/);
+  assert.match(html, /measurementMethod:\s*'diesel_sfc_estimate'/);
+  assert.match(html, /setInputValue\('epc-load-measurement-method', project\.loads\.measurementMethod \|\| 'diesel_sfc_estimate'\)/);
+  assert.doesNotMatch(html, /id="epc-project-name"/);
   assert.match(html, /id="epc-detail-inputs-panel"[^>]*class="hidden bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-5"/);
   assert.match(html, /id="epc-advanced-inputs"[^>]*class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-3 p-4"/);
   assert.doesNotMatch(html, /id="epc-advanced-inputs"[^>]*space-y-3/);
@@ -178,6 +189,9 @@ test('EPC map controls expose browser IP and manual location fallbacks', () => {
 });
 
 test('EPC detailed inputs expose title pointers instead of inline helper paragraphs', () => {
+  const section = html.match(/<section id="epc-detail-inputs-panel"[\s\S]*?<\/section>/);
+  assert.ok(section, 'Detail Inputs section exists');
+  const detailSection = section[0];
   for (const snippet of [
     'data-epc-help="detail-inputs"',
     'data-epc-help="target-replacement"',
@@ -208,11 +222,22 @@ test('EPC detailed inputs expose title pointers instead of inline helper paragra
     'PV modules per string used for string count and combiner sizing.',
     'Combiner input count used to estimate combiner quantity from total strings.'
   ]) {
-    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing detail helper snippet: ${snippet}`);
+    assert.match(detailSection, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing detail helper snippet: ${snippet}`);
   }
-  assert.doesNotMatch(html, /<p class="mt-1 text-\[10px\] leading-snug text-slate-400">Peak Load = Avg Load x Safety Factor/);
-  assert.doesNotMatch(html, /<p class="mt-1 text-\[10px\] leading-snug text-slate-400">Diesel power intentionally kept online/);
-  assert.doesNotMatch(html, /<p class="mt-1 text-\[10px\] leading-snug text-slate-400">Must-run load for backup or island mode/);
+  assert.doesNotMatch(detailSection, /epc-help-dot/);
+  assert.doesNotMatch(detailSection, /data-tip=/);
+  assert.match(detailSection, /title="Detailed Design uses Target % here as the calculation standard\."/);
+  assert.match(detailSection, /title="Target diesel replacement percentage used as the detailed design standard\."/);
+  assert.match(detailSection, /title="Must-run load for backup or island mode; blank falls back to average load\."/);
+  assert.doesNotMatch(detailSection, /<p class="mt-1 text-\[10px\] leading-snug text-slate-400">Peak Load = Avg Load x Safety Factor/);
+  assert.doesNotMatch(detailSection, /<p class="mt-1 text-\[10px\] leading-snug text-slate-400">Diesel power intentionally kept online/);
+  assert.doesNotMatch(detailSection, /<p class="mt-1 text-\[10px\] leading-snug text-slate-400">Must-run load for backup or island mode/);
+});
+
+test('EPC engine preserves the Load Measurement method', () => {
+  assert.match(html, /data-epc-field="loads\.measurementMethod"/);
+  assert.match(html, /setNestedValue\(draft, path, value\)/);
+  assert.match(html, /loads:\s*\{[^}]*measurementMethod:\s*'diesel_sfc_estimate'/s);
 });
 
 test('EPC EMS flow exposes animated system diagram and clickable hour rows', () => {

@@ -29,6 +29,8 @@ const BUSINESS_DOMAIN_PERMISSIONS = {
   certification_requirement: 'engineering',
   product_certification_evidence: 'engineering',
   product_master_detail_template: 'engineering',
+  epc_design_project: 'epcDesign',
+  epc_design_defaults: 'epcDesignEngineering',
   inventory: 'inventory',
   inventory_history: 'inventory',
   sales_record: 'inventory',
@@ -44,7 +46,8 @@ const BUSINESS_SETTINGS_KEYS = new Set([
   'profit_settings',
   'installer_profit_settings',
   'installer_quote_settings',
-  'non_stock_pricing_strategies'
+  'non_stock_pricing_strategies',
+  'epc_design_defaults'
 ]);
 
 export default {
@@ -1244,6 +1247,7 @@ export function normalizeQuoteCrudPayload(body = {}) {
 function businessSettingPermission(key) {
   if (['market_price_settings', 'subcategories_by_category', 'non_stock_pricing_strategies'].includes(key)) return 'priceList';
   if (['profit_settings', 'installer_profit_settings', 'installer_quote_settings'].includes(key)) return 'quoteSettings';
+  if (key === 'epc_design_defaults') return 'epcDesignEngineering';
   return '';
 }
 
@@ -1256,6 +1260,7 @@ export function businessSnapshotToItems(data = {}, quotes = []) {
     ...arr(data.certificationRequirementsCatalog).map(record => ({ domain: 'certification_requirement', recordId: recordIdFor(record), payload: record })),
     ...arr(data.productCertificationEvidence).map(record => ({ domain: 'product_certification_evidence', recordId: recordIdFor(record), payload: record })),
     ...arr(data.productMasterDetailTemplates).map(record => ({ domain: 'product_master_detail_template', recordId: recordIdFor(record), payload: record })),
+    ...arr(data.epcDesignProjects).map(record => ({ domain: 'epc_design_project', recordId: recordIdFor(record), payload: record })),
     ...arr(data.inventory).map(record => ({ domain: 'inventory', recordId: recordIdFor(record), payload: record })),
     ...arr(data.inventoryHistory).map((record, index) => ({ domain: 'inventory_history', recordId: recordIdFor(record, index), payload: record })),
     ...arr(data.salesRecords).map((record, index) => ({ domain: 'sales_record', recordId: recordIdFor(record, index), payload: record })),
@@ -1274,7 +1279,8 @@ export function businessSnapshotToItems(data = {}, quotes = []) {
     profit_settings: data.profitSettings || {},
     installer_profit_settings: data.installerProfitSettings || {},
     installer_quote_settings: data.installerQuoteSettings || {},
-    non_stock_pricing_strategies: data.nonStockPricingStrategies || {}
+    non_stock_pricing_strategies: data.nonStockPricingStrategies || {},
+    epc_design_defaults: data.epcDesignDefaults || {}
   };
   return { items, settings };
 }
@@ -1287,6 +1293,7 @@ export function buildBusinessBootstrapPayload(rows = [], settings = {}) {
     certification_requirement: [],
     product_certification_evidence: [],
     product_master_detail_template: [],
+    epc_design_project: [],
     inventory: [],
     inventory_history: [],
     sales_record: [],
@@ -1330,6 +1337,8 @@ export function buildBusinessBootstrapPayload(rows = [], settings = {}) {
       certificationRequirementsCatalog: bucket.certification_requirement,
       productCertificationEvidence: bucket.product_certification_evidence,
       productMasterDetailTemplates: bucket.product_master_detail_template,
+      epcDesignProjects: bucket.epc_design_project,
+      epcDesignDefaults: settings.epc_design_defaults || {},
       inventory: bucket.inventory,
       inventoryHistory: bucket.inventory_history,
       salesRecords: bucket.sales_record,

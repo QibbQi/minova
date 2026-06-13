@@ -188,6 +188,74 @@
         .brand-yellow-action:hover { filter: brightness(0.96); }
         .brand-yellow-inactive:hover { background-color: rgba(255, 255, 255, 0.3); }
 
+        .epc-flow-diagram {
+            border-radius: 1rem;
+            border: 1px solid #e2e8f0;
+            background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+            overflow: hidden;
+        }
+        .epc-flow-svg {
+            width: 100%;
+            min-height: 420px;
+            display: block;
+        }
+        .epc-flow-node-card {
+            fill: rgba(248, 250, 252, 0.94);
+            stroke-width: 2.4;
+        }
+        .epc-flow-node-card {
+            filter: drop-shadow(0 8px 14px rgba(15, 23, 42, 0.12));
+        }
+        .epc-flow-node-frame {
+            width: 112px;
+            height: 88px;
+        }
+        .epc-flow-line {
+            stroke: #cbd5e1;
+            stroke-width: 3.2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            fill: none;
+            opacity: 0.42;
+        }
+        .epc-flow-orthogonal {
+            shape-rendering: geometricPrecision;
+        }
+        .epc-flow-line-active {
+            stroke-dasharray: 7 9;
+            animation: epc-flow-current 0.9s linear infinite;
+            opacity: 1;
+        }
+        .epc-flow-lane-main,
+        .epc-flow-lane-branch,
+        .epc-flow-lane-genset {
+            vector-effect: non-scaling-stroke;
+        }
+        .epc-flow-line-pv { stroke: #f59e0b; }
+        .epc-flow-line-battery { stroke: #22c55e; }
+        .epc-flow-line-genset { stroke: #64748b; }
+        .epc-flow-line-curtail { stroke: #ef4444; }
+        .epc-flow-label-badge {
+            pointer-events: none;
+        }
+        .epc-flow-label rect {
+            fill: rgba(255, 255, 255, 0.94);
+            stroke: #e2e8f0;
+        }
+        .epc-flow-label text {
+            font-size: 11.5px;
+            font-weight: 900;
+            fill: #334155;
+        }
+        .epc-flow-hour-active {
+            background: #fffbeb;
+            outline: 2px solid #FFC107;
+            outline-offset: -2px;
+        }
+        @keyframes epc-flow-current {
+            to { stroke-dashoffset: -44; }
+        }
+
         @media print {
             input, textarea { border: none !important; outline: none !important; resize: none !important; }
             #section-after-details[data-split-enabled="true"] { page-break-before: always !important; break-before: page !important; }
@@ -772,6 +840,7 @@
                 <button onclick="switchTab('pvcalc')" id="tab-pvcalc" aria-label="PV + ESS Calculator" title="PV + ESS Calculator" data-tab-label="PV + ESS Calculator" class="app-shell-tab px-6 py-2 hover:text-purple-700 transition-all text-sm leading-tight text-center text-slate-500 hover:text-blue-600"><span class="tab-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 10h16"/><path d="M6 6h12l2 8H4z"/><path d="M8 18h8"/><path d="M12 14v4"/></svg></span></button>
                 <button onclick="switchTab('costcalc')" id="tab-costcalc" aria-label="Quote Settings" title="Quote Settings" data-tab-label="Quote Settings" class="app-shell-tab px-6 py-2 hover:text-purple-700 transition-all text-sm leading-tight text-center text-slate-500 hover:text-blue-600" style=""><span class="tab-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M12 3v3"/><path d="M12 18v3"/><path d="M4.22 6.22l2.12 2.12"/><path d="M17.66 17.66l2.12 2.12"/><path d="M3 12h3"/><path d="M18 12h3"/><circle cx="12" cy="12" r="4"/></svg></span></button>
                 <button onclick="switchTab('database')" id="tab-database" aria-label="Product List" title="Product List" data-tab-label="Product List" class="app-shell-tab px-6 py-2 hover:text-purple-700 transition-all text-sm leading-tight text-center tab-active" style=""><span class="tab-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/><path d="M8 4v16"/></svg></span></button>
+                <button onclick="switchTab('epcdesign')" id="tab-epcdesign" aria-label="Hybrid EPC Design" title="Hybrid EPC Design" data-tab-label="Hybrid EPC Design" class="app-shell-tab px-6 py-2 hover:text-purple-700 transition-all text-sm leading-tight text-center text-slate-500 hover:text-blue-600" style=""><span class="tab-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 17l4-5 4 3 4-7 4 9"/><path d="M3 20h18"/><path d="M8 7h3"/><path d="M9.5 5.5v3"/><path d="M16 6h4"/></svg></span></button>
                 <button onclick="switchTab('engineering')" id="tab-engineering" aria-label="Engineering Workspace" title="Engineering Workspace" data-tab-label="Engineering Workspace" class="app-shell-tab px-6 py-2 hover:text-purple-700 transition-all text-sm leading-tight text-center text-slate-500 hover:text-blue-600" style=""><span class="tab-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 19h16"/><path d="M7 16l6-10 4 7"/><path d="M9 13h7"/><path d="M14 6l2-2 3 3-2 2"/></svg></span></button>
                 <button onclick="switchTab('pricelist')" id="tab-pricelist" aria-label="Price List" title="Price List" data-tab-label="Price List" style="" class="app-shell-tab px-6 py-2 hover:text-purple-700 transition-all text-sm leading-tight text-center text-slate-500 hover:text-blue-600"><span class="tab-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M5 6h14"/><path d="M5 12h14"/><path d="M5 18h10"/><path d="M17 16l2 2 3-4"/></svg></span></button>
                 <button onclick="switchTab('inventory')" id="tab-inventory" aria-label="Inventory Mgmt" title="Inventory Mgmt" data-tab-label="Inventory Mgmt" class="app-shell-tab px-6 py-2 hover:text-purple-700 transition-all text-sm leading-tight text-center text-slate-500 hover:text-blue-600" style=""><span class="tab-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 8l8-4 8 4-8 4z"/><path d="M4 8v8l8 4 8-4V8"/><path d="M12 12v8"/></svg></span></button>
@@ -2444,6 +2513,322 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <tr><td colspan="10" class="py-12 text-center text-slate-400 text-sm">No compatibility rules yet.</td></tr>
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </main>
+
+    <main id="view-epcdesign" class="max-w-6xl mx-auto px-4 mb-20 hidden" style="display: none;">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-5">
+            <div class="px-6 py-5 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <div class="min-w-0">
+                    <p class="text-[10px] font-black text-purple-700 uppercase tracking-widest mb-1">Hybrid EPC Design</p>
+                    <h2 class="text-2xl font-black text-slate-800 leading-tight">Genset Replacement PV + BESS + Diesel Workspace</h2>
+                    <p class="text-xs text-slate-400 mt-1">Concept design with formula trace, assumptions, risks, BOQ, and permission-gated reports.</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <select id="epc-design-project-select" onchange="selectEpcDesignProject(this.value)" class="border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none bg-white min-w-[220px]">
+                        <option value="">New EPC Design</option>
+                    </select>
+                    <button type="button" onclick="createEpcDesignProject()" class="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-black hover:bg-black">New</button>
+                    <button type="button" onclick="saveCurrentEpcDesignProject()" class="px-3 py-2 rounded-xl bg-purple-700 text-white text-xs font-black hover:bg-purple-800">Save</button>
+                    <button type="button" onclick="downloadEpcDesignReport('customer')" data-epc-download="customer" class="px-3 py-2 rounded-xl brand-yellow-action border text-xs font-black">Customer Summary</button>
+                    <button type="button" onclick="downloadEpcDesignReport('engineering')" data-epc-download="engineering" class="px-3 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-black hover:bg-slate-50">Engineering Calc</button>
+                </div>
+            </div>
+            <div class="px-6 py-4 bg-slate-50/60 border-b border-slate-100 flex flex-col md:flex-row md:items-center gap-3">
+                <div class="inline-flex rounded-xl border brand-yellow-surface p-1 w-fit">
+                    <button id="epc-mode-quick" type="button" onclick="setEpcDesignMode('quick')" class="px-4 py-2 rounded-lg text-xs font-black bg-purple-700 text-white shadow-sm">Quick Design</button>
+                    <button id="epc-mode-detailed" type="button" onclick="setEpcDesignMode('detailed')" class="px-4 py-2 rounded-lg text-xs font-black text-purple-700 brand-yellow-inactive">Detailed Design</button>
+                </div>
+                <div id="epc-design-quality" class="text-xs font-bold text-slate-500">Data quality: --</div>
+                <div id="epc-design-save-status" class="text-xs font-bold text-slate-400 md:ml-auto">Draft not saved</div>
+            </div>
+        </div>
+
+        <div id="epc-wizard-steps" class="grid grid-cols-1 md:grid-cols-5 gap-2 mb-5">
+            <div data-epc-step="load" class="rounded-2xl border border-purple-100 bg-white p-3">
+                <div class="flex items-start justify-between gap-2">
+                    <div class="text-[10px] font-black text-purple-700 uppercase">Step 1 Load</div>
+                    <span data-epc-step-check="load" class="epc-step-pending inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-100 text-[10px] font-black text-slate-300">&#10003;</span>
+                </div>
+                <div class="text-xs text-slate-500 mt-1">Daily kWh, average kW, peak kW.</div>
+            </div>
+            <div data-epc-step="pcs" class="rounded-2xl border border-slate-200 bg-white p-3">
+                <div class="flex items-start justify-between gap-2">
+                    <div class="text-[10px] font-black text-purple-700 uppercase">Step 2 PCS</div>
+                    <span data-epc-step-check="pcs" class="epc-step-pending inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-100 text-[10px] font-black text-slate-300">&#10003;</span>
+                </div>
+                <div class="text-xs text-slate-500 mt-1">Instant charge/discharge power.</div>
+            </div>
+            <div data-epc-step="battery" class="rounded-2xl border border-slate-200 bg-white p-3">
+                <div class="flex items-start justify-between gap-2">
+                    <div class="text-[10px] font-black text-purple-700 uppercase">Step 3 Battery</div>
+                    <span data-epc-step-check="battery" class="epc-step-pending inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-100 text-[10px] font-black text-slate-300">&#10003;</span>
+                </div>
+                <div class="text-xs text-slate-500 mt-1">Support hours, DoD, C-rate.</div>
+            </div>
+            <div data-epc-step="pv" class="rounded-2xl border border-slate-200 bg-white p-3">
+                <div class="flex items-start justify-between gap-2">
+                    <div class="text-[10px] font-black text-purple-700 uppercase">Step 4 PV & Strings</div>
+                    <span data-epc-step-check="pv" class="epc-step-pending inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-100 text-[10px] font-black text-slate-300">&#10003;</span>
+                </div>
+                <div class="text-xs text-slate-500 mt-1">Module count, string count, combiner.</div>
+            </div>
+            <div data-epc-step="ems" class="rounded-2xl border border-slate-200 bg-white p-3">
+                <div class="flex items-start justify-between gap-2">
+                    <div class="text-[10px] font-black text-purple-700 uppercase">Step 5 EMS Simulation</div>
+                    <span data-epc-step-check="ems" class="epc-step-pending inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-100 text-[10px] font-black text-slate-300">&#10003;</span>
+                </div>
+                <div class="text-xs text-slate-500 mt-1">Hourly PV/load/BESS/genset flow.</div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-5">
+            <section class="lg:col-span-3 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+                    <h3 class="text-sm font-black text-slate-800">Inputs</h3>
+                    <span id="epc-input-mode-label" class="text-[10px] font-black text-purple-700 uppercase">Quick Design</span>
+                </div>
+                <div class="p-4 space-y-4">
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Project</label>
+                        <input id="epc-project-name" data-epc-field="project.name" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" placeholder="Malaysia Quarry Hybrid Study">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Country</label>
+                            <input id="epc-country" data-epc-field="site.country" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" value="Malaysia">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">State</label>
+                            <input id="epc-state" data-epc-field="site.state" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" placeholder="Selangor">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Latitude</label>
+                            <input id="epc-latitude" data-epc-field="site.latitude" type="number" step="0.000001" oninput="onEpcDesignInputChanged({ map: true })" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Longitude</label>
+                            <input id="epc-longitude" data-epc-field="site.longitude" type="number" step="0.000001" oninput="onEpcDesignInputChanged({ map: true })" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Diesel Liters</label>
+                            <input id="epc-diesel-total" data-epc-field="loads.dieselTotalLiters" type="number" min="0" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Period Days</label>
+                            <input id="epc-diesel-days" data-epc-field="loads.dieselPeriodDays" type="number" min="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Diesel RM/L</label>
+                            <input id="epc-diesel-price" data-epc-field="loads.dieselPricePerLiter" type="number" min="0" step="0.01" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Hours/Day</label>
+                            <input id="epc-operation-hours" data-epc-field="loads.operationHoursPerDay" type="number" min="1" max="24" oninput="onEpcScheduleInputChanged('hours')" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Start Time</label>
+                            <input id="epc-day-start-time" data-epc-field="loads.operationStartTime" type="time" onchange="onEpcScheduleInputChanged('start')" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Finish Time</label>
+                            <input id="epc-day-finish-time" data-epc-field="loads.operationFinishTime" type="time" onchange="onEpcScheduleInputChanged('finish')" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        </div>
+                    </div>
+                    <div id="epc-change-working-time-row" class="rounded-xl border border-slate-200 bg-slate-50 p-2.5" title="When checked, original genset average load is multiplied by the new PV working hours to update Daily Load and downstream sizing.">
+                        <label class="flex items-center justify-between gap-3 text-xs font-black text-slate-700">
+                            <span class="inline-flex items-center gap-1.5">
+                                change working time
+                                <span class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="When checked, original genset average load is multiplied by the new PV working hours to update Daily Load and downstream sizing.">i</span>
+                            </span>
+                            <input id="epc-change-working-time" data-epc-field="loads.changeWorkingTime" type="checkbox" onchange="onEpcDesignInputChanged()" class="h-4 w-4 accent-purple-700">
+                        </label>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Support Hours</label>
+                            <input id="epc-support-hours" data-epc-field="designTargets.supportHours" type="number" min="0.1" step="0.1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Module Wp</label>
+                            <input id="epc-module-wp" data-epc-field="assumptions.moduleWp" type="number" min="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-3">
+                    <h3 class="text-sm font-black text-slate-800">Map & Solar Resource</h3>
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" onclick="useEpcCurrentLocation()" class="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 text-xs font-black hover:bg-blue-100">Use Current Location</button>
+                        <button type="button" onclick="useEpcIpLocation()" class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 text-xs font-black hover:bg-slate-50">Use IP Location</button>
+                    </div>
+                </div>
+                <div class="p-4 space-y-4">
+                    <div id="epc-design-map" class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 min-h-[280px] flex items-center justify-center text-center text-xs font-bold text-slate-400 p-6">
+                        Configure Google Maps browser key in EPC defaults, or use manual coordinates.
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                        <input id="epc-solar-ghi" data-epc-field="solarResource.ghiKwhM2Day" type="number" step="0.01" oninput="onEpcDesignInputChanged()" class="border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" placeholder="GHI kWh/m2/day">
+                        <input id="epc-solar-dni" data-epc-field="solarResource.dniKwhM2Day" type="number" step="0.01" oninput="onEpcDesignInputChanged()" class="border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" placeholder="DNI kWh/m2/day">
+                        <input id="epc-solar-temp" data-epc-field="solarResource.temperatureC" type="number" step="0.1" oninput="onEpcDesignInputChanged()" class="border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" placeholder="Temp C">
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button type="button" onclick="openEpcGlobalSolarAtlas()" class="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-black hover:bg-black">Open Global Solar Atlas</button>
+                        <button type="button" onclick="importEpcSolarResource()" class="px-3 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-black hover:bg-slate-50">Import pasted GSA values</button>
+                        <span id="epc-solar-source" class="text-xs font-bold text-slate-400">Solar source: Malaysia Default</span>
+                    </div>
+                    <textarea id="epc-solar-import" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-purple-500 min-h-[72px]" placeholder="Paste GSA/PVsyst values, e.g. PVOUT 3.72, GHI 4.8, DNI 4.1, TEMP 27."></textarea>
+                </div>
+            </section>
+
+            <section class="lg:col-span-4 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="px-4 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                    <h3 class="text-sm font-black text-slate-800">Live Recommendation</h3>
+                    <div class="flex items-center gap-2">
+                        <label class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-black text-slate-600">
+                            <input id="epc-round-up-sizing" data-epc-field="designTargets.roundUpSizing" type="checkbox" onchange="onEpcDesignInputChanged()" class="h-3.5 w-3.5 accent-purple-700">
+                            <span>Round up</span>
+                        </label>
+                        <div id="epc-recommendation-target-toggle" class="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1" aria-label="Recommendation target replacement">
+                            <button type="button" data-epc-recommendation-target="50" onclick="setEpcRecommendationTarget(50)" class="px-2.5 py-1.5 rounded-lg text-[10px] font-black text-slate-500 hover:text-purple-700">50%</button>
+                            <button type="button" data-epc-recommendation-target="80" onclick="setEpcRecommendationTarget(80)" class="px-2.5 py-1.5 rounded-lg text-[10px] font-black bg-purple-700 text-white shadow-sm">80%</button>
+                            <button type="button" data-epc-recommendation-target="100" onclick="setEpcRecommendationTarget(100)" class="px-2.5 py-1.5 rounded-lg text-[10px] font-black text-slate-500 hover:text-purple-700">100%</button>
+                        </div>
+                        <span id="epc-recommended-label" class="text-[10px] font-black text-purple-700 uppercase">Recommended</span>
+                    </div>
+                </div>
+                <div class="p-4">
+                    <div id="epc-design-kpis" class="grid grid-cols-2 gap-3 mb-4"></div>
+                    <div id="epc-design-recommendation" class="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600"></div>
+                </div>
+            </section>
+        </div>
+
+        <section id="epc-detail-inputs-panel" data-epc-detail-inputs-panel="true" class="hidden bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-5">
+            <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-3">
+                <div>
+                    <h3 class="text-sm font-black text-slate-800">Detail Inputs</h3>
+                    <p class="text-[11px] text-slate-400 mt-0.5">Detailed Design uses Target % here as the calculation standard.</p>
+                </div>
+                <span class="text-[10px] font-black uppercase text-purple-700">Engineering</span>
+            </div>
+            <div id="epc-detailed-fields" data-epc-engineering-section="true">
+                <div id="epc-advanced-inputs" data-epc-advanced-section="true" class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-3 p-4">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Target %</label>
+                            <input id="epc-target-replacement" data-epc-field="designTargets.replacementPct" type="number" min="0" max="100" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Area m2</label>
+                            <input id="epc-available-area" data-epc-field="site.availableAreaM2" type="number" min="0" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Peak Load Factor</label>
+                            <select id="epc-peak-load-factor" data-epc-field="loads.peakLoadSafetyFactor" data-epc-number="true" onchange="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
+                                <option value="1.1">Stable load - 1.10x</option>
+                                <option value="1.3">Normal variation - 1.30x</option>
+                                <option value="1.5">High surge - 1.50x</option>
+                            </select>
+                            <p class="mt-1 text-[10px] leading-snug text-slate-400">Peak Load = Avg Load x Safety Factor; PCS is then rounded up to the next 0.5MW.</p>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Genset Allowed kW</label>
+                            <input id="epc-allowed-genset-load" data-epc-field="loads.allowedGensetLoadKw" type="number" min="0" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                            <p class="mt-1 text-[10px] leading-snug text-slate-400">Diesel power intentionally kept online; Peak Shaving PCS covers Peak minus this value.</p>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Operating Equipment</label>
+                        <select id="epc-load-equipment-type" data-epc-field="loads.equipmentType" onchange="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
+                            <option value="water_pump">Water Pump</option>
+                            <option value="crusher">Crusher</option>
+                            <option value="conveyor">Conveyor</option>
+                            <option value="mining_machine">Mining Machine</option>
+                            <option value="processing_line">Processing Line</option>
+                            <option value="quarry_load">General Quarry Load</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">BESS Role</label>
+                        <select id="epc-bess-role" data-epc-field="designTargets.bessRole" onchange="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
+                            <option value="diesel_replacement">Diesel Replacement</option>
+                            <option value="peak_shaving">Peak Shaving</option>
+                            <option value="pv_smoothing">PV Smoothing</option>
+                            <option value="backup">Backup</option>
+                            <option value="island_mode">Island Mode</option>
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">SFC L/kWh</label>
+                            <input id="epc-sfc" data-epc-field="assumptions.dieselSfcLPerKwh" type="number" step="0.01" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">PV Yield</label>
+                            <input id="epc-pv-yield" data-epc-field="solarResource.specificYieldKwhPerKwpDay" type="number" step="0.1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">DoD</label>
+                            <input id="epc-bess-dod" data-epc-field="assumptions.bessDod" type="number" step="0.01" min="0" max="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">PF</label>
+                            <input id="epc-power-factor" data-epc-field="electrical.powerFactor" type="number" step="0.01" min="0.1" max="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Critical Load kW</label>
+                        <input id="epc-critical-load" data-epc-field="loads.criticalLoadKw" type="number" min="0" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        <p class="mt-1 text-[10px] leading-snug text-slate-400">Must-run load for backup or island mode; blank falls back to average load.</p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">/ String</label>
+                            <input id="epc-modules-per-string" data-epc-field="assumptions.modulesPerString" type="number" min="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Combiner</label>
+                            <input id="epc-combiner-inputs" data-epc-field="assumptions.combinerInputs" type="number" min="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="px-4 py-3 border-b border-slate-100 flex flex-wrap gap-2">
+                <button type="button" data-epc-panel-tab="inputs" onclick="setEpcPanelTab('inputs')" class="px-3 py-2 rounded-lg text-xs font-black bg-slate-900 text-white">Inputs</button>
+                <button type="button" data-epc-panel-tab="schemes" onclick="setEpcPanelTab('schemes')" class="px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-50">Schemes</button>
+                <button type="button" data-epc-panel-tab="formula" onclick="setEpcPanelTab('formula')" class="px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-50">Formula Trace</button>
+                <button type="button" data-epc-panel-tab="boq" onclick="setEpcPanelTab('boq')" class="px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-50">BOQ</button>
+                <button type="button" data-epc-panel-tab="risks" onclick="setEpcPanelTab('risks')" class="px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-50">Risks</button>
+                <button type="button" data-epc-panel-tab="flow" onclick="setEpcPanelTab('flow')" class="px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-50">EMS Flow</button>
+                <button type="button" data-epc-panel-tab="reports" onclick="setEpcPanelTab('reports')" class="px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-50">Reports</button>
+            </div>
+            <div class="p-4">
+                <div id="epc-design-input-summary" data-epc-panel="inputs"></div>
+                <div id="epc-design-schemes" data-epc-panel="schemes" class="hidden"></div>
+                <div id="epc-design-formula-trace" data-epc-panel="formula" class="hidden"></div>
+                <div id="epc-design-boq" data-epc-panel="boq" class="hidden"></div>
+                <div id="epc-design-risks" data-epc-panel="risks" class="hidden"></div>
+                <div id="epc-energy-flow-table" data-epc-panel="flow" class="hidden"></div>
+                <div id="epc-design-reports" data-epc-panel="reports" class="hidden"></div>
             </div>
         </div>
     </main>
@@ -4781,7 +5166,18 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="./epc-design-engine.global.js?v=epc-design-v2"></script>
     <script type="module">
+        const {
+            EPC_DESIGN_DEFAULTS,
+            buildGlobalSolarAtlasUrl,
+            calculateEpcDesignProject,
+            calculatePvStringDesign,
+            normalizeEpcDesignProject,
+            normalizeEpcDesignProjectList
+        } = window.MinovaEpcDesignEngine;
+        document.documentElement.dataset.epcDesignWorkspace = 'booted';
+
         const localStorage = (() => {
             const memory = new Map();
             let native = null;
@@ -5356,7 +5752,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             ? 'Backup'
                             : 'Hidden';
                     btn.className = `${btnBaseClass} ${s.connected ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700' : syncAuthorized ? 'bg-purple-700 hover:bg-purple-800 text-white border-purple-800' : 'bg-red-600 hover:bg-red-700 text-white border-red-700'}`;
-                    const restrictedTabs = ['quotation', 'costcalc', 'database', 'engineering', 'pricelist', 'inventory', 'transport'];
+                    const restrictedTabs = ['quotation', 'costcalc', 'database', 'epcdesign', 'engineering', 'pricelist', 'inventory', 'transport'];
                     for (const t of restrictedTabs) {
                         const tabBtn = document.getElementById(`tab-${t}`);
                         if (tabBtn) tabBtn.style.display = dataUnlocked ? '' : 'none';
@@ -5794,6 +6190,15 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         let installerQuoteSettings = null;
         let installerQuoteRegion = 'peninsular';
         let nonStockPricingStrategies = {};
+        let epcDesignProjects = [];
+        let epcDesignDefaults = { ...EPC_DESIGN_DEFAULTS };
+        let epcDesignActiveProjectId = '';
+        let epcDesignMode = 'quick';
+        let epcDesignPanelTab = 'inputs';
+        let epcSelectedFlowHour = 13;
+        let epcDesignMap = null;
+        let epcDesignMarker = null;
+        let epcGoogleMapsPromise = null;
         function safeJsonParseLoose(raw, fallback) {
             try { return raw ? JSON.parse(raw) : fallback; } catch { return fallback; }
         }
@@ -9393,6 +9798,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     installerProfitSettings = normalizeInstallerProfitSettings(embedded.data.installerProfitSettings || installerProfitSettings || null);
                     installerQuoteSettings = normalizeInstallerQuoteSettings(embedded.data.installerQuoteSettings || installerQuoteSettings || null);
                     nonStockPricingStrategies = normalizeNonStockPricingStrategies(embedded.data.nonStockPricingStrategies || safeJsonParseLoose(localStorage.getItem('minova_non_stock_pricing_v1'), {}));
+                    epcDesignDefaults = normalizeEpcDesignDefaults(embedded.data.epcDesignDefaults || safeJsonParseLoose(localStorage.getItem('minova_epc_design_defaults_v1'), {}));
+                    epcDesignProjects = normalizeEpcDesignProjectList(embedded.data.epcDesignProjects || safeJsonParseLoose(localStorage.getItem('minova_epc_design_projects_v1'), []), { defaults: epcDesignDefaults });
                     normalizeProductClassificationData();
                     try {
                         if (embeddedAt) localStorage.setItem('minova_embedded_updatedAt', String(embeddedAt));
@@ -9412,6 +9819,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         localStorage.setItem('minova_installer_profit_v1', JSON.stringify(installerProfitSettings));
                         localStorage.setItem('minova_installer_quote_settings_v1', JSON.stringify(installerQuoteSettings));
                         localStorage.setItem('minova_non_stock_pricing_v1', JSON.stringify(nonStockPricingStrategies));
+                        localStorage.setItem('minova_epc_design_defaults_v1', JSON.stringify(epcDesignDefaults));
+                        localStorage.setItem('minova_epc_design_projects_v1', JSON.stringify(epcDesignProjects));
                     } catch (e) {}
                     companyCerts = embedded.data.companyCerts && typeof embedded.data.companyCerts === 'object' ? embedded.data.companyCerts : companyCerts;
                     transportRecords = Array.isArray(embedded.data.transportRecords) ? embedded.data.transportRecords : [];
@@ -9466,6 +9875,14 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 nonStockPricingStrategies = normalizeNonStockPricingStrategies(JSON.parse(raw));
             }
         } catch (e) {}
+        try {
+            const raw = localStorage.getItem('minova_epc_design_defaults_v1');
+            if (raw) epcDesignDefaults = normalizeEpcDesignDefaults(JSON.parse(raw));
+        } catch (e) {}
+        try {
+            const raw = localStorage.getItem('minova_epc_design_projects_v1');
+            if (raw) epcDesignProjects = normalizeEpcDesignProjectList(JSON.parse(raw), { defaults: epcDesignDefaults });
+        } catch (e) {}
         normalizeProductUnitFields();
         try {
             const raw = localStorage.getItem('minova_suppliers_v1');
@@ -9504,7 +9921,1030 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         normalizeProductClassificationData();
         saveSubcategoryIndex();
 
-        const TOP_LEVEL_TABS = ['quotation', 'database', 'engineering', 'pricelist', 'pvcalc', 'costcalc', 'inventory', 'transport', 'admin'];
+        function normalizeEpcDesignDefaults(value) {
+            return { ...EPC_DESIGN_DEFAULTS, ...(value && typeof value === 'object' ? value : {}) };
+        }
+
+        function getEpcDefaultProject() {
+            return normalizeEpcDesignProject({
+                mode: epcDesignMode,
+                project: { name: 'New Hybrid EPC Design', stage: 'Concept' },
+                site: { country: 'Malaysia', gridMode: 'hybrid' },
+                loads: { dieselPeriodDays: 1, operationHoursPerDay: 8, operationStartTime: '09:00', operationFinishTime: '17:00', changeWorkingTime: false, equipmentType: 'water_pump' },
+                designTargets: { replacementPct: 80 },
+                assumptions: epcDesignDefaults,
+                solarResource: { dataSource: 'Malaysia Default' }
+            }, { defaults: epcDesignDefaults });
+        }
+
+        function getActiveEpcDesignProject() {
+            if (!Array.isArray(epcDesignProjects)) epcDesignProjects = [];
+            let current = epcDesignProjects.find(project => project.id === epcDesignActiveProjectId);
+            if (!current) {
+                current = epcDesignProjects[0] || getEpcDefaultProject();
+                epcDesignActiveProjectId = current.id;
+                if (!epcDesignProjects.length) epcDesignProjects = [current];
+            }
+            return normalizeEpcDesignProject(current, { defaults: epcDesignDefaults });
+        }
+
+        function updateEpcProject(nextProject, { persist = false } = {}) {
+            const normalized = normalizeEpcDesignProject(nextProject, { defaults: epcDesignDefaults });
+            epcDesignActiveProjectId = normalized.id;
+            const idx = epcDesignProjects.findIndex(project => project.id === normalized.id);
+            if (idx >= 0) epcDesignProjects[idx] = normalized;
+            else epcDesignProjects.unshift(normalized);
+            try { localStorage.setItem('minova_epc_design_projects_v1', JSON.stringify(epcDesignProjects)); } catch (e) {}
+            if (persist) persistEntityToD1('epc_design_project', normalized.id, normalized);
+            return normalized;
+        }
+
+        function setNestedValue(target, path, value) {
+            const parts = String(path || '').split('.').filter(Boolean);
+            let cursor = target;
+            parts.slice(0, -1).forEach(part => {
+                if (!cursor[part] || typeof cursor[part] !== 'object') cursor[part] = {};
+                cursor = cursor[part];
+            });
+            const key = parts[parts.length - 1];
+            if (!key) return;
+            cursor[key] = value;
+        }
+
+        function numericInputValue(id, fallback = 0) {
+            const raw = document.getElementById(id)?.value;
+            const n = Number(raw);
+            return Number.isFinite(n) ? n : fallback;
+        }
+
+        function captureEpcDesignFromDom() {
+            const current = getActiveEpcDesignProject();
+            const draft = JSON.parse(JSON.stringify(current));
+            document.querySelectorAll('[data-epc-field]').forEach(input => {
+                const path = input.dataset.epcField;
+                const isNumber = input.type === 'number' || input.dataset.epcNumber === 'true';
+                const value = input.type === 'checkbox' ? input.checked : isNumber ? numericInputValue(input.id, 0) : input.value;
+                setNestedValue(draft, path, value);
+            });
+            draft.mode = epcDesignMode;
+            draft.updatedAt = new Date().toISOString();
+            draft.assumptions = { ...epcDesignDefaults, ...(draft.assumptions || {}) };
+            if (!draft.solarResource?.dataSource) {
+                draft.solarResource = { ...(draft.solarResource || {}), dataSource: 'Malaysia Default' };
+            }
+            return updateEpcProject(draft);
+        }
+
+        function setInputValue(id, value) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            if (el.type === 'checkbox') {
+                el.checked = Boolean(value);
+                return;
+            }
+            el.value = value ?? '';
+        }
+
+        function epcTimeToMinutes(value, fallback = '09:00') {
+            const raw = String(value || fallback || '09:00');
+            const match = raw.match(/^(\d{1,2}):?(\d{2})?/);
+            if (!match) return epcTimeToMinutes(fallback, '09:00');
+            const hour = Math.min(23, Math.max(0, Number(match[1]) || 0));
+            const minute = Math.min(59, Math.max(0, Number(match[2] || 0) || 0));
+            return hour * 60 + minute;
+        }
+
+        function epcMinutesToTime(minutes) {
+            const normalized = ((Math.round(minutes) % 1440) + 1440) % 1440;
+            const hour = Math.floor(normalized / 60);
+            const minute = normalized % 60;
+            return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+        }
+
+        function epcAddHoursToTime(startTime, hours) {
+            return epcMinutesToTime(epcTimeToMinutes(startTime) + (Number(hours) || 0) * 60);
+        }
+
+        function epcHoursBetween(startTime, finishTime) {
+            const start = epcTimeToMinutes(startTime);
+            let finish = epcTimeToMinutes(finishTime, epcAddHoursToTime(startTime, 1));
+            if (finish <= start) finish += 1440;
+            return Math.round(((finish - start) / 60) * 100) / 100;
+        }
+
+        function updateEpcWorkingTimeVisibility(project = getActiveEpcDesignProject()) {
+            const row = document.getElementById('epc-change-working-time-row');
+            const check = document.getElementById('epc-change-working-time');
+            if (!row) return;
+            const baseHours = Number(project.loads.operationHoursPerDay) || 8;
+            const scheduleHours = Number(project.loads.scheduleWorkingHours) || baseHours;
+            const changed = Math.abs(scheduleHours - baseHours) > 0.01;
+            row.classList.remove('hidden');
+            row.classList.toggle('border-yellow-200', changed || project.loads.changeWorkingTime);
+            row.classList.toggle('bg-yellow-50', changed || project.loads.changeWorkingTime);
+            row.classList.toggle('border-slate-200', !changed && !project.loads.changeWorkingTime);
+            row.classList.toggle('bg-slate-50', !changed && !project.loads.changeWorkingTime);
+            if (check) check.checked = !!project.loads.changeWorkingTime;
+        }
+
+        function updateEpcModeSpecificUi() {
+            const canViewEngineering = canReadEpcEngineering();
+            const detailed = epcDesignMode === 'detailed' && canViewEngineering;
+            document.getElementById('epc-detail-inputs-panel')?.classList.toggle('hidden', !detailed);
+            document.getElementById('epc-advanced-inputs')?.classList.toggle('hidden', !detailed);
+            document.getElementById('epc-detailed-fields')?.classList.toggle('hidden', !detailed);
+            document.getElementById('epc-recommendation-target-toggle')?.classList.toggle('hidden', epcDesignMode === 'detailed');
+        }
+
+        function updateEpcWizardStepStatus(result, project = getActiveEpcDesignProject()) {
+            const recommended = getRecommendedEpcScheme(result);
+            const statuses = {
+                load: result.load?.dailyLoadKwh > 0 && result.load?.averageLoadKw > 0 && project.loads.dieselPeriodDays > 0,
+                pcs: recommended.pcsRecommendedMw > 0,
+                battery: recommended.bessRecommendedMwh > 0 && project.designTargets.supportHours > 0,
+                pv: recommended.pvRecommendedMwp > 0 && project.assumptions.moduleWp > 0 && project.assumptions.modulesPerString > 0 && project.assumptions.combinerInputs > 0,
+                ems: Array.isArray(result.energyFlow?.rows) && result.energyFlow.rows.length > 0
+            };
+            Object.entries(statuses).forEach(([step, complete]) => {
+                const check = document.querySelector(`[data-epc-step-check="${step}"]`);
+                if (!check) return;
+                check.className = complete
+                    ? 'epc-step-complete inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-emerald-500 bg-emerald-500 text-[10px] font-black text-white'
+                    : 'epc-step-pending inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-100 text-[10px] font-black text-slate-300';
+            });
+        }
+
+        window.onEpcScheduleInputChanged = (source = '') => {
+            const hoursEl = document.getElementById('epc-operation-hours');
+            const startEl = document.getElementById('epc-day-start-time');
+            const finishEl = document.getElementById('epc-day-finish-time');
+            const changeEl = document.getElementById('epc-change-working-time');
+            if (!hoursEl || !startEl || !finishEl) return window.onEpcDesignInputChanged();
+            const hours = Math.min(24, Math.max(1, Number(hoursEl.value) || 8));
+            hoursEl.value = hours;
+            if (source === 'hours' || source === 'start') {
+                finishEl.value = epcAddHoursToTime(startEl.value || '09:00', hours);
+                if (source === 'start') {
+                    const minute = epcTimeToMinutes(startEl.value || '09:00') % 60;
+                    const finishHour = Math.floor(epcTimeToMinutes(finishEl.value || '17:00') / 60);
+                    finishEl.value = epcMinutesToTime(finishHour * 60 + minute);
+                }
+            } else if (source === 'finish') {
+                const minute = epcTimeToMinutes(finishEl.value || '17:00') % 60;
+                const startHour = Math.floor(epcTimeToMinutes(startEl.value || '09:00') / 60);
+                startEl.value = epcMinutesToTime(startHour * 60 + minute);
+            }
+            const scheduleHours = epcHoursBetween(startEl.value, finishEl.value);
+            const changed = Math.abs(scheduleHours - hours) > 0.01;
+            if (changed && changeEl && !changeEl.checked) {
+                const ok = confirm(`PV working time is ${scheduleHours}h, while original genset Hours/Day is ${hours}h. Enable "change working time" and recalculate Daily Load from the new working hours?`);
+                if (ok) {
+                    changeEl.checked = true;
+                } else {
+                    finishEl.value = epcAddHoursToTime(startEl.value || '09:00', hours);
+                    changeEl.checked = false;
+                }
+            }
+            window.onEpcDesignInputChanged();
+        }
+
+        function syncEpcDesignInputs(project) {
+            setInputValue('epc-project-name', project.project.name);
+            setInputValue('epc-country', project.site.country);
+            setInputValue('epc-state', project.site.state);
+            setInputValue('epc-latitude', project.site.latitude || '');
+            setInputValue('epc-longitude', project.site.longitude || '');
+            setInputValue('epc-diesel-total', project.loads.dieselTotalLiters || '');
+            setInputValue('epc-diesel-days', project.loads.dieselPeriodDays || 1);
+            setInputValue('epc-diesel-price', project.loads.dieselPricePerLiter || '');
+            setInputValue('epc-operation-hours', project.loads.operationHoursPerDay || 8);
+            setInputValue('epc-day-start-time', project.loads.operationStartTime || '09:00');
+            setInputValue('epc-day-finish-time', project.loads.operationFinishTime || '17:00');
+            setInputValue('epc-change-working-time', project.loads.changeWorkingTime);
+            updateEpcWorkingTimeVisibility(project);
+            setInputValue('epc-target-replacement', project.designTargets.replacementPct || 80);
+            setInputValue('epc-round-up-sizing', project.designTargets.roundUpSizing);
+            setInputValue('epc-available-area', project.site.availableAreaM2 || '');
+            setInputValue('epc-peak-load-factor', project.loads.peakLoadSafetyFactor || EPC_DESIGN_DEFAULTS.peakLoadFactor);
+            setInputValue('epc-allowed-genset-load', project.loads.allowedGensetLoadKw || '');
+            setInputValue('epc-load-equipment-type', project.loads.equipmentType || 'water_pump');
+            setInputValue('epc-critical-load', project.loads.criticalLoadKw || '');
+            setInputValue('epc-support-hours', project.designTargets.supportHours || EPC_DESIGN_DEFAULTS.bessAutonomyHours);
+            setInputValue('epc-sfc', project.assumptions.dieselSfcLPerKwh || EPC_DESIGN_DEFAULTS.dieselSfcLPerKwh);
+            setInputValue('epc-pv-yield', project.solarResource.specificYieldKwhPerKwpDay || EPC_DESIGN_DEFAULTS.malaysiaYieldBase);
+            setInputValue('epc-bess-dod', project.assumptions.bessDod || EPC_DESIGN_DEFAULTS.bessDod);
+            setInputValue('epc-power-factor', project.electrical.powerFactor || EPC_DESIGN_DEFAULTS.powerFactor);
+            setInputValue('epc-bess-role', project.designTargets.bessRole || '');
+            setInputValue('epc-module-wp', project.assumptions.moduleWp || EPC_DESIGN_DEFAULTS.moduleWp);
+            setInputValue('epc-modules-per-string', project.assumptions.modulesPerString || EPC_DESIGN_DEFAULTS.modulesPerString);
+            setInputValue('epc-combiner-inputs', project.assumptions.combinerInputs || EPC_DESIGN_DEFAULTS.combinerInputs);
+            setInputValue('epc-solar-ghi', project.solarResource.ghiKwhM2Day || '');
+            setInputValue('epc-solar-dni', project.solarResource.dniKwhM2Day || '');
+            setInputValue('epc-solar-temp', project.solarResource.temperatureC || '');
+        }
+
+        function formatEpcNumber(value, digits = 2, unit = '') {
+            const n = Number(value);
+            if (!Number.isFinite(n)) return `--${unit ? ` ${unit}` : ''}`;
+            return `${n.toLocaleString(undefined, { maximumFractionDigits: digits, minimumFractionDigits: digits })}${unit ? ` ${unit}` : ''}`;
+        }
+
+        function getRecommendedEpcScheme(result) {
+            return result.schemes.find(scheme => scheme.id === result.recommendedSchemeId) || result.schemes[0] || {};
+        }
+
+        function renderEpcRecommendationTargetToggle(result) {
+            const recommended = getRecommendedEpcScheme(result);
+            const selectedPct = Number(recommended.replacementPct || result.designTargets?.replacementPct || 80);
+            updateEpcModeSpecificUi();
+            document.querySelectorAll('[data-epc-recommendation-target]').forEach(btn => {
+                const active = Number(btn.dataset.epcRecommendationTarget) === selectedPct;
+                btn.className = active
+                    ? 'px-2.5 py-1.5 rounded-lg text-[10px] font-black bg-purple-700 text-white shadow-sm'
+                    : 'px-2.5 py-1.5 rounded-lg text-[10px] font-black text-slate-500 hover:text-purple-700';
+                btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+            });
+            const label = document.getElementById('epc-recommended-label');
+            if (label) label.textContent = `${formatEpcNumber(selectedPct, 0, '%')} ${recommended.priority || 'Recommended'}`;
+        }
+
+        function renderEpcProjectSelect() {
+            const select = document.getElementById('epc-design-project-select');
+            if (!select) return;
+            select.innerHTML = epcDesignProjects.map(project => `<option value="${htmlSafe(project.id)}">${htmlSafe(project.project?.name || project.id)}</option>`).join('');
+            select.value = epcDesignActiveProjectId || epcDesignProjects[0]?.id || '';
+        }
+
+        function renderEpcKpis(result) {
+            const recommended = getRecommendedEpcScheme(result);
+            const items = [
+                ['Daily Load', formatEpcNumber(result.load.dailyLoadKwh, 0, 'kWh')],
+                ['Avg Load', formatEpcNumber(result.load.averageLoadKw, 0, 'kW')],
+                ['PV', formatEpcNumber(recommended.pvRecommendedMwp, 2, 'MWp')],
+                ['BESS', formatEpcNumber(recommended.bessRecommendedMwh, 2, 'MWh')],
+                ['PCS', formatEpcNumber(recommended.pcsRecommendedMw, 2, 'MW')],
+                ['Savings', `RM ${formatEpcNumber(recommended.monthlySavings, 0)}/mo`]
+            ];
+            const target = document.getElementById('epc-design-kpis');
+            if (!target) return;
+            target.innerHTML = items.map(([label, value]) => `
+                <div class="rounded-xl border border-slate-100 bg-slate-50 p-3 min-w-0">
+                    <div class="text-[10px] font-black text-slate-400 uppercase">${htmlSafe(label)}</div>
+                    <div class="text-lg font-black text-slate-800 leading-tight">${htmlSafe(value)}</div>
+                </div>
+            `).join('');
+        }
+
+        function renderEpcSchemes(result) {
+            const target = document.getElementById('epc-design-schemes');
+            if (!target) return;
+            target.innerHTML = `
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs whitespace-nowrap">
+                        <thead class="bg-slate-50 text-slate-500 uppercase">
+                            <tr>
+                                <th class="px-3 py-2">Scheme</th>
+                                <th class="px-3 py-2 text-right">Target kWh/day</th>
+                                <th class="px-3 py-2 text-right">PV MWp</th>
+                                <th class="px-3 py-2 text-right">BESS MWh</th>
+                                <th class="px-3 py-2 text-right">PCS MW</th>
+                                <th class="px-3 py-2 text-right">C-rate</th>
+                                <th class="px-3 py-2 text-right">Duration h</th>
+                                <th class="px-3 py-2 text-right">Area m2</th>
+                                <th class="px-3 py-2 text-right">Diesel Saved L/mo</th>
+                                <th class="px-3 py-2 text-right">Savings RM/mo</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            ${result.schemes.map(scheme => `
+                                <tr class="${scheme.id === 'replace-80' ? 'bg-yellow-50' : ''}">
+                                    <td class="px-3 py-3 font-black text-slate-700">${htmlSafe(scheme.label)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(scheme.targetDailyKwh, 0)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(scheme.pvRecommendedMwp, 2)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(scheme.bessRecommendedMwh, 2)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(scheme.pcsRecommendedMw, 2)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(scheme.cRate, 2)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(scheme.equivalentDurationHours, 2)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(scheme.requiredAreaM2, 0)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(scheme.monthlyDieselSavedLiters, 0)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(scheme.monthlySavings, 0)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function formatEpcFormulaData(inputs = {}) {
+            const entries = Object.entries(inputs || {});
+            if (!entries.length) return '<span class="text-slate-400">No formula data</span>';
+            return entries.map(([key, value]) => `
+                <div class="flex flex-wrap gap-x-2 gap-y-0.5 leading-relaxed">
+                    <span class="font-black text-slate-500">${htmlSafe(key)}:</span>
+                    <span class="font-mono text-slate-600 break-all">${htmlSafe(typeof value === 'number' ? formatEpcNumber(value, 4) : String(value))}</span>
+                </div>
+            `).join('');
+        }
+
+        function renderEpcTrace(result) {
+            const target = document.getElementById('epc-design-formula-trace');
+            if (!target) return;
+            target.innerHTML = `
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-50 text-slate-500 uppercase">
+                            <tr><th class="px-3 py-2 w-[16%]">Output</th><th class="px-3 py-2 w-[28%]">Formula</th><th class="px-3 py-2 w-[34%]">Formula Data</th><th class="px-3 py-2 text-right w-[12%]">Result</th><th class="px-3 py-2 w-[10%]">Source</th></tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            ${result.formulaTrace.map(item => `
+                                <tr>
+                                    <td class="px-3 py-3 font-black text-slate-700 align-top">${htmlSafe(item.label)}</td>
+                                    <td class="px-3 py-3 font-mono text-[11px] text-slate-600 leading-relaxed whitespace-normal align-top">${htmlSafe(item.formula)}</td>
+                                    <td class="px-3 py-3 text-slate-500 align-top">${formatEpcFormulaData(item.inputs)}</td>
+                                    <td class="px-3 py-3 text-right font-bold align-top">${formatEpcNumber(item.result, 3, item.unit)}</td>
+                                    <td class="px-3 py-3 align-top whitespace-normal">${htmlSafe(item.assumptionSource)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function renderEpcBoq(result) {
+            const target = document.getElementById('epc-design-boq');
+            if (!target) return;
+            target.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    ${result.boq.map(item => `
+                        <div class="rounded-xl border border-slate-200 p-3">
+                            <div class="text-[10px] font-black text-purple-700 uppercase">${htmlSafe(item.package)}</div>
+                            <div class="text-sm font-black text-slate-800">${htmlSafe(item.item)}</div>
+                            <div class="text-xs text-slate-500 mt-1">${formatEpcNumber(item.quantity, 2, item.unit)} ${item.mandatory ? '| Mandatory' : '| Optional'}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function renderEpcRisks(result) {
+            const target = document.getElementById('epc-design-risks');
+            if (!target) return;
+            target.innerHTML = `
+                <div class="space-y-2">
+                    ${result.risks.map(risk => `
+                        <div class="rounded-xl border ${risk.level === 'High' ? 'border-red-200 bg-red-50 text-red-700' : 'border-yellow-200 bg-yellow-50 text-yellow-800'} p-3 text-xs">
+                            <span class="font-black">${htmlSafe(risk.level)} | ${htmlSafe(risk.area)}:</span>
+                            <span>${htmlSafe(risk.issue)}</span>
+                        </div>
+                    `).join('') || '<div class="text-sm text-slate-400">No major concept risks detected yet.</div>'}
+                </div>
+            `;
+        }
+
+        function flowLineClass(value, type, lane = 'branch') {
+            return `epc-flow-line epc-flow-orthogonal epc-flow-lane-${lane} epc-flow-line-${type}${Number(value) > 0 ? ' epc-flow-line-active' : ''}`;
+        }
+
+        const EPC_LOAD_EQUIPMENT_META = {
+            water_pump: { label: 'Water Pump', detail: 'Pump station', icon: 'pump' },
+            crusher: { label: 'Crusher', detail: 'Crushing line', icon: 'crusher' },
+            conveyor: { label: 'Conveyor', detail: 'Material handling', icon: 'conveyor' },
+            mining_machine: { label: 'Mining Machine', detail: 'Heavy equipment', icon: 'machine' },
+            processing_line: { label: 'Processing Line', detail: 'Plant load', icon: 'line' },
+            quarry_load: { label: 'General Quarry Load', detail: 'Mixed equipment', icon: 'load' }
+        };
+
+        function getEpcLoadEquipmentMeta(result) {
+            const key = String(result?.loads?.equipmentType || 'water_pump');
+            return EPC_LOAD_EQUIPMENT_META[key] || EPC_LOAD_EQUIPMENT_META.water_pump;
+        }
+
+        function renderEpcEquipmentIcon(type) {
+            if (type === 'crusher') {
+                return '<path d="M30 44h52l-8 14H38z" fill="#cffafe" stroke="#0891b2" stroke-width="3"/><path d="M38 25h36l10 19H28z" fill="none" stroke="#0891b2" stroke-width="3" stroke-linejoin="round"/><path d="M43 35h25M48 45h16" stroke="#0891b2" stroke-width="3" stroke-linecap="round"/>';
+            }
+            if (type === 'conveyor') {
+                return '<path d="M28 52h58" stroke="#0891b2" stroke-width="6" stroke-linecap="round"/><circle cx="36" cy="52" r="8" fill="#cffafe" stroke="#0891b2" stroke-width="3"/><circle cx="78" cy="52" r="8" fill="#cffafe" stroke="#0891b2" stroke-width="3"/><path d="M34 33h34l16 19" fill="none" stroke="#0891b2" stroke-width="3" stroke-linejoin="round"/>';
+            }
+            if (type === 'machine') {
+                return '<rect x="30" y="22" width="52" height="25" rx="6" fill="#cffafe" stroke="#0891b2" stroke-width="3"/><circle cx="42" cy="52" r="5.5" fill="#ecfeff" stroke="#0891b2" stroke-width="2.6"/><circle cx="70" cy="52" r="5.5" fill="#ecfeff" stroke="#0891b2" stroke-width="2.6"/><path d="M37 18h22l11 4" stroke="#0891b2" stroke-width="2.8" stroke-linecap="round"/>';
+            }
+            if (type === 'line') {
+                return '<rect x="27" y="22" width="58" height="38" rx="7" fill="#cffafe" stroke="#0891b2" stroke-width="3"/><path d="M37 34h36M37 45h28M37 56h36" stroke="#0891b2" stroke-width="3" stroke-linecap="round"/>';
+            }
+            if (type === 'load') {
+                return '<circle cx="40" cy="42" r="15" fill="#cffafe" stroke="#0891b2" stroke-width="3"/><path d="M68 29h20M68 42h20M68 55h12M40 32v20M30 42h20" stroke="#0891b2" stroke-width="3" stroke-linecap="round"/>';
+            }
+            return '<circle cx="38" cy="42" r="17" fill="#cffafe" stroke="#0891b2" stroke-width="3"/><path d="M38 30v24M26 42h24M68 30h24M68 42h24M68 54h16" stroke="#0891b2" stroke-width="3" stroke-linecap="round"/>';
+        }
+
+        function renderEpcFlowLabel(value, x, y, label = '') {
+            if (!(Number(value) > 0)) return '';
+            const text = `${label ? `${label} ` : ''}${formatEpcNumber(value, 0, 'kW')}`;
+            const width = Math.max(82, Math.min(150, text.length * 7.4 + 18));
+            return `
+                <g class="epc-flow-label epc-flow-label-badge" transform="translate(${x} ${y})">
+                    <rect x="${-width / 2}" y="-13" width="${width}" height="22" rx="7"/>
+                    <text x="0" y="2" text-anchor="middle">${htmlSafe(text)}</text>
+                </g>
+            `;
+        }
+
+        function renderEpcFlowNode({ className, x, y, stroke, fill, title, value, icon }) {
+            return `
+                <g class="epc-flow-node ${className}" transform="translate(${x} ${y})">
+                    <rect class="epc-flow-node-card epc-flow-node-frame" x="0" y="0" width="112" height="88" rx="13" fill="${fill}" stroke="${stroke}"/>
+                    ${icon}
+                    <text x="56" y="68" text-anchor="middle" font-size="10.5" font-weight="900" fill="#334155">${htmlSafe(title)}</text>
+                    <text x="56" y="82" text-anchor="middle" font-size="9.5" font-weight="800" fill="#64748b">${htmlSafe(value)}</text>
+                </g>
+            `;
+        }
+
+        function renderEpcFlowDiagram(result, row) {
+            const hour = row?.hour ?? 13;
+            const hourLabel = row?.hourLabel || `${hour}:00`;
+            const equipment = getEpcLoadEquipmentMeta(result);
+            const pvPct = row?.pvOutputKw > 0 ? Math.min(100, (row.pvOutputKw / Math.max(1, getRecommendedEpcScheme(result).pvRecommendedMwp * 1000)) * 100) : 0;
+            const sunLabel = pvPct < 25 ? 'Weak sun' : pvPct > 75 ? 'Strong sun' : 'Moderate sun';
+            const flowSummary = [
+                row?.pvToLoadKw > 0 ? `PV -> load ${formatEpcNumber(row.pvToLoadKw, 0, 'kW')}` : '',
+                row?.pvToBatteryKw > 0 ? `PV -> battery ${formatEpcNumber(row.pvToBatteryKw, 0, 'kW')}` : '',
+                row?.batteryToLoadKw > 0 ? `Battery -> load ${formatEpcNumber(row.batteryToLoadKw, 0, 'kW')}` : '',
+                row?.gensetToLoadKw > 0 ? `Genset -> load ${formatEpcNumber(row.gensetToLoadKw, 0, 'kW')}` : '',
+                row?.curtailmentKw > 0 ? `Curtailment ${formatEpcNumber(row.curtailmentKw, 0, 'kW')}` : ''
+            ].filter(Boolean).join(' | ') || 'No active flow at selected hour.';
+            return `
+                <div id="epc-flow-diagram" class="epc-flow-diagram mb-4">
+                    <div class="px-4 py-3 border-b border-slate-100 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                        <div>
+                            <div class="text-sm font-black text-slate-800">Animated Energy Flow - ${htmlSafe(hourLabel)}</div>
+                            <div id="epc-flow-summary" class="text-xs text-slate-500">${htmlSafe(flowSummary)}</div>
+                        </div>
+                        <div class="text-[11px] font-black text-purple-700 uppercase">${htmlSafe(sunLabel)} | SOC ${formatEpcNumber(row?.socPct || 0, 1, '%')}</div>
+                    </div>
+                    <svg id="epc-flow-svg" class="epc-flow-svg" viewBox="0 0 1180 460" role="img" aria-label="Animated hybrid energy flow diagram">
+                        <defs>
+                            <marker id="epc-arrow-pv" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#f59e0b"/></marker>
+                            <marker id="epc-arrow-battery" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#22c55e"/></marker>
+                            <marker id="epc-arrow-genset" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#64748b"/></marker>
+                            <marker id="epc-arrow-curtail" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#ef4444"/></marker>
+                        </defs>
+
+                        <path class="${flowLineClass(row?.pvOutputKw, 'pv', 'main')}" marker-end="url(#epc-arrow-pv)" d="M156 186 H242"/>
+                        <path class="${flowLineClass(row?.pvOutputKw, 'pv', 'main')}" marker-end="url(#epc-arrow-pv)" d="M362 186 H448"/>
+                        <path class="${flowLineClass(row?.pvToLoadKw, 'pv', 'main')}" marker-end="url(#epc-arrow-pv)" d="M568 186 H994"/>
+                        <path class="${flowLineClass(row?.curtailmentKw, 'curtail', 'branch')}" marker-end="url(#epc-arrow-curtail)" d="M512 142 V118 Q512 106 524 106 H632"/>
+                        <path class="${flowLineClass(row?.pvToBatteryKw, 'battery', 'branch')}" marker-end="url(#epc-arrow-battery)" d="M512 230 V330 Q512 342 524 342 H632"/>
+                        <path class="${flowLineClass(row?.batteryToLoadKw, 'battery', 'branch')}" marker-end="url(#epc-arrow-battery)" d="M752 342 H900 Q918 342 918 324 V218 Q918 202 994 202"/>
+                        <path class="${flowLineClass(row?.gensetToLoadKw, 'genset', 'genset')}" marker-end="url(#epc-arrow-genset)" d="M306 386 V414 Q306 426 326 426 H1076 V238"/>
+
+                        ${renderEpcFlowLabel(row?.pvOutputKw, 202, 106, 'PV')}
+                        ${renderEpcFlowLabel(row?.pvToLoadKw, 785, 164, 'Load')}
+                        ${renderEpcFlowLabel(row?.curtailmentKw, 572, 94, 'Curtail')}
+                        ${renderEpcFlowLabel(row?.pvToBatteryKw, 572, 324, 'Charge')}
+                        ${renderEpcFlowLabel(row?.batteryToLoadKw, 840, 316, 'Batt')}
+                        ${renderEpcFlowLabel(row?.gensetToLoadKw, 520, 408, 'Gen')}
+
+                        ${renderEpcFlowNode({
+                            className: 'epc-flow-sun',
+                            x: 44,
+                            y: 142,
+                            stroke: '#FFC107',
+                            fill: '#fff7d6',
+                            title: 'SUN',
+                            value: formatEpcNumber(pvPct, 0, '%'),
+                            icon: '<circle cx="56" cy="32" r="16" fill="#FFC107"/><path d="M56 8v10M56 46v10M32 32h10M70 32h10M39 15l7 7M66 42l7 7M73 15l-7 7M46 42l-7 7" stroke="#FFC107" stroke-width="3" stroke-linecap="round"/>'
+                        })}
+                        ${renderEpcFlowNode({
+                            className: 'epc-flow-pv',
+                            x: 250,
+                            y: 142,
+                            stroke: '#2563eb',
+                            fill: '#dbeafe',
+                            title: 'SOLAR PANEL',
+                            value: formatEpcNumber(row?.pvOutputKw || 0, 0, 'kW'),
+                            icon: '<path d="M25 25h62M25 42h62M43 14v40M68 14v40" stroke="#2563eb" stroke-width="3" stroke-linecap="round"/>'
+                        })}
+                        ${renderEpcFlowNode({
+                            className: 'epc-flow-inverter',
+                            x: 456,
+                            y: 142,
+                            stroke: '#7c3aed',
+                            fill: '#ede9fe',
+                            title: 'INVERTER',
+                            value: 'PCS / AC',
+                            icon: '<path d="M22 40c10-18 24-18 34 0s24 18 34 0" fill="none" stroke="#7c3aed" stroke-width="4.2" stroke-linecap="round"/>'
+                        })}
+                        ${renderEpcFlowNode({
+                            className: 'epc-flow-curtailment',
+                            x: 640,
+                            y: 42,
+                            stroke: '#ef4444',
+                            fill: '#fee2e2',
+                            title: 'CURTAIL',
+                            value: formatEpcNumber(row?.curtailmentKw || 0, 0, 'kW'),
+                            icon: '<path d="M56 18L82 54H30z" fill="#fecaca" stroke="#ef4444" stroke-width="3.2" stroke-linejoin="round"/><path d="M56 30v12M56 49v1" stroke="#ef4444" stroke-width="5" stroke-linecap="round"/>'
+                        })}
+                        ${renderEpcFlowNode({
+                            className: 'epc-flow-load',
+                            x: 1002,
+                            y: 142,
+                            stroke: '#0891b2',
+                            fill: '#ecfeff',
+                            title: equipment.label,
+                            value: formatEpcNumber(row?.loadKw || 0, 0, 'kW'),
+                            icon: renderEpcEquipmentIcon(equipment.icon)
+                        })}
+                        ${renderEpcFlowNode({
+                            className: 'epc-flow-battery',
+                            x: 640,
+                            y: 298,
+                            stroke: '#16a34a',
+                            fill: '#dcfce7',
+                            title: 'BATTERY',
+                            value: `SOC ${formatEpcNumber(row?.socPct || 0, 1, '%')}`,
+                            icon: `<rect x="30" y="27" width="52" height="26" rx="7" fill="#bbf7d0" stroke="#16a34a" stroke-width="3"/><rect x="82" y="35" width="7" height="10" rx="2" fill="#16a34a"/><rect x="35" y="32" width="${Math.max(6, Math.min(42, (row?.socPct || 0) * 0.42))}" height="16" rx="4" fill="#22c55e"/>`
+                        })}
+                        ${renderEpcFlowNode({
+                            className: 'epc-flow-genset',
+                            x: 250,
+                            y: 298,
+                            stroke: '#64748b',
+                            fill: '#f1f5f9',
+                            title: 'GENSET',
+                            value: formatEpcNumber(row?.gensetToLoadKw || 0, 0, 'kW'),
+                            icon: '<circle cx="40" cy="39" r="15" fill="#e2e8f0" stroke="#64748b" stroke-width="3"/><path d="M66 31h26M66 44h18" stroke="#64748b" stroke-width="4" stroke-linecap="round"/>'
+                        })}
+                    </svg>
+                </div>
+            `;
+        }
+
+        function renderEpcSocBadge(socPct = 0) {
+            const pct = Math.max(0, Math.min(100, Number(socPct) || 0));
+            const fillWidth = Math.max(3, Math.round((pct / 100) * 30));
+            const color = pct >= 75 ? '#16a34a' : pct >= 45 ? '#84cc16' : pct >= 30 ? '#f59e0b' : '#ef4444';
+            const bg = pct >= 75 ? '#dcfce7' : pct >= 45 ? '#ecfccb' : pct >= 30 ? '#fef3c7' : '#fee2e2';
+            return `
+                <span class="epc-soc-battery inline-flex items-center justify-end gap-1.5" style="color:${color}">
+                    <svg viewBox="0 0 42 22" class="h-5 w-9 shrink-0" aria-hidden="true">
+                        <rect x="1.5" y="4" width="34" height="14" rx="4" fill="${bg}" stroke="${color}" stroke-width="2"/>
+                        <rect class="epc-soc-fill" x="5" y="7" width="${fillWidth}" height="8" rx="2.5" fill="${color}"/>
+                        <rect x="36" y="8" width="4" height="6" rx="1.5" fill="${color}"/>
+                    </svg>
+                    <span class="font-black">${formatEpcNumber(pct, 1, '%')}</span>
+                </span>
+            `;
+        }
+
+        function renderEpcFlowTotalRow(rows = []) {
+            const sum = key => rows.reduce((total, row) => total + (Number(row[key]) || 0), 0);
+            const finalSoc = rows.length ? rows[rows.length - 1].socPct : 0;
+            return `
+                <tr class="epc-flow-total-row border-t-2 border-slate-200 bg-slate-50 text-slate-800">
+                    <td class="px-3 py-3 font-black uppercase">Total</td>
+                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(sum('pvOutputKw'), 0)}</td>
+                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(sum('loadKw'), 0)}</td>
+                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(sum('pvToLoadKw'), 0)}</td>
+                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(sum('pvToBatteryKw'), 0)}</td>
+                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(sum('batteryToLoadKw'), 0)}</td>
+                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(sum('gensetToLoadKw'), 0)}</td>
+                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(sum('curtailmentKw'), 0)}</td>
+                    <td class="px-3 py-3 text-right">${renderEpcSocBadge(finalSoc)}</td>
+                </tr>
+            `;
+        }
+
+        function renderEpcEnergyFlow(result) {
+            const target = document.getElementById('epc-energy-flow-table');
+            if (!target) return;
+            const rows = result.energyFlow?.rows || [];
+            const stringDesign = result.pvStringDesign || {};
+            const rowKey = row => String(row.flowKey || row.hour);
+            if (!rows.some(row => rowKey(row) === String(epcSelectedFlowHour))) epcSelectedFlowHour = rowKey(rows[0] || { hour: 13 });
+            const selectedRow = rows.find(row => rowKey(row) === String(epcSelectedFlowHour)) || rows[0] || {};
+            target.innerHTML = `
+                ${renderEpcFlowDiagram(result, selectedRow)}
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                    <div class="rounded-xl border border-slate-100 bg-slate-50 p-3"><div class="text-[10px] font-black text-slate-400 uppercase">Modules</div><div class="text-lg font-black text-slate-800">${formatEpcNumber(stringDesign.modules, 0)}</div></div>
+                    <div class="rounded-xl border border-slate-100 bg-slate-50 p-3"><div class="text-[10px] font-black text-slate-400 uppercase">Strings</div><div class="text-lg font-black text-slate-800">${formatEpcNumber(stringDesign.strings, 0)}</div></div>
+                    <div class="rounded-xl border border-slate-100 bg-slate-50 p-3"><div class="text-[10px] font-black text-slate-400 uppercase">Combiners</div><div class="text-lg font-black text-slate-800">${formatEpcNumber(stringDesign.combiners, 0)}</div></div>
+                    <div class="rounded-xl border border-slate-100 bg-slate-50 p-3"><div class="text-[10px] font-black text-slate-400 uppercase">C-rate</div><div class="text-lg font-black text-slate-800">${formatEpcNumber(getRecommendedEpcScheme(result).cRate, 2, 'C')}</div></div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs whitespace-nowrap">
+                        <thead class="bg-slate-50 text-slate-500 uppercase">
+                            <tr>
+                                <th class="px-3 py-2">Hour</th>
+                                <th class="px-3 py-2 text-right">PV kW</th>
+                                <th class="px-3 py-2 text-right">Load kW</th>
+                                <th class="px-3 py-2 text-right">PV Load</th>
+                                <th class="px-3 py-2 text-right">PV Battery</th>
+                                <th class="px-3 py-2 text-right">Battery Load</th>
+                                <th class="px-3 py-2 text-right">Genset</th>
+                                <th class="px-3 py-2 text-right">Curtailment</th>
+                                <th class="px-3 py-2 text-right">SOC</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            ${rows.map(row => `
+                                <tr data-epc-flow-hour="${htmlSafe(row.flowKey || row.hour)}" onclick='selectEpcEnergyFlowHour(${JSON.stringify(String(row.flowKey || row.hour))})' class="cursor-pointer hover:bg-slate-50 ${rowKey(row) === String(epcSelectedFlowHour) ? 'epc-flow-hour-active' : ''}">
+                                    <td class="px-3 py-3">
+                                        <button type="button" data-epc-flow-hour-button="${htmlSafe(row.flowKey || row.hour)}" onclick='event.stopPropagation(); selectEpcEnergyFlowHour(${JSON.stringify(String(row.flowKey || row.hour))})' class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-black text-slate-700 hover:border-yellow-400 hover:bg-yellow-50">${htmlSafe(row.hourLabel || `${row.hour}:00`)}</button>
+                                    </td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(row.pvOutputKw, 0)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(row.loadKw, 0)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(row.pvToLoadKw, 0)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(row.pvToBatteryKw, 0)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(row.batteryToLoadKw, 0)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(row.gensetToLoadKw, 0)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(row.curtailmentKw, 0)}</td>
+                                    <td class="px-3 py-3 text-right">${renderEpcSocBadge(row.socPct)}</td>
+                                </tr>
+                            `).join('')}
+                            ${renderEpcFlowTotalRow(rows)}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-3 text-[11px] font-bold text-slate-400">${htmlSafe(result.energyFlow?.method || '')}</div>
+                ${(stringDesign.warnings || []).map(warning => `<div class="mt-2 rounded-xl border border-yellow-200 bg-yellow-50 p-3 text-xs font-bold text-yellow-800">${htmlSafe(warning)}</div>`).join('')}
+            `;
+        }
+
+        function renderEpcReports(result) {
+            const target = document.getElementById('epc-design-reports');
+            if (!target) return;
+            target.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <button type="button" onclick="downloadEpcDesignReport('customer')" data-epc-download="customer" class="rounded-xl border border-slate-200 p-4 text-left hover:bg-slate-50">
+                        <div class="text-sm font-black text-slate-800">Customer Summary</div>
+                        <div class="text-xs text-slate-400 mt-1">Scheme, savings, key assumptions and disclaimer.</div>
+                    </button>
+                    <button type="button" onclick="downloadEpcDesignReport('sales')" data-epc-download="sales" class="rounded-xl border border-slate-200 p-4 text-left hover:bg-slate-50">
+                        <div class="text-sm font-black text-slate-800">Sales Quote Input</div>
+                        <div class="text-xs text-slate-400 mt-1">BOQ quantities for quotation preparation.</div>
+                    </button>
+                    <button type="button" onclick="downloadEpcDesignReport('engineering')" data-epc-download="engineering" class="rounded-xl border border-slate-200 p-4 text-left hover:bg-slate-50">
+                        <div class="text-sm font-black text-slate-800">Engineering Calculation</div>
+                        <div class="text-xs text-slate-400 mt-1">Full JSON handoff with formula trace.</div>
+                    </button>
+                </div>
+            `;
+            applyEpcDesignPermissions();
+        }
+
+        function renderEpcInputSummary(result) {
+            const target = document.getElementById('epc-design-input-summary');
+            if (!target) return;
+            target.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                    <div class="rounded-xl border border-slate-200 p-3"><span class="font-black text-slate-700">Location</span><br>${htmlSafe(result.site.country)} ${htmlSafe(result.site.state)}<br>${formatEpcNumber(result.site.latitude, 6)}, ${formatEpcNumber(result.site.longitude, 6)}</div>
+                    <div class="rounded-xl border border-slate-200 p-3"><span class="font-black text-slate-700">Load Source</span><br>${htmlSafe(result.loads.loadSource)}<br>${formatEpcNumber(result.loads.dieselTotalLiters, 0, 'L')} / ${formatEpcNumber(result.loads.dieselPeriodDays, 0, 'days')}</div>
+                    <div class="rounded-xl border border-slate-200 p-3"><span class="font-black text-slate-700">Solar Resource</span><br>${htmlSafe(result.solar.dataSource)}<br>${formatEpcNumber(result.solar.specificYieldKwhPerKwpDay, 2, 'kWh/kWp/day')}</div>
+                </div>
+            `;
+        }
+
+        function renderEpcDesignResult(project = getActiveEpcDesignProject()) {
+            const result = calculateEpcDesignProject(project, { defaults: epcDesignDefaults });
+            const recommended = getRecommendedEpcScheme(result);
+            renderEpcRecommendationTargetToggle(result);
+            renderEpcKpis(result);
+            renderEpcInputSummary(result);
+            renderEpcSchemes(result);
+            renderEpcTrace(result);
+            renderEpcBoq(result);
+            renderEpcRisks(result);
+            renderEpcEnergyFlow(result);
+            renderEpcReports(result);
+            updateEpcWizardStepStatus(result, project);
+            const quality = document.getElementById('epc-design-quality');
+            if (quality) quality.textContent = `Data quality: ${result.dataQualityScore}/100`;
+            const source = document.getElementById('epc-solar-source');
+            if (source) source.textContent = `Solar source: ${result.solar.dataSource}`;
+            const rec = document.getElementById('epc-design-recommendation');
+            if (rec) {
+                rec.innerHTML = `
+                    <div class="text-base font-black text-slate-800 mb-2">${htmlSafe(recommended.label || 'Recommended Scheme')}</div>
+                    <div class="text-xs text-slate-500 leading-relaxed">
+                        Load ${formatEpcNumber(result.load.averageLoadKw, 0, 'kW avg')} / ${formatEpcNumber(result.load.peakLoadKw, 0, 'kW peak')} -> PCS ${formatEpcNumber(recommended.pcsRecommendedMw, 2, 'MW')} -> BESS ${formatEpcNumber(recommended.bessRecommendedMwh, 2, 'MWh')} (${formatEpcNumber(recommended.cRate, 2, 'C')}) -> PV ${formatEpcNumber(recommended.pvRecommendedMwp, 2, 'MWp')}. ${htmlSafe(result.electrical.architecture)}. ${htmlSafe(result.electrical.recommendation)}
+                    </div>
+                    <div class="mt-3 text-[11px] text-slate-400">${htmlSafe(result.disclaimer)}</div>
+                `;
+            }
+            window.__lastEpcDesignResult = result;
+            setEpcPanelTab(epcDesignPanelTab);
+            return result;
+        }
+
+        function renderEpcDesignWorkspace() {
+            epcDesignDefaults = normalizeEpcDesignDefaults(epcDesignDefaults);
+            epcDesignProjects = normalizeEpcDesignProjectList(epcDesignProjects, { defaults: epcDesignDefaults });
+            const project = getActiveEpcDesignProject();
+            renderEpcProjectSelect();
+            syncEpcDesignInputs(project);
+            setEpcDesignMode(project.mode || epcDesignMode, { render: false });
+            renderEpcDesignResult(project);
+            initEpcDesignMap();
+            applyEpcDesignPermissions();
+        }
+
+        window.renderEpcDesignWorkspace = renderEpcDesignWorkspace;
+
+        window.createEpcDesignProject = () => {
+            const project = getEpcDefaultProject();
+            project.id = `epc-${Date.now()}`;
+            project.project.id = project.id;
+            project.project.name = `Hybrid EPC Design ${new Date().toISOString().slice(0, 10)}`;
+            updateEpcProject(project);
+            renderEpcDesignWorkspace();
+        };
+
+        window.selectEpcDesignProject = (id) => {
+            epcDesignActiveProjectId = String(id || '');
+            renderEpcDesignWorkspace();
+        };
+
+        window.selectEpcEnergyFlowHour = (hour) => {
+            epcSelectedFlowHour = String(hour || epcSelectedFlowHour);
+            if (window.__lastEpcDesignResult) {
+                renderEpcEnergyFlow(window.__lastEpcDesignResult);
+            }
+        };
+
+        window.setEpcRecommendationTarget = (replacementPct) => {
+            const pct = Number(replacementPct) || 80;
+            setInputValue('epc-target-replacement', pct);
+            window.onEpcDesignInputChanged();
+        };
+
+        function canReadEpcEngineering() {
+            return window.__minovaAuth?.canPerformAction?.('epcDesignEngineering', 'read') ?? true;
+        }
+
+        function canEditEpcEngineering() {
+            return window.__minovaAuth?.canPerformAction?.('epcDesignEngineering', 'edit') ?? true;
+        }
+
+        window.setEpcDesignMode = (mode, options = {}) => {
+            const wantsDetailed = mode === 'detailed';
+            if (wantsDetailed && !canReadEpcEngineering()) {
+                epcDesignMode = 'quick';
+                if (options.render !== false) alert('Detailed EPC engineering inputs require engineering permission.');
+            } else {
+                epcDesignMode = wantsDetailed ? 'detailed' : 'quick';
+            }
+            updateEpcModeSpecificUi();
+            document.getElementById('epc-input-mode-label') && (document.getElementById('epc-input-mode-label').textContent = epcDesignMode === 'detailed' ? 'Detailed Design' : 'Quick Design');
+            const quick = document.getElementById('epc-mode-quick');
+            const detailed = document.getElementById('epc-mode-detailed');
+            if (quick && detailed) {
+                quick.className = epcDesignMode === 'quick' ? 'px-4 py-2 rounded-lg text-xs font-black bg-purple-700 text-white shadow-sm' : 'px-4 py-2 rounded-lg text-xs font-black text-purple-700 brand-yellow-inactive';
+                detailed.className = epcDesignMode === 'detailed' ? 'px-4 py-2 rounded-lg text-xs font-black bg-purple-700 text-white shadow-sm' : 'px-4 py-2 rounded-lg text-xs font-black text-purple-700 brand-yellow-inactive';
+                detailed.disabled = !canReadEpcEngineering();
+                detailed.classList.toggle('opacity-50', !canReadEpcEngineering());
+                detailed.title = canReadEpcEngineering() ? '' : 'Engineering permission required';
+            }
+            if (options.render !== false) {
+                const project = captureEpcDesignFromDom();
+                project.mode = epcDesignMode;
+                updateEpcProject(project);
+                renderEpcDesignResult(project);
+            }
+        };
+
+        window.onEpcDesignInputChanged = (options = {}) => {
+            const project = captureEpcDesignFromDom();
+            renderEpcDesignResult(project);
+            if (options.map) updateEpcMapMarker(project.site);
+            const status = document.getElementById('epc-design-save-status');
+            if (status) status.textContent = 'Draft changed locally';
+        };
+
+        window.saveCurrentEpcDesignProject = () => {
+            const project = captureEpcDesignFromDom();
+            updateEpcProject(project, { persist: true });
+            saveToLocal();
+            const status = document.getElementById('epc-design-save-status');
+            if (status) status.textContent = 'Saved locally and queued for D1';
+        };
+
+        window.setEpcPanelTab = (tab) => {
+            epcDesignPanelTab = String(tab || 'inputs');
+            document.querySelectorAll('[data-epc-panel]').forEach(panel => panel.classList.toggle('hidden', panel.dataset.epcPanel !== epcDesignPanelTab));
+            document.querySelectorAll('[data-epc-panel-tab]').forEach(btn => {
+                const active = btn.dataset.epcPanelTab === epcDesignPanelTab;
+                btn.className = active
+                    ? 'px-3 py-2 rounded-lg text-xs font-black bg-slate-900 text-white'
+                    : 'px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-50';
+            });
+        };
+
+        function getEpcGoogleMapsKey() {
+            return String(epcDesignDefaults.googleMapsBrowserKey || epcDesignDefaults.googleMapsApiKey || window.MINOVA_GOOGLE_MAPS_BROWSER_KEY || '').trim();
+        }
+
+        function loadEpcGoogleMaps() {
+            if (window.google?.maps) return Promise.resolve(window.google.maps);
+            if (epcGoogleMapsPromise) return epcGoogleMapsPromise;
+            const key = getEpcGoogleMapsKey();
+            if (!key) return Promise.reject(new Error('missing_google_maps_key'));
+            epcGoogleMapsPromise = new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}`;
+                script.async = true;
+                script.defer = true;
+                script.onload = () => resolve(window.google.maps);
+                script.onerror = () => reject(new Error('google_maps_load_failed'));
+                document.head.appendChild(script);
+            });
+            return epcGoogleMapsPromise;
+        }
+
+        function updateEpcMapMarker(site = getActiveEpcDesignProject().site) {
+            if (!epcDesignMap || !epcDesignMarker || !window.google?.maps) return;
+            const lat = Number(site.latitude || 0);
+            const lng = Number(site.longitude || 0);
+            if (!lat || !lng) return;
+            const position = { lat, lng };
+            epcDesignMarker.setPosition(position);
+            epcDesignMap.setCenter(position);
+        }
+
+        function setEpcLocation(lat, lng) {
+            setInputValue('epc-latitude', Number(lat).toFixed(6));
+            setInputValue('epc-longitude', Number(lng).toFixed(6));
+            window.onEpcDesignInputChanged({ map: true });
+        }
+
+        function initEpcDesignMap() {
+            const mapEl = document.getElementById('epc-design-map');
+            if (!mapEl) return;
+            if (!getEpcGoogleMapsKey()) {
+                mapEl.innerHTML = 'Google Maps browser key is not configured. Manual coordinates, current location, and Global Solar Atlas link remain available.';
+                return;
+            }
+            loadEpcGoogleMaps().then(() => {
+                const site = getActiveEpcDesignProject().site;
+                const position = { lat: Number(site.latitude || 3.139), lng: Number(site.longitude || 101.6869) };
+                if (!epcDesignMap) {
+                    epcDesignMap = new google.maps.Map(mapEl, { center: position, zoom: site.latitude && site.longitude ? 12 : 7, mapTypeId: 'satellite' });
+                    epcDesignMarker = new google.maps.Marker({ position, map: epcDesignMap, draggable: true });
+                    epcDesignMap.addListener('click', event => setEpcLocation(event.latLng.lat(), event.latLng.lng()));
+                    epcDesignMarker.addListener('dragend', event => setEpcLocation(event.latLng.lat(), event.latLng.lng()));
+                } else {
+                    updateEpcMapMarker(site);
+                }
+            }).catch(() => {
+                mapEl.innerHTML = 'Google Maps could not load. Check the browser key, billing, and HTTP referrer restriction.';
+            });
+        }
+
+        window.useEpcCurrentLocation = () => {
+            if (!navigator.geolocation) {
+                alert('Geolocation is not available in this browser. Please input latitude and longitude manually.');
+                return;
+            }
+            navigator.geolocation.getCurrentPosition(
+                position => setEpcLocation(position.coords.latitude, position.coords.longitude),
+                () => alert('Location permission was denied or unavailable. Please input coordinates manually.')
+            );
+        };
+
+        window.useEpcIpLocation = async () => {
+            const mapEl = document.getElementById('epc-design-map');
+            try {
+                if (mapEl) mapEl.textContent = 'Checking approximate IP location...';
+                const res = await fetch('https://ipapi.co/json/');
+                if (!res.ok) throw new Error('ip_location_failed');
+                const data = await res.json();
+                const lat = Number(data.latitude);
+                const lng = Number(data.longitude);
+                if (!Number.isFinite(lat) || !Number.isFinite(lng)) throw new Error('ip_location_missing_coordinates');
+                setEpcLocation(lat, lng);
+                const project = captureEpcDesignFromDom();
+                project.site.state = project.site.state || data.region || '';
+                project.site.country = project.site.country || data.country_name || 'Malaysia';
+                updateEpcProject(project);
+                syncEpcDesignInputs(project);
+                if (mapEl && !getEpcGoogleMapsKey()) mapEl.innerHTML = `Approximate IP location applied: ${lat.toFixed(5)}, ${lng.toFixed(5)}. Manual coordinates remain the preferred site record.`;
+            } catch (e) {
+                if (mapEl && !getEpcGoogleMapsKey()) mapEl.innerHTML = 'IP location was unavailable. Please input coordinates manually or use the map after configuring Google Maps.';
+                alert('IP location was unavailable. Please input coordinates manually.');
+            }
+        };
+
+        window.openEpcGlobalSolarAtlas = () => {
+            const project = captureEpcDesignFromDom();
+            window.open(buildGlobalSolarAtlasUrl(project.site), '_blank', 'noopener');
+        };
+
+        window.importEpcSolarResource = () => {
+            const raw = document.getElementById('epc-solar-import')?.value || '';
+            const findValue = (labels) => {
+                for (const label of labels) {
+                    const m = raw.match(new RegExp(`${label}[^0-9.-]*([0-9]+(?:\\.[0-9]+)?)`, 'i'));
+                    if (m) return Number(m[1]);
+                }
+                return 0;
+            };
+            const pvout = findValue(['PVOUT', 'specific yield', 'yield']);
+            const ghi = findValue(['GHI']);
+            const dni = findValue(['DNI']);
+            const temp = findValue(['TEMP', 'temperature']);
+            if (pvout) setInputValue('epc-pv-yield', pvout);
+            if (ghi) setInputValue('epc-solar-ghi', ghi);
+            if (dni) setInputValue('epc-solar-dni', dni);
+            if (temp) setInputValue('epc-solar-temp', temp);
+            const project = captureEpcDesignFromDom();
+            project.solarResource.dataSource = 'Global Solar Atlas Import';
+            project.solarResource.retrievalDate = new Date().toISOString().slice(0, 10);
+            updateEpcProject(project);
+            renderEpcDesignWorkspace();
+        };
+
+        function canDownloadEpcReport(kind) {
+            const resource = kind === 'engineering' ? 'epcDesignEngineering' : 'epcDesign';
+            return window.__minovaAuth?.canPerformAction?.(resource, 'download') ?? true;
+        }
+
+        function makeEpcReportHtml(result, kind) {
+            const recommended = getRecommendedEpcScheme(result);
+            return `<!doctype html><html><head><meta charset="utf-8"><title>${htmlSafe(result.project.name)} - ${htmlSafe(kind)}</title><style>body{font-family:Arial,sans-serif;color:#1f2937;margin:32px}h1{color:#582C83}table{border-collapse:collapse;width:100%;margin:16px 0}td,th{border:1px solid #e5e7eb;padding:8px;text-align:left}.note{color:#64748b;font-size:12px}</style></head><body>
+                <h1>${htmlSafe(result.project.name)} - ${htmlSafe(kind)}</h1>
+                <p class="note">${htmlSafe(result.disclaimer)}</p>
+                <table><tbody>
+                    <tr><th>Recommended Scheme</th><td>${htmlSafe(recommended.label)}</td></tr>
+                    <tr><th>PV</th><td>${formatEpcNumber(recommended.pvRecommendedMwp, 2, 'MWp')}</td></tr>
+                    <tr><th>BESS</th><td>${formatEpcNumber(recommended.bessRecommendedMwh, 2, 'MWh')}</td></tr>
+                    <tr><th>PCS</th><td>${formatEpcNumber(recommended.pcsRecommendedMw, 2, 'MW')}</td></tr>
+                    <tr><th>Monthly Savings</th><td>RM ${formatEpcNumber(recommended.monthlySavings, 0)}</td></tr>
+                    <tr><th>Solar Source</th><td>${htmlSafe(result.solar.dataSource)}</td></tr>
+                    <tr><th>Electrical</th><td>${htmlSafe(result.electrical.recommendation)}</td></tr>
+                </tbody></table>
+                <h2>Risks</h2><ul>${result.risks.map(r => `<li><b>${htmlSafe(r.level)} ${htmlSafe(r.area)}:</b> ${htmlSafe(r.issue)}</li>`).join('')}</ul>
+                <h2>Next Verification</h2><ul>${result.nextVerification.map(item => `<li>${htmlSafe(item)}</li>`).join('')}</ul>
+            </body></html>`;
+        }
+
+        function downloadBlob(filename, type, content) {
+            const blob = new Blob([content], { type });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+
+        window.downloadEpcDesignReport = (kind = 'customer') => {
+            if (!canDownloadEpcReport(kind)) {
+                alert('You do not have permission to download this EPC design report.');
+                return;
+            }
+            const project = captureEpcDesignFromDom();
+            const result = calculateEpcDesignProject(project, { defaults: epcDesignDefaults });
+            const safeName = (result.project.name || 'epc-design').replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-|-$/g, '') || 'epc-design';
+            if (kind === 'engineering') {
+                downloadBlob(`${safeName}-engineering-calculation.json`, 'application/json', JSON.stringify(result, null, 2));
+            } else {
+                downloadBlob(`${safeName}-${kind}-summary.html`, 'text/html', makeEpcReportHtml(result, kind));
+            }
+        };
+
+        window.applyEpcDesignPermissions = () => {
+            document.querySelectorAll('[data-epc-download]').forEach(button => {
+                const kind = button.dataset.epcDownload || 'customer';
+                const allowed = canDownloadEpcReport(kind);
+                button.disabled = !allowed;
+                button.classList.toggle('opacity-50', !allowed);
+                button.title = allowed ? '' : 'Download permission required';
+            });
+            const view = document.getElementById('view-epcdesign');
+            if (!view) return;
+            const canEditProject = window.__minovaAuth?.canPerformAction?.('epcDesign', 'edit') ?? true;
+            const canViewEngineering = canReadEpcEngineering();
+            const canEditEngineering = canEditEpcEngineering();
+            const detailedBtn = document.getElementById('epc-mode-detailed');
+            if (detailedBtn) {
+                detailedBtn.disabled = !canViewEngineering;
+                detailedBtn.classList.toggle('opacity-50', !canViewEngineering);
+                detailedBtn.title = canViewEngineering ? '' : 'Engineering permission required';
+            }
+            updateEpcModeSpecificUi();
+            view.querySelectorAll('input, textarea, select').forEach(el => {
+                if (el.id === 'epc-design-project-select') return;
+                const engineeringOnly = !!el.closest('#epc-detailed-fields');
+                el.disabled = engineeringOnly ? !canEditEngineering : !canEditProject;
+            });
+        };
+
+        const TOP_LEVEL_TABS = ['quotation', 'database', 'epcdesign', 'engineering', 'pricelist', 'pvcalc', 'costcalc', 'inventory', 'transport', 'admin'];
 
         function getActiveTopLevelTab() {
             for (const tab of TOP_LEVEL_TABS) {
@@ -9526,6 +10966,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     updateDatalists();
                 } else if (key === 'engineering') {
                     renderEngineeringWorkspace();
+                } else if (key === 'epcdesign') {
+                    renderEpcDesignWorkspace();
                 } else if (key === 'inventory') {
                     renderInventory();
                     renderNonStockPricingStrategies();
@@ -9562,7 +11004,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const run = () => {
                 window.__minovaDeferredRenderScheduled = false;
                 const active = getActiveTopLevelTab();
-                ['database', 'engineering', 'inventory', 'transport', 'pricelist', 'costcalc'].forEach(tab => {
+                ['database', 'epcdesign', 'engineering', 'inventory', 'transport', 'pricelist', 'costcalc'].forEach(tab => {
                     if (tab !== active) renderTopLevelData(tab);
                 });
             };
@@ -9579,6 +11021,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             updatePickerFilters();
             try { renderCompanyCertUploadSelectors(); renderCompanyCertList(); } catch (e) {}
             try { if (getActiveTopLevelTab() === 'engineering') renderEngineeringWorkspace(); } catch (e) {}
+            try { if (getActiveTopLevelTab() === 'epcdesign') renderEpcDesignWorkspace(); } catch (e) {}
             renderTopLevelData(getActiveTopLevelTab(), { force: true });
             scheduleDeferredTopLevelRenders();
         }
@@ -9619,6 +11062,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             installerProfitSettings = normalizeInstallerProfitSettings(data?.installerProfitSettings || installerProfitSettings || null);
             installerQuoteSettings = normalizeInstallerQuoteSettings(data?.installerQuoteSettings || installerQuoteSettings || null);
             nonStockPricingStrategies = normalizeNonStockPricingStrategies(data?.nonStockPricingStrategies || nonStockPricingStrategies || {});
+            epcDesignDefaults = normalizeEpcDesignDefaults(data?.epcDesignDefaults || epcDesignDefaults || {});
+            epcDesignProjects = normalizeEpcDesignProjectList(data?.epcDesignProjects || epcDesignProjects || [], { defaults: epcDesignDefaults });
             normalizeProductClassificationData();
             try {
                 if (stampMs) localStorage.setItem('minova_embedded_updatedAt', String(stampMs));
@@ -9639,6 +11084,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 localStorage.setItem('minova_installer_profit_v1', JSON.stringify(installerProfitSettings));
                 localStorage.setItem('minova_installer_quote_settings_v1', JSON.stringify(installerQuoteSettings));
                 localStorage.setItem('minova_non_stock_pricing_v1', JSON.stringify(nonStockPricingStrategies));
+                localStorage.setItem('minova_epc_design_defaults_v1', JSON.stringify(epcDesignDefaults));
+                localStorage.setItem('minova_epc_design_projects_v1', JSON.stringify(epcDesignProjects));
             } catch (e) {}
             // companyCerts 也从 applyStateFromData 恢复（保持同步）
             if (data.companyCerts && typeof data.companyCerts === 'object') {
@@ -9729,10 +11176,14 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             saveSubcategoryIndex();
             ensureProfitSettingsCoverage();
             nonStockPricingStrategies = normalizeNonStockPricingStrategies(nonStockPricingStrategies);
+            epcDesignDefaults = normalizeEpcDesignDefaults(epcDesignDefaults);
+            epcDesignProjects = normalizeEpcDesignProjectList(epcDesignProjects, { defaults: epcDesignDefaults });
             try { localStorage.setItem('minova_profit_settings_v1', JSON.stringify(profitSettings)); } catch (e) {}
             try { localStorage.setItem('minova_installer_quote_settings_v1', JSON.stringify(normalizeInstallerQuoteSettings(installerQuoteSettings))); } catch (e) {}
             try { localStorage.setItem('minova_installer_profit_v1', JSON.stringify(normalizeInstallerProfitSettings(installerProfitSettings))); } catch (e) {}
             try { localStorage.setItem('minova_non_stock_pricing_v1', JSON.stringify(nonStockPricingStrategies)); } catch (e) {}
+            try { localStorage.setItem('minova_epc_design_defaults_v1', JSON.stringify(epcDesignDefaults)); } catch (e) {}
+            try { localStorage.setItem('minova_epc_design_projects_v1', JSON.stringify(epcDesignProjects)); } catch (e) {}
             refreshAfterDataChange();
             try { if (!suppressGitHubSync) window.__minovaSync?.enqueueSnapshot('state update'); } catch (e) {}
         }
@@ -9758,7 +11209,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 profitSettings,
                 installerProfitSettings,
                 installerQuoteSettings,
-                nonStockPricingStrategies
+                nonStockPricingStrategies,
+                epcDesignProjects,
+                epcDesignDefaults
             }
         });
 
@@ -10160,7 +11613,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const localFileMode = window.location.protocol === 'file:';
             const connected = !!window.__minovaSync?.getStatus?.()?.connected;
             const authMode = !!window.__minovaAuth?.state?.user || document.body.classList.contains('minova-authenticated');
-            const restrictedTabs = ['quotation', 'costcalc', 'database', 'engineering', 'pricelist', 'inventory', 'transport'];
+            const restrictedTabs = ['quotation', 'costcalc', 'database', 'epcdesign', 'engineering', 'pricelist', 'inventory', 'transport'];
             if (restrictedTabs.includes(tab) && !connected && !localFileMode && !authMode) {
                 tab = 'pvcalc';
             }
@@ -18702,7 +20155,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 profitSettings,
                 installerProfitSettings,
                 installerQuoteSettings,
-                nonStockPricingStrategies
+                nonStockPricingStrategies,
+                epcDesignProjects,
+                epcDesignDefaults
             }),
             applyRemoteState: (data) => {
                 applyStateFromData(data, Date.now());
@@ -18733,7 +20188,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     profitSettings,
                     installerProfitSettings,
                     installerQuoteSettings,
-                    nonStockPricingStrategies
+                    nonStockPricingStrategies,
+                    epcDesignProjects,
+                    epcDesignDefaults
                 }
             };
             const json = JSON.stringify(snapshot).replaceAll('<', '\\u003c');

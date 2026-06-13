@@ -92,6 +92,7 @@ export function mergeState(remote, local) {
     certificationRequirementsCatalog: mergeByKey(rData.certificationRequirementsCatalog, lData.certificationRequirementsCatalog, stableRecordKey),
     productCertificationEvidence: mergeByKey(rData.productCertificationEvidence, lData.productCertificationEvidence, stableRecordKey),
     productMasterDetailTemplates: mergeByKey(rData.productMasterDetailTemplates, lData.productMasterDetailTemplates, stableRecordKey),
+    epcDesignProjects: mergeByKey(rData.epcDesignProjects, lData.epcDesignProjects, stableRecordKey),
     inventory: mergeByKey(rData.inventory, lData.inventory, stableRecordKey),
     inventoryHistory: [],
     suppliers: mergeByKey(rData.suppliers, lData.suppliers, supplierMergeKey),
@@ -103,6 +104,7 @@ export function mergeState(remote, local) {
     fileDeleteLogs: mergeByKey(rData.fileDeleteLogs, lData.fileDeleteLogs, stableRecordKey),
     subcategoriesByCategory: { ...(rData.subcategoriesByCategory || {}), ...(lData.subcategoriesByCategory || {}) },
     nonStockPricingStrategies: { ...(rData.nonStockPricingStrategies || {}), ...(lData.nonStockPricingStrategies || {}) },
+    epcDesignDefaults: { ...(rData.epcDesignDefaults || {}), ...(lData.epcDesignDefaults || {}) },
     settings: { ...(rData.settings || {}), ...(lData.settings || {}) }
   }
 

@@ -1,5 +1,5 @@
 export const DEFAULT_API_BASE_URL = 'https://minova-backend.qibbqi00.workers.dev';
-export const PERMISSION_SCHEMA_VERSION = 2;
+export const PERMISSION_SCHEMA_VERSION = 3;
 
 export const ROLE_DEFINITIONS = {
   admin: {
@@ -51,6 +51,7 @@ export const ALL_TABS = [
   'pvcalc',
   'costcalc',
   'database',
+  'epcdesign',
   'engineering',
   'pricelist',
   'inventory',
@@ -65,6 +66,8 @@ export const PERMISSION_RESOURCES = [
   'inventory',
   'transport',
   'suppliers',
+  'epcDesign',
+  'epcDesignEngineering',
   'engineering',
   'quoteSettings',
   'admin'
@@ -88,11 +91,11 @@ export const SENSITIVE_FIELDS = [
 
 const ROLE_TABS = {
   admin: ALL_TABS,
-  sales: ['quotation', 'pvcalc', 'pricelist'],
-  sales_management: ['quotation', 'pvcalc', 'pricelist', 'admin'],
-  supply_chain: ['database', 'engineering', 'inventory', 'transport', 'pricelist'],
-  operation_management: ['database', 'engineering', 'inventory', 'transport'],
-  price_auditor: ['quotation', 'costcalc', 'pricelist', 'engineering', 'admin'],
+  sales: ['quotation', 'pvcalc', 'epcdesign', 'pricelist'],
+  sales_management: ['quotation', 'pvcalc', 'epcdesign', 'pricelist', 'admin'],
+  supply_chain: ['database', 'epcdesign', 'engineering', 'inventory', 'transport', 'pricelist'],
+  operation_management: ['database', 'epcdesign', 'engineering', 'inventory', 'transport'],
+  price_auditor: ['quotation', 'costcalc', 'epcdesign', 'pricelist', 'engineering', 'admin'],
   read_only: ['quotation', 'pvcalc', 'pricelist']
 };
 
@@ -103,6 +106,8 @@ const READ_ONLY_ACTIONS = {
   inventory: ['read'],
   transport: ['read'],
   suppliers: ['read'],
+  epcDesign: [],
+  epcDesignEngineering: [],
   engineering: ['read'],
   quoteSettings: [],
   admin: []
@@ -116,6 +121,8 @@ const ROLE_ACTIONS = {
     inventory: ['read', 'edit', 'delete'],
     transport: ['read', 'edit', 'delete', 'upload'],
     suppliers: ['read', 'edit', 'delete'],
+    epcDesign: ['read', 'edit', 'delete', 'download'],
+    epcDesignEngineering: ['read', 'edit', 'delete', 'upload', 'download'],
     engineering: ['read', 'edit', 'delete', 'upload'],
     quoteSettings: ['read', 'edit'],
     admin: ['read', 'edit', 'delete']
@@ -127,6 +134,8 @@ const ROLE_ACTIONS = {
     inventory: [],
     transport: [],
     suppliers: [],
+    epcDesign: ['read', 'edit', 'download'],
+    epcDesignEngineering: [],
     engineering: [],
     quoteSettings: [],
     admin: []
@@ -138,6 +147,8 @@ const ROLE_ACTIONS = {
     inventory: [],
     transport: [],
     suppliers: [],
+    epcDesign: ['read', 'edit', 'download'],
+    epcDesignEngineering: [],
     engineering: [],
     quoteSettings: [],
     admin: ['read']
@@ -149,6 +160,8 @@ const ROLE_ACTIONS = {
     inventory: ['read', 'edit', 'delete'],
     transport: ['read', 'edit', 'delete', 'upload'],
     suppliers: ['read', 'edit', 'delete'],
+    epcDesign: ['read', 'edit', 'delete', 'download'],
+    epcDesignEngineering: ['read', 'edit', 'delete', 'upload', 'download'],
     engineering: ['read', 'edit', 'delete', 'upload'],
     quoteSettings: [],
     admin: []
@@ -160,6 +173,8 @@ const ROLE_ACTIONS = {
     inventory: ['read', 'edit', 'delete'],
     transport: ['read', 'edit', 'delete'],
     suppliers: ['read'],
+    epcDesign: ['read', 'edit', 'delete', 'download'],
+    epcDesignEngineering: ['read', 'edit', 'delete', 'upload', 'download'],
     engineering: ['read', 'edit', 'delete', 'upload'],
     quoteSettings: [],
     admin: []
@@ -171,6 +186,8 @@ const ROLE_ACTIONS = {
     inventory: ['read', 'delete'],
     transport: ['read', 'delete'],
     suppliers: ['read'],
+    epcDesign: ['read', 'download'],
+    epcDesignEngineering: ['read', 'download'],
     engineering: ['read'],
     quoteSettings: ['read', 'edit'],
     admin: ['read']
@@ -401,6 +418,16 @@ function migratePermissionSnapshot(role, raw = {}, base = getDefaultPermissionSn
     }
     if (!Object.prototype.hasOwnProperty.call(migrated.actions, 'engineering')) {
       migrated.actions.engineering = [...listToSet(base.actions?.engineering || [])];
+    }
+  }
+  if (version < 3) {
+    if ((base.tabs || []).includes('epcdesign') && !listToSet(migrated.tabs).has('epcdesign')) {
+      migrated.tabs = [...migrated.tabs, 'epcdesign'];
+    }
+    for (const resource of ['epcDesign', 'epcDesignEngineering']) {
+      if (!Object.prototype.hasOwnProperty.call(migrated.actions, resource)) {
+        migrated.actions[resource] = [...listToSet(base.actions?.[resource] || [])];
+      }
     }
   }
   migrated.schemaVersion = PERMISSION_SCHEMA_VERSION;

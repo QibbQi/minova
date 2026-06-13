@@ -37,6 +37,7 @@ import {
 
 const authUiSource = readFileSync(new URL('../auth/minova-auth-ui.mjs', import.meta.url), 'utf8');
 const indexHtmlSource = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const workerSource = readFileSync(new URL('../worker/src/index.mjs', import.meta.url), 'utf8');
 
 test('permission sanitization filters unknown tabs resources and actions', () => {
   const permission = sanitizePermissionSnapshot('sales', {
@@ -238,6 +239,16 @@ test('worker bootstrap avoids rehashing the seeded admin password when current h
   assert.equal(shouldRefreshInitialAdminPassword({ password_hash: '' }), true);
   assert.equal(shouldRefreshInitialAdminPassword({ password_hash: 'legacy-hash' }), true);
   assert.equal(shouldRefreshInitialAdminPassword({ password_hash: 'pbkdf2$abc$def' }), false);
+});
+
+test('worker role permissions use latest rows and do not amplify duplicate D1 records', () => {
+  assert.match(workerSource, /const LATEST_PERMISSION_ROWS_SQL = `[\s\S]*MAX\(id\)[\s\S]*GROUP BY role_id/);
+  assert.match(workerSource, /const SELECT_LATEST_PERMISSION_ID_SQL = 'SELECT id FROM permissions WHERE role_id = \? ORDER BY id DESC LIMIT 1';/);
+  assert.match(workerSource, /CREATE INDEX IF NOT EXISTS idx_permissions_role_id_id ON permissions\(role_id, id\)/);
+  assert.match(workerSource, /if \(!latestPermission\?\.id\) \{[\s\S]*INSERT INTO permissions \(role_id, permission_json\) VALUES \(\?, \?\)/);
+  assert.match(workerSource, /UPDATE permissions SET permission_json = \? WHERE id = \?/);
+  assert.doesNotMatch(workerSource, /INSERT INTO permissions \(role_id, permission_json\)[\s\S]*\.run\(\)\.catch\(async \(\) =>/);
+  assert.doesNotMatch(workerSource, /UPDATE permissions SET permission_json = \? WHERE role_id = \?/);
 });
 
 test('D1 write queue only retries transient business failures', () => {

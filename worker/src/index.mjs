@@ -49,6 +49,18 @@ const BUSINESS_SETTINGS_KEYS = new Set([
   'non_stock_pricing_strategies',
   'epc_design_defaults'
 ]);
+const LATEST_PERMISSION_ROWS_SQL = `
+  SELECT p.id, p.role_id, p.permission_json, p.created_at, r.name AS role_name
+  FROM permissions p
+  INNER JOIN (
+    SELECT role_id, MAX(id) AS id
+    FROM permissions
+    GROUP BY role_id
+  ) latest ON latest.id = p.id
+  LEFT JOIN roles r ON r.id = p.role_id
+  ORDER BY p.role_id
+`;
+const SELECT_LATEST_PERMISSION_ID_SQL = 'SELECT id FROM permissions WHERE role_id = ? ORDER BY id DESC LIMIT 1';
 
 export default {
   async fetch(request, env) {
@@ -187,6 +199,7 @@ async function ensureBootstrapUncached(env) {
   if (!db) throw new Error('D1 binding minova_auth_db is missing');
   await ensureUsersEmailColumn(db);
   await ensureBusinessTables(db);
+  await ensurePermissionIndexes(db);
 
   for (const [id, role] of Object.entries(ROLE_DEFINITIONS)) {
     await db.prepare(`
@@ -196,14 +209,12 @@ async function ensureBootstrapUncached(env) {
 
     const roleRow = await db.prepare('SELECT id FROM roles WHERE name = ?').bind(role.displayName).first();
     if (!roleRow?.id) continue;
-    const snapshot = getDefaultPermissionSnapshot(id);
-    await db.prepare(`
-      INSERT INTO permissions (role_id, permission_json)
-      VALUES (?, ?)
-    `).bind(roleRow.id, JSON.stringify(snapshot)).run().catch(async () => {
-      await db.prepare('UPDATE permissions SET permission_json = ? WHERE role_id = ?')
-        .bind(JSON.stringify(snapshot), roleRow.id).run();
-    });
+    const latestPermission = await db.prepare(SELECT_LATEST_PERMISSION_ID_SQL).bind(roleRow.id).first();
+    if (!latestPermission?.id) {
+      const snapshot = getDefaultPermissionSnapshot(id);
+      await db.prepare('INSERT INTO permissions (role_id, permission_json) VALUES (?, ?)')
+        .bind(roleRow.id, JSON.stringify(snapshot)).run();
+    }
   }
 
   const existing = await db.prepare('SELECT id, password_hash FROM users WHERE username = ?').bind('admin').first();
@@ -254,6 +265,10 @@ async function ensureBusinessTables(db) {
   `).run();
   await db.prepare('CREATE INDEX IF NOT EXISTS idx_business_entities_domain_status ON business_entities(domain, status)').run();
   await db.prepare('CREATE INDEX IF NOT EXISTS idx_business_entities_updated_at ON business_entities(updated_at)').run();
+}
+
+async function ensurePermissionIndexes(db) {
+  await db.prepare('CREATE INDEX IF NOT EXISTS idx_permissions_role_id_id ON permissions(role_id, id)').run();
 }
 
 async function login(request, env) {
@@ -510,12 +525,7 @@ async function adminResetUserPassword(request, env) {
 async function adminPermissions(request, env) {
   const gate = await requireAdmin(request, env);
   if (gate.response) return gate.response;
-  const rows = await env.minova_auth_db.prepare(`
-    SELECT p.role_id, p.permission_json, p.created_at, r.name AS role_name
-    FROM permissions p
-    LEFT JOIN roles r ON r.id = p.role_id
-    ORDER BY p.role_id
-  `).all();
+  const rows = await env.minova_auth_db.prepare(LATEST_PERMISSION_ROWS_SQL).all();
   const permissions = (rows.results || []).map(row => {
     const role = roleKeyFromName(row.role_name);
     return {
@@ -544,9 +554,11 @@ async function adminSavePermission(request, env) {
   const permission = sanitizePermissionSnapshot(role, body.permission || body);
   const roleId = await roleIdFromKey(env, role);
   const encoded = JSON.stringify(permission);
-  const update = await env.minova_auth_db.prepare('UPDATE permissions SET permission_json = ? WHERE role_id = ?')
-    .bind(encoded, roleId).run();
-  if (!update.meta?.changes) {
+  const latestPermission = await env.minova_auth_db.prepare(SELECT_LATEST_PERMISSION_ID_SQL).bind(roleId).first();
+  if (latestPermission?.id) {
+    await env.minova_auth_db.prepare('UPDATE permissions SET permission_json = ? WHERE id = ?')
+      .bind(encoded, latestPermission.id).run();
+  } else {
     await env.minova_auth_db.prepare('INSERT INTO permissions (role_id, permission_json) VALUES (?, ?)')
       .bind(roleId, encoded).run();
   }

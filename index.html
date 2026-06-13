@@ -10422,6 +10422,41 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             `;
         }
 
+        function renderEpcSocBadge(socPct = 0) {
+            const pct = Math.max(0, Math.min(100, Number(socPct) || 0));
+            const fillWidth = Math.max(3, Math.round((pct / 100) * 30));
+            const color = pct >= 75 ? '#16a34a' : pct >= 45 ? '#84cc16' : pct >= 30 ? '#f59e0b' : '#ef4444';
+            const bg = pct >= 75 ? '#dcfce7' : pct >= 45 ? '#ecfccb' : pct >= 30 ? '#fef3c7' : '#fee2e2';
+            return `
+                <span class="epc-soc-battery inline-flex items-center justify-end gap-1.5" style="color:${color}">
+                    <svg viewBox="0 0 42 22" class="h-5 w-9 shrink-0" aria-hidden="true">
+                        <rect x="1.5" y="4" width="34" height="14" rx="4" fill="${bg}" stroke="${color}" stroke-width="2"/>
+                        <rect class="epc-soc-fill" x="5" y="7" width="${fillWidth}" height="8" rx="2.5" fill="${color}"/>
+                        <rect x="36" y="8" width="4" height="6" rx="1.5" fill="${color}"/>
+                    </svg>
+                    <span class="font-black">${formatEpcNumber(pct, 1, '%')}</span>
+                </span>
+            `;
+        }
+
+        function renderEpcFlowTotalRow(rows = []) {
+            const sum = key => rows.reduce((total, row) => total + (Number(row[key]) || 0), 0);
+            const finalSoc = rows.length ? rows[rows.length - 1].socPct : 0;
+            return `
+                <tr class="epc-flow-total-row border-t-2 border-slate-200 bg-slate-50 text-slate-800">
+                    <td class="px-3 py-3 font-black uppercase">Total</td>
+                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(sum('pvOutputKw'), 0)}</td>
+                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(sum('loadKw'), 0)}</td>
+                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(sum('pvToLoadKw'), 0)}</td>
+                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(sum('pvToBatteryKw'), 0)}</td>
+                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(sum('batteryToLoadKw'), 0)}</td>
+                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(sum('gensetToLoadKw'), 0)}</td>
+                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(sum('curtailmentKw'), 0)}</td>
+                    <td class="px-3 py-3 text-right">${renderEpcSocBadge(finalSoc)}</td>
+                </tr>
+            `;
+        }
+
         function renderEpcEnergyFlow(result) {
             const target = document.getElementById('epc-energy-flow-table');
             if (!target) return;
@@ -10466,9 +10501,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                                     <td class="px-3 py-3 text-right">${formatEpcNumber(row.batteryToLoadKw, 0)}</td>
                                     <td class="px-3 py-3 text-right">${formatEpcNumber(row.gensetToLoadKw, 0)}</td>
                                     <td class="px-3 py-3 text-right">${formatEpcNumber(row.curtailmentKw, 0)}</td>
-                                    <td class="px-3 py-3 text-right">${formatEpcNumber(row.socPct, 1, '%')}</td>
+                                    <td class="px-3 py-3 text-right">${renderEpcSocBadge(row.socPct)}</td>
                                 </tr>
                             `).join('')}
+                            ${renderEpcFlowTotalRow(rows)}
                         </tbody>
                     </table>
                 </div>

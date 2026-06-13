@@ -153,12 +153,15 @@ const GLOBAL_SOLAR_ATLAS_API_BASE = 'https://2eueu84zmf.execute-api.eu-west-1.am
 
   function defaultSolarResource(input = {}, defaults = EPC_DESIGN_DEFAULTS) {
     const importedYield = asNumber(input.specificYieldKwhPerKwpDay ?? input.pvYieldKwhPerKwpDay, NaN);
+    const gsaSource = String(input.dataSource || '').toLowerCase().includes('global solar atlas');
+    const importedGsaPvout = asNumber(input.gsaPvoutKwhPerKwpDay ?? (gsaSource ? input.specificYieldKwhPerKwpDay : NaN), NaN);
     const specificYield = Number.isFinite(importedYield) && importedYield > 0
       ? importedYield
       : defaults.malaysiaYieldBase;
     const imported = Number.isFinite(importedYield) && importedYield > 0;
     return {
       specificYieldKwhPerKwpDay: specificYield,
+      gsaPvoutKwhPerKwpDay: Number.isFinite(importedGsaPvout) && importedGsaPvout > 0 ? importedGsaPvout : 0,
       ghiKwhM2Day: asNumber(input.ghiKwhM2Day, 0),
       dniKwhM2Day: asNumber(input.dniKwhM2Day, 0),
       temperatureC: asNumber(input.temperatureC, 0),
@@ -864,10 +867,7 @@ const GLOBAL_SOLAR_ATLAS_API_BASE = 'https://2eueu84zmf.execute-api.eu-west-1.am
     const latText = lat.toFixed(6);
     const lngText = lng.toFixed(6);
     return [
-      `${base}location?lat=${latText}&lng=${lngText}`,
-      `${base}location?latitude=${latText}&longitude=${lngText}`,
-      `${base}location/${latText}/${lngText}`,
-      `${base}location/${latText},${lngText}`
+      `${base}data/lta?loc=${encodeURIComponent(`${latText},${lngText}`)}`
     ];
   }
 
@@ -919,6 +919,7 @@ const GLOBAL_SOLAR_ATLAS_API_BASE = 'https://2eueu84zmf.execute-api.eu-west-1.am
     const temp = findSolarValue(payload, ['TEMP', 'temperatureC', 'temperature']);
     const resource = {
       specificYieldKwhPerKwpDay: dailySolarValue(pvout, 2),
+      gsaPvoutKwhPerKwpDay: dailySolarValue(pvout, 2),
       ghiKwhM2Day: dailySolarValue(ghi, 2),
       dniKwhM2Day: dailySolarValue(dni, 2),
       temperatureC: Number.isFinite(Number(temp)) ? round(temp, 1) : 0,

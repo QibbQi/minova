@@ -2683,7 +2683,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <div id="epc-map-pin-location" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-bold text-slate-500">Pin location: --</div>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-2">
-                        <input id="epc-solar-pvout" type="number" step="0.01" oninput="setEpcSolarPvoutInput(this.value)" class="border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" placeholder="PVOUT kWh/kWp/day">
+                        <input id="epc-solar-pvout" type="number" step="0.01" readonly class="border border-slate-200 rounded-xl bg-slate-100 px-3 py-2 text-sm font-bold text-slate-600 outline-none" placeholder="PVOUT from GSA kWh/kWp/day">
                         <input id="epc-solar-ghi" data-epc-field="solarResource.ghiKwhM2Day" type="number" step="0.01" oninput="onEpcDesignInputChanged()" class="border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" placeholder="GHI kWh/m2/day">
                         <input id="epc-solar-dni" data-epc-field="solarResource.dniKwhM2Day" type="number" step="0.01" oninput="onEpcDesignInputChanged()" class="border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" placeholder="DNI kWh/m2/day">
                         <input id="epc-solar-temp" data-epc-field="solarResource.temperatureC" type="number" step="0.1" oninput="onEpcDesignInputChanged()" class="border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" placeholder="Temp C">
@@ -10013,11 +10013,6 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             el.value = value ?? '';
         }
 
-        window.setEpcSolarPvoutInput = (value) => {
-            setInputValue('epc-pv-yield', value);
-            window.onEpcDesignInputChanged();
-        };
-
         function epcTimeToMinutes(value, fallback = '09:00') {
             const raw = String(value || fallback || '09:00');
             const match = raw.match(/^(\d{1,2}):?(\d{2})?/);
@@ -10145,7 +10140,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             setInputValue('epc-support-hours', project.designTargets.supportHours || EPC_DESIGN_DEFAULTS.bessAutonomyHours);
             setInputValue('epc-sfc', project.assumptions.dieselSfcLPerKwh || EPC_DESIGN_DEFAULTS.dieselSfcLPerKwh);
             setInputValue('epc-pv-yield', project.solarResource.specificYieldKwhPerKwpDay || EPC_DESIGN_DEFAULTS.malaysiaYieldBase);
-            setInputValue('epc-solar-pvout', project.solarResource.specificYieldKwhPerKwpDay || EPC_DESIGN_DEFAULTS.malaysiaYieldBase);
+            setInputValue('epc-solar-pvout', project.solarResource.gsaPvoutKwhPerKwpDay || '');
             setInputValue('epc-bess-dod', project.assumptions.bessDod || EPC_DESIGN_DEFAULTS.bessDod);
             setInputValue('epc-power-factor', project.electrical.powerFactor || EPC_DESIGN_DEFAULTS.powerFactor);
             setInputValue('epc-bess-role', project.designTargets.bessRole || '');
@@ -10797,7 +10792,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (!resource) return null;
             if (resource.specificYieldKwhPerKwpDay) {
                 setInputValue('epc-pv-yield', resource.specificYieldKwhPerKwpDay);
-                setInputValue('epc-solar-pvout', resource.specificYieldKwhPerKwpDay);
+                setInputValue('epc-solar-pvout', resource.gsaPvoutKwhPerKwpDay || resource.specificYieldKwhPerKwpDay);
             }
             if (resource.ghiKwhM2Day) setInputValue('epc-solar-ghi', resource.ghiKwhM2Day);
             if (resource.dniKwhM2Day) setInputValue('epc-solar-dni', resource.dniKwhM2Day);
@@ -10974,6 +10969,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (temp) setInputValue('epc-solar-temp', temp);
             const project = captureEpcDesignFromDom();
             project.solarResource.dataSource = 'Global Solar Atlas Import';
+            if (pvout) project.solarResource.gsaPvoutKwhPerKwpDay = pvout;
             project.solarResource.retrievalDate = new Date().toISOString().slice(0, 10);
             updateEpcProject(project);
             renderEpcDesignWorkspace();

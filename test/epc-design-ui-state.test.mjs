@@ -146,6 +146,8 @@ test('EPC map controls expose browser IP and manual location fallbacks', () => {
     'epc-map-current-location',
     'epc-map-pin-location',
     'epc-solar-pvout',
+    'PVOUT from GSA kWh/kWp/day',
+    'project.solarResource.gsaPvoutKwhPerKwpDay',
     'window.fetchEpcGlobalSolarAtlasResource',
     'parseGlobalSolarAtlasSolarResource',
     'buildGlobalSolarAtlasApiUrls',

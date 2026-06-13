@@ -98,26 +98,19 @@ test('EPC design engine builds Global Solar Atlas API candidates from site coord
     apiBase: 'https://example.test/prod/'
   });
 
-  assert.ok(urls.length >= 3);
+  assert.ok(urls.length >= 1);
   assert.equal(new Set(urls).size, urls.length);
-  assert.match(urls[0], /^https:\/\/example\.test\/prod\/location/);
-  assert.match(urls[0], /lat=2\.960857/);
-  assert.match(urls[0], /lng=101\.572564/);
-  assert.ok(urls.some(url => url.includes('/location/2.960857/101.572564')));
+  assert.equal(urls[0], 'https://example.test/prod/data/lta?loc=2.960857%2C101.572564');
 });
 
 test('EPC design engine parses Global Solar Atlas solar resource values for EPC sizing', () => {
   const parsed = parseGlobalSolarAtlasSolarResource({
-    data: {
-      lta: {
-        annual: {
-          data: {
-            PVOUT_specific: 3.186,
-            GHI: 1642.5,
-            DNI: 1423.5,
-            TEMP: 26.8
-          }
-        }
+    annual: {
+      data: {
+        PVOUT_csi: 1350.9088134765625,
+        GHI: 1703.15625,
+        DNI: 964.078125,
+        TEMP: 26.5625
       }
     }
   }, {
@@ -125,13 +118,28 @@ test('EPC design engine parses Global Solar Atlas solar resource values for EPC 
   });
 
   assert.deepEqual(parsed, {
-    specificYieldKwhPerKwpDay: 3.19,
-    ghiKwhM2Day: 4.5,
-    dniKwhM2Day: 3.9,
-    temperatureC: 26.8,
+    specificYieldKwhPerKwpDay: 3.7,
+    gsaPvoutKwhPerKwpDay: 3.7,
+    ghiKwhM2Day: 4.67,
+    dniKwhM2Day: 2.64,
+    temperatureC: 26.6,
     dataSource: 'Global Solar Atlas',
     retrievalDate: '2026-06-13'
   });
+});
+
+test('EPC design engine keeps Map PVOUT separate from manual PV yield until GSA data is imported', () => {
+  const manual = normalizeEpcDesignProject({
+    solarResource: {
+      pvYieldKwhPerKwpDay: 4.2,
+      dataSource: 'Manual PV Yield'
+    }
+  }, {
+    now: '2026-06-13T00:00:00.000Z'
+  });
+
+  assert.equal(manual.solarResource.specificYieldKwhPerKwpDay, 4.2);
+  assert.equal(manual.solarResource.gsaPvoutKwhPerKwpDay, 0);
 });
 
 test('EPC design engine selects the recommended scheme from the current target replacement', () => {

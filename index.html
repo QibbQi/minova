@@ -11060,8 +11060,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             '#0ea5e9', '#7c3aed', '#ec4899', '#14b8a6',
             '#84cc16', '#f97316', '#64748b', '#111827'
         ];
-        const EPC_DEVICE_WORK_INTERVALS = [15, 30, 60, 120, 360, 720];
+        const EPC_DEVICE_WORK_INTERVALS = [1, 5, 15, 30, 60, 120, 360, 720];
         const EPC_DEVICE_WORK_INTERVAL_OPTIONS = [
+            { minutes: 1, label: '1m', attr: 'data-epc-device-interval="1"' },
+            { minutes: 5, label: '5m', attr: 'data-epc-device-interval="5"' },
             { minutes: 15, label: '15m', attr: 'data-epc-device-interval="15"' },
             { minutes: 30, label: '30m', attr: 'data-epc-device-interval="30"' },
             { minutes: 60, label: '1h', attr: 'data-epc-device-interval="60"' },
@@ -11094,7 +11096,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const rawPeakEnd = Math.min(24 * 60, Math.max(0, Number(peakBand.endMinute) || EPC_DEVICE_WORK_DEFAULT_PEAK_END_MINUTE));
             return {
                 visibleSeries: getEpcVisibleEmsFlowSeries(result),
-                intervalMinutes: EPC_DEVICE_WORK_INTERVALS.includes(Number(raw.intervalMinutes)) ? Number(raw.intervalMinutes) : 60,
+                intervalMinutes: EPC_DEVICE_WORK_INTERVALS.includes(Number(raw.intervalMinutes)) ? Number(raw.intervalMinutes) : 5,
                 selectedRange: range,
                 peakBand: {
                     visible: peakBand.visible === false ? false : true,
@@ -11124,7 +11126,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
 
         function setEpcDeviceWorkInterval(minutes) {
-            const intervalMinutes = EPC_DEVICE_WORK_INTERVALS.includes(Number(minutes)) ? Number(minutes) : 60;
+            const intervalMinutes = EPC_DEVICE_WORK_INTERVALS.includes(Number(minutes)) ? Number(minutes) : 5;
             updateEpcDeviceWorkSettings({ intervalMinutes, selectedRange: null });
         }
 
@@ -11143,6 +11145,45 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 else next.start = next.end;
             }
             updateEpcDeviceWorkSettings({ selectedRange: next });
+        }
+
+        function previewEpcDeviceWorkRange(edge, value) {
+            const result = window.__lastEpcDesignResult || calculateEpcDesignProject(getActiveEpcDesignProject(), { defaults: epcDesignDefaults });
+            const settings = getEpcDeviceWorkSettings(result);
+            const rows = getEpcDeviceWorkRowsForSettings(result.energyFlow?.rows || [], { ...settings, selectedRange: null });
+            const maxIndex = Math.max(0, rows.length - 1);
+            const startInput = document.getElementById('epc-device-work-range-start');
+            const endInput = document.getElementById('epc-device-work-range-end');
+            const current = {
+                start: Math.min(maxIndex, Math.max(0, Number(startInput?.value) || 0)),
+                end: Math.min(maxIndex, Math.max(0, Number(endInput?.value) || maxIndex))
+            };
+            const next = {
+                start: edge === 'start' ? Math.min(maxIndex, Math.max(0, Number(value) || 0)) : current.start,
+                end: edge === 'end' ? Math.min(maxIndex, Math.max(0, Number(value) || 0)) : current.end
+            };
+            if (next.end < next.start) {
+                if (edge === 'start') next.end = next.start;
+                else next.start = next.end;
+            }
+            if (startInput) startInput.value = String(next.start);
+            if (endInput) endInput.value = String(next.end);
+            const startLabel = document.getElementById('epc-device-work-range-start-label');
+            const endLabel = document.getElementById('epc-device-work-range-end-label');
+            if (startLabel) startLabel.textContent = rows[next.start]?.hourLabel || '--';
+            if (endLabel) endLabel.textContent = rows[next.end]?.hourLabel || '--';
+            const fill = document.getElementById('epc-device-work-range-fill');
+            const startPct = maxIndex ? (next.start / maxIndex) * 100 : 0;
+            const endPct = maxIndex ? (next.end / maxIndex) * 100 : 100;
+            if (fill) {
+                fill.style.left = `${epcChartRound(startPct, 2)}%`;
+                fill.style.right = `${epcChartRound(100 - endPct, 2)}%`;
+            }
+            document.querySelectorAll('[data-epc-device-work-unit]').forEach(node => {
+                if (node.textContent.includes('kWh/day')) {
+                    node.textContent = node.textContent.replace('kWh/day', 'kWh/period');
+                }
+            });
         }
 
         function resetEpcDeviceWorkRange() {
@@ -11202,6 +11243,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
 
         window.setEpcDeviceWorkInterval = setEpcDeviceWorkInterval;
+        window.previewEpcDeviceWorkRange = previewEpcDeviceWorkRange;
         window.setEpcDeviceWorkRange = setEpcDeviceWorkRange;
         window.resetEpcDeviceWorkRange = resetEpcDeviceWorkRange;
         window.setEpcDeviceWorkPeakBandVisible = setEpcDeviceWorkPeakBandVisible;
@@ -11233,24 +11275,32 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return `#${mixed.map(channel => channel.toString(16).padStart(2, '0')).join('')}`;
         }
 
-        function getEpcDeviceWorkMetrics(seriesId, rows = [], result = {}) {
-            const sum = key => rows.reduce((total, item) => total + (Number(item[key]) || 0), 0);
+        function getEpcDeviceWorkMetricUnit(settings = {}) {
+            return settings.selectedRange ? 'kWh/period' : 'kWh/day';
+        }
+
+        function getEpcDeviceWorkMetrics(seriesId, rows = [], result = {}, settings = {}) {
+            const durationHours = item => Math.max(0, Number(item.durationHours) || 0);
+            const sum = key => rows.reduce((total, item) => total + (Number(item[key]) || 0) * durationHours(item), 0);
             const peak = key => rows.reduce((value, item) => Math.max(value, Number(item[key]) || 0), 0);
             const socValues = rows.map(item => Number(item.socPct)).filter(Number.isFinite);
+            const energyUnit = getEpcDeviceWorkMetricUnit(settings);
             if (seriesId === 'pv') {
                 const pvTotal = sum('pvOutputKw');
                 const curtailment = sum('curtailmentKw');
                 return {
-                    headline: formatEpcNumber(pvTotal, 0, 'kWh/day'),
+                    headline: formatEpcNumber(pvTotal, 0, energyUnit),
                     status: pvTotal > 0 ? 'PV production window is active.' : 'No PV production in this profile.',
                     detail: `Peak ${formatEpcNumber(peak('pvOutputKw'), 0, 'kW')} / curtailed ${formatEpcNumber(curtailment, 0, 'kWh')}.`
                 };
             }
             if (seriesId === 'load') {
+                const periodHours = rows.reduce((total, item) => total + durationHours(item), 0);
+                const periodAverage = periodHours ? sum('loadKw') / periodHours : (result.load?.averageLoadKw || 0);
                 return {
-                    headline: formatEpcNumber(sum('loadKw'), 0, 'kWh/day'),
+                    headline: formatEpcNumber(sum('loadKw'), 0, energyUnit),
                     status: 'Load demand follows the active measurement method.',
-                    detail: `Peak ${formatEpcNumber(peak('loadKw'), 0, 'kW')} / average ${formatEpcNumber(result.load?.averageLoadKw || 0, 0, 'kW')}.`
+                    detail: `Peak ${formatEpcNumber(peak('loadKw'), 0, 'kW')} / average ${formatEpcNumber(periodAverage, 0, 'kW')}.`
                 };
             }
             if (seriesId === 'battery') {
@@ -11264,10 +11314,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 };
             }
             if (seriesId === 'genset') {
-                const activeHours = rows.filter(item => Number(item.gensetToLoadKw) > 0).length;
+                const activeHours = rows.reduce((total, item) => total + (Number(item.gensetToLoadKw) > 0 ? durationHours(item) : 0), 0);
                 return {
-                    headline: formatEpcNumber(sum('gensetToLoadKw'), 0, 'kWh/day'),
-                    status: activeHours ? `Genset remains online for ${activeHours} modeled hours.` : 'Genset is not required in this daily flow.',
+                    headline: formatEpcNumber(sum('gensetToLoadKw'), 0, energyUnit),
+                    status: activeHours ? `Genset remains online for ${formatEpcNumber(activeHours, 1, 'modeled hours')}.` : 'Genset is not required in this daily flow.',
                     detail: `Peak support ${formatEpcNumber(peak('gensetToLoadKw'), 0, 'kW')}.`
                 };
             }
@@ -11281,13 +11331,57 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             };
         }
 
-        function interpolateEpcDeviceWorkRow(a = {}, b = {}, pct = 0, index = 0, intervalMinutes = 60) {
+        function getEpcDeviceWorkLabelMinutes(label = '') {
+            const matches = String(label || '').match(/\d{1,2}:\d{2}(?:\+\d+)?/g) || [];
+            return matches.map(token => {
+                const match = token.match(/^(\d{1,2}):(\d{2})(?:\+(\d+))?$/);
+                if (!match) return 0;
+                return (Number(match[1]) || 0) * 60 + (Number(match[2]) || 0) + (Number(match[3]) || 0) * 1440;
+            });
+        }
+
+        function getEpcDeviceWorkRowStartMinute(row = {}, index = 0) {
+            const minutes = getEpcDeviceWorkLabelMinutes(row.hourLabel);
+            if (Number.isFinite(minutes[0])) return minutes[0];
+            if (Number.isFinite(Number(row.timelineMinute))) return Number(row.timelineMinute);
+            if (Number.isFinite(Number(row.hour))) return Number(row.hour) * 60;
+            return index * 60;
+        }
+
+        function getEpcDeviceWorkRowEndMinute(row = {}, index = 0) {
+            const start = getEpcDeviceWorkRowStartMinute(row, index);
+            const minutes = getEpcDeviceWorkLabelMinutes(row.hourLabel);
+            if (Number.isFinite(minutes[1])) {
+                return minutes[1] > start ? minutes[1] : minutes[1] + 1440;
+            }
+            return start + 60;
+        }
+
+        function applyEpcDeviceWorkDurations(rows = []) {
+            return rows.map((row, index) => {
+                const currentMinute = Number(row.timelineMinute);
+                const nextMinute = Number(rows[index + 1]?.timelineMinute);
+                const fallback = Number(row.intervalMinutes) || 60;
+                const durationMinutes = Number.isFinite(nextMinute) && Number.isFinite(currentMinute)
+                    ? Math.max(0, nextMinute - currentMinute)
+                    : fallback;
+                return {
+                    ...row,
+                    durationHours: durationMinutes / 60
+                };
+            });
+        }
+
+        function interpolateEpcDeviceWorkRow(a = {}, b = {}, pct = 0, index = 0, intervalMinutes = 60, minute = null) {
             const keys = ['pvOutputKw', 'loadKw', 'pvToBatteryKw', 'batteryToLoadKw', 'gensetToLoadKw', 'curtailmentKw', 'socPct'];
+            const timelineMinute = Number.isFinite(Number(minute)) ? Number(minute) : getEpcDeviceWorkRowStartMinute(a, index);
             const row = {
                 ...a,
                 flowKey: `device-${intervalMinutes}-${index}`,
-                hour: (Number(a.hour) || 0) + pct,
-                hourLabel: epcMinutesToTime(((Number(a.hour) || 0) * 60) + pct * 60)
+                hour: timelineMinute / 60,
+                hourLabel: epcMinutesToTime(timelineMinute),
+                timelineMinute,
+                intervalMinutes
             };
             keys.forEach(key => {
                 const av = Number(a[key]) || 0;
@@ -11297,47 +11391,52 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return row;
         }
 
-        function getEpcDeviceWorkRowsForSettings(sourceRows = [], settings = {}) {
+        function getEpcDeviceWorkTimelineRows(sourceRows = [], settings = {}) {
             const baseRows = Array.isArray(sourceRows) ? sourceRows.filter(Boolean) : [];
             if (!baseRows.length) return [];
-            const interval = EPC_DEVICE_WORK_INTERVALS.includes(Number(settings.intervalMinutes)) ? Number(settings.intervalMinutes) : 60;
-            let rows = [];
-            if (interval < 60 && baseRows.length > 1) {
-                const step = interval / 60;
-                let index = 0;
-                for (let cursor = 0; cursor <= baseRows.length - 1 + 0.0001; cursor += step) {
-                    const low = Math.min(baseRows.length - 1, Math.floor(cursor));
-                    const high = Math.min(baseRows.length - 1, low + 1);
-                    rows.push(interpolateEpcDeviceWorkRow(baseRows[low], baseRows[high], cursor - low, index, interval));
-                    index += 1;
-                }
-            } else if (interval > 60) {
-                const groupSize = Math.max(1, Math.round(interval / 60));
-                rows = [];
-                for (let i = 0; i < baseRows.length; i += groupSize) {
-                    const group = baseRows.slice(i, i + groupSize);
-                    const avg = key => group.reduce((sum, row) => sum + (Number(row[key]) || 0), 0) / Math.max(1, group.length);
-                    rows.push({
-                        ...group[0],
-                        flowKey: `device-${interval}-${i}`,
-                        hourLabel: `${group[0]?.hourLabel || `${group[0]?.hour}:00`}-${group.at(-1)?.hourLabel || `${group.at(-1)?.hour}:00`}`,
-                        pvOutputKw: avg('pvOutputKw'),
-                        loadKw: avg('loadKw'),
-                        pvToBatteryKw: avg('pvToBatteryKw'),
-                        batteryToLoadKw: avg('batteryToLoadKw'),
-                        gensetToLoadKw: avg('gensetToLoadKw'),
-                        curtailmentKw: avg('curtailmentKw'),
-                        socPct: avg('socPct')
-                    });
-                }
-            } else {
-                rows = baseRows.map((row, index) => ({ ...row, flowKey: row.flowKey || `device-60-${index}` }));
+            const interval = EPC_DEVICE_WORK_INTERVALS.includes(Number(settings.intervalMinutes)) ? Number(settings.intervalMinutes) : 5;
+            const positioned = baseRows.map((row, index) => ({
+                ...row,
+                timelineMinute: getEpcDeviceWorkRowStartMinute(row, index),
+                timelineEndMinute: getEpcDeviceWorkRowEndMinute(row, index)
+            })).sort((a, b) => a.timelineMinute - b.timelineMinute);
+            const startMinute = positioned[0].timelineMinute;
+            let endMinute = positioned[positioned.length - 1].timelineEndMinute;
+            if (!Number.isFinite(endMinute) || endMinute <= startMinute) {
+                endMinute = startMinute + Math.max(interval, positioned.length * 60);
             }
+            const rows = [];
+            let index = 0;
+            for (let minute = startMinute; minute <= endMinute + 0.0001; minute += interval) {
+                const clampedMinute = Math.min(minute, endMinute);
+                let lowIndex = 0;
+                for (let i = 0; i < positioned.length; i += 1) {
+                    if (positioned[i].timelineMinute <= clampedMinute) lowIndex = i;
+                    else break;
+                }
+                const highIndex = Math.min(positioned.length - 1, lowIndex + 1);
+                const low = positioned[lowIndex];
+                const high = positioned[highIndex];
+                const span = Math.max(1, high.timelineMinute - low.timelineMinute);
+                const pct = highIndex === lowIndex ? 0 : Math.max(0, Math.min(1, (clampedMinute - low.timelineMinute) / span));
+                rows.push(interpolateEpcDeviceWorkRow(low, high, pct, index, interval, clampedMinute));
+                index += 1;
+                if (clampedMinute >= endMinute) break;
+            }
+            if (rows.at(-1)?.timelineMinute < endMinute) {
+                rows.push(interpolateEpcDeviceWorkRow(positioned.at(-1), positioned.at(-1), 0, rows.length, interval, endMinute));
+            }
+            return applyEpcDeviceWorkDurations(rows);
+        }
+
+        function getEpcDeviceWorkRowsForSettings(sourceRows = [], settings = {}) {
+            const rows = getEpcDeviceWorkTimelineRows(sourceRows, settings);
             const range = settings.selectedRange;
             if (range && rows.length) {
                 const start = Math.min(rows.length - 1, Math.max(0, Math.floor(Number(range.start) || 0)));
-                const end = Math.min(rows.length - 1, Math.max(start, Math.floor(Number(range.end) || rows.length - 1)));
-                return rows.slice(start, end + 1);
+                const endValue = Number.isFinite(Number(range.end)) ? Number(range.end) : rows.length - 1;
+                const end = Math.min(rows.length - 1, Math.max(start, Math.floor(endValue)));
+                return applyEpcDeviceWorkDurations(rows.slice(start, end + 1));
             }
             return rows;
         }
@@ -11383,12 +11482,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     <button type="button" aria-label="${htmlSafe(series.label)} ${htmlSafe(preset)}" onclick="setEpcDeviceWorkSeriesColor('${htmlSafe(series.id)}', '${htmlSafe(preset)}')" class="h-6 w-6 rounded-full border border-white shadow-sm" style="background:${htmlSafe(preset)}"></button>
                 `).join('');
             return `
-                <div class="relative mt-2 inline-flex" ${dataAttribute}>
+                <div class="epc-device-work-color-anchor relative inline-flex" ${dataAttribute}>
                     <button type="button" id="epc-device-work-color-trigger-${htmlSafe(series.id)}" class="epc-device-work-color-trigger inline-flex h-7 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white shadow-sm" onclick="toggleEpcDeviceWorkColorPicker('${htmlSafe(series.id)}')" aria-label="${htmlSafe(series.label)} color">
                         <span class="h-3 w-7 rounded-full" style="background:${htmlSafe(color)}"></span>
                     </button>
                     ${isOpen ? `
-                        <div class="epc-device-work-color-popover absolute left-0 top-9 z-40 w-44 rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
+                        <div class="epc-device-work-color-popover absolute left-0 top-9 z-[9999] w-44 rounded-xl border border-slate-200 bg-white p-2 shadow-xl" style="z-index:9999">
                             <div class="grid grid-cols-4 gap-1.5">
                                 ${presetButtons}
                             </div>
@@ -11405,14 +11504,23 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         function renderEpcDeviceWorkRangeTicks(rows = []) {
             if (!rows.length) return '';
             const maxIndex = Math.max(1, rows.length - 1);
-            const labelEvery = Math.max(1, Math.ceil(rows.length / 6));
-            return rows.map((row, index) => {
-                if (index % labelEvery !== 0 && index !== rows.length - 1) return '';
+            const targetCount = Math.min(6, rows.length);
+            const usedIndexes = new Set();
+            return Array.from({ length: targetCount }, (_, tickIndex) => {
+                const index = targetCount <= 1 ? 0 : Math.round((tickIndex / (targetCount - 1)) * (rows.length - 1));
+                if (usedIndexes.has(index)) return '';
+                usedIndexes.add(index);
+                const row = rows[index];
                 const left = (index / maxIndex) * 100;
+                const anchorClass = index === 0
+                    ? 'translate-x-0 items-start text-left'
+                    : index === rows.length - 1
+                        ? '-translate-x-full items-end text-right'
+                        : '-translate-x-1/2 items-center text-center';
                 return `
-                    <span class="absolute top-0 flex -translate-x-1/2 flex-col items-center gap-1 text-[10px] font-black text-slate-400" style="left:${epcChartRound(left, 2)}%">
+                    <span class="absolute top-0 flex ${anchorClass} flex-col gap-1 text-[10px] font-black text-slate-400" style="left:${epcChartRound(left, 2)}%">
                         <span class="h-2 w-px bg-slate-300"></span>
-                        <span>${htmlSafe(row.hourLabel || `${row.hour}:00`)}</span>
+                        <span class="whitespace-nowrap">${htmlSafe(row.hourLabel || epcMinutesToTime(row.timelineMinute || 0))}</span>
                     </span>
                 `;
             }).join('');
@@ -11420,7 +11528,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
         function renderEpcDeviceWorkControls(settings, allRows) {
             const maxIndex = Math.max(0, allRows.length - 1);
-            const selected = settings.selectedRange || { start: 0, end: maxIndex };
+            const rawSelected = settings.selectedRange || { start: 0, end: maxIndex };
+            const selected = {
+                start: Math.min(maxIndex, Math.max(0, Math.floor(Number(rawSelected.start) || 0))),
+                end: Math.min(maxIndex, Math.max(0, Math.floor(Number.isFinite(Number(rawSelected.end)) ? Number(rawSelected.end) : maxIndex)))
+            };
+            if (selected.end < selected.start) selected.end = selected.start;
             const startPct = maxIndex ? (selected.start / maxIndex) * 100 : 0;
             const endPct = maxIndex ? (selected.end / maxIndex) * 100 : 100;
             const peakStartValue = epcMinutesToTime(settings.peakBand.startMinute);
@@ -11456,9 +11569,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             <div class="min-w-0 flex-1">
                                 <div id="epc-device-work-range-track" class="relative mt-2 h-9">
                                     <div class="absolute left-0 right-0 top-2.5 h-1 rounded-full bg-slate-300"></div>
-                                    <div class="absolute top-2.5 h-1 rounded-full bg-blue-500" style="left:${epcChartRound(startPct, 2)}%; right:${epcChartRound(100 - endPct, 2)}%"></div>
-                                    <input id="epc-device-work-range-start" type="range" min="0" max="${maxIndex}" value="${selected.start}" oninput="setEpcDeviceWorkRange('start', this.value)" class="epc-device-work-range-input">
-                                    <input id="epc-device-work-range-end" type="range" min="0" max="${maxIndex}" value="${selected.end}" oninput="setEpcDeviceWorkRange('end', this.value)" class="epc-device-work-range-input">
+                                    <div id="epc-device-work-range-fill" class="absolute top-2.5 h-1 rounded-full bg-blue-500" style="left:${epcChartRound(startPct, 2)}%; right:${epcChartRound(100 - endPct, 2)}%"></div>
+                                    <input id="epc-device-work-range-start" type="range" min="0" max="${maxIndex}" value="${selected.start}" oninput="previewEpcDeviceWorkRange('start', this.value)" onchange="setEpcDeviceWorkRange('start', this.value)" class="epc-device-work-range-input">
+                                    <input id="epc-device-work-range-end" type="range" min="0" max="${maxIndex}" value="${selected.end}" oninput="previewEpcDeviceWorkRange('end', this.value)" onchange="setEpcDeviceWorkRange('end', this.value)" class="epc-device-work-range-input">
                                 </div>
                                 <div id="epc-device-work-range-ticks" class="relative mt-1 h-9">
                                     ${renderEpcDeviceWorkRangeTicks(allRows)}
@@ -11514,7 +11627,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const xForIndex = index => chart.left + (rows.length <= 1 ? 0 : (index / (rows.length - 1)) * plotWidth);
             const yForPower = value => chart.top + ((maxPower - value) / powerSpan) * plotHeight;
             const yForSoc = value => chart.top + ((100 - Math.max(0, Math.min(100, Number(value) || 0))) / 100) * plotHeight;
-            const rowMinute = row => Number.isFinite(Number(row?.hour))
+            const rowMinute = row => Number.isFinite(Number(row?.timelineMinute))
+                ? Number(row.timelineMinute)
+                : Number.isFinite(Number(row?.hour))
                 ? (Number(row.hour) * 60)
                 : epcTimeToMinutes(String(row?.hourLabel || '00:00').slice(0, 5), '00:00');
             const firstMinute = rows.length ? rowMinute(rows[0]) : settings.peakBand.startMinute;
@@ -11525,8 +11640,11 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const bandVisibleEnd = Math.min(lastMinute, settings.peakBand.endMinute);
             const hasPeakBandWindow = bandVisibleEnd > bandVisibleStart;
             const gridValues = [0, 0.25, 0.5, 0.75, 1].map(pct => minPower + pct * powerSpan);
-            const labelEvery = Math.max(1, Math.ceil(rows.length / 8));
-            const hourLabels = rows.filter((row, index) => index % labelEvery === 0 || index === rows.length - 1);
+            const labelCount = Math.min(8, rows.length);
+            const labelIndexes = new Set(Array.from({ length: labelCount }, (_, index) => (
+                labelCount <= 1 ? 0 : Math.round((index / (labelCount - 1)) * (rows.length - 1))
+            )));
+            const hourLabels = rows.filter((row, index) => labelIndexes.has(index));
             return `
                 <div id="epc-device-work-chart" class="epc-device-work-chart">
                     <div class="border-b border-slate-100 px-4 py-3">
@@ -11573,7 +11691,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return `
                 <div id="epc-device-work-analysis" class="epc-device-work-analysis mt-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3">
                     ${visible.map(series => {
-                        const metrics = getEpcDeviceWorkMetrics(series.id, rows, result);
+                        const metrics = getEpcDeviceWorkMetrics(series.id, rows, result, settings);
                         const color = settings.seriesColors?.[series.id] || series.color;
                         const dataAttribute = {
                             pv: 'data-epc-device-analysis="pv"',
@@ -11585,13 +11703,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         return `
                             <div ${dataAttribute} class="rounded-xl border border-slate-200 bg-white p-3">
                                 <div class="flex items-center gap-2">
-                                    <span class="h-2.5 w-8 rounded-full" style="background:${htmlSafe(color)}"></span>
+                                    ${renderEpcDeviceWorkColorControls(series, color)}
                                     <div class="text-[10px] font-black uppercase text-slate-400">${htmlSafe(series.label)}</div>
                                 </div>
-                                <div class="mt-2 text-lg font-black text-slate-900">${htmlSafe(metrics.headline)}</div>
+                                <div class="mt-2 text-lg font-black text-slate-900" data-epc-device-work-unit="${htmlSafe(series.id)}">${htmlSafe(metrics.headline)}</div>
                                 <div class="mt-1 text-xs font-bold text-slate-600">${htmlSafe(metrics.status)}</div>
                                 <div class="mt-2 text-[11px] font-bold text-slate-400">${htmlSafe(metrics.detail)}</div>
-                                ${renderEpcDeviceWorkColorControls(series, color)}
                             </div>
                         `;
                     }).join('')}

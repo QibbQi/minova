@@ -364,8 +364,11 @@ test('EPC Device Work is a standalone chart page with status analysis', () => {
     'renderEpcDeviceWorkChart',
     'renderEpcDeviceWorkAnalysis',
     'renderEpcDeviceWorkPath',
+    'getEpcDeviceWorkTimelineRows',
     'getEpcDeviceWorkRowsForSettings',
     'getEpcDeviceWorkPathD',
+    'getEpcDeviceWorkMetricUnit',
+    'previewEpcDeviceWorkRange',
     'resetEpcDeviceWorkRange',
     'setEpcDeviceWorkInterval',
     'setEpcDeviceWorkRange',
@@ -382,6 +385,8 @@ test('EPC Device Work is a standalone chart page with status analysis', () => {
     'epc-device-work-range-controls',
     'epc-device-work-reset',
     'epc-device-work-time-row',
+    'data-epc-device-interval="1"',
+    'data-epc-device-interval="5"',
     'data-epc-device-interval="15"',
     'data-epc-device-interval="30"',
     'data-epc-device-interval="60"',
@@ -389,6 +394,7 @@ test('EPC Device Work is a standalone chart page with status analysis', () => {
     'data-epc-device-interval="360"',
     'data-epc-device-interval="720"',
     'epc-device-work-range-track',
+    'epc-device-work-range-fill',
     'epc-device-work-range-start',
     'epc-device-work-range-end',
     'epc-device-work-range-ticks',
@@ -421,7 +427,10 @@ test('EPC Device Work is a standalone chart page with status analysis', () => {
     'data-epc-device-color-series="genset"',
     'data-epc-device-color-series="soc"',
     'epc-device-work-color-trigger',
+    'epc-device-work-color-anchor',
     'epc-device-work-color-popover',
+    'z-index:9999',
+    'kWh/period',
     'EPC_DEVICE_WORK_DEFAULT_PEAK_START_MINUTE',
     'EPC_DEVICE_WORK_DEFAULT_PEAK_END_MINUTE',
     'toggleEpcEmsFlowSeries',
@@ -436,6 +445,9 @@ test('EPC Device Work is a standalone chart page with status analysis', () => {
   ]) {
     assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing Device Work chart snippet: ${snippet}`);
   }
+  assert.match(html, /intervalMinutes\) : 5/, 'Device Work interval default should be 5 minutes');
+  assert.match(html, /oninput="previewEpcDeviceWorkRange\('start', this\.value\)"/, 'range start should preview without rerendering every step');
+  assert.match(html, /onchange="setEpcDeviceWorkRange\('start', this\.value\)"/, 'range start should commit on release');
   for (const removedSnippet of [
     'smoothDeviceWorkPath',
     'setEpcDeviceWorkLineStyle',

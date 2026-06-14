@@ -49,7 +49,7 @@ const EMS_FLOW_SERIES_DEFAULT_COLORS = {
   genset: '#ef4444',
   soc: '#0ea5e9'
 };
-const EMS_FLOW_INTERVAL_MINUTES = [15, 30, 60, 120, 360, 720];
+const EMS_FLOW_INTERVAL_MINUTES = [1, 5, 15, 30, 60, 120, 360, 720];
 const EMS_FLOW_DEFAULT_PEAK_BAND_START_MINUTE = 14 * 60;
 const EMS_FLOW_DEFAULT_PEAK_BAND_END_MINUTE = 22 * 60;
 
@@ -230,7 +230,7 @@ function normalizeEmsFlowDisplaySettings(value = {}) {
   const endMinute = clamp(peakBandInput.endMinute, 0, 24 * 60, EMS_FLOW_DEFAULT_PEAK_BAND_END_MINUTE);
   return {
     visibleSeries: visibleSeries.length ? visibleSeries : [...EMS_FLOW_DISPLAY_SERIES],
-    intervalMinutes: EMS_FLOW_INTERVAL_MINUTES.includes(Number(input.intervalMinutes)) ? Number(input.intervalMinutes) : 60,
+    intervalMinutes: EMS_FLOW_INTERVAL_MINUTES.includes(Number(input.intervalMinutes)) ? Number(input.intervalMinutes) : 5,
     selectedRange,
     peakBand: {
       visible: peakBandInput.visible === false ? false : true,

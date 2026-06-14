@@ -2755,7 +2755,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             <input id="epc-longitude" data-epc-field="site.longitude" type="number" step="0.000001" oninput="onEpcDesignInputChanged({ map: true })" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                         </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-2">
+                    <div id="epc-working-time-controls" data-epc-hide-for-load-method="equipment_schedule" class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Start Time</label>
                             <input id="epc-day-start-time" data-epc-field="loads.operationStartTime" type="time" onchange="onEpcScheduleInputChanged('start')" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
@@ -2765,13 +2765,32 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             <input id="epc-day-finish-time" data-epc-field="loads.operationFinishTime" type="time" onchange="onEpcScheduleInputChanged('finish')" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                         </div>
                     </div>
-                    <div id="epc-change-working-time-row" class="rounded-xl border border-slate-200 bg-slate-50 p-2.5" title="When checked, original genset average load is multiplied by the new PV working hours to update Daily Load and downstream sizing.">
+                    <div id="epc-equipment-schedule-inline-controls" data-epc-show-for-load-method="equipment_schedule" class="hidden grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Duty</label>
+                            <input id="epc-equipment-schedule-duty" data-epc-field="loads.equipmentScheduleDutyCycle" type="number" min="0" max="1" step="0.01" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Simult.</label>
+                            <input id="epc-equipment-schedule-simultaneity" data-epc-field="loads.equipmentScheduleSimultaneityFactor" type="number" min="0" max="1" step="0.01" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        </div>
+                    </div>
+                    <div id="epc-change-working-time-row" data-epc-hide-for-load-method="equipment_schedule" class="rounded-xl border border-slate-200 bg-slate-50 p-2.5" title="When checked, original genset average load is multiplied by the new PV working hours to update Daily Load and downstream sizing.">
                         <label class="flex items-center justify-between gap-3 text-xs font-black text-slate-700">
                             <span class="inline-flex items-center gap-1.5">
                                 change working time
                                 <span class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="When checked, original genset average load is multiplied by the new PV working hours to update Daily Load and downstream sizing.">i</span>
                             </span>
                             <input id="epc-change-working-time" data-epc-field="loads.changeWorkingTime" type="checkbox" onchange="onEpcDesignInputChanged()" class="h-4 w-4 accent-purple-700">
+                        </label>
+                    </div>
+                    <div id="epc-equipment-schedule-flow-row" data-epc-show-for-load-method="equipment_schedule" class="hidden rounded-xl border border-amber-200 bg-amber-50 p-2.5" title="When enabled, EMS Flow load kW follows the Equipment Schedule timetable by hour.">
+                        <label class="flex items-center justify-between gap-3 text-xs font-black text-slate-700">
+                            <span class="inline-flex items-center gap-1.5">
+                                Schedule Load kW
+                                <span class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 bg-white text-[9px] text-slate-400" title="When enabled, EMS Flow load kW follows the Equipment Schedule timetable by hour.">i</span>
+                            </span>
+                            <input id="epc-equipment-schedule-flow-toggle" data-epc-field="loads.useEquipmentScheduleForEmsFlow" type="checkbox" onchange="onEpcDesignInputChanged()" class="h-4 w-4 accent-purple-700">
                         </label>
                     </div>
                     <div class="grid grid-cols-2 gap-2">
@@ -2960,11 +2979,6 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     </label>
                     <input id="epc-equipment-schedule-operating-hours" type="number" min="0" max="24" step="0.1" class="w-40 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" placeholder="8">
                     <p class="mt-1 text-[11px] font-bold text-slate-400">Leave blank to average by active scheduled hours.</p>
-                    <label class="mt-3 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700">
-                        <input id="epc-equipment-schedule-ems-flow" type="checkbox" class="h-4 w-4 accent-purple-700">
-                        Use schedule load kW in EMS Flow
-                        <span class="epc-help-dot" tabindex="0" data-tip="When enabled, EMS Flow load kW follows the equipment timetable by hour instead of using the average load for every row.">i</span>
-                    </label>
                 </div>
                 <div class="p-4 overflow-x-auto">
                     <table class="w-full text-xs">
@@ -2975,8 +2989,6 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                                 <th class="px-2 py-2 text-right">Qty</th>
                                 <th class="px-2 py-2 text-left">Start</th>
                                 <th class="px-2 py-2 text-left">Finish</th>
-                                <th class="px-2 py-2 text-right">Duty</th>
-                                <th class="px-2 py-2 text-right">Simult.</th>
                                 <th class="px-2 py-2"></th>
                             </tr>
                         </thead>
@@ -10167,6 +10179,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 const value = input.type === 'checkbox' ? input.checked : isNumber ? numericInputValue(input.id, 0) : input.value;
                 setNestedValue(draft, path, value);
             });
+            if (current.loads?.measurementMethod !== 'equipment_schedule' && draft.loads?.measurementMethod === 'equipment_schedule') {
+                draft.loads.useEquipmentScheduleForEmsFlow = true;
+            }
             draft.mode = epcDesignMode;
             draft.updatedAt = new Date().toISOString();
             draft.assumptions = { ...epcDesignDefaults, ...(draft.assumptions || {}) };
@@ -10251,6 +10266,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const method = project.loads.measurementMethod || 'diesel_sfc_estimate';
             document.querySelectorAll('[data-epc-load-method-panel]').forEach(panel => {
                 panel.classList.toggle('hidden', panel.dataset.epcLoadMethodPanel !== method);
+            });
+            document.querySelectorAll('[data-epc-hide-for-load-method]').forEach(panel => {
+                panel.classList.toggle('hidden', panel.dataset.epcHideForLoadMethod === method);
+            });
+            document.querySelectorAll('[data-epc-show-for-load-method]').forEach(panel => {
+                panel.classList.toggle('hidden', panel.dataset.epcShowForLoadMethod !== method);
             });
             const summary = project.loads.energyMeterSummary || {};
             const status = document.getElementById('epc-energy-meter-status');
@@ -10449,24 +10470,20 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 ratedKw: Number(row.querySelector('[data-epc-equipment-field="ratedKw"]')?.value) || 0,
                 quantity: Number(row.querySelector('[data-epc-equipment-field="quantity"]')?.value) || 1,
                 startTime: row.querySelector('[data-epc-equipment-field="startTime"]')?.value || '09:00',
-                finishTime: row.querySelector('[data-epc-equipment-field="finishTime"]')?.value || '17:00',
-                dutyCycle: Number(row.querySelector('[data-epc-equipment-field="dutyCycle"]')?.value) || 0,
-                simultaneityFactor: Number(row.querySelector('[data-epc-equipment-field="simultaneityFactor"]')?.value) || 0
+                finishTime: row.querySelector('[data-epc-equipment-field="finishTime"]')?.value || '17:00'
             })).filter(row => row.ratedKw > 0);
         }
 
         function renderEpcEquipmentScheduleRows(rows = []) {
             const body = document.getElementById('epc-equipment-schedule-rows');
             if (!body) return;
-            body.innerHTML = (rows.length ? rows : [{ id: `equipment-${Date.now()}`, equipment: '', ratedKw: '', quantity: 1, startTime: '09:00', finishTime: '17:00', dutyCycle: 1, simultaneityFactor: 1 }]).map((row, index) => `
+            body.innerHTML = (rows.length ? rows : [{ id: `equipment-${Date.now()}`, equipment: '', ratedKw: '', quantity: 1, startTime: '09:00', finishTime: '17:00' }]).map((row, index) => `
                 <tr data-epc-equipment-row="${htmlSafe(row.id || `equipment-${index + 1}`)}">
                     <td class="px-2 py-2"><input data-epc-equipment-field="equipment" value="${htmlSafe(row.equipment || '')}" class="w-40 border border-slate-200 rounded-lg px-2 py-1 outline-none focus:border-purple-500"></td>
                     <td class="px-2 py-2"><input data-epc-equipment-field="ratedKw" type="number" min="0" value="${htmlSafe(row.ratedKw ?? '')}" class="w-24 border border-slate-200 rounded-lg px-2 py-1 text-right outline-none focus:border-purple-500"></td>
                     <td class="px-2 py-2"><input data-epc-equipment-field="quantity" type="number" min="1" value="${htmlSafe(row.quantity || 1)}" class="w-20 border border-slate-200 rounded-lg px-2 py-1 text-right outline-none focus:border-purple-500"></td>
                     <td class="px-2 py-2"><input data-epc-equipment-field="startTime" type="time" value="${htmlSafe(row.startTime || '09:00')}" class="w-28 border border-slate-200 rounded-lg px-2 py-1 outline-none focus:border-purple-500"></td>
                     <td class="px-2 py-2"><input data-epc-equipment-field="finishTime" type="time" value="${htmlSafe(row.finishTime || '17:00')}" class="w-28 border border-slate-200 rounded-lg px-2 py-1 outline-none focus:border-purple-500"></td>
-                    <td class="px-2 py-2"><input data-epc-equipment-field="dutyCycle" type="number" min="0" max="1" step="0.01" value="${htmlSafe(row.dutyCycle ?? 1)}" class="w-20 border border-slate-200 rounded-lg px-2 py-1 text-right outline-none focus:border-purple-500"></td>
-                    <td class="px-2 py-2"><input data-epc-equipment-field="simultaneityFactor" type="number" min="0" max="1" step="0.01" value="${htmlSafe(row.simultaneityFactor ?? 1)}" class="w-20 border border-slate-200 rounded-lg px-2 py-1 text-right outline-none focus:border-purple-500"></td>
                     <td class="px-2 py-2 text-right"><button type="button" onclick="this.closest('tr')?.remove()" class="px-2 py-1 rounded-lg border border-slate-200 text-[10px] font-black text-slate-500 hover:bg-slate-50">Delete</button></td>
                 </tr>
             `).join('');
@@ -10479,8 +10496,6 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (hoursInput) {
                 hoursInput.value = project.loads.equipmentScheduleOperatingHours || project.loads.operationHoursPerDay || '';
             }
-            const flowInput = document.getElementById('epc-equipment-schedule-ems-flow');
-            if (flowInput) flowInput.checked = Boolean(project.loads.useEquipmentScheduleForEmsFlow);
             const modal = document.getElementById('epc-equipment-schedule-modal');
             modal?.classList.remove('hidden');
             modal?.classList.add('flex');
@@ -10493,7 +10508,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         };
 
         window.addEpcEquipmentScheduleRow = () => {
-            renderEpcEquipmentScheduleRows([...epcScheduleRowsFromModal(), { id: `equipment-${Date.now()}`, equipment: '', ratedKw: '', quantity: 1, startTime: '09:00', finishTime: '17:00', dutyCycle: 1, simultaneityFactor: 1 }]);
+            renderEpcEquipmentScheduleRows([...epcScheduleRowsFromModal(), { id: `equipment-${Date.now()}`, equipment: '', ratedKw: '', quantity: 1, startTime: '09:00', finishTime: '17:00' }]);
         };
 
         window.saveEpcEquipmentScheduleRows = () => {
@@ -10502,7 +10517,6 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             project.loads.equipmentSchedule = epcScheduleRowsFromModal();
             const scheduleHours = Number(document.getElementById('epc-equipment-schedule-operating-hours')?.value) || 0;
             project.loads.equipmentScheduleOperatingHours = Math.min(24, Math.max(0, scheduleHours));
-            project.loads.useEquipmentScheduleForEmsFlow = Boolean(document.getElementById('epc-equipment-schedule-ems-flow')?.checked);
             project.loads.loadSource = 'Equipment Schedule';
             updateEpcProject(project);
             syncEpcDesignInputs(project);
@@ -10527,6 +10541,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             setInputValue('epc-genset-load-factor', project.loads.gensetKvaInput?.loadFactor || 0.7);
             setInputValue('epc-genset-runtime-hours', project.loads.gensetKvaInput?.runtimeHours || 8);
             setInputValue('epc-genset-overload-factor', project.loads.gensetKvaInput?.overloadFactor || 0.95);
+            setInputValue('epc-equipment-schedule-duty', project.loads.equipmentScheduleDutyCycle ?? 1);
+            setInputValue('epc-equipment-schedule-simultaneity', project.loads.equipmentScheduleSimultaneityFactor ?? 1);
+            setInputValue('epc-equipment-schedule-flow-toggle', project.loads.useEquipmentScheduleForEmsFlow);
             setInputValue('epc-day-start-time', project.loads.operationStartTime || '09:00');
             setInputValue('epc-day-finish-time', project.loads.operationFinishTime || '17:00');
             setInputValue('epc-change-working-time', project.loads.changeWorkingTime);

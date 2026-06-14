@@ -247,6 +247,8 @@ const GLOBAL_SOLAR_ATLAS_API_BASE = 'https://2eueu84zmf.execute-api.eu-west-1.am
       .map((row, index) => normalizeEquipmentScheduleRow(row, index))
       .filter(row => row.ratedKw > 0);
     const equipmentScheduleOperatingHours = clamp(loads.equipmentScheduleOperatingHours ?? raw.equipmentScheduleOperatingHours, 0, 24, 0);
+    const equipmentScheduleDutyCycle = clamp(loads.equipmentScheduleDutyCycle ?? raw.equipmentScheduleDutyCycle, 0, 1, 1);
+    const equipmentScheduleSimultaneityFactor = clamp(loads.equipmentScheduleSimultaneityFactor ?? raw.equipmentScheduleSimultaneityFactor, 0, 1, 1);
     const gensetKvaInput = normalizeGensetKvaInput(loads.gensetKvaInput || raw.gensetKvaInput || {});
     const dayHours = clamp(loads.operationHoursPerDay ?? raw.operationHoursPerDay, 1, 24, 8);
     const operationStartTime = normalizeTime(loads.operationStartTime ?? raw.operationStartTime, '09:00');
@@ -293,7 +295,11 @@ const GLOBAL_SOLAR_ATLAS_API_BASE = 'https://2eueu84zmf.execute-api.eu-west-1.am
         energyMeterSummary,
         equipmentSchedule,
         equipmentScheduleOperatingHours,
-        useEquipmentScheduleForEmsFlow: Boolean(loads.useEquipmentScheduleForEmsFlow ?? raw.useEquipmentScheduleForEmsFlow),
+        equipmentScheduleDutyCycle,
+        equipmentScheduleSimultaneityFactor,
+        useEquipmentScheduleForEmsFlow: measurementMethod === 'equipment_schedule'
+          ? Boolean(loads.useEquipmentScheduleForEmsFlow ?? raw.useEquipmentScheduleForEmsFlow ?? true)
+          : Boolean(loads.useEquipmentScheduleForEmsFlow ?? raw.useEquipmentScheduleForEmsFlow),
         gensetKvaInput,
         loadSource: String(loadSourceForMethod(measurementMethod, { energyMeterSummary }) || 'Diesel / SFC estimate').trim()
       },
@@ -525,11 +531,13 @@ const GLOBAL_SOLAR_ATLAS_API_BASE = 'https://2eueu84zmf.execute-api.eu-west-1.am
   function calculateEquipmentScheduleLoad(project, now) {
     const stepMinutes = 15;
     const intervalLoads = new Map();
+    const dutyCycle = project.loads.equipmentScheduleDutyCycle;
+    const simultaneityFactor = project.loads.equipmentScheduleSimultaneityFactor;
     for (const row of project.loads.equipmentSchedule || []) {
       const start = timeToMinutes(row.startTime);
       let finish = timeToMinutes(row.finishTime, row.startTime);
       if (finish <= start) finish += 1440;
-      const kw = row.ratedKw * row.quantity * row.dutyCycle * row.simultaneityFactor;
+      const kw = row.ratedKw * row.quantity * dutyCycle * simultaneityFactor;
       for (let minute = start; minute < finish; minute += stepMinutes) {
         const key = Math.floor(minute / stepMinutes);
         intervalLoads.set(key, (intervalLoads.get(key) || 0) + kw);
@@ -555,7 +563,7 @@ const GLOBAL_SOLAR_ATLAS_API_BASE = 'https://2eueu84zmf.execute-api.eu-west-1.am
         key: 'dailyLoadKwh',
         label: 'Daily Load',
         formula: 'Σ 15-min Operating Load',
-        inputs: { equipmentCount: project.loads.equipmentSchedule.length, intervalMinutes: stepMinutes },
+        inputs: { equipmentCount: project.loads.equipmentSchedule.length, intervalMinutes: stepMinutes, dutyCycle, simultaneityFactor },
         result: round(dailyLoadKwh, 4),
         unit: 'kWh/day',
         assumptionSource: 'Equipment Schedule',
@@ -877,11 +885,13 @@ const GLOBAL_SOLAR_ATLAS_API_BASE = 'https://2eueu84zmf.execute-api.eu-west-1.am
     const stepMinutes = 15;
     const intervalHours = stepMinutes / 60;
     const hourlyKwh = new Map();
+    const dutyCycle = project.loads.equipmentScheduleDutyCycle;
+    const simultaneityFactor = project.loads.equipmentScheduleSimultaneityFactor;
     for (const row of project.loads.equipmentSchedule || []) {
       const start = timeToMinutes(row.startTime);
       let finish = timeToMinutes(row.finishTime, row.startTime);
       if (finish <= start) finish += 1440;
-      const kw = row.ratedKw * row.quantity * row.dutyCycle * row.simultaneityFactor;
+      const kw = row.ratedKw * row.quantity * dutyCycle * simultaneityFactor;
       for (let minute = start; minute < finish; minute += stepMinutes) {
         const hour = Math.floor((((minute % 1440) + 1440) % 1440) / 60);
         hourlyKwh.set(hour, (hourlyKwh.get(hour) || 0) + kw * intervalHours);

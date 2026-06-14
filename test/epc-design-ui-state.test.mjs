@@ -76,7 +76,7 @@ test('EPC quick and detailed modes keep inputs and target controls scoped', () =
   assert.match(html, /document\.getElementById\('epc-detail-inputs-panel'\)\?\.classList\.toggle\('hidden', !detailed\)/);
   assert.match(html, /document\.getElementById\('epc-advanced-inputs'\)\?\.classList\.toggle\('hidden', !detailed\)/);
   assert.match(html, /document\.getElementById\('epc-recommendation-target-toggle'\)\?\.classList\.toggle\('hidden', epcDesignMode === 'detailed'\)/);
-  assert.match(html, /id="epc-change-working-time-row" class="rounded-xl border border-slate-200 bg-slate-50 p-2\.5"/);
+  assert.match(html, /id="epc-change-working-time-row"[^>]*data-epc-hide-for-load-method="equipment_schedule"[^>]*class="rounded-xl border border-slate-200 bg-slate-50 p-2\.5"/);
   assert.match(html, /title="When checked, original genset average load is multiplied by the new PV working hours to update Daily Load and downstream sizing\."/);
   assert.doesNotMatch(html, /<p[^>]*>When checked, original genset average load is multiplied by the new PV working hours to update Daily Load and downstream sizing\.<\/p>/);
 });
@@ -252,8 +252,16 @@ test('EPC load measurement modes expose method-specific inputs and state', () =>
     'Edit Schedule',
     'epc-equipment-schedule-operating-hours',
     'loads.equipmentScheduleOperatingHours',
-    'epc-equipment-schedule-ems-flow',
+    'epc-equipment-schedule-duty',
+    'loads.equipmentScheduleDutyCycle',
+    'epc-equipment-schedule-simultaneity',
+    'loads.equipmentScheduleSimultaneityFactor',
+    'epc-equipment-schedule-flow-row',
+    'epc-equipment-schedule-flow-toggle',
+    'Schedule Load kW',
     'useEquipmentScheduleForEmsFlow',
+    'epc-working-time-controls',
+    'data-epc-hide-for-load-method="equipment_schedule"',
     'epc-equipment-schedule-modal',
     'epc-genset-kva',
     'data-epc-field="loads.gensetKvaInput.gensetKva"',
@@ -273,6 +281,17 @@ test('EPC load measurement modes expose method-specific inputs and state', () =>
     assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing measurement UI snippet: ${snippet}`);
   }
   assert.match(html, /load:\s*result\.load\?\.dailyLoadKwh > 0 && result\.load\?\.averageLoadKw > 0 && result\.load\?\.peakLoadKw > 0/);
+});
+
+test('EPC Equipment Schedule modal no longer exposes per-row duty and simultaneity', () => {
+  const modalStart = html.indexOf('id="epc-equipment-schedule-modal"');
+  const modalEnd = html.indexOf('id="epc-equipment-schedule-rows"', modalStart);
+  const modalHeader = html.slice(modalStart, modalEnd);
+  assert.ok(modalStart >= 0 && modalEnd > modalStart);
+  assert.doesNotMatch(modalHeader, />Duty</);
+  assert.doesNotMatch(modalHeader, />Simult\.</);
+  assert.doesNotMatch(html, /data-epc-equipment-field="dutyCycle"/);
+  assert.doesNotMatch(html, /data-epc-equipment-field="simultaneityFactor"/);
 });
 
 test('EPC EMS flow exposes animated system diagram and clickable hour rows', () => {

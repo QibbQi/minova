@@ -129,9 +129,9 @@ test('EPC load calculation simulates Equipment Schedule overlap', () => {
   }, { now: '2026-06-12T00:00:00.000Z' });
   const result = calculateEpcDesignProject(project, { now: '2026-06-12T00:00:00.000Z' });
 
-  assert.equal(result.load.dailyLoadKwh, 640);
-  assert.equal(result.load.averageLoadKw.toFixed(2), '213.33');
-  assert.equal(result.load.peakLoadKw, 320);
+  assert.equal(result.load.dailyLoadKwh, 700);
+  assert.equal(result.load.averageLoadKw.toFixed(2), '233.33');
+  assert.equal(result.load.peakLoadKw, 350);
   assert.equal(result.load.measurementMethod, 'equipment_schedule');
   assert.equal(result.loads.loadSource, 'Equipment Schedule');
   assert.ok(result.formulaTrace.some(item => item.key === 'peakLoadKw' && item.formula === 'Max 15-min overlapping operating load'));
@@ -184,6 +184,29 @@ test('EPC EMS Flow can use Equipment Schedule timetable load instead of average 
   assert.equal(result.energyFlow.rows.find(row => row.hour === 9).loadKw, 100);
   assert.equal(result.energyFlow.rows.find(row => row.hour === 17).loadKw, 10);
   assert.match(result.energyFlow.method, /Equipment Schedule timetable/);
+});
+
+test('EPC Equipment Schedule uses global duty and simultaneity with EMS timetable on by default', () => {
+  const project = normalizeEpcDesignProject({
+    loads: {
+      measurementMethod: 'equipment_schedule',
+      equipmentScheduleOperatingHours: 8,
+      equipmentScheduleDutyCycle: 0.5,
+      equipmentScheduleSimultaneityFactor: 0.8,
+      equipmentSchedule: [
+        { equipment: 'Security system', ratedKw: 10, quantity: 1, startTime: '00:00', finishTime: '00:00', dutyCycle: 1, simultaneityFactor: 1 },
+        { equipment: 'Production line', ratedKw: 90, quantity: 1, startTime: '09:00', finishTime: '17:00', dutyCycle: 1, simultaneityFactor: 1 }
+      ]
+    }
+  }, { now: '2026-06-12T00:00:00.000Z' });
+  const result = calculateEpcDesignProject(project, { now: '2026-06-12T00:00:00.000Z' });
+
+  assert.equal(result.loads.useEquipmentScheduleForEmsFlow, true);
+  assert.equal(result.load.dailyLoadKwh, 384);
+  assert.equal(result.load.averageLoadKw, 48);
+  assert.equal(result.load.peakLoadKw, 40);
+  assert.equal(result.energyFlow.rows.find(row => row.hour === 8).loadKw, 4);
+  assert.equal(result.energyFlow.rows.find(row => row.hour === 9).loadKw, 40);
 });
 
 test('EPC load calculation follows Genset kVA runtime formula', () => {

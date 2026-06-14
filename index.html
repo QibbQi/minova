@@ -11207,6 +11207,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         const EPC_DEVICE_WORK_DEFAULT_PEAK_BAND = '#fee2e2';
         const EPC_DEVICE_WORK_DEFAULT_PEAK_START_MINUTE = 14 * 60;
         const EPC_DEVICE_WORK_DEFAULT_PEAK_END_MINUTE = 22 * 60;
+        const EPC_DEVICE_WORK_LOAD_NOISE_RATIO = 0.03;
+        const EPC_DEVICE_WORK_LOAD_SHOCK_MINUTES = { min: 10, max: 18 };
+        const EPC_DEVICE_WORK_LOAD_SHOCK_RATIO = { min: 0.15, max: 0.25 };
+        const EPC_DEVICE_WORK_GENSET_PLATFORMS = [0, 0.3, 0.5, 0.75, 1];
         let epcDeviceWorkOpenColorSeries = null;
 
         function getEpcDeviceWorkSettings(result = {}) {
@@ -11505,6 +11509,45 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             });
         }
 
+        function epcDeviceWorkDeterministicNoise(seed = 0) {
+            // Device Work uses deterministic pseudo-random load texture so refreshes keep the same curve.
+            const value = Math.sin((Number(seed) || 0) * 12.9898) * 43758.5453;
+            return (value - Math.floor(value)) * 2 - 1;
+        }
+
+        function getEpcDeviceWorkLoadShockMultiplier(row, index, rows) {
+            if (!Array.isArray(rows) || rows.length < 3) return 0;
+            const firstMinute = Number(rows[0]?.timelineMinute) || 0;
+            const lastMinute = Number(rows[rows.length - 1]?.timelineMinute) || firstMinute;
+            const span = Math.max(1, lastMinute - firstMinute);
+            const minute = Number(row?.timelineMinute) || firstMinute + index;
+            const shockWindows = [0.38, 0.72].map((position, shockIndex) => {
+                const seedBase = firstMinute + span + (shockIndex + 1) * 97;
+                const durationNoise = (epcDeviceWorkDeterministicNoise(seedBase) + 1) / 2;
+                const ratioNoise = (epcDeviceWorkDeterministicNoise(seedBase + 31) + 1) / 2;
+                const duration = EPC_DEVICE_WORK_LOAD_SHOCK_MINUTES.min
+                    + durationNoise * (EPC_DEVICE_WORK_LOAD_SHOCK_MINUTES.max - EPC_DEVICE_WORK_LOAD_SHOCK_MINUTES.min);
+                const ratio = EPC_DEVICE_WORK_LOAD_SHOCK_RATIO.min
+                    + ratioNoise * (EPC_DEVICE_WORK_LOAD_SHOCK_RATIO.max - EPC_DEVICE_WORK_LOAD_SHOCK_RATIO.min);
+                return {
+                    start: firstMinute + span * position,
+                    end: firstMinute + span * position + duration,
+                    ratio
+                };
+            });
+            const activeShock = shockWindows.find(window => minute >= window.start && minute <= window.end);
+            return activeShock ? activeShock.ratio : 0;
+        }
+
+        function quantizeEpcDeviceWorkGensetPlatform(value, peakValue) {
+            const demand = Math.max(0, Number(value) || 0);
+            const peak = Math.max(0, Number(peakValue) || 0);
+            if (!demand || !peak) return 0;
+            const ratio = demand / peak;
+            const platform = EPC_DEVICE_WORK_GENSET_PLATFORMS.find(level => level >= ratio) || 1;
+            return peak * platform;
+        }
+
         function interpolateEpcDeviceWorkRow(a = {}, b = {}, pct = 0, index = 0, intervalMinutes = 60, minute = null) {
             const keys = ['pvOutputKw', 'loadKw', 'pvToBatteryKw', 'batteryToLoadKw', 'gensetToLoadKw', 'curtailmentKw', 'socPct'];
             const timelineMinute = Number.isFinite(Number(minute)) ? Number(minute) : getEpcDeviceWorkRowStartMinute(a, index);
@@ -11562,8 +11605,47 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return applyEpcDeviceWorkDurations(rows);
         }
 
-        function getEpcDeviceWorkRowsForSettings(sourceRows = [], settings = {}) {
+        function buildEpcDeviceWorkProfileRows(sourceRows = [], settings = {}) {
             const rows = getEpcDeviceWorkTimelineRows(sourceRows, settings);
+            if (!rows.length) return rows;
+            const loadPeakKw = Math.max(1, ...rows.map(row => Number(row.loadKw) || 0));
+            const gensetPeakKw = Math.max(0, ...rows.map(row => Number(row.gensetToLoadKw) || 0));
+            const profiled = rows.map((row, index) => {
+                const timelineMinute = Number(row.timelineMinute) || 0;
+                const baseLoadKw = Math.max(0, Number(row.loadKw) || 0);
+                const loadNoise = epcDeviceWorkDeterministicNoise(timelineMinute + index * 17 + Math.round(loadPeakKw))
+                    * EPC_DEVICE_WORK_LOAD_NOISE_RATIO;
+                const loadShock = getEpcDeviceWorkLoadShockMultiplier(row, index, rows);
+                // Load shock is a concept-design visual assumption, not a replacement for measured load study.
+                const loadKwWithShock = Math.min(loadPeakKw * 1.25, Math.max(0, baseLoadKw * (1 + loadNoise + loadShock)));
+                const pvOutputKw = Math.max(0, Number(row.pvOutputKw) || 0);
+                const pvToLoadKw = Math.min(pvOutputKw, loadKwWithShock);
+                const surplusPvKw = Math.max(0, pvOutputKw - loadKwWithShock);
+                const loadDeficitKw = Math.max(0, loadKwWithShock - pvOutputKw);
+                const baseGensetKw = Math.max(0, Number(row.gensetToLoadKw) || 0);
+                const baseBatteryToLoadKw = Math.max(0, Number(row.batteryToLoadKw) || 0);
+                const basePvToBatteryKw = Math.max(0, Number(row.pvToBatteryKw) || 0);
+                const batteryToLoadKw = loadDeficitKw > 0
+                    ? Math.min(loadDeficitKw, Math.max(0, Math.min(baseBatteryToLoadKw, loadDeficitKw - baseGensetKw)))
+                    : 0;
+                const pvToBatteryKw = surplusPvKw > 0 ? Math.min(surplusPvKw, basePvToBatteryKw) : 0;
+                const gensetDemandKw = Math.max(0, loadDeficitKw - batteryToLoadKw);
+                const curtailmentKw = Math.max(0, surplusPvKw - pvToBatteryKw);
+                return {
+                    ...row,
+                    loadKw: epcChartRound(loadKwWithShock, 2),
+                    pvToLoadKw: epcChartRound(pvToLoadKw, 2),
+                    pvToBatteryKw: epcChartRound(pvToBatteryKw, 2),
+                    batteryToLoadKw: epcChartRound(batteryToLoadKw, 2),
+                    gensetToLoadKw: epcChartRound(quantizeEpcDeviceWorkGensetPlatform(gensetDemandKw, gensetPeakKw), 2),
+                    curtailmentKw: epcChartRound(curtailmentKw, 2)
+                };
+            });
+            return applyEpcDeviceWorkDurations(profiled);
+        }
+
+        function getEpcDeviceWorkRowsForSettings(sourceRows = [], settings = {}) {
+            const rows = buildEpcDeviceWorkProfileRows(sourceRows, settings);
             const range = settings.selectedRange;
             if (range && rows.length) {
                 const start = Math.min(rows.length - 1, Math.max(0, Math.floor(Number(range.start) || 0)));
@@ -11584,9 +11666,25 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${epcChartRound(point.x, 2)} ${epcChartRound(point.y, 2)}`).join(' ');
         }
 
+        function getEpcDeviceWorkStepPathD(series, rows, xForIndex, yForPower, yForSoc) {
+            if (!rows.length) return '';
+            const yForValue = series.id === 'soc' ? yForSoc : yForPower;
+            const points = rows.map((row, index) => ({
+                x: xForIndex(index),
+                y: yForValue(getEpcDeviceWorkValue(series.id, row))
+            }));
+            return points.map((point, index) => {
+                if (index === 0) return `M ${epcChartRound(point.x, 2)} ${epcChartRound(point.y, 2)}`;
+                const previous = points[index - 1];
+                return `L ${epcChartRound(point.x, 2)} ${epcChartRound(previous.y, 2)} L ${epcChartRound(point.x, 2)} ${epcChartRound(point.y, 2)}`;
+            }).join(' ');
+        }
+
         function renderEpcDeviceWorkPath(series, rows, xForIndex, yForPower, yForSoc, settings) {
             if (!rows.length) return '';
-            const path = getEpcDeviceWorkPathD(series, rows, xForIndex, yForPower, yForSoc);
+            const path = (series.id === 'load' || series.id === 'genset')
+                ? getEpcDeviceWorkStepPathD(series, rows, xForIndex, yForPower, yForSoc)
+                : getEpcDeviceWorkPathD(series, rows, xForIndex, yForPower, yForSoc);
             const color = settings.seriesColors?.[series.id] || series.color;
             const style = `stroke:${htmlSafe(color)}`;
             const dataAttribute = {
@@ -11737,7 +11835,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
         function renderEpcDeviceWorkChart(result) {
             const settings = getEpcDeviceWorkSettings(result);
-            const allRows = getEpcDeviceWorkRowsForSettings(result.energyFlow?.rows || [], { ...settings, selectedRange: null });
+            const allRows = buildEpcDeviceWorkProfileRows(result.energyFlow?.rows || [], settings);
             const rows = getEpcDeviceWorkRowsForSettings(result.energyFlow?.rows || [], settings);
             const visibleIds = settings.visibleSeries || getEpcVisibleEmsFlowSeries(result);
             const visible = EPC_EMS_FLOW_SERIES.filter(series => visibleIds.includes(series.id));
@@ -11818,7 +11916,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
         function renderEpcDeviceWorkAnalysis(result) {
             const settings = getEpcDeviceWorkSettings(result);
-            const rows = getEpcDeviceWorkRowsForSettings(result.energyFlow?.rows || [], settings);
+            const rows = getEpcDeviceWorkRowsForSettings(result.energyFlow?.rows || [], settings); // profile rows drive Device Work analysis.
             const visibleIds = settings.visibleSeries || getEpcVisibleEmsFlowSeries(result);
             const visible = EPC_EMS_FLOW_SERIES.filter(series => visibleIds.includes(series.id));
             return `

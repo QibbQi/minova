@@ -478,6 +478,35 @@ test('EPC Device Work is a standalone chart page with status analysis', () => {
   }
 });
 
+test('EPC Device Work profile renders realistic load and genset device behavior', () => {
+  for (const snippet of [
+    'function buildEpcDeviceWorkProfileRows(sourceRows = [], settings = {})',
+    'function epcDeviceWorkDeterministicNoise(seed = 0)',
+    'function getEpcDeviceWorkLoadShockMultiplier(row, index, rows)',
+    'function quantizeEpcDeviceWorkGensetPlatform(value, peakValue)',
+    'function getEpcDeviceWorkStepPathD(series, rows, xForIndex, yForPower, yForSoc)',
+    "series.id === 'load' || series.id === 'genset'",
+    'Load shock is a concept-design visual assumption',
+    'deterministic pseudo-random',
+    'EPC_DEVICE_WORK_LOAD_NOISE_RATIO',
+    'EPC_DEVICE_WORK_LOAD_SHOCK_MINUTES',
+    'EPC_DEVICE_WORK_GENSET_PLATFORMS',
+    'buildEpcDeviceWorkProfileRows(result.energyFlow?.rows || [], settings)',
+    'getEpcDeviceWorkRowsForSettings(result.energyFlow?.rows || [], settings)',
+    'const path = (series.id === \'load\' || series.id === \'genset\')',
+    'profile rows'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing Device Work profile snippet: ${snippet}`);
+  }
+
+  const profileSource = html.match(/function buildEpcDeviceWorkProfileRows\(sourceRows = \[\], settings = \{\}\)[\s\S]*?function getEpcDeviceWorkRowsForSettings/);
+  assert.ok(profileSource, 'Device Work profile source should be found');
+  assert.doesNotMatch(profileSource[0], /Math\.random\(\)/, 'Device Work profile must be deterministic across refreshes');
+  assert.doesNotMatch(profileSource[0], /(^|[^.A-Za-z0-9_$])round\(/, 'Device Work profile must use browser-local rounding helpers');
+  assert.match(html, /loadKw:\s*epcChartRound\(loadKwWithShock, 2\)/, 'Load profile should include deterministic fluctuation and shock');
+  assert.match(html, /gensetToLoadKw:\s*epcChartRound\(quantizeEpcDeviceWorkGensetPlatform\(gensetDemandKw, gensetPeakKw\), 2\)/, 'Genset profile should use stepped platform output');
+});
+
 test('EPC energy flow uses compact non-overlapping lane layout', () => {
   for (const snippet of [
     'viewBox="0 0 1180 460"',

@@ -252,6 +252,8 @@ test('EPC load measurement modes expose method-specific inputs and state', () =>
     'Edit Schedule',
     'epc-equipment-schedule-operating-hours',
     'loads.equipmentScheduleOperatingHours',
+    'epc-equipment-schedule-ems-flow',
+    'useEquipmentScheduleForEmsFlow',
     'epc-equipment-schedule-modal',
     'epc-genset-kva',
     'data-epc-field="loads.gensetKvaInput.gensetKva"',

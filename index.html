@@ -2960,6 +2960,11 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     </label>
                     <input id="epc-equipment-schedule-operating-hours" type="number" min="0" max="24" step="0.1" class="w-40 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" placeholder="8">
                     <p class="mt-1 text-[11px] font-bold text-slate-400">Leave blank to average by active scheduled hours.</p>
+                    <label class="mt-3 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700">
+                        <input id="epc-equipment-schedule-ems-flow" type="checkbox" class="h-4 w-4 accent-purple-700">
+                        Use schedule load kW in EMS Flow
+                        <span class="epc-help-dot" tabindex="0" data-tip="When enabled, EMS Flow load kW follows the equipment timetable by hour instead of using the average load for every row.">i</span>
+                    </label>
                 </div>
                 <div class="p-4 overflow-x-auto">
                     <table class="w-full text-xs">
@@ -10268,8 +10273,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (scheduleSummary) {
                 const avgHours = Number(project.loads.equipmentScheduleOperatingHours || 0);
                 const avgBasis = avgHours > 0 ? ` · avg basis ${formatEpcNumber(avgHours, 1, 'h')}` : '';
+                const flowBasis = project.loads.useEquipmentScheduleForEmsFlow ? ' · EMS timetable' : '';
                 scheduleSummary.textContent = rows.length
-                    ? `${rows.length} rows · ${formatEpcNumber(load.dailyLoadKwh, 0, 'kWh/day')} · peak ${formatEpcNumber(load.peakLoadKw, 0, 'kW')}${avgBasis}`
+                    ? `${rows.length} rows · ${formatEpcNumber(load.dailyLoadKwh, 0, 'kWh/day')} · peak ${formatEpcNumber(load.peakLoadKw, 0, 'kW')}${avgBasis}${flowBasis}`
                     : 'No equipment schedule rows.';
             }
         }
@@ -10473,6 +10479,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (hoursInput) {
                 hoursInput.value = project.loads.equipmentScheduleOperatingHours || project.loads.operationHoursPerDay || '';
             }
+            const flowInput = document.getElementById('epc-equipment-schedule-ems-flow');
+            if (flowInput) flowInput.checked = Boolean(project.loads.useEquipmentScheduleForEmsFlow);
             const modal = document.getElementById('epc-equipment-schedule-modal');
             modal?.classList.remove('hidden');
             modal?.classList.add('flex');
@@ -10494,6 +10502,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             project.loads.equipmentSchedule = epcScheduleRowsFromModal();
             const scheduleHours = Number(document.getElementById('epc-equipment-schedule-operating-hours')?.value) || 0;
             project.loads.equipmentScheduleOperatingHours = Math.min(24, Math.max(0, scheduleHours));
+            project.loads.useEquipmentScheduleForEmsFlow = Boolean(document.getElementById('epc-equipment-schedule-ems-flow')?.checked);
             project.loads.loadSource = 'Equipment Schedule';
             updateEpcProject(project);
             syncEpcDesignInputs(project);

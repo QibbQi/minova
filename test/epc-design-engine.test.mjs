@@ -157,6 +157,35 @@ test('EPC Equipment Schedule can average against design operating hours', () => 
   assert.equal(result.loads.equipmentScheduleOperatingHours, 8);
 });
 
+test('EPC EMS Flow can use Equipment Schedule timetable load instead of average load', () => {
+  const project = normalizeEpcDesignProject({
+    loads: {
+      measurementMethod: 'equipment_schedule',
+      equipmentScheduleOperatingHours: 8,
+      useEquipmentScheduleForEmsFlow: true,
+      equipmentSchedule: [
+        { equipment: 'Security system', ratedKw: 10, quantity: 1, startTime: '00:00', finishTime: '00:00', dutyCycle: 1, simultaneityFactor: 1 },
+        { equipment: 'Production line', ratedKw: 90, quantity: 1, startTime: '09:00', finishTime: '17:00', dutyCycle: 1, simultaneityFactor: 1 }
+      ]
+    },
+    solarResource: {
+      pvoutSpecificKwhKwpDay: 3.6,
+      hourlyPvProfile: [
+        { hour: 9, pvMw: 0 },
+        { hour: 10, pvMw: 0 }
+      ]
+    }
+  }, { now: '2026-06-12T00:00:00.000Z' });
+  const result = calculateEpcDesignProject(project, { now: '2026-06-12T00:00:00.000Z' });
+
+  assert.equal(result.load.averageLoadKw, 120);
+  assert.equal(result.loads.useEquipmentScheduleForEmsFlow, true);
+  assert.equal(result.energyFlow.rows.find(row => row.hour === 8).loadKw, 10);
+  assert.equal(result.energyFlow.rows.find(row => row.hour === 9).loadKw, 100);
+  assert.equal(result.energyFlow.rows.find(row => row.hour === 17).loadKw, 10);
+  assert.match(result.energyFlow.method, /Equipment Schedule timetable/);
+});
+
 test('EPC load calculation follows Genset kVA runtime formula', () => {
   const project = normalizeEpcDesignProject({
     loads: {

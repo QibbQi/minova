@@ -293,6 +293,7 @@ const GLOBAL_SOLAR_ATLAS_API_BASE = 'https://2eueu84zmf.execute-api.eu-west-1.am
         energyMeterSummary,
         equipmentSchedule,
         equipmentScheduleOperatingHours,
+        useEquipmentScheduleForEmsFlow: Boolean(loads.useEquipmentScheduleForEmsFlow ?? raw.useEquipmentScheduleForEmsFlow),
         gensetKvaInput,
         loadSource: String(loadSourceForMethod(measurementMethod, { energyMeterSummary }) || 'Diesel / SFC estimate').trim()
       },
@@ -871,6 +872,32 @@ const GLOBAL_SOLAR_ATLAS_API_BASE = 'https://2eueu84zmf.execute-api.eu-west-1.am
     }));
   }
 
+  function equipmentScheduleHourlyLoadProfile(project) {
+    if (project.loads.measurementMethod !== 'equipment_schedule' || !project.loads.useEquipmentScheduleForEmsFlow) return [];
+    const stepMinutes = 15;
+    const intervalHours = stepMinutes / 60;
+    const hourlyKwh = new Map();
+    for (const row of project.loads.equipmentSchedule || []) {
+      const start = timeToMinutes(row.startTime);
+      let finish = timeToMinutes(row.finishTime, row.startTime);
+      if (finish <= start) finish += 1440;
+      const kw = row.ratedKw * row.quantity * row.dutyCycle * row.simultaneityFactor;
+      for (let minute = start; minute < finish; minute += stepMinutes) {
+        const hour = Math.floor((((minute % 1440) + 1440) % 1440) / 60);
+        hourlyKwh.set(hour, (hourlyKwh.get(hour) || 0) + kw * intervalHours);
+      }
+    }
+    return [...hourlyKwh.entries()]
+      .sort(([hourA], [hourB]) => hourA - hourB)
+      .map(([hour, kwh]) => ({
+        hour,
+        hourLabel: `${formatMinutes(hour * 60)}-${formatMinutes(hour * 60 + 60, hour >= 23 ? 1 : 0)}`,
+        flowKey: `equipment-schedule-${hour}`,
+        loadKw: round(kwh, 2)
+      }))
+      .filter(item => item.loadKw > 0);
+  }
+
   function defaultHourlyPvProfile(recommended) {
     const factors = {
       9: 0.18,
@@ -900,7 +927,8 @@ const GLOBAL_SOLAR_ATLAS_API_BASE = 'https://2eueu84zmf.execute-api.eu-west-1.am
   }
 
   function calculateEnergyFlow(project, load, recommended) {
-    const loadProfile = project.loadProfile.length ? project.loadProfile : defaultHourlyLoadProfile(project, load);
+    const scheduleLoadProfile = equipmentScheduleHourlyLoadProfile(project);
+    const loadProfile = scheduleLoadProfile.length ? scheduleLoadProfile : project.loadProfile.length ? project.loadProfile : defaultHourlyLoadProfile(project, load);
     const pvProfile = Array.isArray(project.solarResource.hourlyPvProfile) && project.solarResource.hourlyPvProfile.length
       ? project.solarResource.hourlyPvProfile
       : defaultHourlyPvProfile(recommended);
@@ -925,7 +953,7 @@ const GLOBAL_SOLAR_ATLAS_API_BASE = 'https://2eueu84zmf.execute-api.eu-west-1.am
       const rows = [];
       for (const window of flowWindows) {
         const pvOutputKw = (pvMap.get(window.hour) || 0) * 1000;
-        const loadKw = loadMap.get(window.hour) || load.averageLoadKw;
+        const loadKw = loadMap.has(window.hour) ? loadMap.get(window.hour) : load.averageLoadKw;
         const pvToLoadKw = Math.min(pvOutputKw, loadKw);
         const surplusPvKw = Math.max(0, pvOutputKw - loadKw);
         const loadDeficitKw = Math.max(0, loadKw - pvOutputKw);
@@ -962,7 +990,7 @@ const GLOBAL_SOLAR_ATLAS_API_BASE = 'https://2eueu84zmf.execute-api.eu-west-1.am
     const rows = simulateRows(rolloverSocKwh, true).rows;
     const sum = key => rows.reduce((total, row) => total + row[key], 0);
     return {
-      method: 'EMS order: PV -> Load, Excess PV -> Battery, Battery -> Load, Genset -> Load, curtail surplus.',
+      method: `EMS order: PV -> Load, Excess PV -> Battery, Battery -> Load, Genset -> Load, curtail surplus.${scheduleLoadProfile.length ? ' Load profile source: Equipment Schedule timetable.' : ''}`,
       rows,
       summary: {
         pvDirectKwh: round(sum('pvToLoadKw'), 2),

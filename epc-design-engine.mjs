@@ -41,6 +41,8 @@ const SCHEME_TARGETS = [
   { id: 'replace-100', label: '100% Theoretical Replacement', replacementPct: 100, priority: 'Theoretical' }
 ];
 
+const EMS_FLOW_DISPLAY_SERIES = ['pv', 'load', 'battery', 'genset', 'soc'];
+
 function asNumber(value, fallback = 0) {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
@@ -178,6 +180,17 @@ function normalizeGensetKvaInput(value = {}) {
     loadFactor: clamp(input.loadFactor ?? input.load_factor, 0, 1.5, 0.7),
     runtimeHours: clamp(input.runtimeHours ?? input.runtime_hours, 0, 24, 8),
     overloadFactor: clamp(input.overloadFactor ?? input.overload_factor, 0, 1.5, 0.95)
+  };
+}
+
+function normalizeEmsFlowDisplaySettings(value = {}) {
+  const input = value && typeof value === 'object' ? value : {};
+  const rawSeries = Array.isArray(input.visibleSeries) ? input.visibleSeries : EMS_FLOW_DISPLAY_SERIES;
+  const visibleSeries = rawSeries
+    .map(item => String(item || '').trim().toLowerCase())
+    .filter((item, index, array) => EMS_FLOW_DISPLAY_SERIES.includes(item) && array.indexOf(item) === index);
+  return {
+    visibleSeries: visibleSeries.length ? visibleSeries : [...EMS_FLOW_DISPLAY_SERIES]
   };
 }
 
@@ -324,6 +337,7 @@ export function normalizeEpcDesignProject(raw = {}, options = {}) {
       ...(raw.calculationAssumptions || {})
     },
     documents: raw.documents && typeof raw.documents === 'object' ? raw.documents : {},
+    emsFlowDisplaySettings: normalizeEmsFlowDisplaySettings(raw.emsFlowDisplaySettings || {}),
     createdAt: String(raw.createdAt || now),
     updatedAt: now
   };
@@ -952,8 +966,11 @@ function calculateEnergyFlow(project, load, recommended) {
   }).filter(item => Number.isFinite(item.hour));
   const batteryKwh = Math.max(0, recommended.bessRecommendedMwh * 1000);
   const pcsKw = Math.max(0, recommended.pcsRecommendedMw * 1000);
-  const minSoc = clamp(project.assumptions.minSocPct, 0, 99, EPC_DESIGN_DEFAULTS.minSocPct) / 100;
-  const maxSoc = clamp(project.assumptions.maxSocPct, 1, 100, EPC_DESIGN_DEFAULTS.maxSocPct) / 100;
+  const minSocPct = clamp(project.assumptions.minSocPct, 0, 99, EPC_DESIGN_DEFAULTS.minSocPct);
+  const dodPct = clamp(asNumber(project.assumptions.bessDod, EPC_DESIGN_DEFAULTS.bessDod), 0, 1, EPC_DESIGN_DEFAULTS.bessDod) * 100;
+  const maxSocPct = Math.max(minSocPct, Math.min(100, minSocPct + dodPct));
+  const minSoc = minSocPct / 100;
+  const maxSoc = maxSocPct / 100;
   const minSocKwh = batteryKwh * minSoc;
   const maxSocKwh = batteryKwh * maxSoc;
   const simulateRows = (initialSocKwh, includeRows = true) => {
@@ -1005,7 +1022,9 @@ function calculateEnergyFlow(project, load, recommended) {
       pvToBatteryKwh: round(sum('pvToBatteryKw'), 2),
       batteryToLoadKwh: round(sum('batteryToLoadKw'), 2),
       gensetRemainingKwh: round(sum('gensetToLoadKw'), 2),
-      curtailmentKwh: round(sum('curtailmentKw'), 2)
+      curtailmentKwh: round(sum('curtailmentKw'), 2),
+      socMinPct: round(minSocPct, 2),
+      socMaxPct: round(maxSocPct, 2)
     }
   };
 }

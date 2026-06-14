@@ -542,6 +542,43 @@ test('EPC energy flow rolls SOC over from previous day instead of restarting bat
   assert.equal(firstRow.socPct, EPC_DESIGN_DEFAULTS.minSocPct);
 });
 
+test('EPC EMS flow derives max SOC from Min SOC plus DoD', () => {
+  const base = buildEpcDesignProjectFromQuickInputs({
+    ...quarryInputs,
+    operationHoursPerDay: 8,
+    operationStartTime: '11:00',
+    operationFinishTime: '15:00'
+  }, {
+    defaults: EPC_DESIGN_DEFAULTS,
+    now: '2026-06-12T00:00:00.000Z'
+  });
+
+  const fullWindow = calculateEpcDesignProject({
+    ...base,
+    assumptions: { ...base.assumptions, minSocPct: 20, bessDod: 0.8, maxSocPct: 95 }
+  }, { now: '2026-06-12T00:00:00.000Z' });
+  const limitedWindow = calculateEpcDesignProject({
+    ...base,
+    assumptions: { ...base.assumptions, minSocPct: 25, bessDod: 0.6, maxSocPct: 95 }
+  }, { now: '2026-06-12T00:00:00.000Z' });
+
+  assert.equal(fullWindow.energyFlow.summary.socMinPct, 20);
+  assert.equal(fullWindow.energyFlow.summary.socMaxPct, 100);
+  assert.equal(limitedWindow.energyFlow.summary.socMinPct, 25);
+  assert.equal(limitedWindow.energyFlow.summary.socMaxPct, 85);
+  assert.ok(limitedWindow.energyFlow.rows.every(row => row.socPct <= 85));
+});
+
+test('EPC design project preserves EMS Flow display settings', () => {
+  const project = normalizeEpcDesignProject({
+    emsFlowDisplaySettings: {
+      visibleSeries: ['pv', 'load', 'soc']
+    }
+  }, { now: '2026-06-12T00:00:00.000Z' });
+
+  assert.deepEqual(project.emsFlowDisplaySettings.visibleSeries, ['pv', 'load', 'soc']);
+});
+
 test('EPC design engine makes PF and distance affect LV MV architecture output', () => {
   const project = buildEpcDesignProjectFromQuickInputs(quarryInputs, {
     defaults: EPC_DESIGN_DEFAULTS,

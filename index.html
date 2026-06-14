@@ -2734,6 +2734,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                                 <input id="epc-operation-hours" data-epc-field="loads.operationHoursPerDay" type="number" min="1" max="24" oninput="onEpcScheduleInputChanged('hours')" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
                             </div>
                         </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">SFC L/kWh</label>
+                            <input id="epc-sfc" data-epc-field="assumptions.dieselSfcLPerKwh" type="number" step="0.01" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
+                        </div>
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
@@ -2925,29 +2929,29 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             <option value="island_mode">Island Mode</option>
                         </select>
                     </div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <div>
-                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Diesel generator specific fuel consumption used to convert diesel liters into electrical load.">SFC L/kWh <span data-epc-help="sfc" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Diesel generator specific fuel consumption used to convert diesel liters into electrical load.">i</span></label>
-                            <input id="epc-sfc" data-epc-field="assumptions.dieselSfcLPerKwh" type="number" step="0.01" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
-                        </div>
-                        <div>
-                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Daily PV yield used for PV sizing; this should follow GSA PVOUT when solar data is fetched.">PV Yield <span data-epc-help="pv-yield" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Daily PV yield used for PV sizing; this should follow GSA PVOUT when solar data is fetched.">i</span></label>
-                            <input id="epc-pv-yield" data-epc-field="solarResource.specificYieldKwhPerKwpDay" type="number" step="0.1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
-                        </div>
+                    <div>
+                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Daily PV yield used for PV sizing; this should follow GSA PVOUT when solar data is fetched.">PV Yield <span data-epc-help="pv-yield" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Daily PV yield used for PV sizing; this should follow GSA PVOUT when solar data is fetched.">i</span></label>
+                        <input id="epc-pv-yield" data-epc-field="solarResource.specificYieldKwhPerKwpDay" type="number" step="0.1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
-                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Usable battery depth of discharge applied to BESS capacity sizing.">DoD <span data-epc-help="bess-dod" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Usable battery depth of discharge applied to BESS capacity sizing.">i</span></label>
-                            <input id="epc-bess-dod" data-epc-field="assumptions.bessDod" type="number" step="0.01" min="0" max="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Minimum battery state of charge reserved in EMS Flow.">Min SOC % <span data-epc-help="min-soc" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Minimum battery state of charge reserved in EMS Flow.">i</span></label>
+                            <input id="epc-min-soc" data-epc-field="assumptions.minSocPct" type="number" step="1" min="0" max="99" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                         </div>
                         <div>
-                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Power factor used for AC current and voltage architecture checks.">PF <span data-epc-help="power-factor" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Power factor used for AC current and voltage architecture checks.">i</span></label>
-                            <input id="epc-power-factor" data-epc-field="electrical.powerFactor" type="number" step="0.01" min="0.1" max="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Usable battery depth of discharge applied to BESS sizing and EMS Flow SOC upper limit.">DoD % <span data-epc-help="bess-dod" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Usable battery depth of discharge applied to BESS sizing and EMS Flow SOC upper limit.">i</span></label>
+                            <input id="epc-bess-dod" type="number" step="1" min="0" max="100" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                         </div>
                     </div>
                     <div>
-                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Must-run load for backup or island mode; blank falls back to average load.">Critical Load kW <span data-epc-help="critical-load" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Must-run load for backup or island mode; blank falls back to average load.">i</span></label>
-                        <input id="epc-critical-load" data-epc-field="loads.criticalLoadKw" type="number" min="0" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Power factor used for AC current and voltage architecture checks.">PF <span data-epc-help="power-factor" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Power factor used for AC current and voltage architecture checks.">i</span></label>
+                        <input id="epc-power-factor" data-epc-field="electrical.powerFactor" type="number" step="0.01" min="0.1" max="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Must-run load for backup or island mode; blank falls back to average load.">Critical Load kW <span data-epc-help="critical-load" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Must-run load for backup or island mode; blank falls back to average load.">i</span></label>
+                            <input id="epc-critical-load" data-epc-field="loads.criticalLoadKw" type="number" min="0" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        </div>
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
@@ -10170,6 +10174,11 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return Number.isFinite(n) ? n : fallback;
         }
 
+        function readEpcDodPercentInput() {
+            const pct = numericInputValue('epc-bess-dod', EPC_DESIGN_DEFAULTS.bessDod * 100);
+            return Math.max(0, Math.min(100, pct)) / 100;
+        }
+
         function captureEpcDesignFromDom() {
             const current = getActiveEpcDesignProject();
             const draft = JSON.parse(JSON.stringify(current));
@@ -10182,6 +10191,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (current.loads?.measurementMethod !== 'equipment_schedule' && draft.loads?.measurementMethod === 'equipment_schedule') {
                 draft.loads.useEquipmentScheduleForEmsFlow = true;
             }
+            draft.assumptions = { ...(draft.assumptions || {}), bessDod: readEpcDodPercentInput() };
             draft.mode = epcDesignMode;
             draft.updatedAt = new Date().toISOString();
             draft.assumptions = { ...epcDesignDefaults, ...(draft.assumptions || {}) };
@@ -10199,6 +10209,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 return;
             }
             el.value = value ?? '';
+        }
+
+        function setPercentInputValue(id, decimalValue, fallbackDecimal) {
+            const value = Number(decimalValue);
+            const fallback = Number(fallbackDecimal);
+            const decimal = Number.isFinite(value) ? value : (Number.isFinite(fallback) ? fallback : 0);
+            setInputValue(id, Math.round(decimal * 10000) / 100);
         }
 
         function epcTimeToMinutes(value, fallback = '09:00') {
@@ -10559,7 +10576,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             setInputValue('epc-sfc', project.assumptions.dieselSfcLPerKwh || EPC_DESIGN_DEFAULTS.dieselSfcLPerKwh);
             setInputValue('epc-pv-yield', project.solarResource.specificYieldKwhPerKwpDay || EPC_DESIGN_DEFAULTS.malaysiaYieldBase);
             setInputValue('epc-solar-pvout', project.solarResource.gsaPvoutKwhPerKwpDay || '');
-            setInputValue('epc-bess-dod', project.assumptions.bessDod || EPC_DESIGN_DEFAULTS.bessDod);
+            setInputValue('epc-min-soc', project.assumptions.minSocPct ?? EPC_DESIGN_DEFAULTS.minSocPct);
+            setPercentInputValue('epc-bess-dod', project.assumptions.bessDod, EPC_DESIGN_DEFAULTS.bessDod);
             setInputValue('epc-power-factor', project.electrical.powerFactor || EPC_DESIGN_DEFAULTS.powerFactor);
             setInputValue('epc-bess-role', project.designTargets.bessRole || '');
             setInputValue('epc-module-wp', project.assumptions.moduleWp || EPC_DESIGN_DEFAULTS.moduleWp);
@@ -10946,6 +10964,142 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             `;
         }
 
+        const EPC_EMS_FLOW_SERIES = [
+            { id: 'pv', label: 'PV', unit: 'kW', color: '#f59e0b' },
+            { id: 'load', label: 'Load', unit: 'kW', color: '#2563eb' },
+            { id: 'battery', label: 'Battery', unit: 'kW', color: '#16a34a' },
+            { id: 'genset', label: 'Genset', unit: 'kW', color: '#64748b' },
+            { id: 'soc', label: 'SOC', unit: '%', color: '#0ea5e9' }
+        ];
+
+        function getEpcVisibleEmsFlowSeries(result = {}) {
+            const configured = result.emsFlowDisplaySettings?.visibleSeries;
+            const validIds = EPC_EMS_FLOW_SERIES.map(series => series.id);
+            if (!Array.isArray(configured)) return validIds;
+            const visible = configured.filter(id => validIds.includes(id));
+            return visible.length ? visible : validIds;
+        }
+
+        function getEpcDeviceWorkMetrics(seriesId, rows = [], row = {}, result = {}) {
+            const sum = key => rows.reduce((total, item) => total + (Number(item[key]) || 0), 0);
+            const socValues = rows.map(item => Number(item.socPct)).filter(Number.isFinite);
+            if (seriesId === 'pv') {
+                return {
+                    current: formatEpcNumber(row.pvOutputKw || 0, 0, 'kW'),
+                    total: `Daily ${formatEpcNumber(sum('pvOutputKw'), 0, 'kW')}`,
+                    pct: Math.min(100, ((Number(row.pvOutputKw) || 0) / Math.max(1, Math.max(...rows.map(item => Number(item.pvOutputKw) || 0)))) * 100)
+                };
+            }
+            if (seriesId === 'load') {
+                return {
+                    current: formatEpcNumber(row.loadKw || 0, 0, 'kW'),
+                    total: `Daily ${formatEpcNumber(sum('loadKw'), 0, 'kW')}`,
+                    pct: Math.min(100, ((Number(row.loadKw) || 0) / Math.max(1, Math.max(...rows.map(item => Number(item.loadKw) || 0)))) * 100)
+                };
+            }
+            if (seriesId === 'battery') {
+                const charge = sum('pvToBatteryKw');
+                const discharge = sum('batteryToLoadKw');
+                const current = (Number(row.pvToBatteryKw) || 0) - (Number(row.batteryToLoadKw) || 0);
+                return {
+                    current: `${current >= 0 ? '+' : ''}${formatEpcNumber(current, 0, 'kW')}`,
+                    total: `Charge ${formatEpcNumber(charge, 0)} / Discharge ${formatEpcNumber(discharge, 0)}`,
+                    pct: Math.min(100, (Math.abs(current) / Math.max(1, Math.max(charge, discharge))) * 100)
+                };
+            }
+            if (seriesId === 'genset') {
+                return {
+                    current: formatEpcNumber(row.gensetToLoadKw || 0, 0, 'kW'),
+                    total: `Daily ${formatEpcNumber(sum('gensetToLoadKw'), 0, 'kW')}`,
+                    pct: Math.min(100, ((Number(row.gensetToLoadKw) || 0) / Math.max(1, Math.max(...rows.map(item => Number(item.gensetToLoadKw) || 0)))) * 100)
+                };
+            }
+            const minSoc = result.energyFlow?.summary?.socMinPct ?? (socValues.length ? Math.min(...socValues) : 0);
+            const maxSoc = result.energyFlow?.summary?.socMaxPct ?? (socValues.length ? Math.max(...socValues) : 100);
+            return {
+                current: formatEpcNumber(row.socPct || 0, 1, '%'),
+                total: `Window ${formatEpcNumber(minSoc, 0)}-${formatEpcNumber(maxSoc, 0, '%')}`,
+                pct: Math.max(0, Math.min(100, Number(row.socPct) || 0))
+            };
+        }
+
+        function renderEpcDeviceWorkCard(series, rows, row, result) {
+            const metrics = getEpcDeviceWorkMetrics(series.id, rows, row, result);
+            const width = Math.max(4, Math.min(100, Number(metrics.pct) || 0));
+            const dataAttribute = {
+                pv: 'data-epc-device-work-series="pv"',
+                load: 'data-epc-device-work-series="load"',
+                battery: 'data-epc-device-work-series="battery"',
+                genset: 'data-epc-device-work-series="genset"',
+                soc: 'data-epc-device-work-series="soc"'
+            }[series.id] || `data-epc-device-work-series="${htmlSafe(series.id)}"`;
+            return `
+                <div ${dataAttribute} class="epc-device-work-card rounded-xl border border-slate-100 bg-white p-3 shadow-sm">
+                    <div class="flex items-start justify-between gap-2">
+                        <div>
+                            <div class="text-[10px] font-black uppercase text-slate-400">${htmlSafe(series.label)}</div>
+                            <div class="mt-1 text-xl font-black text-slate-900">${htmlSafe(metrics.current)}</div>
+                        </div>
+                        <button type="button" onclick="toggleEpcEmsFlowSeries('${htmlSafe(series.id)}', false)" class="rounded-lg border border-slate-200 px-2 py-1 text-[10px] font-black text-slate-500 hover:bg-slate-50">Hide</button>
+                    </div>
+                    <div class="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+                        <div class="h-full rounded-full" style="width:${width}%; background:${series.color}"></div>
+                    </div>
+                    <div class="mt-2 text-[11px] font-bold text-slate-500">${htmlSafe(metrics.total)}</div>
+                </div>
+            `;
+        }
+
+        function renderEpcDeviceWorkPanel(result, row) {
+            const rows = result.energyFlow?.rows || [];
+            const visibleIds = getEpcVisibleEmsFlowSeries(result);
+            const visible = EPC_EMS_FLOW_SERIES.filter(series => visibleIds.includes(series.id));
+            const hidden = EPC_EMS_FLOW_SERIES.filter(series => !visibleIds.includes(series.id));
+            return `
+                <aside id="epc-device-work-panel" class="epc-device-work-panel rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <div class="text-sm font-black text-slate-800">Device Work</div>
+                            <div class="text-[11px] font-bold text-slate-400">Current hour and daily totals</div>
+                        </div>
+                        <div class="rounded-full bg-white px-2.5 py-1 text-[10px] font-black text-purple-700">${htmlSafe(row?.hourLabel || '')}</div>
+                    </div>
+                    <div class="mt-3 space-y-2">
+                        ${visible.length
+                            ? visible.map(series => renderEpcDeviceWorkCard(series, rows, row, result)).join('')
+                            : '<div class="rounded-xl border border-dashed border-slate-200 bg-white p-3 text-xs font-bold text-slate-400">No visible device items.</div>'}
+                    </div>
+                    ${hidden.length ? `
+                        <div class="mt-3 border-t border-slate-200 pt-3">
+                            <div class="mb-2 text-[10px] font-black uppercase text-slate-400">Hidden items</div>
+                            <div class="flex flex-wrap gap-2">
+                                ${hidden.map(series => `<button type="button" onclick="restoreEpcEmsFlowSeries('${htmlSafe(series.id)}')" class="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-black text-slate-600 hover:border-purple-300 hover:text-purple-700">Add ${htmlSafe(series.label)}</button>`).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                </aside>
+            `;
+        }
+
+        window.toggleEpcEmsFlowSeries = (seriesId, visible = false) => {
+            const validIds = EPC_EMS_FLOW_SERIES.map(series => series.id);
+            if (!validIds.includes(seriesId)) return;
+            const project = getActiveEpcDesignProject();
+            const current = Array.isArray(project.emsFlowDisplaySettings?.visibleSeries)
+                ? project.emsFlowDisplaySettings.visibleSeries.filter(id => validIds.includes(id))
+                : validIds;
+            const next = visible
+                ? [...new Set([...current, seriesId])]
+                : current.filter(id => id !== seriesId);
+            project.emsFlowDisplaySettings = { ...(project.emsFlowDisplaySettings || {}), visibleSeries: next };
+            updateEpcProject(project);
+            renderEpcDesignResult(project);
+        };
+
+        window.restoreEpcEmsFlowSeries = (seriesId) => {
+            window.toggleEpcEmsFlowSeries(seriesId, true);
+        };
+
         function renderEpcEnergyFlow(result) {
             const target = document.getElementById('epc-energy-flow-table');
             if (!target) return;
@@ -10955,7 +11109,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (!rows.some(row => rowKey(row) === String(epcSelectedFlowHour))) epcSelectedFlowHour = rowKey(rows[0] || { hour: 13 });
             const selectedRow = rows.find(row => rowKey(row) === String(epcSelectedFlowHour)) || rows[0] || {};
             target.innerHTML = `
-                ${renderEpcFlowDiagram(result, selectedRow)}
+                <div class="epc-flow-top-grid grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_22rem] gap-4 mb-4">
+                    <div>${renderEpcFlowDiagram(result, selectedRow)}</div>
+                    ${renderEpcDeviceWorkPanel(result, selectedRow)}
+                </div>
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                     <div class="rounded-xl border border-slate-100 bg-slate-50 p-3"><div class="text-[10px] font-black text-slate-400 uppercase">Modules</div><div class="text-lg font-black text-slate-800">${formatEpcNumber(stringDesign.modules, 0)}</div></div>
                     <div class="rounded-xl border border-slate-100 bg-slate-50 p-3"><div class="text-[10px] font-black text-slate-400 uppercase">Strings</div><div class="text-lg font-black text-slate-800">${formatEpcNumber(stringDesign.strings, 0)}</div></div>

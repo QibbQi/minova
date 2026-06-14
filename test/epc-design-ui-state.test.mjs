@@ -200,8 +200,8 @@ test('EPC detailed inputs expose title pointers instead of inline helper paragra
     'data-epc-help="allowed-genset-load"',
     'data-epc-help="load-equipment-type"',
     'data-epc-help="bess-role"',
-    'data-epc-help="sfc"',
     'data-epc-help="pv-yield"',
+    'data-epc-help="min-soc"',
     'data-epc-help="bess-dod"',
     'data-epc-help="power-factor"',
     'data-epc-help="critical-load"',
@@ -214,9 +214,9 @@ test('EPC detailed inputs expose title pointers instead of inline helper paragra
     'Diesel power intentionally kept online; Peak Shaving PCS covers Peak minus this value.',
     'Select the operating load type so the model can keep recommendations tied to the site duty.',
     'Defines the battery operating purpose used by sizing, recommendation, and risk notes.',
-    'Diesel generator specific fuel consumption used to convert diesel liters into electrical load.',
     'Daily PV yield used for PV sizing; this should follow GSA PVOUT when solar data is fetched.',
-    'Usable battery depth of discharge applied to BESS capacity sizing.',
+    'Minimum battery state of charge reserved in EMS Flow.',
+    'Usable battery depth of discharge applied to BESS sizing and EMS Flow SOC upper limit.',
     'Power factor used for AC current and voltage architecture checks.',
     'Must-run load for backup or island mode; blank falls back to average load.',
     'PV modules per string used for string count and combiner sizing.',
@@ -283,6 +283,23 @@ test('EPC load measurement modes expose method-specific inputs and state', () =>
   assert.match(html, /load:\s*result\.load\?\.dailyLoadKwh > 0 && result\.load\?\.averageLoadKw > 0 && result\.load\?\.peakLoadKw > 0/);
 });
 
+test('EPC Diesel SFC and SOC inputs are placed in the correct panels', () => {
+  const dieselPanel = html.match(/<div data-epc-load-method-panel="diesel_sfc_estimate"[\s\S]*?<\/div>\s*<div class="grid grid-cols-2 gap-2">\s*<div>\s*<label class="block text-\[10px\] font-black text-slate-400 uppercase mb-1">Country/);
+  assert.ok(dieselPanel, 'diesel estimate panel should be found before site inputs');
+  assert.match(dieselPanel[0], /id="epc-sfc"/);
+  assert.match(dieselPanel[0], /SFC L\/kWh/);
+
+  const detailSection = html.match(/<div id="epc-advanced-inputs"[\s\S]*?<div>\s*<label class="epc-field-label text-\[10px\] font-black text-slate-400 uppercase mb-1" title="Must-run load/);
+  assert.ok(detailSection, 'detail inputs should be found');
+  assert.doesNotMatch(detailSection[0], /id="epc-sfc"/);
+  assert.match(detailSection[0], /id="epc-min-soc"/);
+  assert.match(detailSection[0], /Min SOC %/);
+  assert.match(detailSection[0], /id="epc-bess-dod"/);
+  assert.match(detailSection[0], /DoD %/);
+  assert.match(html, /readEpcDodPercentInput/);
+  assert.match(html, /setPercentInputValue\('epc-bess-dod'/);
+});
+
 test('EPC Equipment Schedule modal no longer exposes per-row duty and simultaneity', () => {
   const modalStart = html.indexOf('id="epc-equipment-schedule-modal"');
   const modalEnd = html.indexOf('id="epc-equipment-schedule-rows"', modalStart);
@@ -298,6 +315,19 @@ test('EPC EMS flow exposes animated system diagram and clickable hour rows', () 
   for (const snippet of [
     'epc-flow-diagram',
     'epc-flow-svg',
+    'epc-flow-top-grid',
+    'epc-device-work-panel',
+    'Device Work',
+    'epc-device-work-card',
+    'toggleEpcEmsFlowSeries',
+    'restoreEpcEmsFlowSeries',
+    'emsFlowDisplaySettings',
+    'visibleSeries',
+    'data-epc-device-work-series="pv"',
+    'data-epc-device-work-series="load"',
+    'data-epc-device-work-series="battery"',
+    'data-epc-device-work-series="genset"',
+    'data-epc-device-work-series="soc"',
     'epc-flow-summary',
     'selectEpcEnergyFlowHour',
     'data-epc-flow-hour',

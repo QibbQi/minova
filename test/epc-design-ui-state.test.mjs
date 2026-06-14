@@ -366,13 +366,13 @@ test('EPC Device Work is a standalone chart page with status analysis', () => {
     'renderEpcDeviceWorkPath',
     'getEpcDeviceWorkRowsForSettings',
     'getEpcDeviceWorkPathD',
-    'smoothDeviceWorkPath',
     'resetEpcDeviceWorkRange',
-    'setEpcDeviceWorkLineStyle',
     'setEpcDeviceWorkInterval',
     'setEpcDeviceWorkRange',
+    'setEpcDeviceWorkPeakBandTime',
     'setEpcDeviceWorkPeakBandVisible',
     'setEpcDeviceWorkPeakBandColor',
+    'toggleEpcDeviceWorkColorPicker',
     'setEpcDeviceWorkSeriesColor',
     'EPC_DEVICE_WORK_COLOR_PRESETS',
     'epc-device-work-chart',
@@ -381,16 +381,19 @@ test('EPC Device Work is a standalone chart page with status analysis', () => {
     'epc-device-work-controls',
     'epc-device-work-range-controls',
     'epc-device-work-reset',
-    'epc-device-work-style-line',
-    'epc-device-work-style-smooth',
+    'epc-device-work-time-row',
     'data-epc-device-interval="15"',
     'data-epc-device-interval="30"',
     'data-epc-device-interval="60"',
     'data-epc-device-interval="120"',
     'data-epc-device-interval="360"',
     'data-epc-device-interval="720"',
+    'epc-device-work-range-track',
     'epc-device-work-range-start',
     'epc-device-work-range-end',
+    'epc-device-work-range-ticks',
+    'epc-device-work-range-start-label',
+    'epc-device-work-range-end-label',
     'epc-device-work-zero-label',
     'epc-device-work-zero-line',
     'epc-device-work-axis-left',
@@ -398,6 +401,8 @@ test('EPC Device Work is a standalone chart page with status analysis', () => {
     'epc-device-work-peak-band',
     'epc-device-work-peak-toggle',
     'epc-device-work-peak-color',
+    'epc-device-work-peak-start',
+    'epc-device-work-peak-end',
     'Workday Peak',
     'epc-device-work-line-pv',
     'epc-device-work-line-load',
@@ -415,11 +420,14 @@ test('EPC Device Work is a standalone chart page with status analysis', () => {
     'data-epc-device-color-series="battery"',
     'data-epc-device-color-series="genset"',
     'data-epc-device-color-series="soc"',
+    'epc-device-work-color-trigger',
+    'epc-device-work-color-popover',
+    'EPC_DEVICE_WORK_DEFAULT_PEAK_START_MINUTE',
+    'EPC_DEVICE_WORK_DEFAULT_PEAK_END_MINUTE',
     'toggleEpcEmsFlowSeries',
     'restoreEpcEmsFlowSeries',
     'emsFlowDisplaySettings',
     'visibleSeries',
-    'lineStyle',
     'intervalMinutes',
     'selectedRange',
     'peakBand',
@@ -427,6 +435,14 @@ test('EPC Device Work is a standalone chart page with status analysis', () => {
     'Power axis padding 10%'
   ]) {
     assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing Device Work chart snippet: ${snippet}`);
+  }
+  for (const removedSnippet of [
+    'smoothDeviceWorkPath',
+    'setEpcDeviceWorkLineStyle',
+    'epc-device-work-style-smooth',
+    'lineStyle:'
+  ]) {
+    assert.doesNotMatch(html, new RegExp(removedSnippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `removed Device Work snippet still present: ${removedSnippet}`);
   }
 });
 

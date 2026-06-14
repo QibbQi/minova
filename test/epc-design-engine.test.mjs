@@ -573,19 +573,17 @@ test('EPC design project preserves EMS Flow display settings', () => {
   const project = normalizeEpcDesignProject({
     emsFlowDisplaySettings: {
       visibleSeries: ['pv', 'load', 'soc'],
-      lineStyle: 'smooth',
       intervalMinutes: 30,
       selectedRange: { start: 2, end: 8 },
-      peakBand: { visible: false, color: '#e0f2fe' },
+      peakBand: { visible: false, color: '#e0f2fe', startMinute: 15 * 60, endMinute: 21 * 60 },
       seriesColors: { pv: '#f59e0b', load: '#2563eb', battery: '#16a34a', genset: '#ef4444', soc: '#0ea5e9' }
     }
   }, { now: '2026-06-12T00:00:00.000Z' });
 
   assert.deepEqual(project.emsFlowDisplaySettings.visibleSeries, ['pv', 'load', 'soc']);
-  assert.equal(project.emsFlowDisplaySettings.lineStyle, 'smooth');
   assert.equal(project.emsFlowDisplaySettings.intervalMinutes, 30);
   assert.deepEqual(project.emsFlowDisplaySettings.selectedRange, { start: 2, end: 8 });
-  assert.deepEqual(project.emsFlowDisplaySettings.peakBand, { visible: false, color: '#e0f2fe' });
+  assert.deepEqual(project.emsFlowDisplaySettings.peakBand, { visible: false, color: '#e0f2fe', startMinute: 900, endMinute: 1260 });
   assert.equal(project.emsFlowDisplaySettings.seriesColors.genset, '#ef4444');
 
   const darkPeakBand = normalizeEpcDesignProject({
@@ -593,7 +591,12 @@ test('EPC design project preserves EMS Flow display settings', () => {
       peakBand: { visible: true, color: '#111827' }
     }
   }, { now: '2026-06-12T00:00:00.000Z' });
-  assert.equal(darkPeakBand.emsFlowDisplaySettings.peakBand.color, '#cbcccf');
+  assert.deepEqual(darkPeakBand.emsFlowDisplaySettings.peakBand, {
+    visible: true,
+    color: '#cbcccf',
+    startMinute: 14 * 60,
+    endMinute: 22 * 60
+  });
 });
 
 test('EPC design engine makes PF and distance affect LV MV architecture output', () => {

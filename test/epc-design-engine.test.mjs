@@ -49,7 +49,7 @@ test('EPC design engine reproduces the quarry workbook sizing baseline', () => {
   assert.ok(recommended, 'recommended 80% scheme is present');
   assert.equal(recommended.replacementPct, 80);
   assert.equal(recommended.pvRecommendedMwp.toFixed(2), '3.90');
-  assert.equal(recommended.bessRecommendedMwh.toFixed(2), '4.49');
+  assert.equal(recommended.bessRecommendedMwh.toFixed(2), '5.09');
   assert.equal(recommended.pcsRecommendedMw.toFixed(2), '2.50');
   assert.equal(recommended.monthlyDieselSavedLiters.toFixed(0), '98902');
   assert.equal(recommended.monthlySavings.toFixed(2), '461872.77');
@@ -88,6 +88,31 @@ test('EPC design engine creates auditable formula outputs and GSA link inputs', 
   assert.equal(trace.calculationVersion, 'epc-design-v2');
   assert.match(buildGlobalSolarAtlasUrl(normalized.site), /globalsolaratlas\.info/);
   assert.match(buildGlobalSolarAtlasUrl(normalized.site), /2\.960857/);
+});
+
+test('EPC design defaults reserve 20 percent minimum SOC and 75 percent DoD', () => {
+  const project = normalizeEpcDesignProject({}, { now: '2026-06-12T00:00:00.000Z' });
+  const legacyDefaultProject = normalizeEpcDesignProject({
+    assumptions: { minSocPct: 25, bessDod: 0.85 }
+  }, { now: '2026-06-12T00:00:00.000Z' });
+  const legacyOptionsProject = normalizeEpcDesignProject({}, {
+    defaults: { ...EPC_DESIGN_DEFAULTS, minSocPct: 25, bessDod: 0.85 },
+    now: '2026-06-12T00:00:00.000Z'
+  });
+  const manualProject = normalizeEpcDesignProject({
+    assumptions: { minSocPct: 30, bessDod: 0.8 }
+  }, { now: '2026-06-12T00:00:00.000Z' });
+
+  assert.equal(EPC_DESIGN_DEFAULTS.minSocPct, 20);
+  assert.equal(EPC_DESIGN_DEFAULTS.bessDod, 0.75);
+  assert.equal(project.assumptions.minSocPct, 20);
+  assert.equal(project.assumptions.bessDod, 0.75);
+  assert.equal(legacyDefaultProject.assumptions.minSocPct, 20);
+  assert.equal(legacyDefaultProject.assumptions.bessDod, 0.75);
+  assert.equal(legacyOptionsProject.assumptions.minSocPct, 20);
+  assert.equal(legacyOptionsProject.assumptions.bessDod, 0.75);
+  assert.equal(manualProject.assumptions.minSocPct, 30);
+  assert.equal(manualProject.assumptions.bessDod, 0.8);
 });
 
 test('EPC load calculation uses Energy Meter summary values', () => {
@@ -332,9 +357,9 @@ test('EPC design engine can round up PV BESS and PCS before downstream calculati
 
   assert.equal(rounded.designTargets.roundUpSizing, true);
   assert.equal(recommended.pvRecommendedMwp.toFixed(2), '4.00');
-  assert.equal(recommended.bessRecommendedMwh.toFixed(2), '4.50');
+  assert.equal(recommended.bessRecommendedMwh.toFixed(2), '5.50');
   assert.equal(recommended.pcsRecommendedMw.toFixed(2), '2.50');
-  assert.equal(recommended.cRate.toFixed(2), '0.56');
+  assert.equal(recommended.cRate.toFixed(2), '0.45');
   assert.equal(rounded.pvStringDesign.modules, Math.ceil((4 * 1000000) / EPC_DESIGN_DEFAULTS.moduleWp));
   assert.equal(recommended.requiredAreaM2, 4 * EPC_DESIGN_DEFAULTS.groundPvAreaM2PerMwp);
   const roundUpTrace = rounded.formulaTrace.find((item) => item.key === 'replace-80.roundUpSizing');
@@ -418,9 +443,9 @@ test('EPC design engine sizes BESS and PCS by selected operating role', () => {
   assert.equal(peak.pcsBasis, 'Peak load minus allowed genset load');
   assert.equal(peak.supportedLoadKw.toFixed(4), '980.1837');
   assert.equal(peak.pcsRecommendedMw, 1);
-  assert.equal(peak.bessRecommendedMwh.toFixed(2), '1.21');
-  assert.equal(peak.cRate.toFixed(2), '0.82');
-  assert.equal(peak.equivalentDurationHours.toFixed(2), '1.21');
+  assert.equal(peak.bessRecommendedMwh.toFixed(2), '1.38');
+  assert.equal(peak.cRate.toFixed(2), '0.73');
+  assert.equal(peak.equivalentDurationHours.toFixed(2), '1.38');
 
   assert.equal(island.pcsBasis, 'Total peak load with island safety factor');
   assert.equal(island.pcsRecommendedMw, 3);

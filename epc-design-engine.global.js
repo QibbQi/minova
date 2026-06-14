@@ -14,14 +14,14 @@ const GLOBAL_SOLAR_ATLAS_API_BASE = 'https://2eueu84zmf.execute-api.eu-west-1.am
     malaysiaYieldOptimistic: 3.9,
     performanceRatio: 0.78,
     pvSizingMargin: 1.15,
-    bessDod: 0.85,
+    bessDod: 0.75,
     bessDischargeEfficiency: 0.95,
     bessAutonomyHours: 1.9,
     pcsSafetyFactor: 1.5,
     peakLoadFactor: 1.3,
     islandPcsSafetyFactor: 1.2,
     pvSmoothingPcsRatio: 0.2,
-    minSocPct: 25,
+    minSocPct: 20,
     maxSocPct: 95,
     powerFactor: 0.95,
     lvVoltageKv: 0.415,
@@ -315,6 +315,13 @@ const GLOBAL_SOLAR_ATLAS_API_BASE = 'https://2eueu84zmf.execute-api.eu-west-1.am
     const operationStartTime = normalizeTime(loads.operationStartTime ?? raw.operationStartTime, '09:00');
     const operationFinishTime = normalizeTime(loads.operationFinishTime ?? raw.operationFinishTime, addHoursToTime(operationStartTime, dayHours));
     const scheduleWorkingHours = Math.min(24, Math.max(1, hoursBetweenTimes(operationStartTime, operationFinishTime)));
+    const normalizedAssumptions = { ...defaults, ...assumptions };
+    const hasLegacySocDefaults = asNumber(assumptions.minSocPct, defaults.minSocPct) === 25
+      && asNumber(assumptions.bessDod, defaults.bessDod) === 0.85;
+    if (hasLegacySocDefaults) {
+      normalizedAssumptions.minSocPct = EPC_DESIGN_DEFAULTS.minSocPct;
+      normalizedAssumptions.bessDod = EPC_DESIGN_DEFAULTS.bessDod;
+    }
 
     return {
       id,
@@ -378,10 +385,7 @@ const GLOBAL_SOLAR_ATLAS_API_BASE = 'https://2eueu84zmf.execute-api.eu-west-1.am
         existingMvVoltageKv: asNumber(electrical.existingMvVoltageKv, 0),
         newMvSystem: Boolean(electrical.newMvSystem)
       },
-      assumptions: {
-        ...defaults,
-        ...assumptions
-      },
+      assumptions: normalizedAssumptions,
       calculationAssumptions: {
         ...defaults,
         ...(raw.calculationAssumptions || {})

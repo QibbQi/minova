@@ -2703,40 +2703,45 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         </div>
 
         <div id="epc-wizard-steps" class="grid grid-cols-1 md:grid-cols-5 gap-2 mb-5">
-            <div data-epc-step="load" class="rounded-2xl border border-purple-100 bg-white p-3">
+            <div data-epc-step="load" onmouseenter="scheduleEpcWizardStepHint('load')" onmouseleave="clearEpcWizardStepHint('load')" class="rounded-2xl border border-purple-100 bg-white p-3">
                 <div class="flex items-start justify-between gap-2">
                     <div class="text-[10px] font-black text-purple-700 uppercase">Step 1 Load</div>
                     <span data-epc-step-check="load" class="epc-step-pending inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-100 text-[10px] font-black text-slate-300">&#10003;</span>
                 </div>
                 <div class="text-xs text-slate-500 mt-1">Daily kWh, average kW, peak kW.</div>
+                <div data-epc-step-hint="load" class="hidden mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5 text-[10px] font-bold text-amber-700"></div>
             </div>
-            <div data-epc-step="pcs" class="rounded-2xl border border-slate-200 bg-white p-3">
+            <div data-epc-step="pcs" onmouseenter="scheduleEpcWizardStepHint('pcs')" onmouseleave="clearEpcWizardStepHint('pcs')" class="rounded-2xl border border-slate-200 bg-white p-3">
                 <div class="flex items-start justify-between gap-2">
                     <div class="text-[10px] font-black text-purple-700 uppercase">Step 2 PCS</div>
                     <span data-epc-step-check="pcs" class="epc-step-pending inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-100 text-[10px] font-black text-slate-300">&#10003;</span>
                 </div>
                 <div class="text-xs text-slate-500 mt-1">Instant charge/discharge power.</div>
+                <div data-epc-step-hint="pcs" class="hidden mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5 text-[10px] font-bold text-amber-700"></div>
             </div>
-            <div data-epc-step="battery" class="rounded-2xl border border-slate-200 bg-white p-3">
+            <div data-epc-step="battery" onmouseenter="scheduleEpcWizardStepHint('battery')" onmouseleave="clearEpcWizardStepHint('battery')" class="rounded-2xl border border-slate-200 bg-white p-3">
                 <div class="flex items-start justify-between gap-2">
                     <div class="text-[10px] font-black text-purple-700 uppercase">Step 3 Battery</div>
                     <span data-epc-step-check="battery" class="epc-step-pending inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-100 text-[10px] font-black text-slate-300">&#10003;</span>
                 </div>
                 <div class="text-xs text-slate-500 mt-1">Support hours, DoD, C-rate.</div>
+                <div data-epc-step-hint="battery" class="hidden mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5 text-[10px] font-bold text-amber-700"></div>
             </div>
-            <div data-epc-step="pv" class="rounded-2xl border border-slate-200 bg-white p-3">
+            <div data-epc-step="pv" onmouseenter="scheduleEpcWizardStepHint('pv')" onmouseleave="clearEpcWizardStepHint('pv')" class="rounded-2xl border border-slate-200 bg-white p-3">
                 <div class="flex items-start justify-between gap-2">
                     <div class="text-[10px] font-black text-purple-700 uppercase">Step 4 PV & Strings</div>
                     <span data-epc-step-check="pv" class="epc-step-pending inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-100 text-[10px] font-black text-slate-300">&#10003;</span>
                 </div>
                 <div class="text-xs text-slate-500 mt-1">Module count, string count, combiner.</div>
+                <div data-epc-step-hint="pv" class="hidden mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5 text-[10px] font-bold text-amber-700"></div>
             </div>
-            <div data-epc-step="ems" class="rounded-2xl border border-slate-200 bg-white p-3">
+            <div data-epc-step="ems" onmouseenter="scheduleEpcWizardStepHint('ems')" onmouseleave="clearEpcWizardStepHint('ems')" class="rounded-2xl border border-slate-200 bg-white p-3">
                 <div class="flex items-start justify-between gap-2">
                     <div class="text-[10px] font-black text-purple-700 uppercase">Step 5 EMS Simulation</div>
                     <span data-epc-step-check="ems" class="epc-step-pending inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-100 text-[10px] font-black text-slate-300">&#10003;</span>
                 </div>
                 <div class="text-xs text-slate-500 mt-1">Hourly PV/load/BESS/genset flow.</div>
+                <div data-epc-step-hint="ems" class="hidden mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5 text-[10px] font-bold text-amber-700"></div>
             </div>
         </div>
 
@@ -2966,6 +2971,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             </div>
             <div id="epc-detailed-fields" data-epc-engineering-section="true">
                 <div id="epc-advanced-inputs" data-epc-advanced-section="true" class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-3 p-4">
+                    <div class="md:col-span-3 xl:col-span-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2">
+                        <div data-epc-detail-group="load-site" class="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-[10px] font-black uppercase text-slate-500">Load & Site</div>
+                        <div data-epc-detail-group="battery-soc" class="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-[10px] font-black uppercase text-slate-500">Battery & SOC</div>
+                        <div data-epc-detail-group="solar-string" class="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-[10px] font-black uppercase text-slate-500">Solar & Strings</div>
+                        <div data-epc-detail-group="electrical-protection" class="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-[10px] font-black uppercase text-slate-500">Electrical & Protection</div>
+                    </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Target diesel replacement percentage used as the detailed design standard.">Target % <span data-epc-help="target-replacement" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Target diesel replacement percentage used as the detailed design standard.">i</span></label>
@@ -10203,7 +10214,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         saveSubcategoryIndex();
 
         function normalizeEpcDesignDefaults(value) {
-            return { ...EPC_DESIGN_DEFAULTS, ...(value && typeof value === 'object' ? value : {}) };
+            const defaults = { ...EPC_DESIGN_DEFAULTS, ...(value && typeof value === 'object' ? value : {}) };
+            if (Number(defaults.minSocPct) === 25 && Number(defaults.bessDod) === 0.85) {
+                defaults.minSocPct = EPC_DESIGN_DEFAULTS.minSocPct;
+                defaults.bessDod = EPC_DESIGN_DEFAULTS.bessDod;
+            }
+            return defaults;
         }
 
         function getEpcDefaultProject() {
@@ -10402,14 +10418,131 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             }
         }
 
+        const epcWizardHintTimers = {};
+
+        function getEpcWizardStepRequirements(project, result) {
+            const positive = value => Number(value) > 0;
+            const loads = project.loads || {};
+            const assumptions = project.assumptions || {};
+            const solar = project.solarResource || {};
+            const recommended = getRecommendedEpcScheme(result);
+            const measurementMethod = loads.measurementMethod || 'diesel_sfc_estimate';
+            const loadMissing = [];
+            const loadTargets = [];
+            if (measurementMethod === 'energy_meter') {
+                const summary = loads.energyMeterSummary || {};
+                if (!positive(summary.dailyLoadKwh) || !positive(summary.averageLoadKw) || !positive(summary.smoothedPeakKw || summary.rawPeakKw)) {
+                    loadMissing.push('upload and parse Energy Meter file');
+                    loadTargets.push('epc-energy-meter-file');
+                }
+            } else if (measurementMethod === 'equipment_schedule') {
+                const rows = Array.isArray(loads.equipmentSchedule) ? loads.equipmentSchedule : [];
+                if (!rows.length || !rows.some(row => positive(row.ratedKw) && positive(row.quantity))) {
+                    loadMissing.push('add equipment schedule rows with kW and quantity');
+                    loadTargets.push('epc-equipment-schedule-summary');
+                }
+            } else if (measurementMethod === 'genset_kva_load_factor') {
+                const genset = loads.gensetKvaInput || {};
+                if (!positive(genset.gensetKva)) {
+                    loadMissing.push('genset kVA');
+                    loadTargets.push('epc-genset-kva');
+                }
+                if (!positive(genset.powerFactor)) {
+                    loadMissing.push('genset PF');
+                    loadTargets.push('epc-genset-pf');
+                }
+                if (!positive(genset.loadFactor)) {
+                    loadMissing.push('load factor');
+                    loadTargets.push('epc-genset-load-factor');
+                }
+                if (!positive(genset.runtimeHours)) {
+                    loadMissing.push('runtime hours');
+                    loadTargets.push('epc-genset-runtime-hours');
+                }
+            } else {
+                if (!positive(loads.dieselTotalLiters)) {
+                    loadMissing.push('dieselTotalLiters');
+                    loadTargets.push('epc-diesel-total');
+                }
+                if (!positive(loads.dieselPeriodDays)) {
+                    loadMissing.push('period days');
+                    loadTargets.push('epc-diesel-days');
+                }
+                if (!positive(loads.operationHoursPerDay)) {
+                    loadMissing.push('hours/day');
+                    loadTargets.push('epc-operation-hours');
+                }
+                if (!positive(assumptions.dieselSfcLPerKwh)) {
+                    loadMissing.push('SFC L/kWh');
+                    loadTargets.push('epc-sfc');
+                }
+            }
+            const pcsMissing = [];
+            const batteryMissing = [];
+            const pvMissing = [];
+            const emsMissing = [];
+            if (loadMissing.length || !positive(result.load?.peakLoadKw)) pcsMissing.push('complete Step 1 load inputs');
+            if (!positive(loads.peakLoadSafetyFactor)) pcsMissing.push('peak load factor');
+            if (!positive(project.designTargets?.supportHours)) batteryMissing.push('support hours');
+            if (!positive(assumptions.bessDod)) batteryMissing.push('DoD %');
+            if (!positive(assumptions.minSocPct) && Number(assumptions.minSocPct) !== 0) batteryMissing.push('Min SOC %');
+            if (loadMissing.length) batteryMissing.push('complete Step 1 load inputs');
+            if (!positive(solar.specificYieldKwhPerKwpDay)) pvMissing.push('PV yield / PVOUT');
+            if (!positive(assumptions.moduleWp)) pvMissing.push('module Wp');
+            if (!positive(assumptions.modulesPerString)) pvMissing.push('modules per string');
+            if (!positive(assumptions.combinerInputs)) pvMissing.push('combiner inputs');
+            if (loadMissing.length) emsMissing.push('complete Step 1 load inputs');
+            if (!Array.isArray(result.energyFlow?.rows) || !result.energyFlow.rows.length) emsMissing.push('valid EMS flow rows');
+            return {
+                load: { missing: loadMissing, targetIds: loadTargets },
+                pcs: { missing: pcsMissing, targetIds: ['epc-peak-load-factor'] },
+                battery: { missing: batteryMissing, targetIds: ['epc-support-hours', 'epc-min-soc', 'epc-bess-dod'] },
+                pv: { missing: pvMissing, targetIds: ['epc-pv-yield', 'epc-module-wp', 'epc-modules-per-string', 'epc-combiner-inputs'] },
+                ems: { missing: emsMissing, targetIds: ['epc-energy-flow-table'] }
+            };
+        }
+
+        function showEpcWizardStepHint(step) {
+            const result = window.__lastEpcDesignResult || calculateEpcDesignProject(getActiveEpcDesignProject(), { defaults: epcDesignDefaults });
+            const project = getActiveEpcDesignProject();
+            const requirements = getEpcWizardStepRequirements(project, result);
+            const info = requirements[step] || { missing: [] };
+            const hint = document.querySelector(`[data-epc-step-hint="${step}"]`);
+            if (!hint) return;
+            hint.textContent = info.missing.length ? `Missing: ${info.missing.join(', ')}` : 'Complete';
+            hint.classList.toggle('hidden', false);
+            const firstTarget = info.targetIds?.find(id => document.getElementById(id));
+            if (firstTarget) {
+                const target = document.getElementById(firstTarget);
+                target?.classList.add('ring-2', 'ring-amber-300');
+                setTimeout(() => target?.classList.remove('ring-2', 'ring-amber-300'), 1400);
+            }
+        }
+
+        function scheduleEpcWizardStepHint(step) {
+            clearEpcWizardStepHint(step);
+            epcWizardHintTimers[step] = setTimeout(() => showEpcWizardStepHint(step), 1000);
+        }
+
+        function clearEpcWizardStepHint(step) {
+            if (epcWizardHintTimers[step]) clearTimeout(epcWizardHintTimers[step]);
+            epcWizardHintTimers[step] = null;
+            const hint = document.querySelector(`[data-epc-step-hint="${step}"]`);
+            hint?.classList.add('hidden');
+        }
+
+        window.scheduleEpcWizardStepHint = scheduleEpcWizardStepHint;
+        window.clearEpcWizardStepHint = clearEpcWizardStepHint;
+
         function updateEpcWizardStepStatus(result, project = getActiveEpcDesignProject()) {
             const recommended = getRecommendedEpcScheme(result);
+            const requirements = getEpcWizardStepRequirements(project, result);
             const statuses = {
-                load: result.load?.dailyLoadKwh > 0 && result.load?.averageLoadKw > 0 && result.load?.peakLoadKw > 0,
-                pcs: recommended.pcsRecommendedMw > 0,
-                battery: recommended.bessRecommendedMwh > 0 && project.designTargets.supportHours > 0,
-                pv: recommended.pvRecommendedMwp > 0 && project.assumptions.moduleWp > 0 && project.assumptions.modulesPerString > 0 && project.assumptions.combinerInputs > 0,
-                ems: Array.isArray(result.energyFlow?.rows) && result.energyFlow.rows.length > 0
+                load: !requirements.load.missing.length && result.load?.dailyLoadKwh > 0 && result.load?.averageLoadKw > 0 && result.load?.peakLoadKw > 0,
+                pcs: !requirements.pcs.missing.length && recommended.pcsRecommendedMw > 0,
+                battery: !requirements.battery.missing.length && recommended.bessRecommendedMwh > 0 && project.designTargets.supportHours > 0,
+                pv: !requirements.pv.missing.length && recommended.pvRecommendedMwp > 0 && project.assumptions.moduleWp > 0 && project.assumptions.modulesPerString > 0 && project.assumptions.combinerInputs > 0,
+                ems: !requirements.ems.missing.length && Array.isArray(result.energyFlow?.rows) && result.energyFlow.rows.length > 0
             };
             Object.entries(statuses).forEach(([step, complete]) => {
                 const check = document.querySelector(`[data-epc-step-check="${step}"]`);
@@ -11659,7 +11792,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     </div>
                     <svg class="epc-device-work-svg" viewBox="0 0 ${chart.width} ${chart.height}" role="img" aria-label="Device work daily profile chart">
                         ${settings.peakBand.visible && hasPeakBandWindow ? `<rect x="${epcChartRound(xForMinute(bandVisibleStart), 2)}" y="${chart.top}" width="${epcChartRound(Math.max(4, xForMinute(bandVisibleEnd) - xForMinute(bandVisibleStart)), 2)}" height="${plotHeight}" class="epc-device-work-peak-band" style="fill:${htmlSafe(settings.peakBand.color)}; opacity:0.42"/>
-                        <text x="${epcChartRound(xForMinute(bandVisibleStart) + 12, 2)}" y="${chart.top + 24}" class="epc-device-work-axis-left" fill="#64748b">Workday Peak</text>` : ''}
+                        <text x="${epcChartRound(xForMinute(bandVisibleStart) + 12, 2)}" y="${chart.top + plotHeight - 18}" class="epc-device-work-peak-label-below epc-device-work-axis-left" fill="#64748b">Workday Peak</text>` : ''}
                         ${gridValues.map(value => `
                             <line x1="${chart.left}" x2="${chart.width - chart.right}" y1="${epcChartRound(yForPower(value), 2)}" y2="${epcChartRound(yForPower(value), 2)}" class="epc-device-work-grid-line"/>
                             <text x="${chart.left - 12}" y="${epcChartRound(yForPower(value) + 4, 2)}" text-anchor="end" class="epc-device-work-axis-left">${htmlSafe(formatEpcNumber(value, 0))}</text>

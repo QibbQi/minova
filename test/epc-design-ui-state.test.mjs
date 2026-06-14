@@ -105,6 +105,17 @@ test('EPC quick inputs keep support hours and module wattage while detailed inpu
 test('EPC wizard steps expose realtime completion ticks', () => {
   assert.match(html, /data-epc-step="load"/);
   assert.match(html, /data-epc-step-check="load"/);
+  assert.match(html, /onmouseenter="scheduleEpcWizardStepHint\('load'\)"/);
+  assert.match(html, /onmouseleave="clearEpcWizardStepHint\('load'\)"/);
+  assert.match(html, /function getEpcWizardStepRequirements\(project, result\)/);
+  assert.match(html, /function scheduleEpcWizardStepHint\(step\)/);
+  assert.match(html, /setTimeout\(\(\) => showEpcWizardStepHint\(step\), 1000\)/);
+  assert.match(html, /data-epc-step-hint="load"/);
+  assert.match(html, /Missing: /);
+  assert.match(html, /measurementMethod === 'energy_meter'/);
+  assert.match(html, /measurementMethod === 'equipment_schedule'/);
+  assert.match(html, /measurementMethod === 'genset_kva_load_factor'/);
+  assert.match(html, /dieselTotalLiters/);
   assert.match(html, /data-epc-step-check="pcs"/);
   assert.match(html, /data-epc-step-check="battery"/);
   assert.match(html, /data-epc-step-check="pv"/);
@@ -207,6 +218,14 @@ test('EPC detailed inputs expose title pointers instead of inline helper paragra
     'data-epc-help="critical-load"',
     'data-epc-help="modules-per-string"',
     'data-epc-help="combiner-inputs"',
+    'data-epc-detail-group="load-site"',
+    'data-epc-detail-group="battery-soc"',
+    'data-epc-detail-group="solar-string"',
+    'data-epc-detail-group="electrical-protection"',
+    'Load & Site',
+    'Battery & SOC',
+    'Solar & Strings',
+    'Electrical & Protection',
     'Detailed Design uses Target % here as the calculation standard.',
     'Target diesel replacement percentage used as the detailed design standard.',
     'Available site area for PV layout feasibility and land-use checks.',
@@ -280,7 +299,7 @@ test('EPC load measurement modes expose method-specific inputs and state', () =>
   ]) {
     assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing measurement UI snippet: ${snippet}`);
   }
-  assert.match(html, /load:\s*result\.load\?\.dailyLoadKwh > 0 && result\.load\?\.averageLoadKw > 0 && result\.load\?\.peakLoadKw > 0/);
+  assert.match(html, /load:\s*!\s*requirements\.load\.missing\.length && result\.load\?\.dailyLoadKwh > 0 && result\.load\?\.averageLoadKw > 0 && result\.load\?\.peakLoadKw > 0/);
 });
 
 test('EPC Diesel SFC and SOC inputs are placed in the correct panels', () => {
@@ -410,6 +429,7 @@ test('EPC Device Work is a standalone chart page with status analysis', () => {
     'epc-device-work-peak-start',
     'epc-device-work-peak-end',
     'Workday Peak',
+    'epc-device-work-peak-label-below',
     'epc-device-work-line-pv',
     'epc-device-work-line-load',
     'epc-device-work-line-battery',

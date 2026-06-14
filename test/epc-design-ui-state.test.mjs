@@ -315,19 +315,6 @@ test('EPC EMS flow exposes animated system diagram and clickable hour rows', () 
   for (const snippet of [
     'epc-flow-diagram',
     'epc-flow-svg',
-    'epc-flow-top-grid',
-    'epc-device-work-panel',
-    'Device Work',
-    'epc-device-work-card',
-    'toggleEpcEmsFlowSeries',
-    'restoreEpcEmsFlowSeries',
-    'emsFlowDisplaySettings',
-    'visibleSeries',
-    'data-epc-device-work-series="pv"',
-    'data-epc-device-work-series="load"',
-    'data-epc-device-work-series="battery"',
-    'data-epc-device-work-series="genset"',
-    'data-epc-device-work-series="soc"',
     'epc-flow-summary',
     'selectEpcEnergyFlowHour',
     'data-epc-flow-hour',
@@ -360,8 +347,48 @@ test('EPC EMS flow exposes animated system diagram and clickable hour rows', () 
   ]) {
     assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing animated flow snippet: ${snippet}`);
   }
+  const flowRenderer = html.match(/function renderEpcEnergyFlow\(result\)[\s\S]*?function renderEpcReports\(result\)/);
+  assert.ok(flowRenderer, 'EMS Flow renderer should be found');
+  assert.doesNotMatch(flowRenderer[0], /renderEpcDeviceWork/, 'Device Work should not be embedded inside EMS Flow');
+  assert.doesNotMatch(flowRenderer[0], /epc-device-work-panel/, 'Device Work panel should live in its own tab');
   assert.doesNotMatch(html, /class="[^"]*epc-flow-node[^"]*epc-flow-ems/, 'EMS should not be rendered as a flow node');
   assert.doesNotMatch(html, /<text[^>]*>EMS<\/text>/, 'PV should not terminate at an EMS node');
+});
+
+test('EPC Device Work is a standalone chart page with status analysis', () => {
+  assert.match(html, /data-epc-panel-tab="flow"[\s\S]*?EMS Flow[\s\S]*?data-epc-panel-tab="devicework"[\s\S]*?Device Work[\s\S]*?data-epc-panel-tab="reports"[\s\S]*?Reports/);
+  for (const snippet of [
+    'id="epc-device-work-page"',
+    'data-epc-panel="devicework"',
+    'renderEpcDeviceWorkPage',
+    'renderEpcDeviceWorkChart',
+    'renderEpcDeviceWorkAnalysis',
+    'renderEpcDeviceWorkPath',
+    'epc-device-work-chart',
+    'epc-device-work-svg',
+    'epc-device-work-legend',
+    'epc-device-work-axis-left',
+    'epc-device-work-axis-right',
+    'epc-device-work-peak-band',
+    'Workday Peak',
+    'epc-device-work-line-pv',
+    'epc-device-work-line-load',
+    'epc-device-work-line-battery',
+    'epc-device-work-line-genset',
+    'epc-device-work-line-soc',
+    'epc-device-work-analysis',
+    'data-epc-device-analysis="pv"',
+    'data-epc-device-analysis="load"',
+    'data-epc-device-analysis="battery"',
+    'data-epc-device-analysis="genset"',
+    'data-epc-device-analysis="soc"',
+    'toggleEpcEmsFlowSeries',
+    'restoreEpcEmsFlowSeries',
+    'emsFlowDisplaySettings',
+    'visibleSeries'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing Device Work chart snippet: ${snippet}`);
+  }
 });
 
 test('EPC energy flow uses compact non-overlapping lane layout', () => {

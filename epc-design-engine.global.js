@@ -44,6 +44,14 @@ const GLOBAL_SOLAR_ATLAS_API_BASE = 'https://2eueu84zmf.execute-api.eu-west-1.am
   ];
 
   const EMS_FLOW_DISPLAY_SERIES = ['pv', 'load', 'battery', 'genset', 'soc'];
+  const EMS_FLOW_SERIES_DEFAULT_COLORS = {
+    pv: '#f59e0b',
+    load: '#2563eb',
+    battery: '#16a34a',
+    genset: '#ef4444',
+    soc: '#0ea5e9'
+  };
+  const EMS_FLOW_INTERVAL_MINUTES = [15, 30, 60, 120, 360, 720];
 
   function asNumber(value, fallback = 0) {
     const n = Number(value);
@@ -59,6 +67,16 @@ const GLOBAL_SOLAR_ATLAS_API_BASE = 'https://2eueu84zmf.execute-api.eu-west-1.am
     const n = asNumber(value, 0);
     const factor = 10 ** digits;
     return Math.round(n * factor) / factor;
+  }
+
+  function normalizeLightHexColor(value, fallback = '#fee2e2') {
+    const raw = String(value || '').trim();
+    const hex = /^#[0-9a-f]{6}$/i.test(raw) ? raw : fallback;
+    const channels = [1, 3, 5].map(index => parseInt(hex.slice(index, index + 2), 16));
+    const luminance = (channels[0] * 0.299) + (channels[1] * 0.587) + (channels[2] * 0.114);
+    if (luminance >= 210) return hex.toLowerCase();
+    const mixed = channels.map(channel => Math.round(channel + (255 - channel) * 0.78));
+    return `#${mixed.map(channel => channel.toString(16).padStart(2, '0')).join('')}`;
   }
 
   function coordinate(value) {
@@ -191,8 +209,33 @@ const GLOBAL_SOLAR_ATLAS_API_BASE = 'https://2eueu84zmf.execute-api.eu-west-1.am
     const visibleSeries = rawSeries
       .map(item => String(item || '').trim().toLowerCase())
       .filter((item, index, array) => EMS_FLOW_DISPLAY_SERIES.includes(item) && array.indexOf(item) === index);
+    const colorInput = input.seriesColors && typeof input.seriesColors === 'object' ? input.seriesColors : {};
+    const seriesColors = Object.fromEntries(EMS_FLOW_DISPLAY_SERIES.map(series => {
+      const rawColor = String(colorInput[series] || EMS_FLOW_SERIES_DEFAULT_COLORS[series]).trim();
+      return [series, /^#[0-9a-f]{6}$/i.test(rawColor) ? rawColor : EMS_FLOW_SERIES_DEFAULT_COLORS[series]];
+    }));
+    const rangeInput = input.selectedRange && typeof input.selectedRange === 'object' ? input.selectedRange : null;
+    const selectedRange = rangeInput
+      ? {
+          start: Math.max(0, Math.floor(asNumber(rangeInput.start, 0))),
+          end: Math.max(0, Math.floor(asNumber(rangeInput.end, 0)))
+        }
+      : null;
+    if (selectedRange && selectedRange.end < selectedRange.start) {
+      selectedRange.end = selectedRange.start;
+    }
+    const peakBandInput = input.peakBand && typeof input.peakBand === 'object' ? input.peakBand : {};
+    const peakBandColor = String(peakBandInput.color || '#fee2e2').trim();
     return {
-      visibleSeries: visibleSeries.length ? visibleSeries : [...EMS_FLOW_DISPLAY_SERIES]
+      visibleSeries: visibleSeries.length ? visibleSeries : [...EMS_FLOW_DISPLAY_SERIES],
+      lineStyle: input.lineStyle === 'smooth' ? 'smooth' : 'line',
+      intervalMinutes: EMS_FLOW_INTERVAL_MINUTES.includes(Number(input.intervalMinutes)) ? Number(input.intervalMinutes) : 60,
+      selectedRange,
+      peakBand: {
+        visible: peakBandInput.visible === false ? false : true,
+        color: normalizeLightHexColor(peakBandColor, '#fee2e2')
+      },
+      seriesColors
     };
   }
 

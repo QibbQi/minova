@@ -11017,6 +11017,60 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             { id: 'genset', label: 'Genset', unit: 'kW', color: '#64748b' },
             { id: 'soc', label: 'SOC', unit: '%', color: '#0ea5e9' }
         ];
+        const EPC_DEVICE_WORK_COLOR_PRESETS = [
+            '#f59e0b', '#2563eb', '#16a34a', '#ef4444',
+            '#0ea5e9', '#7c3aed', '#ec4899', '#14b8a6',
+            '#84cc16', '#f97316', '#64748b', '#111827'
+        ];
+        const EPC_DEVICE_WORK_INTERVALS = [15, 30, 60, 120, 360, 720];
+        const EPC_DEVICE_WORK_INTERVAL_OPTIONS = [
+            { minutes: 15, label: '15m', attr: 'data-epc-device-interval="15"' },
+            { minutes: 30, label: '30m', attr: 'data-epc-device-interval="30"' },
+            { minutes: 60, label: '1h', attr: 'data-epc-device-interval="60"' },
+            { minutes: 120, label: '2h', attr: 'data-epc-device-interval="120"' },
+            { minutes: 360, label: '6h', attr: 'data-epc-device-interval="360"' },
+            { minutes: 720, label: '12h', attr: 'data-epc-device-interval="720"' }
+        ];
+        const EPC_DEVICE_WORK_DEFAULT_PEAK_BAND = '#fee2e2';
+
+        function getEpcDeviceWorkSettings(result = {}) {
+            const raw = result.emsFlowDisplaySettings || {};
+            const colorInput = raw.seriesColors && typeof raw.seriesColors === 'object' ? raw.seriesColors : {};
+            const seriesColors = Object.fromEntries(EPC_EMS_FLOW_SERIES.map(series => {
+                const color = String(colorInput[series.id] || series.color || '#64748b').trim();
+                return [series.id, /^#[0-9a-f]{6}$/i.test(color) ? color : series.color];
+            }));
+            const range = raw.selectedRange && typeof raw.selectedRange === 'object'
+                ? {
+                    start: Math.max(0, Math.floor(Number(raw.selectedRange.start) || 0)),
+                    end: Math.max(0, Math.floor(Number(raw.selectedRange.end) || 0))
+                }
+                : null;
+            if (range && range.end < range.start) range.end = range.start;
+            const peakBand = raw.peakBand && typeof raw.peakBand === 'object' ? raw.peakBand : {};
+            const peakColor = String(peakBand.color || EPC_DEVICE_WORK_DEFAULT_PEAK_BAND).trim();
+            return {
+                visibleSeries: getEpcVisibleEmsFlowSeries(result),
+                lineStyle: raw.lineStyle === 'smooth' ? 'smooth' : 'line',
+                intervalMinutes: EPC_DEVICE_WORK_INTERVALS.includes(Number(raw.intervalMinutes)) ? Number(raw.intervalMinutes) : 60,
+                selectedRange: range,
+                peakBand: {
+                    visible: peakBand.visible === false ? false : true,
+                    color: normalizeEpcDeviceWorkPeakBandColor(peakColor)
+                },
+                seriesColors
+            };
+        }
+
+        function updateEpcDeviceWorkSettings(patch = {}) {
+            const project = getActiveEpcDesignProject();
+            project.emsFlowDisplaySettings = {
+                ...(project.emsFlowDisplaySettings || {}),
+                ...patch
+            };
+            updateEpcProject(project);
+            renderEpcDesignResult(project);
+        }
 
         function getEpcVisibleEmsFlowSeries(result = {}) {
             const configured = result.emsFlowDisplaySettings?.visibleSeries;
@@ -11024,6 +11078,70 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (!Array.isArray(configured)) return validIds;
             return configured.filter(id => validIds.includes(id));
         }
+
+        function setEpcDeviceWorkLineStyle(style) {
+            updateEpcDeviceWorkSettings({ lineStyle: style === 'smooth' ? 'smooth' : 'line' });
+        }
+
+        function setEpcDeviceWorkInterval(minutes) {
+            const intervalMinutes = EPC_DEVICE_WORK_INTERVALS.includes(Number(minutes)) ? Number(minutes) : 60;
+            updateEpcDeviceWorkSettings({ intervalMinutes, selectedRange: null });
+        }
+
+        function setEpcDeviceWorkRange(edge, value) {
+            const result = window.__lastEpcDesignResult || calculateEpcDesignProject(getActiveEpcDesignProject(), { defaults: epcDesignDefaults });
+            const settings = getEpcDeviceWorkSettings(result);
+            const rows = getEpcDeviceWorkRowsForSettings(result.energyFlow?.rows || [], { ...settings, selectedRange: null });
+            const maxIndex = Math.max(0, rows.length - 1);
+            const current = settings.selectedRange || { start: 0, end: maxIndex };
+            const next = {
+                start: edge === 'start' ? Math.min(maxIndex, Math.max(0, Number(value) || 0)) : current.start,
+                end: edge === 'end' ? Math.min(maxIndex, Math.max(0, Number(value) || 0)) : current.end
+            };
+            if (next.end < next.start) {
+                if (edge === 'start') next.end = next.start;
+                else next.start = next.end;
+            }
+            updateEpcDeviceWorkSettings({ selectedRange: next });
+        }
+
+        function resetEpcDeviceWorkRange() {
+            updateEpcDeviceWorkSettings({ selectedRange: null });
+        }
+
+        function setEpcDeviceWorkPeakBandVisible(visible) {
+            const project = getActiveEpcDesignProject();
+            const current = project.emsFlowDisplaySettings?.peakBand || {};
+            updateEpcDeviceWorkSettings({ peakBand: { ...current, visible: Boolean(visible) } });
+        }
+
+        function setEpcDeviceWorkPeakBandColor(color) {
+            const project = getActiveEpcDesignProject();
+            const current = project.emsFlowDisplaySettings?.peakBand || {};
+            updateEpcDeviceWorkSettings({ peakBand: { ...current, color: normalizeEpcDeviceWorkPeakBandColor(color) } });
+        }
+
+        function setEpcDeviceWorkSeriesColor(seriesId, color) {
+            const validIds = EPC_EMS_FLOW_SERIES.map(series => series.id);
+            if (!validIds.includes(seriesId)) return;
+            const raw = String(color || '').trim();
+            if (!/^#[0-9a-f]{6}$/i.test(raw)) return;
+            const project = getActiveEpcDesignProject();
+            updateEpcDeviceWorkSettings({
+                seriesColors: {
+                    ...(project.emsFlowDisplaySettings?.seriesColors || {}),
+                    [seriesId]: raw
+                }
+            });
+        }
+
+        window.setEpcDeviceWorkLineStyle = setEpcDeviceWorkLineStyle;
+        window.setEpcDeviceWorkInterval = setEpcDeviceWorkInterval;
+        window.setEpcDeviceWorkRange = setEpcDeviceWorkRange;
+        window.resetEpcDeviceWorkRange = resetEpcDeviceWorkRange;
+        window.setEpcDeviceWorkPeakBandVisible = setEpcDeviceWorkPeakBandVisible;
+        window.setEpcDeviceWorkPeakBandColor = setEpcDeviceWorkPeakBandColor;
+        window.setEpcDeviceWorkSeriesColor = setEpcDeviceWorkSeriesColor;
 
         function getEpcDeviceWorkValue(seriesId, row = {}) {
             if (seriesId === 'pv') return Number(row.pvOutputKw) || 0;
@@ -11036,6 +11154,16 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         function epcChartRound(value, digits = 2) {
             const factor = 10 ** digits;
             return Math.round((Number(value) || 0) * factor) / factor;
+        }
+
+        function normalizeEpcDeviceWorkPeakBandColor(color) {
+            const raw = String(color || '').trim();
+            const hex = /^#[0-9a-f]{6}$/i.test(raw) ? raw : EPC_DEVICE_WORK_DEFAULT_PEAK_BAND;
+            const channels = [1, 3, 5].map(index => parseInt(hex.slice(index, index + 2), 16));
+            const luminance = (channels[0] * 0.299) + (channels[1] * 0.587) + (channels[2] * 0.114);
+            if (luminance >= 210) return hex.toLowerCase();
+            const mixed = channels.map(channel => Math.round(channel + (255 - channel) * 0.78));
+            return `#${mixed.map(channel => channel.toString(16).padStart(2, '0')).join('')}`;
         }
 
         function getEpcDeviceWorkMetrics(seriesId, rows = [], result = {}) {
@@ -11086,14 +11214,96 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             };
         }
 
-        function renderEpcDeviceWorkPath(series, rows, xForIndex, yForPower, yForSoc) {
+        function interpolateEpcDeviceWorkRow(a = {}, b = {}, pct = 0, index = 0, intervalMinutes = 60) {
+            const keys = ['pvOutputKw', 'loadKw', 'pvToBatteryKw', 'batteryToLoadKw', 'gensetToLoadKw', 'curtailmentKw', 'socPct'];
+            const row = {
+                ...a,
+                flowKey: `device-${intervalMinutes}-${index}`,
+                hour: (Number(a.hour) || 0) + pct,
+                hourLabel: epcMinutesToTime(((Number(a.hour) || 0) * 60) + pct * 60)
+            };
+            keys.forEach(key => {
+                const av = Number(a[key]) || 0;
+                const bv = Number(b[key]) || av;
+                row[key] = av + (bv - av) * pct;
+            });
+            return row;
+        }
+
+        function getEpcDeviceWorkRowsForSettings(sourceRows = [], settings = {}) {
+            const baseRows = Array.isArray(sourceRows) ? sourceRows.filter(Boolean) : [];
+            if (!baseRows.length) return [];
+            const interval = EPC_DEVICE_WORK_INTERVALS.includes(Number(settings.intervalMinutes)) ? Number(settings.intervalMinutes) : 60;
+            let rows = [];
+            if (interval < 60 && baseRows.length > 1) {
+                const step = interval / 60;
+                let index = 0;
+                for (let cursor = 0; cursor <= baseRows.length - 1 + 0.0001; cursor += step) {
+                    const low = Math.min(baseRows.length - 1, Math.floor(cursor));
+                    const high = Math.min(baseRows.length - 1, low + 1);
+                    rows.push(interpolateEpcDeviceWorkRow(baseRows[low], baseRows[high], cursor - low, index, interval));
+                    index += 1;
+                }
+            } else if (interval > 60) {
+                const groupSize = Math.max(1, Math.round(interval / 60));
+                rows = [];
+                for (let i = 0; i < baseRows.length; i += groupSize) {
+                    const group = baseRows.slice(i, i + groupSize);
+                    const avg = key => group.reduce((sum, row) => sum + (Number(row[key]) || 0), 0) / Math.max(1, group.length);
+                    rows.push({
+                        ...group[0],
+                        flowKey: `device-${interval}-${i}`,
+                        hourLabel: `${group[0]?.hourLabel || `${group[0]?.hour}:00`}-${group.at(-1)?.hourLabel || `${group.at(-1)?.hour}:00`}`,
+                        pvOutputKw: avg('pvOutputKw'),
+                        loadKw: avg('loadKw'),
+                        pvToBatteryKw: avg('pvToBatteryKw'),
+                        batteryToLoadKw: avg('batteryToLoadKw'),
+                        gensetToLoadKw: avg('gensetToLoadKw'),
+                        curtailmentKw: avg('curtailmentKw'),
+                        socPct: avg('socPct')
+                    });
+                }
+            } else {
+                rows = baseRows.map((row, index) => ({ ...row, flowKey: row.flowKey || `device-60-${index}` }));
+            }
+            const range = settings.selectedRange;
+            if (range && rows.length) {
+                const start = Math.min(rows.length - 1, Math.max(0, Math.floor(Number(range.start) || 0)));
+                const end = Math.min(rows.length - 1, Math.max(start, Math.floor(Number(range.end) || rows.length - 1)));
+                return rows.slice(start, end + 1);
+            }
+            return rows;
+        }
+
+        function smoothDeviceWorkPath(points = []) {
+            if (!points.length) return '';
+            if (points.length < 3) return points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${epcChartRound(point.x, 2)} ${epcChartRound(point.y, 2)}`).join(' ');
+            let path = `M ${epcChartRound(points[0].x, 2)} ${epcChartRound(points[0].y, 2)}`;
+            for (let i = 1; i < points.length; i += 1) {
+                const prev = points[i - 1];
+                const cur = points[i];
+                const midX = (prev.x + cur.x) / 2;
+                path += ` C ${epcChartRound(midX, 2)} ${epcChartRound(prev.y, 2)}, ${epcChartRound(midX, 2)} ${epcChartRound(cur.y, 2)}, ${epcChartRound(cur.x, 2)} ${epcChartRound(cur.y, 2)}`;
+            }
+            return path;
+        }
+
+        function getEpcDeviceWorkPathD(series, rows, xForIndex, yForPower, yForSoc, settings) {
             if (!rows.length) return '';
             const yForValue = series.id === 'soc' ? yForSoc : yForPower;
-            const path = rows.map((row, index) => {
-                const x = xForIndex(index);
-                const y = yForValue(getEpcDeviceWorkValue(series.id, row));
-                return `${index === 0 ? 'M' : 'L'} ${epcChartRound(x, 2)} ${epcChartRound(y, 2)}`;
-            }).join(' ');
+            const points = rows.map((row, index) => ({
+                x: xForIndex(index),
+                y: yForValue(getEpcDeviceWorkValue(series.id, row))
+            }));
+            if (settings.lineStyle === 'smooth') return smoothDeviceWorkPath(points);
+            return points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${epcChartRound(point.x, 2)} ${epcChartRound(point.y, 2)}`).join(' ');
+        }
+
+        function renderEpcDeviceWorkPath(series, rows, xForIndex, yForPower, yForSoc, settings) {
+            if (!rows.length) return '';
+            const path = getEpcDeviceWorkPathD(series, rows, xForIndex, yForPower, yForSoc, settings);
+            const color = settings.seriesColors?.[series.id] || series.color;
+            const style = `stroke:${htmlSafe(color)}`;
             const dataAttribute = {
                 pv: 'data-epc-device-work-series="pv"',
                 load: 'data-epc-device-work-series="load"',
@@ -11101,18 +11311,76 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 genset: 'data-epc-device-work-series="genset"',
                 soc: 'data-epc-device-work-series="soc"'
             }[series.id] || `data-epc-device-work-series="${htmlSafe(series.id)}"`;
-            return `<path ${dataAttribute} class="epc-device-work-line epc-device-work-line-${htmlSafe(series.id)}" d="${htmlSafe(path)}"/>`;
+            return `<path ${dataAttribute} class="epc-device-work-line epc-device-work-line-${htmlSafe(series.id)}" style="${style}" d="${htmlSafe(path)}"/>`;
         }
 
-        function renderEpcDeviceWorkLegend(result) {
-            const visibleIds = getEpcVisibleEmsFlowSeries(result);
+        function renderEpcDeviceWorkColorControls(series, color) {
+            const dataAttribute = {
+                pv: 'data-epc-device-color-series="pv"',
+                load: 'data-epc-device-color-series="load"',
+                battery: 'data-epc-device-color-series="battery"',
+                genset: 'data-epc-device-color-series="genset"',
+                soc: 'data-epc-device-color-series="soc"'
+            }[series.id] || `data-epc-device-color-series="${htmlSafe(series.id)}"`;
+            return `
+                <div class="mt-2 flex flex-wrap items-center gap-1.5" ${dataAttribute}>
+                    ${EPC_DEVICE_WORK_COLOR_PRESETS.map(preset => `
+                        <button type="button" aria-label="${htmlSafe(series.label)} ${htmlSafe(preset)}" onclick="setEpcDeviceWorkSeriesColor('${htmlSafe(series.id)}', '${htmlSafe(preset)}')" class="h-5 w-5 rounded-full border border-white shadow-sm" style="background:${htmlSafe(preset)}"></button>
+                    `).join('')}
+                    <input type="color" value="${htmlSafe(color)}" onchange="setEpcDeviceWorkSeriesColor('${htmlSafe(series.id)}', this.value)" class="h-6 w-8 rounded border border-slate-200 bg-white p-0">
+                </div>
+            `;
+        }
+
+        function renderEpcDeviceWorkControls(settings, allRows) {
+            const maxIndex = Math.max(0, allRows.length - 1);
+            const selected = settings.selectedRange || { start: 0, end: maxIndex };
+            return `
+                <div id="epc-device-work-controls" class="epc-device-work-controls mt-3 grid grid-cols-1 xl:grid-cols-[auto_auto_minmax(16rem,1fr)_auto] gap-3 text-xs">
+                    <div class="rounded-xl border border-slate-200 bg-slate-50 p-2.5">
+                        <div class="mb-1 text-[10px] font-black uppercase text-slate-400">Line Style</div>
+                        <div class="inline-flex rounded-lg border border-slate-200 bg-white p-1">
+                            <button id="epc-device-work-style-line" type="button" onclick="setEpcDeviceWorkLineStyle('line')" class="px-2.5 py-1.5 rounded-md font-black ${settings.lineStyle === 'line' ? 'bg-slate-900 text-white' : 'text-slate-500'}">Line</button>
+                            <button id="epc-device-work-style-smooth" type="button" onclick="setEpcDeviceWorkLineStyle('smooth')" class="px-2.5 py-1.5 rounded-md font-black ${settings.lineStyle === 'smooth' ? 'bg-slate-900 text-white' : 'text-slate-500'}">Smooth</button>
+                        </div>
+                    </div>
+                    <div class="rounded-xl border border-slate-200 bg-slate-50 p-2.5">
+                        <div class="mb-1 text-[10px] font-black uppercase text-slate-400">Time Step</div>
+                        <div class="flex flex-wrap gap-1">
+                            ${EPC_DEVICE_WORK_INTERVAL_OPTIONS.map(option => `<button type="button" ${option.attr} onclick="setEpcDeviceWorkInterval(${option.minutes})" class="rounded-lg px-2 py-1.5 font-black ${settings.intervalMinutes === option.minutes ? 'bg-purple-700 text-white' : 'bg-white text-slate-500 border border-slate-200'}">${option.label}</button>`).join('')}
+                        </div>
+                    </div>
+                    <div id="epc-device-work-range-controls" class="epc-device-work-range-controls rounded-xl border border-slate-200 bg-slate-50 p-2.5">
+                        <div class="mb-1 flex items-center justify-between gap-2">
+                            <span class="text-[10px] font-black uppercase text-slate-400">Selected Period</span>
+                            <span class="font-black text-slate-600">${htmlSafe(allRows[selected.start]?.hourLabel || '--')} to ${htmlSafe(allRows[selected.end]?.hourLabel || '--')}</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <input id="epc-device-work-range-start" type="range" min="0" max="${maxIndex}" value="${selected.start}" oninput="setEpcDeviceWorkRange('start', this.value)" class="w-full">
+                            <input id="epc-device-work-range-end" type="range" min="0" max="${maxIndex}" value="${selected.end}" oninput="setEpcDeviceWorkRange('end', this.value)" class="w-full">
+                        </div>
+                    </div>
+                    <div class="rounded-xl border border-slate-200 bg-slate-50 p-2.5">
+                        <div class="mb-1 text-[10px] font-black uppercase text-slate-400">Workday Peak</div>
+                        <div class="flex items-center gap-2">
+                            <label class="inline-flex items-center gap-1.5 font-black text-slate-600"><input id="epc-device-work-peak-toggle" type="checkbox" ${settings.peakBand.visible ? 'checked' : ''} onchange="setEpcDeviceWorkPeakBandVisible(this.checked)"> Show</label>
+                            <input id="epc-device-work-peak-color" type="color" value="${htmlSafe(settings.peakBand.color)}" onchange="setEpcDeviceWorkPeakBandColor(this.value)" class="h-7 w-9 rounded border border-slate-200 bg-white p-0">
+                            <button id="epc-device-work-reset" type="button" onclick="resetEpcDeviceWorkRange()" class="rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-black text-slate-600 hover:bg-slate-50">Reset</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderEpcDeviceWorkLegend(result, settings) {
+            const visibleIds = settings.visibleSeries || getEpcVisibleEmsFlowSeries(result);
             const visible = EPC_EMS_FLOW_SERIES.filter(series => visibleIds.includes(series.id));
             const hidden = EPC_EMS_FLOW_SERIES.filter(series => !visibleIds.includes(series.id));
             return `
                 <div class="epc-device-work-legend flex flex-wrap items-center gap-2">
                     ${visible.map(series => `
                         <div data-epc-device-work-series="${htmlSafe(series.id)}" class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-black text-slate-600">
-                            <span class="h-2.5 w-7 rounded-full" style="background:${series.color}"></span>
+                            <span class="h-2.5 w-7 rounded-full" style="background:${htmlSafe(settings.seriesColors?.[series.id] || series.color)}"></span>
                             <span>${htmlSafe(series.label)} ${series.unit ? `(${htmlSafe(series.unit)})` : ''}</span>
                             <button type="button" onclick="toggleEpcEmsFlowSeries('${htmlSafe(series.id)}', false)" class="rounded-full px-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700">Hide</button>
                         </div>
@@ -11123,10 +11391,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
 
         function renderEpcDeviceWorkChart(result) {
-            const rows = result.energyFlow?.rows || [];
-            const visibleIds = getEpcVisibleEmsFlowSeries(result);
+            const settings = getEpcDeviceWorkSettings(result);
+            const allRows = getEpcDeviceWorkRowsForSettings(result.energyFlow?.rows || [], { ...settings, selectedRange: null });
+            const rows = getEpcDeviceWorkRowsForSettings(result.energyFlow?.rows || [], settings);
+            const visibleIds = settings.visibleSeries || getEpcVisibleEmsFlowSeries(result);
             const visible = EPC_EMS_FLOW_SERIES.filter(series => visibleIds.includes(series.id));
-            const chart = { left: 70, right: 62, top: 46, bottom: 58, width: 1180, height: 470 };
+            const chart = { left: 70, right: 62, top: 46, bottom: 58, width: 1180, height: 517 };
             const plotWidth = chart.width - chart.left - chart.right;
             const plotHeight = chart.height - chart.top - chart.bottom;
             const powerValues = rows.flatMap(row => [
@@ -11137,7 +11407,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             ]);
             const rawMax = Math.max(1, ...powerValues);
             const rawMin = Math.min(0, ...powerValues);
-            const pad = Math.max(50, (rawMax - rawMin) * 0.12);
+            const axisPadRatio = 0.22; // Power axis padding 10% higher than the earlier chart.
+            const pad = Math.max(50, (rawMax - rawMin) * axisPadRatio);
             const maxPower = Math.ceil((rawMax + pad) / 100) * 100;
             const minPower = Math.floor((rawMin - pad) / 100) * 100;
             const powerSpan = Math.max(1, maxPower - minPower);
@@ -11148,7 +11419,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const bandStart = Math.max(0, peakIndex - 1);
             const bandEnd = Math.min(Math.max(0, rows.length - 1), peakIndex + 4);
             const gridValues = [0, 0.25, 0.5, 0.75, 1].map(pct => minPower + pct * powerSpan);
-            const hourLabels = rows.filter((row, index) => index % 3 === 0 || index === rows.length - 1);
+            const labelEvery = Math.max(1, Math.ceil(rows.length / 8));
+            const hourLabels = rows.filter((row, index) => index % labelEvery === 0 || index === rows.length - 1);
             return `
                 <div id="epc-device-work-chart" class="epc-device-work-chart">
                     <div class="border-b border-slate-100 px-4 py-3">
@@ -11157,17 +11429,19 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                                 <div class="text-sm font-black text-slate-800">Device Work Profile</div>
                                 <div class="text-[11px] font-bold text-slate-400">Continuous daily power and SOC timeline</div>
                             </div>
-                            ${renderEpcDeviceWorkLegend(result)}
+                            ${renderEpcDeviceWorkLegend(result, settings)}
                         </div>
+                        ${renderEpcDeviceWorkControls(settings, allRows)}
                     </div>
                     <svg class="epc-device-work-svg" viewBox="0 0 ${chart.width} ${chart.height}" role="img" aria-label="Device work daily profile chart">
-                        <rect x="${epcChartRound(xForIndex(bandStart), 2)}" y="${chart.top}" width="${epcChartRound(Math.max(4, xForIndex(bandEnd) - xForIndex(bandStart)), 2)}" height="${plotHeight}" class="epc-device-work-peak-band"/>
-                        <text x="${epcChartRound(xForIndex(bandStart) + 12, 2)}" y="${chart.top + 24}" class="epc-device-work-axis-left" fill="#ef4444">Workday Peak</text>
+                        ${settings.peakBand.visible ? `<rect x="${epcChartRound(xForIndex(bandStart), 2)}" y="${chart.top}" width="${epcChartRound(Math.max(4, xForIndex(bandEnd) - xForIndex(bandStart)), 2)}" height="${plotHeight}" class="epc-device-work-peak-band" style="fill:${htmlSafe(settings.peakBand.color)}; opacity:0.42"/>
+                        <text x="${epcChartRound(xForIndex(bandStart) + 12, 2)}" y="${chart.top + 24}" class="epc-device-work-axis-left" fill="#64748b">Workday Peak</text>` : ''}
                         ${gridValues.map(value => `
                             <line x1="${chart.left}" x2="${chart.width - chart.right}" y1="${epcChartRound(yForPower(value), 2)}" y2="${epcChartRound(yForPower(value), 2)}" class="epc-device-work-grid-line"/>
                             <text x="${chart.left - 12}" y="${epcChartRound(yForPower(value) + 4, 2)}" text-anchor="end" class="epc-device-work-axis-left">${htmlSafe(formatEpcNumber(value, 0))}</text>
                         `).join('')}
                         <line x1="${chart.left}" x2="${chart.width - chart.right}" y1="${epcChartRound(yForPower(0), 2)}" y2="${epcChartRound(yForPower(0), 2)}" class="epc-device-work-zero-line"/>
+                        <text id="epc-device-work-zero-label" class="epc-device-work-zero-label epc-device-work-axis-left" x="${chart.left - 12}" y="${epcChartRound(yForPower(0) - 6, 2)}" text-anchor="end">0</text>
                         ${[0, 25, 50, 75, 100].map(value => `<text x="${chart.width - chart.right + 12}" y="${epcChartRound(yForSoc(value) + 4, 2)}" class="epc-device-work-axis-right">${value}%</text>`).join('')}
                         <text x="22" y="${chart.top + plotHeight / 2}" class="epc-device-work-axis-left" transform="rotate(-90 22 ${chart.top + plotHeight / 2})">Power (kW)</text>
                         <text x="${chart.width - 18}" y="${chart.top + plotHeight / 2}" class="epc-device-work-axis-right" transform="rotate(90 ${chart.width - 18} ${chart.top + plotHeight / 2})">SOC (%)</text>
@@ -11179,20 +11453,22 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                                 <text x="${epcChartRound(x, 2)}" y="${chart.height - 24}" text-anchor="${index === 0 ? 'start' : index === hourLabels.length - 1 ? 'end' : 'middle'}" class="epc-device-work-axis-left">${htmlSafe(row.hourLabel || `${row.hour}:00`)}</text>
                             `;
                         }).join('')}
-                        ${visible.length ? visible.map(series => renderEpcDeviceWorkPath(series, rows, xForIndex, yForPower, yForSoc)).join('') : ''}
+                        ${visible.length ? visible.map(series => renderEpcDeviceWorkPath(series, rows, xForIndex, yForPower, yForSoc, settings)).join('') : ''}
                     </svg>
                 </div>
             `;
         }
 
         function renderEpcDeviceWorkAnalysis(result) {
-            const rows = result.energyFlow?.rows || [];
-            const visibleIds = getEpcVisibleEmsFlowSeries(result);
+            const settings = getEpcDeviceWorkSettings(result);
+            const rows = getEpcDeviceWorkRowsForSettings(result.energyFlow?.rows || [], settings);
+            const visibleIds = settings.visibleSeries || getEpcVisibleEmsFlowSeries(result);
             const visible = EPC_EMS_FLOW_SERIES.filter(series => visibleIds.includes(series.id));
             return `
                 <div id="epc-device-work-analysis" class="epc-device-work-analysis mt-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3">
                     ${visible.map(series => {
                         const metrics = getEpcDeviceWorkMetrics(series.id, rows, result);
+                        const color = settings.seriesColors?.[series.id] || series.color;
                         const dataAttribute = {
                             pv: 'data-epc-device-analysis="pv"',
                             load: 'data-epc-device-analysis="load"',
@@ -11203,12 +11479,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         return `
                             <div ${dataAttribute} class="rounded-xl border border-slate-200 bg-white p-3">
                                 <div class="flex items-center gap-2">
-                                    <span class="h-2.5 w-8 rounded-full" style="background:${series.color}"></span>
+                                    <span class="h-2.5 w-8 rounded-full" style="background:${htmlSafe(color)}"></span>
                                     <div class="text-[10px] font-black uppercase text-slate-400">${htmlSafe(series.label)}</div>
                                 </div>
                                 <div class="mt-2 text-lg font-black text-slate-900">${htmlSafe(metrics.headline)}</div>
                                 <div class="mt-1 text-xs font-bold text-slate-600">${htmlSafe(metrics.status)}</div>
                                 <div class="mt-2 text-[11px] font-bold text-slate-400">${htmlSafe(metrics.detail)}</div>
+                                ${renderEpcDeviceWorkColorControls(series, color)}
                             </div>
                         `;
                     }).join('')}

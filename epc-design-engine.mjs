@@ -244,6 +244,7 @@ export function normalizeEpcDesignProject(raw = {}, options = {}) {
     const equipmentSchedule = (Array.isArray(loads.equipmentSchedule) ? loads.equipmentSchedule : Array.isArray(raw.equipmentSchedule) ? raw.equipmentSchedule : [])
       .map((row, index) => normalizeEquipmentScheduleRow(row, index))
       .filter(row => row.ratedKw > 0);
+    const equipmentScheduleOperatingHours = clamp(loads.equipmentScheduleOperatingHours ?? raw.equipmentScheduleOperatingHours, 0, 24, 0);
     const gensetKvaInput = normalizeGensetKvaInput(loads.gensetKvaInput || raw.gensetKvaInput || {});
     const dayHours = clamp(loads.operationHoursPerDay ?? raw.operationHoursPerDay, 1, 24, 8);
     const operationStartTime = normalizeTime(loads.operationStartTime ?? raw.operationStartTime, '09:00');
@@ -289,6 +290,7 @@ export function normalizeEpcDesignProject(raw = {}, options = {}) {
         equipmentType: String(loads.equipmentType || raw.equipmentType || 'water_pump').trim(),
         energyMeterSummary,
         equipmentSchedule,
+        equipmentScheduleOperatingHours,
         gensetKvaInput,
         loadSource: String(loadSourceForMethod(measurementMethod, { energyMeterSummary }) || 'Diesel / SFC estimate').trim()
       },
@@ -533,7 +535,10 @@ function calculateEquipmentScheduleLoad(project, now) {
   const intervalHours = stepMinutes / 60;
   const intervalValues = [...intervalLoads.values()];
   const dailyLoadKwh = intervalValues.reduce((sum, kw) => sum + kw * intervalHours, 0);
-  const operatingHours = intervalValues.length * intervalHours;
+  const activeOperatingHours = intervalValues.length * intervalHours;
+  const operatingHours = project.loads.equipmentScheduleOperatingHours > 0
+    ? project.loads.equipmentScheduleOperatingHours
+    : activeOperatingHours;
   const averageLoadKw = operatingHours > 0 ? dailyLoadKwh / operatingHours : 0;
   const peakLoadKw = intervalValues.reduce((max, kw) => Math.max(max, kw), 0);
   return decorateLoadResult(project, {
@@ -556,8 +561,8 @@ function calculateEquipmentScheduleLoad(project, now) {
     buildFormulaTrace({
       key: 'averageLoadKw',
       label: 'Average Load',
-      formula: 'Equipment Schedule Daily kWh / Active Operating Hours',
-      inputs: { dailyLoadKwh: round(dailyLoadKwh, 4), operatingHours: round(operatingHours, 4) },
+      formula: 'Equipment Schedule Daily kWh / Design Operating Hours',
+      inputs: { dailyLoadKwh: round(dailyLoadKwh, 4), operatingHours: round(operatingHours, 4), activeOperatingHours: round(activeOperatingHours, 4) },
       result: round(averageLoadKw, 4),
       unit: 'kW',
       assumptionSource: 'Equipment Schedule',

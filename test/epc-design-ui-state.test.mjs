@@ -250,6 +250,8 @@ test('EPC load measurement modes expose method-specific inputs and state', () =>
     'Raw Peak',
     'Smoothed Peak',
     'Edit Schedule',
+    'epc-equipment-schedule-operating-hours',
+    'loads.equipmentScheduleOperatingHours',
     'epc-equipment-schedule-modal',
     'epc-genset-kva',
     'data-epc-field="loads.gensetKvaInput.gensetKva"',
@@ -263,6 +265,7 @@ test('EPC load measurement modes expose method-specific inputs and state', () =>
     'saveEpcEquipmentScheduleRows',
     'energyMeterSummary',
     'equipmentSchedule',
+    'equipmentScheduleOperatingHours',
     'gensetKvaInput'
   ]) {
     assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing measurement UI snippet: ${snippet}`);

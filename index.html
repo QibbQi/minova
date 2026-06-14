@@ -2953,6 +2953,14 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     </div>
                     <button type="button" onclick="closeEpcEquipmentScheduleModal()" class="px-3 py-2 rounded-xl border border-slate-200 text-xs font-black text-slate-600 hover:bg-slate-50">Close</button>
                 </div>
+                <div class="px-5 pt-4">
+                    <label class="block text-[10px] uppercase font-black text-slate-400 mb-1" for="epc-equipment-schedule-operating-hours">
+                        Operating hours for avg load
+                        <span class="epc-help-dot" tabindex="0" data-tip="Average Load uses Daily Load divided by this design operating window. Use 8h for production machines even if security or standby equipment runs 24h.">i</span>
+                    </label>
+                    <input id="epc-equipment-schedule-operating-hours" type="number" min="0" max="24" step="0.1" class="w-40 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" placeholder="8">
+                    <p class="mt-1 text-[11px] font-bold text-slate-400">Leave blank to average by active scheduled hours.</p>
+                </div>
                 <div class="p-4 overflow-x-auto">
                     <table class="w-full text-xs">
                         <thead class="text-[10px] uppercase text-slate-400">
@@ -10258,8 +10266,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const rows = Array.isArray(project.loads.equipmentSchedule) ? project.loads.equipmentSchedule : [];
             const scheduleSummary = document.getElementById('epc-equipment-schedule-summary');
             if (scheduleSummary) {
+                const avgHours = Number(project.loads.equipmentScheduleOperatingHours || 0);
+                const avgBasis = avgHours > 0 ? ` · avg basis ${formatEpcNumber(avgHours, 1, 'h')}` : '';
                 scheduleSummary.textContent = rows.length
-                    ? `${rows.length} rows · ${formatEpcNumber(load.dailyLoadKwh, 0, 'kWh/day')} · peak ${formatEpcNumber(load.peakLoadKw, 0, 'kW')}`
+                    ? `${rows.length} rows · ${formatEpcNumber(load.dailyLoadKwh, 0, 'kWh/day')} · peak ${formatEpcNumber(load.peakLoadKw, 0, 'kW')}${avgBasis}`
                     : 'No equipment schedule rows.';
             }
         }
@@ -10459,6 +10469,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         window.openEpcEquipmentScheduleModal = () => {
             const project = getActiveEpcDesignProject();
             renderEpcEquipmentScheduleRows(project.loads.equipmentSchedule || []);
+            const hoursInput = document.getElementById('epc-equipment-schedule-operating-hours');
+            if (hoursInput) {
+                hoursInput.value = project.loads.equipmentScheduleOperatingHours || project.loads.operationHoursPerDay || '';
+            }
             const modal = document.getElementById('epc-equipment-schedule-modal');
             modal?.classList.remove('hidden');
             modal?.classList.add('flex');
@@ -10478,6 +10492,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const project = captureEpcDesignFromDom();
             project.loads.measurementMethod = 'equipment_schedule';
             project.loads.equipmentSchedule = epcScheduleRowsFromModal();
+            const scheduleHours = Number(document.getElementById('epc-equipment-schedule-operating-hours')?.value) || 0;
+            project.loads.equipmentScheduleOperatingHours = Math.min(24, Math.max(0, scheduleHours));
             project.loads.loadSource = 'Equipment Schedule';
             updateEpcProject(project);
             syncEpcDesignInputs(project);

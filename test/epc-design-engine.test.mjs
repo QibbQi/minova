@@ -674,6 +674,8 @@ test('EPC design project preserves EMS Flow display settings', () => {
       batteryControl: {
         mode: 'manual',
         manualIntervalMinutes: 60,
+        batteryFirstAboveMinSoc: true,
+        gensetShockPreemptBattery: false,
         priorityOrder: ['pv_to_load', 'battery_to_load', 'genset_to_load', 'pv_to_battery'],
         customStrategies: [
           {
@@ -713,6 +715,8 @@ test('EPC design project preserves EMS Flow display settings', () => {
   assert.deepEqual(project.emsFlowDisplaySettings.batteryControl, {
     mode: 'manual',
     manualIntervalMinutes: 60,
+    batteryFirstAboveMinSoc: true,
+    gensetShockPreemptBattery: false,
     priorityOrder: ['pv_to_load', 'battery_to_load', 'genset_to_load', 'pv_to_battery'],
     customStrategies: [
       {
@@ -747,6 +751,8 @@ test('EPC design project preserves EMS Flow display settings', () => {
   assert.equal(defaultSettings.emsFlowDisplaySettings.deviceWorkModel.loadShockPosition, 'startup');
   assert.equal(defaultSettings.emsFlowDisplaySettings.deviceWorkModel.gensetShockPosition, 'startup');
   assert.equal(defaultSettings.emsFlowDisplaySettings.batteryControl.mode, 'auto');
+  assert.equal(defaultSettings.emsFlowDisplaySettings.batteryControl.batteryFirstAboveMinSoc, true);
+  assert.equal(defaultSettings.emsFlowDisplaySettings.batteryControl.gensetShockPreemptBattery, false);
   assert.deepEqual(defaultSettings.emsFlowDisplaySettings.batteryControl.priorityOrder.slice(0, 3), ['pv_to_load', 'battery_to_load', 'genset_to_load']);
 });
 

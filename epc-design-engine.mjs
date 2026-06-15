@@ -298,6 +298,8 @@ function normalizeEmsFlowDisplaySettings(value = {}) {
     batteryControl: {
       mode: String(batteryControlInput.mode || '').toLowerCase() === 'manual' ? 'manual' : 'auto',
       manualIntervalMinutes: [5, 60].includes(Number(batteryControlInput.manualIntervalMinutes)) ? Number(batteryControlInput.manualIntervalMinutes) : 60,
+      batteryFirstAboveMinSoc: batteryControlInput.batteryFirstAboveMinSoc === false ? false : true,
+      gensetShockPreemptBattery: batteryControlInput.gensetShockPreemptBattery === true,
       priorityOrder,
       customStrategies,
       manualOverrides

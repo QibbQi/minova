@@ -683,9 +683,59 @@ test('EPC Device Work model controls update the profile immediately', () => {
     'epc-device-work-genset-shock-duration-min',
     'epc-device-work-genset-shock-impact-pct'
   ]) {
-    const pattern = new RegExp(`id="${id}"[^>]*oninput="updateEpcDeviceWorkModelSettings\\(\\)"`);
-    assert.match(modelControls[0], pattern, `${id} should update the chart on input`);
+    const changePattern = new RegExp(`id="${id}"[^>]*onchange="updateEpcDeviceWorkModelSettings\\(\\)"`);
+    const inputPattern = new RegExp(`id="${id}"[^>]*oninput="updateEpcDeviceWorkModelSettings\\(\\)"`);
+    const scheduledInputPattern = new RegExp(`id="${id}"[^>]*oninput="scheduleEpcDeviceWorkModelUpdate\\(\\)"`);
+    assert.match(modelControls[0], changePattern, `${id} should update the chart after its value is committed`);
+    assert.doesNotMatch(modelControls[0], inputPattern, `${id} should not replace the focused input on every keystroke`);
+    assert.match(modelControls[0], scheduledInputPattern, `${id} should debounce live profile updates`);
   }
+  assert.match(html, /function scheduleEpcDeviceWorkModelUpdate\(\)/);
+});
+
+test('EPC Device Work exposes auditable load work rows at 5-minute and hourly resolution', () => {
+  for (const snippet of [
+    'function getEpcDeviceWorkLoadTableRows(rows = [], intervalMinutes = 5)',
+    'function renderEpcDeviceWorkLoadTable(result)',
+    'function setEpcDeviceWorkLoadTableInterval(minutes)',
+    'id="epc-device-work-load-table"',
+    'id="epc-device-work-load-table-5m"',
+    'id="epc-device-work-load-table-60m"',
+    'Base load kW',
+    'Noise kW',
+    'Shock kW',
+    'Modeled load kW',
+    'Battery load kW',
+    'Genset load kW',
+    'Unmet kW',
+    'baseLoadKw:',
+    'loadNoiseKw:',
+    'loadShockKw:'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing Device Work load table snippet: ${snippet}`);
+  }
+  assert.match(html, /const weightedAverageKeys = \['baseLoadKw', 'loadNoiseKw', 'loadShockKw', 'loadKw', 'pvToLoadKw', 'batteryToLoadKw', 'gensetToLoadKw', 'unmetLoadKw'\]/);
+  assert.match(html, /const finalSoc = items\.at\(-1\)\?\.socPct/);
+  assert.match(html, /renderEpcDeviceWorkAnalysis\(result\)[\s\S]*renderEpcDeviceWorkLoadTable\(result\)/, 'load table should render below the chart analysis cards');
+});
+
+test('EPC Battery Control keeps available battery ahead of genset and curtailment last', () => {
+  for (const snippet of [
+    'batteryFirstAboveMinSoc',
+    'gensetShockPreemptBattery',
+    'Battery before genset while SOC remains above Min SOC',
+    'Curtailment is the final sink after load and battery charging',
+    'epc-battery-control-battery-first',
+    'epc-battery-control-genset-shock-preempt'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing battery priority guardrail: ${snippet}`);
+  }
+  const dispatch = html.match(/function dispatchEpcDeviceWorkProfileRow\(row = \{\}, model = EPC_DEVICE_WORK_DEFAULT_MODEL, batteryControl = EPC_BATTERY_CONTROL_DEFAULT\)[\s\S]*?function applyEpcDeviceWorkSocLedger/);
+  assert.ok(dispatch, 'Device Work dispatch source should be found');
+  assert.match(dispatch[0], /let batteryLimitKw = batteryDischargeAllowedKw;/, 'battery dispatch should use all SOC-safe power before genset');
+  assert.match(dispatch[0], /const chargeKw = Math\.min\(surplusPvKw, batteryChargeLimitedKw\);/, 'all chargeable PV surplus should go to battery before curtailment');
+  assert.match(dispatch[0], /const gensetShockMayPreempt = settings\.gensetShockPreemptBattery === true;/, 'genset shock preemption should be an explicit strategy setting');
+  assert.match(dispatch[0], /curtailmentKw: Math\.max\(0, surplusPvKw\)/, 'curtailment should only receive final PV surplus');
 });
 
 test('EPC finish time changes do not open the working time confirmation dialog', () => {

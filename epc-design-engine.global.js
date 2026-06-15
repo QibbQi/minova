@@ -300,6 +300,8 @@ const GLOBAL_SOLAR_ATLAS_API_BASE = 'https://2eueu84zmf.execute-api.eu-west-1.am
       batteryControl: {
         mode: String(batteryControlInput.mode || '').toLowerCase() === 'manual' ? 'manual' : 'auto',
         manualIntervalMinutes: [5, 60].includes(Number(batteryControlInput.manualIntervalMinutes)) ? Number(batteryControlInput.manualIntervalMinutes) : 60,
+        batteryFirstAboveMinSoc: batteryControlInput.batteryFirstAboveMinSoc === false ? false : true,
+        gensetShockPreemptBattery: batteryControlInput.gensetShockPreemptBattery === true,
         priorityOrder,
         customStrategies,
         manualOverrides

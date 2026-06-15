@@ -487,7 +487,8 @@ export function normalizeEpcDesignProject(raw = {}, options = {}) {
       replacementPct: clamp(designTargets.replacementPct ?? raw.targetReplacementPct, 0, 100, 80),
       bessRole: normalizeBessRole(designTargets.bessRole || raw.bessRole || 'diesel_replacement'),
       supportHours: asNumber(designTargets.supportHours ?? raw.supportHours, defaults.bessAutonomyHours),
-      roundUpSizing: Boolean(designTargets.roundUpSizing ?? raw.roundUpSizing)
+      roundUpSizing: Boolean(designTargets.roundUpSizing ?? raw.roundUpSizing),
+      capacityOverrides: normalizeCapacityOverrides(designTargets.capacityOverrides || raw.capacityOverrides || {})
     },
     electrical: {
       voltageKv: asNumber(electrical.voltageKv, defaults.lvVoltageKv),
@@ -823,6 +824,20 @@ function calculateLoad(project, now) {
   return calculateDieselSfcLoad(project, now);
 }
 
+function positiveNumberOrNull(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : null;
+}
+
+function normalizeCapacityOverrides(value = {}) {
+  const input = value && typeof value === 'object' ? value : {};
+  return {
+    pvMwp: positiveNumberOrNull(input.pvMwp ?? input.pv_mwp),
+    pcsMw: positiveNumberOrNull(input.pcsMw ?? input.pcs_mw),
+    bessMwh: positiveNumberOrNull(input.bessMwh ?? input.bess_mwh)
+  };
+}
+
 function roundUpStep(value, step) {
   if (!Number.isFinite(value) || value <= 0) return 0;
   return Math.ceil(value / step) * step;
@@ -974,6 +989,64 @@ function getSchemeTargetsForProject(project) {
   ];
 }
 
+function applyCapacityOverridesToScheme(project, scheme = {}) {
+  const overrides = project.designTargets.capacityOverrides || {};
+  const flags = {
+    pvMwp: positiveNumberOrNull(overrides.pvMwp) !== null,
+    pcsMw: positiveNumberOrNull(overrides.pcsMw) !== null,
+    bessMwh: positiveNumberOrNull(overrides.bessMwh) !== null
+  };
+  const pvRecommendedMwp = flags.pvMwp ? positiveNumberOrNull(overrides.pvMwp) : scheme.pvRecommendedMwp;
+  const pcsRecommendedMw = flags.pcsMw ? positiveNumberOrNull(overrides.pcsMw) : scheme.pcsRecommendedMw;
+  const bessRecommendedMwh = flags.bessMwh ? positiveNumberOrNull(overrides.bessMwh) : scheme.bessRecommendedMwh;
+  const batteryKwh = Math.max(0.001, asNumber(bessRecommendedMwh, 0) * 1000);
+  const pcsKw = asNumber(pcsRecommendedMw, 0) * 1000;
+  const requiredAreaM2 = asNumber(pvRecommendedMwp, 0) * asNumber(project.assumptions.groundPvAreaM2PerMwp, EPC_DESIGN_DEFAULTS.groundPvAreaM2PerMwp);
+  const dod = asNumber(project.assumptions.bessDod, EPC_DESIGN_DEFAULTS.bessDod);
+  const efficiency = asNumber(project.assumptions.bessDischargeEfficiency, EPC_DESIGN_DEFAULTS.bessDischargeEfficiency);
+  const supportedLoadKw = Math.max(0.001, asNumber(scheme.supportedLoadKw, 0));
+  return {
+    ...scheme,
+    calculatedPvRecommendedMwp: scheme.pvRecommendedMwp,
+    calculatedPcsRecommendedMw: scheme.pcsRecommendedMw,
+    calculatedBessRecommendedMwh: scheme.bessRecommendedMwh,
+    pvRecommendedMwp,
+    pcsRecommendedMw,
+    bessRecommendedMwh,
+    capacityOverrideFlags: flags,
+    hasCapacityOverride: flags.pvMwp || flags.pcsMw || flags.bessMwh,
+    requiredAreaM2,
+    areaUtilizationPct: project.site.availableAreaM2 > 0 ? (requiredAreaM2 / project.site.availableAreaM2) * 100 : 0,
+    cRate: pcsKw / batteryKwh,
+    equivalentDurationHours: batteryKwh / Math.max(0.001, pcsKw),
+    usableDurationAtSupportedLoadHours: (batteryKwh * dod * efficiency) / supportedLoadKw
+  };
+}
+
+function buildCapacityOverrideTraces(project, recommended = {}, now) {
+  if (!recommended.hasCapacityOverride) return [];
+  const specs = [
+    ['pvMwp', 'PV Capacity Override', 'calculatedPvRecommendedMwp', 'pvRecommendedMwp', 'MWp'],
+    ['pcsMw', 'PCS Capacity Override', 'calculatedPcsRecommendedMw', 'pcsRecommendedMw', 'MW'],
+    ['bessMwh', 'BESS Capacity Override', 'calculatedBessRecommendedMwh', 'bessRecommendedMwh', 'MWh']
+  ];
+  return specs
+    .filter(([flag]) => recommended.capacityOverrideFlags?.[flag])
+    .map(([flag, label, calculatedKey, effectiveKey, unit]) => buildFormulaTrace({
+      key: `capacityOverride.${flag}`,
+      label,
+      formula: 'Manual final capacity override',
+      inputs: {
+        calculatedRecommendation: round(recommended[calculatedKey], 4),
+        manualOverride: round(project.designTargets.capacityOverrides?.[flag], 4)
+      },
+      result: round(recommended[effectiveKey], 4),
+      unit,
+      assumptionSource: 'Manual Override',
+      now
+    }));
+}
+
 function calculateCurrentA(powerKw, voltageKv, pf) {
   return powerKw > 0 && voltageKv > 0 && pf > 0
     ? powerKw / (Math.sqrt(3) * voltageKv * pf)
@@ -1043,6 +1116,9 @@ function buildRisks(project, load, electrical, recommended) {
   }
   if (project.site.availableAreaM2 > 0 && recommended.requiredAreaM2 > project.site.availableAreaM2) {
     risks.push({ level: 'High', area: 'Civil', issue: 'Required PV area exceeds available area; phase or reduce PV capacity.' });
+  }
+  if (recommended.hasCapacityOverride) {
+    risks.push({ level: 'Medium', area: 'Sizing', issue: 'Manual capacity override is active; calculated recommendation should remain auditable before final quote.' });
   }
   if (recommended.bessRecommendedMwh > 0) {
     risks.push({ level: 'Medium', area: 'BESS', issue: 'BESS duty, DoD, C-rate, thermal/fire separation and EMS sequence require vendor validation.' });
@@ -1233,6 +1309,7 @@ function calculateEnergyFlow(project, load, recommended) {
           pvToBatteryKw: round(pvToBatteryKw, 2),
           batteryToLoadKw: round(batteryToLoadKw, 2),
           gensetToLoadKw: round(gensetToLoadKw, 2),
+          pcsLimitKw: round(pcsKw, 2),
           curtailmentKw: round(curtailmentKw, 2),
           socPct: batteryKwh > 0 ? round((socKwh / batteryKwh) * 100, 1) : 0
         };
@@ -1272,8 +1349,10 @@ export function calculateEpcDesignProject(rawProject = {}, options = {}) {
   const project = normalizeEpcDesignProject(rawProject, options);
   const now = isoNow(options.now);
   const load = calculateLoad(project, now);
-  const schemes = getSchemeTargetsForProject(project).map(target => calculateScheme(project, load, target, now));
-  const recommended = pickRecommendedScheme(schemes, project.designTargets.replacementPct);
+  const calculatedSchemes = getSchemeTargetsForProject(project).map(target => calculateScheme(project, load, target, now));
+  const calculatedRecommended = pickRecommendedScheme(calculatedSchemes, project.designTargets.replacementPct);
+  const recommended = applyCapacityOverridesToScheme(project, calculatedRecommended);
+  const schemes = calculatedSchemes.map(scheme => scheme.id === recommended.id ? recommended : scheme);
   const electrical = calculateElectrical(project, recommended);
   const pvStringDesign = calculatePvStringDesign({
     targetPvMwp: recommended.pvRecommendedMwp,
@@ -1334,7 +1413,8 @@ export function calculateEpcDesignProject(rawProject = {}, options = {}) {
       unit: 'MW',
       assumptionSource: 'Default',
       now
-    })
+    }),
+    ...buildCapacityOverrideTraces(project, recommended, now)
   ];
 
   return {
@@ -1381,6 +1461,7 @@ export function calculatePvStringDesign({
     warnings.push('Review module/string ratio: total string inputs imply unusually low modules per string.');
   }
   return {
+    targetPvMwp: asNumber(targetPvMwp, 0),
     moduleWp: asNumber(moduleWp, EPC_DESIGN_DEFAULTS.moduleWp),
     modules,
     modulesPerString: asNumber(modulesPerString, EPC_DESIGN_DEFAULTS.modulesPerString),

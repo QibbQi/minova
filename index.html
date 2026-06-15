@@ -2953,6 +2953,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             <button type="button" data-epc-recommendation-target="100" onclick="setEpcRecommendationTarget(100)" class="px-2.5 py-1.5 rounded-lg text-[10px] font-black text-slate-500 hover:text-purple-700">100%</button>
                         </div>
                         <span id="epc-recommended-label" class="text-[10px] font-black text-purple-700 uppercase">Recommended</span>
+                        <button id="epc-capacity-reset" type="button" onclick="resetEpcCapacityOverrides()" class="hidden rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-black text-slate-500 hover:border-purple-300 hover:text-purple-700">Reset</button>
                     </div>
                 </div>
                 <div class="p-4">
@@ -3029,6 +3030,18 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     <div>
                         <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="PV array DC rating divided by inverter AC rating. PV Simulator reads this project engineering value automatically.">DC/AC Ratio <span data-epc-help="pv-dc-ac-ratio" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="PV array DC rating divided by inverter AC rating. PV Simulator reads this project engineering value automatically.">i</span></label>
                         <input id="epc-design-dc-ac-ratio" data-epc-field="assumptions.pvDcAcRatio" type="number" step="0.05" min="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                    </div>
+                    <div>
+                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Optional final PV capacity used across Hybrid EPC Design; leave blank to follow the calculated recommendation.">Final PV MWp <span data-epc-help="final-pv-mwp" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Optional final PV capacity used across Hybrid EPC Design; leave blank to follow the calculated recommendation.">i</span></label>
+                        <input id="epc-final-pv-mwp" data-epc-field="designTargets.capacityOverrides.pvMwp" type="number" min="0" step="0.01" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" placeholder="auto">
+                    </div>
+                    <div>
+                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Optional final PCS capacity used by EMS Flow, Device Work, BOQ and recommendation outputs.">Final PCS MW <span data-epc-help="final-pcs-mw" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Optional final PCS capacity used by EMS Flow, Device Work, BOQ and recommendation outputs.">i</span></label>
+                        <input id="epc-final-pcs-mw" data-epc-field="designTargets.capacityOverrides.pcsMw" type="number" min="0" step="0.01" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" placeholder="auto">
+                    </div>
+                    <div>
+                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Optional final BESS capacity used by EMS Flow, Device Work, BOQ and recommendation outputs.">Final BESS MWh <span data-epc-help="final-bess-mwh" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Optional final BESS capacity used by EMS Flow, Device Work, BOQ and recommendation outputs.">i</span></label>
+                        <input id="epc-final-bess-mwh" data-epc-field="designTargets.capacityOverrides.bessMwh" type="number" min="0" step="0.01" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" placeholder="auto">
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
@@ -10801,6 +10814,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             setInputValue('epc-sfc', project.assumptions.dieselSfcLPerKwh || EPC_DESIGN_DEFAULTS.dieselSfcLPerKwh);
             setInputValue('epc-pv-yield', project.solarResource.specificYieldKwhPerKwpDay || EPC_DESIGN_DEFAULTS.malaysiaYieldBase);
             setInputValue('epc-design-dc-ac-ratio', project.assumptions.pvDcAcRatio || 1.2);
+            setInputValue('epc-final-pv-mwp', project.designTargets.capacityOverrides?.pvMwp ?? '');
+            setInputValue('epc-final-pcs-mw', project.designTargets.capacityOverrides?.pcsMw ?? '');
+            setInputValue('epc-final-bess-mwh', project.designTargets.capacityOverrides?.bessMwh ?? '');
             setInputValue('epc-solar-pvout', project.solarResource.gsaPvoutKwhPerKwpDay || '');
             setInputValue('epc-min-soc', project.assumptions.minSocPct ?? EPC_DESIGN_DEFAULTS.minSocPct);
             setPercentInputValue('epc-bess-dod', project.assumptions.bessDod, EPC_DESIGN_DEFAULTS.bessDod);
@@ -10837,7 +10853,11 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 btn.setAttribute('aria-pressed', active ? 'true' : 'false');
             });
             const label = document.getElementById('epc-recommended-label');
-            if (label) label.textContent = `${formatEpcNumber(selectedPct, 0, '%')} ${recommended.priority || 'Recommended'}`;
+            if (label) label.textContent = recommended.hasCapacityOverride
+                ? `${formatEpcNumber(selectedPct, 0, '%')} Manual Override`
+                : `${formatEpcNumber(selectedPct, 0, '%')} ${recommended.priority || 'Recommended'}`;
+            const reset = document.getElementById('epc-capacity-reset');
+            if (reset) reset.classList.toggle('hidden', !recommended.hasCapacityOverride);
         }
 
         function renderEpcProjectSelect() {
@@ -10849,20 +10869,24 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
         function renderEpcKpis(result) {
             const recommended = getRecommendedEpcScheme(result);
+            const overrideNote = (flag, calculatedValue, digits, unit) => recommended.capacityOverrideFlags?.[flag]
+                ? `Calc ${formatEpcNumber(calculatedValue, digits, unit)}`
+                : '';
             const items = [
                 ['Daily Load', formatEpcNumber(result.load.dailyLoadKwh, 0, 'kWh')],
                 ['Avg Load', formatEpcNumber(result.load.averageLoadKw, 0, 'kW')],
-                ['PV', formatEpcNumber(recommended.pvRecommendedMwp, 2, 'MWp')],
-                ['BESS', formatEpcNumber(recommended.bessRecommendedMwh, 2, 'MWh')],
-                ['PCS', formatEpcNumber(recommended.pcsRecommendedMw, 2, 'MW')],
+                ['PV', formatEpcNumber(recommended.pvRecommendedMwp, 2, 'MWp'), overrideNote('pvMwp', recommended.calculatedPvRecommendedMwp, 2, 'MWp')],
+                ['BESS', formatEpcNumber(recommended.bessRecommendedMwh, 2, 'MWh'), overrideNote('bessMwh', recommended.calculatedBessRecommendedMwh, 2, 'MWh')],
+                ['PCS', formatEpcNumber(recommended.pcsRecommendedMw, 2, 'MW'), overrideNote('pcsMw', recommended.calculatedPcsRecommendedMw, 2, 'MW')],
                 ['Savings', `RM ${formatEpcNumber(recommended.monthlySavings, 0)}/mo`]
             ];
             const target = document.getElementById('epc-design-kpis');
             if (!target) return;
-            target.innerHTML = items.map(([label, value]) => `
+            target.innerHTML = items.map(([label, value, note]) => `
                 <div class="rounded-xl border border-slate-100 bg-slate-50 p-3 min-w-0">
                     <div class="text-[10px] font-black text-slate-400 uppercase">${htmlSafe(label)}</div>
                     <div class="text-lg font-black text-slate-800 leading-tight">${htmlSafe(value)}</div>
+                    ${note ? `<div class="mt-1 text-[10px] font-black uppercase text-purple-700">Manual Override</div><div class="text-[10px] font-bold text-slate-400">${htmlSafe(note)}</div>` : ''}
                 </div>
             `).join('');
         }
@@ -11180,15 +11204,14 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return `
                 <tr class="epc-flow-total-row border-t-2 border-slate-200 bg-slate-50 text-slate-800">
                     <td class="px-3 py-3 font-black uppercase">Total</td>
-                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(sum('pvOutputKw'), 0)}</td>
-                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(sum('loadKw'), 0)}</td>
-                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(sum('pvToLoadKw'), 0)}</td>
-                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(sum('pvToBatteryKw'), 0)}</td>
-                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(sum('batteryToLoadKw'), 0)}</td>
-                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(sum('gensetToLoadKw'), 0)}</td>
+                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(sum('pvOutputKw'), 1)}</td>
+                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(sum('loadKw'), 1)}</td>
+                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(sum('pvToLoadKw'), 1)}</td>
+                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(sum('pvToBatteryKw'), 1)}</td>
+                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(sum('batteryToLoadKw'), 1)}</td>
+                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(sum('gensetToLoadKw'), 1)}</td>
                     <td class="px-3 py-3 text-right font-black">-</td>
-                    <td class="px-3 py-3 text-left font-black">-</td>
-                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(sum('curtailmentKw'), 0)}</td>
+                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(sum('curtailmentKw'), 1)}</td>
                     <td class="px-3 py-3 text-right">${renderEpcSocBadge(finalSoc)}</td>
                 </tr>
             `;
@@ -11836,7 +11859,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const socMinPct = Math.max(0, Math.min(socMaxPct, Number(row.socMinPct) || 0));
             const batteryCanCharge = socPct === null || socPct < socMaxPct - 0.05;
             const batteryCanDischarge = socPct === null || socPct > socMinPct + 0.05;
-            const pvToLoadKw = Math.min(pvOutputKw, loadKw);
+            let pvToLoadKw = Math.min(pvOutputKw, loadKw);
             let remainingLoadKw = Math.max(0, loadKw - pvToLoadKw);
             let surplusPvKw = Math.max(0, pvOutputKw - pvToLoadKw);
             const chargeLimitInput = Number(row.batteryChargeLimitKw);
@@ -11851,10 +11874,14 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const manualOverride = settings.mode === 'manual' ? getEpcBatteryManualOverride(settings, row.timelineMinute) : null;
             if (manualOverride !== null) {
                 if (manualOverride.batteryLoadKw > 0) {
-                    batteryToLoadKw = Math.min(remainingLoadKw, manualOverride.batteryLoadKw, batteryDischargeAllowedKw);
-                    remainingLoadKw = Math.max(0, remainingLoadKw - batteryToLoadKw);
+                    const manualBatteryLoadKw = Math.min(manualOverride.batteryLoadKw, loadKw, batteryDischargeAllowedKw);
+                    batteryToLoadKw = manualBatteryLoadKw;
+                    pvToLoadKw = Math.max(0, pvToLoadKw - manualBatteryLoadKw);
+                    remainingLoadKw = Math.max(0, loadKw - pvToLoadKw - batteryToLoadKw);
+                    surplusPvKw = Math.max(0, pvOutputKw - pvToLoadKw);
                 } else if (manualOverride.pvBatteryKw > 0) {
-                    pvToBatteryKw = Math.min(batteryChargeLimitedKw, manualOverride.pvBatteryKw);
+                    const manualPvBatteryKw = Math.min(manualOverride.pvBatteryKw, surplusPvKw, batteryChargeLimitedKw);
+                    pvToBatteryKw = manualPvBatteryKw;
                     surplusPvKw = Math.max(0, surplusPvKw - pvToBatteryKw);
                 }
             }
@@ -12596,7 +12623,14 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
         function getEpcBatteryControlRows(result = {}, control = EPC_BATTERY_CONTROL_DEFAULT) {
             const intervalMinutes = [5, 60].includes(Number(control.manualIntervalMinutes)) ? Number(control.manualIntervalMinutes) : 60;
-            return getEpcDeviceWorkTimelineRows(result.energyFlow?.rows || [], { intervalMinutes })
+            return getEpcEnergyFlowDisplayRows({
+                ...result,
+                emsFlowDisplaySettings: {
+                    ...(result.emsFlowDisplaySettings || {}),
+                    emsTableIntervalMinutes: intervalMinutes,
+                    mergeHourly: intervalMinutes === 60
+                }
+            })
                 .filter(row => Number(row.timelineMinute) < 24 * 60);
         }
 
@@ -12705,8 +12739,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                                             <th class="px-3 py-2">Time</th>
                                             <th class="px-3 py-2 text-right">PV kW</th>
                                             <th class="px-3 py-2 text-right">Load kW</th>
+                                            <th class="px-3 py-2 text-right">PV Load</th>
                                             <th class="px-3 py-2 text-right">PV Battery kW</th>
-                                            <th class="px-3 py-2 text-right">Battery load kW</th>
+                                            <th class="px-3 py-2 text-right">Battery Load kW</th>
+                                            <th class="px-3 py-2 text-right">Genset</th>
+                                            <th class="px-3 py-2 text-right">PCS Limit</th>
+                                            <th class="px-3 py-2 text-right">Curtailment</th>
+                                            <th class="px-3 py-2 text-right">SOC</th>
                                         </tr>
                                     </thead>
                                     <tbody class="divide-y divide-slate-100">
@@ -12715,14 +12754,19 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                                             return `
                                                 <tr>
                                                     <td class="px-3 py-2 font-black text-slate-700">${htmlSafe(row.hourLabel || epcMinutesToTime(minute))}</td>
-                                                    <td class="px-3 py-2 text-right">${formatEpcNumber(row.pvOutputKw, 0)}</td>
-                                                    <td class="px-3 py-2 text-right">${formatEpcNumber(row.loadKw, 0)}</td>
+                                                    <td class="px-3 py-2 text-right">${formatEpcNumber(row.pvOutputKw, 1)}</td>
+                                                    <td class="px-3 py-2 text-right">${formatEpcNumber(row.loadKw, 1)}</td>
+                                                    <td class="px-3 py-2 text-right">${formatEpcNumber(row.pvToLoadKw, 1)}</td>
                                                     <td class="px-3 py-2 text-right">
-                                                        <input id="epc-battery-control-pv-battery-${minute}" type="number" min="0" step="1" value="${htmlSafe(overrideMap.get(minute)?.pvBatteryKw || '')}" onchange="updateEpcBatteryManualOverride(${minute}, 'pvBatteryKw', this.value)" class="w-28 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-right font-black text-slate-700">
+                                                        <input id="epc-battery-control-pv-battery-${minute}" type="number" min="0" step="0.1" value="${htmlSafe(overrideMap.get(minute)?.pvBatteryKw ?? row.pvToBatteryKw ?? '')}" onchange="updateEpcBatteryManualOverride(${minute}, 'pvBatteryKw', this.value)" class="w-28 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-right font-black text-slate-700">
                                                     </td>
                                                     <td class="px-3 py-2 text-right">
-                                                        <input id="epc-battery-control-battery-load-${minute}" type="number" min="0" step="1" value="${htmlSafe(overrideMap.get(minute)?.batteryLoadKw || '')}" onchange="updateEpcBatteryManualOverride(${minute}, 'batteryLoadKw', this.value)" class="w-28 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-right font-black text-slate-700">
+                                                        <input id="epc-battery-control-battery-load-${minute}" type="number" min="0" step="0.1" value="${htmlSafe(overrideMap.get(minute)?.batteryLoadKw ?? row.batteryToLoadKw ?? '')}" onchange="updateEpcBatteryManualOverride(${minute}, 'batteryLoadKw', this.value)" class="w-28 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-right font-black text-slate-700">
                                                     </td>
+                                                    <td class="px-3 py-2 text-right">${formatEpcNumber(row.gensetToLoadKw, 1)}</td>
+                                                    <td class="px-3 py-2 text-right font-black text-purple-700">${formatEpcNumber(row.pcsLimitKw, 1)}</td>
+                                                    <td class="px-3 py-2 text-right">${formatEpcNumber(row.curtailmentKw, 1)}</td>
+                                                    <td class="px-3 py-2 text-right">${renderEpcSocBadge(row.socPct)}</td>
                                                 </tr>
                                             `;
                                         }).join('')}
@@ -13383,7 +13427,6 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                                 <th class="px-3 py-2 text-right">Battery Load</th>
                                 <th class="px-3 py-2 text-right">Genset</th>
                                 <th class="px-3 py-2 text-right">PCS Limit</th>
-                                <th class="px-3 py-2">Genset reason</th>
                                 <th class="px-3 py-2 text-right">Curtailment</th>
                                 <th class="px-3 py-2 text-right">SOC</th>
                             </tr>
@@ -13394,15 +13437,14 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                                     <td class="px-3 py-3">
                                         <button type="button" data-epc-flow-hour-button="${htmlSafe(row.flowKey || row.hour)}" onclick='event.stopPropagation(); selectEpcEnergyFlowHour(${JSON.stringify(String(row.flowKey || row.hour))})' class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-black text-slate-700 hover:border-yellow-400 hover:bg-yellow-50">${htmlSafe(row.hourLabel || `${row.hour}:00`)}</button>
                                     </td>
-                                    <td class="px-3 py-3 text-right">${formatEpcNumber(row.pvOutputKw, 0)}</td>
-                                    <td class="px-3 py-3 text-right">${formatEpcNumber(row.loadKw, 0)}</td>
-                                    <td class="px-3 py-3 text-right">${formatEpcNumber(row.pvToLoadKw, 0)}</td>
-                                    <td class="px-3 py-3 text-right">${formatEpcNumber(row.pvToBatteryKw, 0)}</td>
-                                    <td class="px-3 py-3 text-right">${formatEpcNumber(row.batteryToLoadKw, 0)}</td>
-                                    <td class="px-3 py-3 text-right">${formatEpcNumber(row.gensetToLoadKw, 0)}</td>
-                                    <td class="px-3 py-3 text-right font-black text-purple-700">${formatEpcNumber(row.pcsLimitKw, 0)}</td>
-                                    <td class="px-3 py-3 text-left text-[11px] font-bold text-slate-500">${htmlSafe(row.gensetReason || '-')}</td>
-                                    <td class="px-3 py-3 text-right">${formatEpcNumber(row.curtailmentKw, 0)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(row.pvOutputKw, 1)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(row.loadKw, 1)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(row.pvToLoadKw, 1)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(row.pvToBatteryKw, 1)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(row.batteryToLoadKw, 1)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(row.gensetToLoadKw, 1)}</td>
+                                    <td class="px-3 py-3 text-right font-black text-purple-700">${formatEpcNumber(row.pcsLimitKw, 1)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(row.curtailmentKw, 1)}</td>
                                     <td class="px-3 py-3 text-right">${renderEpcSocBadge(row.socPct)}</td>
                                 </tr>
                             `).join('')}
@@ -13534,6 +13576,20 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             setInputValue('epc-target-replacement', pct);
             window.onEpcDesignInputChanged();
         };
+
+        function resetEpcCapacityOverrides() {
+            const project = captureEpcDesignFromDom();
+            project.designTargets = {
+                ...(project.designTargets || {}),
+                capacityOverrides: { pvMwp: null, pcsMw: null, bessMwh: null }
+            };
+            setInputValue('epc-final-pv-mwp', '');
+            setInputValue('epc-final-pcs-mw', '');
+            setInputValue('epc-final-bess-mwh', '');
+            updateEpcProject(project);
+            renderEpcDesignWorkspace();
+        }
+        window.resetEpcCapacityOverrides = resetEpcCapacityOverrides;
 
         function canReadEpcEngineering() {
             return window.__minovaAuth?.canPerformAction?.('epcDesignEngineering', 'read') ?? true;

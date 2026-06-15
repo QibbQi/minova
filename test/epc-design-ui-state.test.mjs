@@ -624,7 +624,7 @@ test('EPC Device Work profile renders realistic load and genset device behavior'
   assert.match(html, /pvToLoadKw:\s*epcChartRound\(adjusted\.pvToLoadKw, 2\)/, 'PV to load should come from SOC-ledger dispatch output');
   assert.match(html, /batteryToLoadKw:\s*epcChartRound\(adjusted\.batteryToLoadKw, 2\)/, 'Battery should come from SOC-ledger dispatch output');
   assert.match(html, /gensetToLoadKw:\s*epcChartRound\(adjusted\.gensetToLoadKw, 2\)/, 'Genset should come from SOC-ledger dispatch output');
-  assert.match(html, /const pvToLoadKw = Math\.min\(pvOutputKw, loadKw\)/, 'PV should serve load before charging or curtailing');
+  assert.match(html, /let pvToLoadKw = Math\.min\(pvOutputKw, loadKw\)/, 'PV should serve load before charging or curtailing');
   assert.match(html, /let remainingLoadKw = Math\.max\(0, loadKw - pvToLoadKw\)/, 'Battery and genset should only serve remaining load');
   assert.match(html, /const demandKw = remainingLoadKw;/, 'Genset should serve only the remaining load unless strategy changes');
   assert.match(html, /const socMaxPct = Math\.max\(0, Math\.min\(100, Number\(row\.socMaxPct\) \|\| 100\)\)/, 'Device Work dispatch should know the active EMS max SOC');

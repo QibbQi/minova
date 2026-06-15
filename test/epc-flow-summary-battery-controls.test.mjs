@@ -64,6 +64,66 @@ test('Battery Control stores separate positive PV charge and load discharge requ
   assert.ok(dispatch, 'Device Work dispatch source should be found');
   assert.match(dispatch[0], /manualOverride\.pvBatteryKw/);
   assert.match(dispatch[0], /manualOverride\.batteryLoadKw/);
-  assert.match(dispatch[0], /Math\.min\(batteryChargeLimitedKw, manualOverride\.pvBatteryKw\)/);
-  assert.match(dispatch[0], /Math\.min\(remainingLoadKw, manualOverride\.batteryLoadKw, batteryDischargeAllowedKw\)/);
+  assert.match(dispatch[0], /manualPvBatteryKw = Math\.min\(manualOverride\.pvBatteryKw, surplusPvKw, batteryChargeLimitedKw\)/);
+  assert.match(dispatch[0], /manualBatteryLoadKw = Math\.min\(manualOverride\.batteryLoadKw, loadKw, batteryDischargeAllowedKw\)/);
+  assert.match(dispatch[0], /pvToLoadKw = Math\.max\(0, pvToLoadKw - manualBatteryLoadKw\)/);
+});
+
+test('Battery Control manual table mirrors dispatched EMS rows and direct overrides', () => {
+  const table = html.match(/function renderEpcBatteryControlPage\(result\)[\s\S]*?function epcPvSimulatorHashSeed/);
+  assert.ok(table, 'Battery Control renderer should exist');
+  for (const label of [
+    'PV Load',
+    'PV Battery',
+    'Battery Load',
+    'Genset',
+    'PCS Limit',
+    'Curtailment',
+    'SOC'
+  ]) {
+    assert.match(table[0], new RegExp(label), 'manual table should include ' + label);
+  }
+  const rowSource = html.match(/function getEpcBatteryControlRows\(result = \{\}, control = EPC_BATTERY_CONTROL_DEFAULT\)[\s\S]*?function renderEpcBatteryControlPage/);
+  assert.ok(rowSource, 'Battery Control row source should exist');
+  assert.match(rowSource[0], /getEpcEnergyFlowDisplayRows\(\{[\s\S]*?\.\.\.result/, 'manual table should reuse EMS display rows');
+  assert.match(table[0], /overrideMap\.get\(minute\)\?\.pvBatteryKw \?\? row\.pvToBatteryKw/, 'PV Battery input should show current dispatched value until edited');
+  assert.match(table[0], /overrideMap\.get\(minute\)\?\.batteryLoadKw \?\? row\.batteryToLoadKw/, 'Battery load input should show current dispatched value until edited');
+
+  const dispatch = html.match(/function dispatchEpcDeviceWorkProfileRow\(row = \{\}, model = EPC_DEVICE_WORK_DEFAULT_MODEL, batteryControl = EPC_BATTERY_CONTROL_DEFAULT\)[\s\S]*?function applyEpcDeviceWorkSocLedger/);
+  assert.ok(dispatch, 'dispatch source should exist');
+  assert.match(dispatch[0], /manualBatteryLoadKw = Math\.min\(manualOverride\.batteryLoadKw, loadKw, batteryDischargeAllowedKw\)/, 'manual discharge should be allowed to replace PV load');
+  assert.match(dispatch[0], /pvToLoadKw = Math\.max\(0, pvToLoadKw - manualBatteryLoadKw\)/, 'manual discharge should reduce PV load share');
+  assert.match(dispatch[0], /manualPvBatteryKw = Math\.min\(manualOverride\.pvBatteryKw, surplusPvKw, batteryChargeLimitedKw\)/, 'manual PV charge should use only PV surplus');
+});
+
+test('EMS Flow table removes genset reason and displays one decimal values', () => {
+  const renderer = html.match(/function renderEpcEnergyFlow\(result\)[\s\S]*?function renderEpcReports\(result\)/);
+  assert.ok(renderer, 'EMS Flow renderer should exist');
+  assert.doesNotMatch(renderer[0], />Genset reason</i);
+  assert.doesNotMatch(renderer[0], /row\.gensetReason \|\| '-'/);
+  assert.match(renderer[0], /formatEpcNumber\(row\.pvOutputKw, 1\)/);
+  assert.match(renderer[0], /formatEpcNumber\(row\.loadKw, 1\)/);
+  assert.match(renderer[0], /formatEpcNumber\(row\.curtailmentKw, 1\)/);
+  const total = html.match(/function renderEpcFlowTotalRow\(rows = \[\]\)[\s\S]*?function mergeEpcEnergyFlowRowsByHour/);
+  assert.ok(total, 'EMS total row renderer should exist');
+  assert.match(total[0], /formatEpcNumber\(sum\('pvOutputKw'\), 1\)/);
+});
+
+test('EPC UI exposes final capacity overrides and reset action', () => {
+  for (const snippet of [
+    'data-epc-field="designTargets.capacityOverrides.pvMwp"',
+    'data-epc-field="designTargets.capacityOverrides.pcsMw"',
+    'data-epc-field="designTargets.capacityOverrides.bessMwh"',
+    'Final PV MWp',
+    'Final PCS MW',
+    'Final BESS MWh',
+    'resetEpcCapacityOverrides()',
+    'Manual Override'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^$\{\}()|[\]\\]/g, '\\$&')), 'missing capacity override UI snippet: ' + snippet);
+  }
+  assert.match(html, /function resetEpcCapacityOverrides\(\)/);
+  assert.match(html, /setInputValue\('epc-final-pv-mwp'/);
+  assert.match(html, /setInputValue\('epc-final-pcs-mw'/);
+  assert.match(html, /setInputValue\('epc-final-bess-mwh'/);
 });

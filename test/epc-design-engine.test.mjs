@@ -504,6 +504,7 @@ test('EPC design engine exposes hourly PV load battery and curtailment simulatio
     'pvToBatteryKw',
     'batteryToLoadKw',
     'gensetToLoadKw',
+    'pcsLimitKw',
     'curtailmentKw',
     'socPct'
   ]);
@@ -769,6 +770,45 @@ test('EPC design project preserves EMS Flow display settings', () => {
   }, { now: '2026-06-12T00:00:00.000Z' });
   assert.equal(legacyFiveMinuteTable.emsFlowDisplaySettings.emsTableIntervalMinutes, 5);
   assert.equal(legacyFiveMinuteTable.assumptions.pvDcAcRatio, 1.2);
+});
+
+test('EPC capacity overrides preserve calculated recommendation and drive effective sizing', () => {
+  const base = calculateEpcDesignProject(buildEpcDesignProjectFromQuickInputs(quarryInputs, {
+    now: '2026-06-12T00:00:00.000Z'
+  }), { now: '2026-06-12T00:00:00.000Z' });
+  const baseRecommended = base.schemes.find((scheme) => scheme.id === base.recommendedSchemeId);
+
+  const result = calculateEpcDesignProject({
+    ...buildEpcDesignProjectFromQuickInputs(quarryInputs, {
+      now: '2026-06-12T00:00:00.000Z'
+    }),
+    designTargets: {
+      replacementPct: 80,
+      capacityOverrides: {
+        pvMwp: 6.5,
+        pcsMw: 2,
+        bessMwh: 4.8
+      }
+    }
+  }, { now: '2026-06-12T00:00:00.000Z' });
+  const recommended = result.schemes.find((scheme) => scheme.id === result.recommendedSchemeId);
+
+  assert.equal(result.designTargets.capacityOverrides.pvMwp, 6.5);
+  assert.equal(result.designTargets.capacityOverrides.pcsMw, 2);
+  assert.equal(result.designTargets.capacityOverrides.bessMwh, 4.8);
+  assert.equal(recommended.hasCapacityOverride, true);
+  assert.equal(recommended.pvRecommendedMwp, 6.5);
+  assert.equal(recommended.pcsRecommendedMw, 2);
+  assert.equal(recommended.bessRecommendedMwh, 4.8);
+  assert.equal(recommended.calculatedPvRecommendedMwp.toFixed(2), baseRecommended.pvRecommendedMwp.toFixed(2));
+  assert.equal(recommended.calculatedPcsRecommendedMw.toFixed(2), baseRecommended.pcsRecommendedMw.toFixed(2));
+  assert.equal(recommended.calculatedBessRecommendedMwh.toFixed(2), baseRecommended.bessRecommendedMwh.toFixed(2));
+  assert.equal(result.energyFlow.summary.socMaxPct, 95);
+  assert.ok(result.energyFlow.rows.every((row) => row.pcsLimitKw === 2000));
+  assert.equal(result.boq.find((item) => item.item === 'PV modules and mounting').quantity, 6.5);
+  assert.equal(result.pvStringDesign.targetPvMwp, 6.5);
+  assert.ok(result.formulaTrace.some((item) => item.key === 'capacityOverride.pvMwp' && item.result === 6.5));
+  assert.ok(result.risks.some((risk) => /Manual capacity override/i.test(risk.issue)));
 });
 
 test('EPC design engine makes PF and distance affect LV MV architecture output', () => {

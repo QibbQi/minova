@@ -675,6 +675,13 @@ test('EPC design project preserves EMS Flow display settings', () => {
         mode: 'manual',
         manualIntervalMinutes: 60,
         priorityOrder: ['pv_to_load', 'battery_to_load', 'genset_to_load', 'pv_to_battery'],
+        customStrategies: [
+          {
+            id: 'night-discharge',
+            label: 'Night discharge',
+            priorityOrder: ['pv_to_load', 'battery_to_load', 'pv_to_battery', 'genset_to_load']
+          }
+        ],
         manualOverrides: [
           { timelineMinute: 540, batteryKw: -174 },
           { timelineMinute: 600, batteryKw: 120 }
@@ -707,6 +714,13 @@ test('EPC design project preserves EMS Flow display settings', () => {
     mode: 'manual',
     manualIntervalMinutes: 60,
     priorityOrder: ['pv_to_load', 'battery_to_load', 'genset_to_load', 'pv_to_battery'],
+    customStrategies: [
+      {
+        id: 'night-discharge',
+        label: 'Night discharge',
+        priorityOrder: ['pv_to_load', 'battery_to_load', 'pv_to_battery', 'genset_to_load']
+      }
+    ],
     manualOverrides: [
       { timelineMinute: 540, batteryKw: -174 },
       { timelineMinute: 600, batteryKw: 120 }

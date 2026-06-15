@@ -608,6 +608,9 @@ test('EPC Device Work profile renders realistic load and genset device behavior'
   assert.match(html, /const pvToLoadKw = Math\.min\(pvOutputKw, loadKw\)/, 'PV should serve load before charging or curtailing');
   assert.match(html, /let remainingLoadKw = Math\.max\(0, loadKw - pvToLoadKw\)/, 'Battery and genset should only serve remaining load');
   assert.match(html, /Math\.max\(0, remainingLoadKw - batteryToLoadKw\)/, 'Genset should be last priority after battery unless strategy changes');
+  assert.match(html, /const socMaxPct = Math\.max\(0, Math\.min\(100, Number\(row\.socMaxPct\) \|\| 100\)\)/, 'Device Work dispatch should know the active EMS max SOC');
+  assert.match(html, /const batteryCanCharge = socPct === null \|\| socPct < socMaxPct - 0\.05/, 'Battery should not charge when displayed SOC is already capped');
+  assert.match(html, /const batteryChargeAllowedKw = batteryCanCharge \? surplusPvKw : 0/, 'PV surplus should curtail instead of charging at max SOC');
   const flowRenderer = html.match(/function renderEpcEnergyFlow\(result\)[\s\S]*?function renderEpcReports\(result\)/);
   assert.ok(flowRenderer, 'EMS Flow renderer should be found');
   assert.match(flowRenderer[0], /getEpcEnergyFlowDisplayRows\(result\)/, 'EMS Flow table should use profiled display rows');
@@ -623,10 +626,16 @@ test('EPC Battery Control is a standalone page between Device Work and PV Simula
     'function renderEpcBatteryControlPage(result)',
     'function updateEpcBatteryControlSettings()',
     'function updateEpcBatteryManualOverride(',
+    'function addEpcBatteryControlCustomStrategy()',
+    'function removeEpcBatteryControlCustomStrategy(',
     'EPC_BATTERY_CONTROL_DEFAULT',
+    'customStrategies',
     'epc-battery-control-mode',
     'epc-battery-control-interval',
     'epc-battery-control-priority',
+    'epc-battery-control-custom-strategy',
+    'epc-battery-control-custom-label',
+    'Add manual strategy',
     'epc-battery-control-manual-table',
     'epc-battery-control-override-',
     'PV -> Load',
@@ -638,6 +647,23 @@ test('EPC Battery Control is a standalone page between Device Work and PV Simula
     'renderEpcBatteryControlPage(result)'
   ]) {
     assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing Battery Control snippet: ${snippet}`);
+  }
+});
+
+test('EPC Device Work model controls update the profile immediately', () => {
+  const modelControls = html.match(/<div id="epc-device-work-model-controls"[\s\S]*?<\/div>\s*<\/div>\s*`;/);
+  assert.ok(modelControls, 'Device Work model controls should be found');
+  for (const id of [
+    'epc-device-work-load-noise-pct',
+    'epc-device-work-load-shock-count',
+    'epc-device-work-load-shock-duration-min',
+    'epc-device-work-load-shock-impact-pct',
+    'epc-device-work-genset-shock-count',
+    'epc-device-work-genset-shock-duration-min',
+    'epc-device-work-genset-shock-impact-pct'
+  ]) {
+    const pattern = new RegExp(`id="${id}"[^>]*oninput="updateEpcDeviceWorkModelSettings\\(\\)"`);
+    assert.match(modelControls[0], pattern, `${id} should update the chart on input`);
   }
 });
 

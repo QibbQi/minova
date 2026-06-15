@@ -255,6 +255,22 @@ const GLOBAL_SOLAR_ATLAS_API_BASE = 'https://2eueu84zmf.execute-api.eu-west-1.am
           batteryKw: round(clamp(item?.batteryKw, -100000, 100000, 0), 2)
         })).filter(item => item.batteryKw !== 0)
       : [];
+    const customStrategies = Array.isArray(batteryControlInput.customStrategies)
+      ? batteryControlInput.customStrategies.map((item, index) => {
+          const rawOrder = Array.isArray(item?.priorityOrder) ? item.priorityOrder : [];
+          const customPriorityOrder = rawOrder
+            .map(priority => String(priority || '').trim().toLowerCase())
+            .filter((priority, priorityIndex, array) => allowedPriority.includes(priority) && array.indexOf(priority) === priorityIndex);
+          allowedPriority.forEach(priority => {
+            if (!customPriorityOrder.includes(priority)) customPriorityOrder.push(priority);
+          });
+          return {
+            id: String(item?.id || `custom-${index + 1}`).trim().slice(0, 48) || `custom-${index + 1}`,
+            label: String(item?.label || `Manual strategy ${index + 1}`).trim().slice(0, 80) || `Manual strategy ${index + 1}`,
+            priorityOrder: customPriorityOrder
+          };
+        }).filter((item, index, array) => array.findIndex(other => other.id === item.id) === index)
+      : [];
     return {
       visibleSeries: visibleSeries.length ? visibleSeries : [...EMS_FLOW_DISPLAY_SERIES],
       mergeHourly: input.mergeHourly !== false,
@@ -285,6 +301,7 @@ const GLOBAL_SOLAR_ATLAS_API_BASE = 'https://2eueu84zmf.execute-api.eu-west-1.am
         mode: String(batteryControlInput.mode || '').toLowerCase() === 'manual' ? 'manual' : 'auto',
         manualIntervalMinutes: [5, 60].includes(Number(batteryControlInput.manualIntervalMinutes)) ? Number(batteryControlInput.manualIntervalMinutes) : 60,
         priorityOrder,
+        customStrategies,
         manualOverrides
       }
     };

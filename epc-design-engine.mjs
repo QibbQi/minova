@@ -281,8 +281,40 @@ function defaultSolarResource(input = {}, defaults = EPC_DESIGN_DEFAULTS) {
     temperatureC: asNumber(input.temperatureC, 0),
     monthlyYield: Array.isArray(input.monthlyYield) ? input.monthlyYield.map(v => asNumber(v, 0)) : [],
     hourlyPvProfile: Array.isArray(input.hourlyPvProfile)
-      ? input.hourlyPvProfile.map(item => ({ hour: asNumber(item.hour, 0), pvMw: asNumber(item.pvMw, 0) }))
+      ? input.hourlyPvProfile.map(item => {
+        const hour = asNumber(item.hour, asNumber(item.timelineMinute, 0) / 60);
+        const row = { hour, pvMw: asNumber(item.pvMw, 0) };
+        const hasSimulatorFields = item.timestamp
+          || item.timelineMinute !== undefined
+          || item.intervalMinutes !== undefined
+          || item.clearSkyKw !== undefined
+          || item.irradianceCf !== undefined
+          || item.irradiance_cf !== undefined
+          || item.cloudState !== undefined
+          || item.cloud_state !== undefined;
+        if (hasSimulatorFields || Math.abs(hour - Math.round(hour)) > 0.001) {
+          Object.assign(row, {
+            timestamp: String(item.timestamp || ''),
+            timelineMinute: asNumber(item.timelineMinute, hour * 60),
+            intervalMinutes: asNumber(item.intervalMinutes, 0),
+            clearSkyKw: asNumber(item.clearSkyKw, 0),
+            irradianceCf: asNumber(item.irradianceCf ?? item.irradiance_cf, 0),
+            cloudState: asNumber(item.cloudState ?? item.cloud_state, 0),
+            temperatureFactor: asNumber(item.temperatureFactor ?? item.temperature_factor, 0),
+            soilingFactor: asNumber(item.soilingFactor ?? item.soiling_factor, 0),
+            inverterLimitActive: Boolean(item.inverterLimitActive ?? item.inverter_limit_active),
+            curtailmentActive: Boolean(item.curtailmentActive ?? item.curtailment_active),
+            clippingLossKw: asNumber(item.clippingLossKw ?? item.clipping_loss_kw, 0)
+          });
+        }
+        return row;
+      })
       : [],
+    pvSimulator: input.pvSimulator && typeof input.pvSimulator === 'object' ? {
+      ...input.pvSimulator,
+      settings: { ...(input.pvSimulator.settings || {}) },
+      summary: { ...(input.pvSimulator.summary || {}) }
+    } : null,
     dataSource: String(input.dataSource || (imported ? 'Global Solar Atlas Import' : 'Malaysia Default')),
     retrievalDate: String(input.retrievalDate || ''),
     assumptionSource: imported ? String(input.dataSource || 'User Imported') : 'Malaysia Default'
@@ -1000,6 +1032,39 @@ function normalizeHourMap(profile, valueKey) {
   return map;
 }
 
+function normalizeExactHourMap(profile, valueKey) {
+  const map = new Map();
+  for (const item of Array.isArray(profile) ? profile : []) {
+    const hour = asNumber(item.hour, asNumber(item.timelineMinute, NaN) / 60);
+    if (!Number.isFinite(hour)) continue;
+    map.set(hour.toFixed(4), asNumber(item[valueKey], 0));
+  }
+  return map;
+}
+
+function isDensePvProfile(profile) {
+  return (Array.isArray(profile) ? profile : []).some(item => {
+    const hour = asNumber(item.hour, NaN);
+    const intervalMinutes = asNumber(item.intervalMinutes, 0);
+    return intervalMinutes > 0
+      || Number.isFinite(asNumber(item.timelineMinute, NaN))
+      || (Number.isFinite(hour) && Math.abs(hour - Math.round(hour)) > 0.001);
+  });
+}
+
+function inferProfileIntervalMinutes(profile, index) {
+  const item = profile[index] || {};
+  const explicit = asNumber(item.intervalMinutes, 0);
+  if (explicit > 0) return explicit;
+  const current = asNumber(item.timelineMinute, asNumber(item.hour, 0) * 60);
+  const next = profile[index + 1];
+  const nextMinute = next ? asNumber(next.timelineMinute, asNumber(next.hour, NaN) * 60) : NaN;
+  if (Number.isFinite(current) && Number.isFinite(nextMinute) && nextMinute > current) {
+    return nextMinute - current;
+  }
+  return 60;
+}
+
 function calculateEnergyFlow(project, load, recommended) {
   const scheduleLoadProfile = equipmentScheduleHourlyLoadProfile(project);
   const loadProfile = scheduleLoadProfile.length ? scheduleLoadProfile : project.loadProfile.length ? project.loadProfile : defaultHourlyLoadProfile(project, load);
@@ -1007,15 +1072,34 @@ function calculateEnergyFlow(project, load, recommended) {
     ? project.solarResource.hourlyPvProfile
     : defaultHourlyPvProfile(recommended);
   const loadMap = normalizeHourMap(loadProfile, 'loadKw');
+  const exactLoadMap = normalizeExactHourMap(loadProfile, 'loadKw');
   const pvMap = normalizeHourMap(pvProfile, 'pvMw');
-  const flowWindows = loadProfile.map((item, index) => {
+  const exactPvMap = normalizeExactHourMap(pvProfile, 'pvMw');
+  const densePvProfile = isDensePvProfile(pvProfile);
+  const flowSource = densePvProfile ? pvProfile : loadProfile;
+  const flowWindows = flowSource.map((item, index) => {
+    if (densePvProfile) {
+      const hour = asNumber(item.hour, asNumber(item.timelineMinute, NaN) / 60);
+      const timelineMinute = asNumber(item.timelineMinute, hour * 60);
+      const intervalMinutes = inferProfileIntervalMinutes(pvProfile, index);
+      return {
+        hour,
+        hourLabel: item.hourLabel || `${formatMinutes(timelineMinute)}-${formatMinutes(timelineMinute + intervalMinutes, timelineMinute + intervalMinutes >= 1440 ? 1 : 0)}`,
+        flowKey: item.flowKey || `pv-simulator-${index}-${Math.round(timelineMinute)}`,
+        timelineMinute,
+        intervalMinutes,
+        durationHours: intervalMinutes / 60,
+        pvMw: asNumber(item.pvMw, 0)
+      };
+    }
     const hour = Math.round(asNumber(item.hour, NaN));
     return {
       hour,
       hourLabel: item.hourLabel || `${formatMinutes(hour * 60)}-${formatMinutes(hour * 60 + 60, hour >= 23 ? 1 : 0)}`,
-      flowKey: item.flowKey || `load-${index}-${hour}`
+      flowKey: item.flowKey || `load-${index}-${hour}`,
+      durationHours: 1
     };
-  }).filter(item => Number.isFinite(item.hour));
+  }).filter(item => Number.isFinite(item.hour) && (!densePvProfile || item.intervalMinutes > 0));
   const batteryKwh = Math.max(0, recommended.bessRecommendedMwh * 1000);
   const pcsKw = Math.max(0, recommended.pcsRecommendedMw * 1000);
   const minSocPct = clamp(project.assumptions.minSocPct, 0, 99, EPC_DESIGN_DEFAULTS.minSocPct);
@@ -1029,21 +1113,36 @@ function calculateEnergyFlow(project, load, recommended) {
     let socKwh = Math.min(maxSocKwh, Math.max(minSocKwh, initialSocKwh));
     const rows = [];
     for (const window of flowWindows) {
-      const pvOutputKw = (pvMap.get(window.hour) || 0) * 1000;
-      const loadKw = loadMap.has(window.hour) ? loadMap.get(window.hour) : load.averageLoadKw;
+      const durationHours = Math.max(0, asNumber(window.durationHours, 1));
+      const exactKey = asNumber(window.hour, 0).toFixed(4);
+      const roundedHour = Math.round(asNumber(window.hour, 0));
+      const flooredHour = Math.floor(asNumber(window.hour, 0));
+      const pvMw = Number.isFinite(window.pvMw)
+        ? window.pvMw
+        : exactPvMap.has(exactKey)
+          ? exactPvMap.get(exactKey)
+          : (pvMap.get(roundedHour) || 0);
+      const pvOutputKw = pvMw * 1000;
+      const loadKw = exactLoadMap.has(exactKey)
+        ? exactLoadMap.get(exactKey)
+        : loadMap.has(flooredHour)
+          ? loadMap.get(flooredHour)
+          : densePvProfile
+            ? 0
+            : load.averageLoadKw;
       const pvToLoadKw = Math.min(pvOutputKw, loadKw);
       const surplusPvKw = Math.max(0, pvOutputKw - loadKw);
       const loadDeficitKw = Math.max(0, loadKw - pvOutputKw);
       const batteryHeadroomKwh = Math.max(0, maxSocKwh - socKwh);
-      const pvToBatteryKw = Math.min(surplusPvKw, pcsKw, batteryHeadroomKwh);
-      socKwh += pvToBatteryKw;
+      const pvToBatteryKw = Math.min(surplusPvKw, pcsKw, durationHours > 0 ? batteryHeadroomKwh / durationHours : 0);
+      socKwh += pvToBatteryKw * durationHours;
       const batteryAvailableKwh = Math.max(0, socKwh - minSocKwh);
-      const batteryToLoadKw = Math.min(loadDeficitKw, pcsKw, batteryAvailableKwh);
-      socKwh -= batteryToLoadKw;
+      const batteryToLoadKw = Math.min(loadDeficitKw, pcsKw, durationHours > 0 ? batteryAvailableKwh / durationHours : 0);
+      socKwh -= batteryToLoadKw * durationHours;
       const gensetToLoadKw = Math.max(0, loadDeficitKw - batteryToLoadKw);
       const curtailmentKw = Math.max(0, surplusPvKw - pvToBatteryKw);
       if (includeRows) {
-        rows.push({
+        const row = {
           hour: window.hour,
           hourLabel: window.hourLabel,
           flowKey: window.flowKey,
@@ -1055,7 +1154,13 @@ function calculateEnergyFlow(project, load, recommended) {
           gensetToLoadKw: round(gensetToLoadKw, 2),
           curtailmentKw: round(curtailmentKw, 2),
           socPct: batteryKwh > 0 ? round((socKwh / batteryKwh) * 100, 1) : 0
-        });
+        };
+        if (densePvProfile) {
+          row.timelineMinute = round(window.timelineMinute, 4);
+          row.intervalMinutes = round(window.intervalMinutes, 4);
+          row.durationHours = durationHours;
+        }
+        rows.push(row);
       }
     }
     return { rows, socKwh };
@@ -1065,9 +1170,10 @@ function calculateEnergyFlow(project, load, recommended) {
     rolloverSocKwh = simulateRows(rolloverSocKwh, false).socKwh;
   }
   const rows = simulateRows(rolloverSocKwh, true).rows;
-  const sum = key => rows.reduce((total, row) => total + row[key], 0);
+  const rowDurationHours = row => Math.max(0, asNumber(row.durationHours, 1));
+  const sum = key => rows.reduce((total, row) => total + row[key] * rowDurationHours(row), 0);
   return {
-    method: `EMS order: PV -> Load, Excess PV -> Battery, Battery -> Load, Genset -> Load, curtail surplus.${scheduleLoadProfile.length ? ' Load profile source: Equipment Schedule timetable.' : ''}`,
+    method: `EMS order: PV -> Load, Excess PV -> Battery, Battery -> Load, Genset -> Load, curtail surplus.${densePvProfile ? ' PV profile source: PV Simulator.' : ''}${scheduleLoadProfile.length ? ' Load profile source: Equipment Schedule timetable.' : ''}`,
     rows,
     summary: {
       pvDirectKwh: round(sum('pvToLoadKw'), 2),

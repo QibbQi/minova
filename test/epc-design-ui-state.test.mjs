@@ -375,7 +375,7 @@ test('EPC EMS flow exposes animated system diagram and clickable hour rows', () 
 });
 
 test('EPC Device Work is a standalone chart page with status analysis', () => {
-  assert.match(html, /data-epc-panel-tab="flow"[\s\S]*?EMS Flow[\s\S]*?data-epc-panel-tab="devicework"[\s\S]*?Device Work[\s\S]*?data-epc-panel-tab="reports"[\s\S]*?Reports/);
+  assert.match(html, /data-epc-panel-tab="flow"[\s\S]*?EMS Flow[\s\S]*?data-epc-panel-tab="devicework"[\s\S]*?Device Work[\s\S]*?data-epc-panel-tab="pvsimulator"[\s\S]*?PV Simulator[\s\S]*?data-epc-panel-tab="reports"[\s\S]*?Reports/);
   for (const snippet of [
     'id="epc-device-work-page"',
     'data-epc-panel="devicework"',
@@ -476,6 +476,43 @@ test('EPC Device Work is a standalone chart page with status analysis', () => {
   ]) {
     assert.doesNotMatch(html, new RegExp(removedSnippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `removed Device Work snippet still present: ${removedSnippet}`);
   }
+});
+
+test('EPC PV Simulator is a standalone page feeding EMS and Device Work PV data', () => {
+  const section = html.match(/<main id="view-epcdesign"[\s\S]*?<main id="view-engineering"/);
+  assert.ok(section, 'EPC design view exists');
+  const source = section[0];
+
+  for (const snippet of [
+    'data-epc-panel-tab="pvsimulator"',
+    'PV Simulator',
+    'id="epc-pv-simulator-page"',
+    'data-epc-panel="pvsimulator"',
+    'renderEpcPvSimulatorPage(result)',
+    'function renderEpcPvSimulatorPage(result)',
+    'function buildEpcPvSimulatorProfile(',
+    'function generateEpcPvSimulator(',
+    'epc-pv-simulator-weather',
+    'epc-pv-simulator-lock-seed',
+    'epc-pv-simulator-seed',
+    'Fixed random state',
+    'weather_mode',
+    'cloud_state',
+    'temperature_factor',
+    'soiling_factor',
+    'inverter_limit_active',
+    'curtailment_active',
+    'solarResource.hourlyPvProfile',
+    "dataSource: 'PV Simulator'"
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing PV Simulator snippet: ${snippet}`);
+  }
+
+  const deviceWorkPos = source.indexOf('data-epc-panel-tab="devicework"');
+  const pvSimulatorPos = source.indexOf('data-epc-panel-tab="pvsimulator"');
+  const reportsPos = source.indexOf('data-epc-panel-tab="reports"');
+  assert.ok(deviceWorkPos < pvSimulatorPos, 'PV Simulator tab is after Device Work');
+  assert.ok(pvSimulatorPos < reportsPos, 'PV Simulator tab is before Reports');
 });
 
 test('EPC Device Work profile renders realistic load and genset device behavior', () => {

@@ -514,6 +514,60 @@ test('EPC design engine exposes hourly PV load battery and curtailment simulatio
   assert.match(result.energyFlow.method, /PV -> Load/);
 });
 
+test('EPC energy flow can consume a 5-minute PV Simulator profile', () => {
+  const project = normalizeEpcDesignProject({
+    loads: {
+      measurementMethod: 'diesel_sfc_estimate',
+      dieselTotalLiters: 216,
+      dieselPeriodDays: 1,
+      operationHoursPerDay: 1,
+      operationStartTime: '09:00',
+      operationFinishTime: '10:00'
+    },
+    solarResource: {
+      dataSource: 'PV Simulator',
+      specificYieldKwhPerKwpDay: 3.6,
+      pvSimulator: {
+        settings: { weatherMode: 'mixed', stepMinutes: 5, fixedRandomState: true, seed: 'fixed-101' },
+        summary: { pointCount: 12 }
+      },
+      hourlyPvProfile: Array.from({ length: 12 }, (_, index) => ({
+        timestamp: `2026-06-12T09:${String(index * 5).padStart(2, '0')}:00+08:00`,
+        hour: 9 + (index * 5) / 60,
+        timelineMinute: 9 * 60 + index * 5,
+        intervalMinutes: 5,
+        pvMw: 1,
+        irradianceCf: 0.8,
+        cloudState: index % 3,
+        temperatureFactor: 0.94,
+        soilingFactor: 0.98,
+        inverterLimitActive: false,
+        curtailmentActive: false,
+        clippingLossKw: 0
+      }))
+    }
+  }, { now: '2026-06-12T00:00:00.000Z' });
+  const normalizedProfile = project.solarResource.hourlyPvProfile;
+
+  assert.equal(project.solarResource.dataSource, 'PV Simulator');
+  assert.equal(project.solarResource.pvSimulator.settings.fixedRandomState, true);
+  assert.equal(normalizedProfile.length, 12);
+  assert.equal(normalizedProfile[1].intervalMinutes, 5);
+  assert.equal(normalizedProfile[1].cloudState, 1);
+  assert.equal(normalizedProfile[1].timestamp, '2026-06-12T09:05:00+08:00');
+
+  const result = calculateEpcDesignProject(project, { now: '2026-06-12T00:00:00.000Z' });
+
+  assert.equal(result.energyFlow.rows.length, 12);
+  assert.equal(result.energyFlow.rows[0].hourLabel, '09:00-09:05');
+  assert.equal(result.energyFlow.rows[1].hour, 9 + 5 / 60);
+  assert.equal(result.energyFlow.rows[1].intervalMinutes, 5);
+  assert.equal(result.energyFlow.rows[1].durationHours, 5 / 60);
+  assert.equal(result.energyFlow.rows[1].pvOutputKw, 1000);
+  assert.equal(result.energyFlow.summary.pvDirectKwh, 800);
+  assert.match(result.energyFlow.method, /PV Simulator/);
+});
+
 test('EPC energy flow follows PV schedule while genset hours keep average load unless changed', () => {
   const dayProject = buildEpcDesignProjectFromQuickInputs({
     ...quarryInputs,

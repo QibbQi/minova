@@ -3108,6 +3108,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 <button type="button" data-epc-panel-tab="risks" onclick="setEpcPanelTab('risks')" class="px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-50">Risks</button>
                 <button type="button" data-epc-panel-tab="flow" onclick="setEpcPanelTab('flow')" class="px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-50">EMS Flow</button>
                 <button type="button" data-epc-panel-tab="devicework" onclick="setEpcPanelTab('devicework')" class="px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-50">Device Work</button>
+                <button type="button" data-epc-panel-tab="pvsimulator" onclick="setEpcPanelTab('pvsimulator')" class="px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-50">PV Simulator</button>
                 <button type="button" data-epc-panel-tab="reports" onclick="setEpcPanelTab('reports')" class="px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-50">Reports</button>
             </div>
             <div class="p-4">
@@ -3118,6 +3119,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 <div id="epc-design-risks" data-epc-panel="risks" class="hidden"></div>
                 <div id="epc-energy-flow-table" data-epc-panel="flow" class="hidden"></div>
                 <div id="epc-device-work-page" data-epc-panel="devicework" class="hidden"></div>
+                <div id="epc-pv-simulator-page" data-epc-panel="pvsimulator" class="hidden"></div>
                 <div id="epc-design-reports" data-epc-panel="reports" class="hidden"></div>
             </div>
         </div>
@@ -11164,7 +11166,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
 
         function renderEpcFlowTotalRow(rows = []) {
-            const sum = key => rows.reduce((total, row) => total + (Number(row[key]) || 0), 0);
+            const durationHours = row => Math.max(0, Number(row.durationHours) || 1);
+            const sum = key => rows.reduce((total, row) => total + (Number(row[key]) || 0) * durationHours(row), 0);
             const finalSoc = rows.length ? rows[rows.length - 1].socPct : 0;
             return `
                 <tr class="epc-flow-total-row border-t-2 border-slate-200 bg-slate-50 text-slate-800">
@@ -11956,6 +11959,352 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             `;
         }
 
+        function epcPvSimulatorHashSeed(seed = '') {
+            const text = String(seed || 'minova-pv-simulator');
+            let hash = 2166136261;
+            for (let i = 0; i < text.length; i += 1) {
+                hash ^= text.charCodeAt(i);
+                hash = Math.imul(hash, 16777619);
+            }
+            return hash >>> 0;
+        }
+
+        function createEpcPvSimulatorRandom(seed = '') {
+            let state = epcPvSimulatorHashSeed(seed) || 1;
+            return () => {
+                state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+                return state / 4294967296;
+            };
+        }
+
+        function getEpcPvSimulatorSettings(result = {}) {
+            const project = getActiveEpcDesignProject();
+            const sim = project.solarResource?.pvSimulator || result.solar?.pvSimulator || {};
+            const stored = sim.settings || {};
+            const recommended = getRecommendedEpcScheme(result);
+            const fallbackRatedKw = Math.max(1, (recommended.pvRecommendedMwp || 0) * 1000);
+            const seed = String(stored.seed || sim.seed || `pv-${project.id || Date.now()}`);
+            return {
+                pRatedKw: Math.max(0, Number(stored.pRatedKw) || fallbackRatedKw),
+                location: String(stored.location || project.site?.country || 'Malaysia'),
+                timezone: String(stored.timezone || 'UTC+8'),
+                stepMinutes: 5,
+                weatherMode: ['clear', 'mixed', 'rainy'].includes(stored.weatherMode) ? stored.weatherMode : 'mixed',
+                dcAcRatio: Math.max(1, Number(stored.dcAcRatio) || 1.2),
+                inverterLimitKw: Math.max(0, Number(stored.inverterLimitKw) || 0),
+                fixedRandomState: Boolean(stored.fixedRandomState),
+                seed
+            };
+        }
+
+        function epcPvSimulatorGaussian(rng, sigma = 0.03) {
+            const u1 = Math.max(0.0001, rng());
+            const u2 = Math.max(0.0001, rng());
+            return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2) * sigma;
+        }
+
+        function epcPvSimulatorCloudFactor(state, rng) {
+            if (state <= 0) return 0.9 + rng() * 0.1;
+            if (state === 1) return 0.7 + rng() * 0.2;
+            if (state === 2) return 0.3 + rng() * 0.4;
+            return rng() * 0.3;
+        }
+
+        function buildEpcPvSimulatorProfile(settings = {}) {
+            const stepMinutes = 5;
+            const points = Math.floor((24 * 60) / stepMinutes);
+            const seed = settings.seed || `pv-${Date.now()}`;
+            const rng = createEpcPvSimulatorRandom(seed);
+            const weather_mode = settings.weatherMode || 'mixed';
+            const pRatedKw = Math.max(0, Number(settings.pRatedKw) || 0);
+            const dcAcRatio = Math.max(1, Number(settings.dcAcRatio) || 1.2);
+            const inverterLimitKw = Math.max(0, Number(settings.inverterLimitKw) || (pRatedKw / dcAcRatio));
+            let cloud_state = weather_mode === 'clear' ? 0 : weather_mode === 'rainy' ? 2 : 1;
+            let soilingLoss = weather_mode === 'rainy' ? 0 : rng() * 0.035;
+            const eventCount = weather_mode === 'clear' ? 2 : weather_mode === 'rainy' ? 6 : 4;
+            const events = Array.from({ length: eventCount }, (_, index) => {
+                const startMinute = 7 * 60 + rng() * 11 * 60;
+                const duration = 10 + rng() * 50;
+                const severity = weather_mode === 'rainy' ? 3 : Math.min(3, 1 + Math.floor(rng() * 3));
+                return { startMinute, endMinute: startMinute + duration, severity, index };
+            });
+            const rows = [];
+            let baselineKwSum = 0;
+            let clearSkyKwSum = 0;
+            let tempLossKwh = 0;
+            let soilingLossKwh = 0;
+            let clippingLossKwh = 0;
+            let curtailmentLossKwh = 0;
+            for (let index = 0; index < points; index += 1) {
+                const timelineMinute = index * stepMinutes;
+                const hour = timelineMinute / 60;
+                const daylight = hour >= 7 && hour <= 19;
+                const clearSky = daylight ? Math.pow(Math.max(0, Math.sin(Math.PI * (hour - 7) / 12)), 1.2) : 0;
+                if (clearSky > 0) {
+                    const roll = rng();
+                    if (roll < 0.8) cloud_state = cloud_state;
+                    else if (roll < 0.95) cloud_state += rng() > 0.5 ? 1 : -1;
+                    else cloud_state += rng() > 0.5 ? 2 : -2;
+                    cloud_state = Math.max(0, Math.min(3, cloud_state));
+                } else {
+                    cloud_state = 0;
+                }
+                const activeEvent = events.find(event => timelineMinute >= event.startMinute && timelineMinute <= event.endMinute);
+                const effective_cloud_state = activeEvent ? Math.max(cloud_state, activeEvent.severity) : cloud_state;
+                const irradiance_cf = clearSky * epcPvSimulatorCloudFactor(effective_cloud_state, rng);
+                const ambientC = 30 + 10 * Math.max(0, clearSky) + (rng() - 0.5) * 1.8;
+                const moduleTempC = ambientC + 25 + 10 * clearSky;
+                const temperature_factor = Math.max(0.85, 1 - 0.0045 * (moduleTempC - 25));
+                if (weather_mode === 'rainy' && effective_cloud_state === 3 && clearSky > 0.05) soilingLoss = 0;
+                else soilingLoss = Math.min(0.1, soilingLoss + 0.000035);
+                const soiling_factor = 1 - soilingLoss;
+                const noise = Math.max(0.88, Math.min(1.12, 1 + epcPvSimulatorGaussian(rng, weather_mode === 'clear' ? 0.02 : 0.04)));
+                const clearSkyKw = pRatedKw * clearSky;
+                let pvPowerKw = pRatedKw * irradiance_cf * temperature_factor * soiling_factor * noise;
+                const unclippedKw = pvPowerKw;
+                const inverter_limit_active = inverterLimitKw > 0 && pvPowerKw > inverterLimitKw;
+                if (inverter_limit_active) pvPowerKw = inverterLimitKw;
+                const curtailment_active = weather_mode !== 'rainy' && hour >= 12 && hour <= 14 && rng() > 0.985;
+                const curtailmentFactor = curtailment_active ? 0.85 : 1;
+                const clippedBeforeCurtailmentKw = pvPowerKw;
+                pvPowerKw *= curtailmentFactor;
+                const clipping_loss_kw = Math.max(0, unclippedKw - clippedBeforeCurtailmentKw);
+                const curtailmentLossKw = Math.max(0, clippedBeforeCurtailmentKw - pvPowerKw);
+                baselineKwSum += pRatedKw * clearSky * Math.max(0, epcPvSimulatorCloudFactor(effective_cloud_state, () => 0.5));
+                clearSkyKwSum += clearSkyKw;
+                tempLossKwh += Math.max(0, pRatedKw * irradiance_cf * (1 - temperature_factor)) * stepMinutes / 60;
+                soilingLossKwh += Math.max(0, pRatedKw * irradiance_cf * temperature_factor * (1 - soiling_factor)) * stepMinutes / 60;
+                clippingLossKwh += clipping_loss_kw * stepMinutes / 60;
+                curtailmentLossKwh += curtailmentLossKw * stepMinutes / 60;
+                rows.push({
+                    timestamp: `2026-06-12T${epcMinutesToTime(timelineMinute)}:00+08:00`,
+                    hour,
+                    timelineMinute,
+                    intervalMinutes: stepMinutes,
+                    pvPowerKw: epcChartRound(Math.max(0, pvPowerKw), 3),
+                    clearSkyKw: epcChartRound(clearSkyKw, 3),
+                    irradianceCf: epcChartRound(irradiance_cf, 4),
+                    weather_mode,
+                    cloudState: effective_cloud_state,
+                    cloud_state: effective_cloud_state,
+                    temperatureFactor: epcChartRound(temperature_factor, 4),
+                    temperature_factor: epcChartRound(temperature_factor, 4),
+                    soilingFactor: epcChartRound(soiling_factor, 4),
+                    soiling_factor: epcChartRound(soiling_factor, 4),
+                    inverterLimitActive: inverter_limit_active,
+                    inverter_limit_active,
+                    curtailmentActive: curtailment_active,
+                    curtailment_active,
+                    clippingLossKw: epcChartRound(clipping_loss_kw, 3),
+                    clipping_loss_kw: epcChartRound(clipping_loss_kw, 3)
+                });
+            }
+            const totalKwh = rows.reduce((total, row) => total + row.pvPowerKw * stepMinutes / 60, 0);
+            const peakKw = Math.max(0, ...rows.map(row => row.pvPowerKw));
+            const variability = rows.slice(1).reduce((total, row, index) => total + Math.abs(row.pvPowerKw - rows[index].pvPowerKw), 0) / Math.max(1, peakKw);
+            const referenceKwh = Math.max(1, clearSkyKwSum * stepMinutes / 60);
+            const summary = {
+                pointCount: rows.length,
+                totalPvEnergyKwh: epcChartRound(totalKwh, 2),
+                peakPowerKw: epcChartRound(peakKw, 2),
+                capacityFactorPct: epcChartRound(pRatedKw ? (totalKwh / (pRatedKw * 24)) * 100 : 0, 2),
+                cloudVariabilityIndex: epcChartRound(variability, 3),
+                clippingLossPct: epcChartRound((clippingLossKwh / referenceKwh) * 100, 2),
+                curtailmentLossPct: epcChartRound((curtailmentLossKwh / referenceKwh) * 100, 2),
+                temperatureLossPct: epcChartRound((tempLossKwh / referenceKwh) * 100, 2),
+                soilingLossPct: epcChartRound((soilingLossKwh / referenceKwh) * 100, 2),
+                baselineClearSkyKwh: epcChartRound(clearSkyKwSum * stepMinutes / 60, 2),
+                modeledCloudKwh: epcChartRound(baselineKwSum * stepMinutes / 60, 2)
+            };
+            return { settings: { ...settings, stepMinutes, weatherMode: weather_mode, seed }, rows, summary };
+        }
+
+        function getEpcPvSimulatorDomSettings(result = {}) {
+            const current = getEpcPvSimulatorSettings(result);
+            const lock = document.getElementById('epc-pv-simulator-lock-seed')?.checked ?? current.fixedRandomState;
+            const seedInput = String(document.getElementById('epc-pv-simulator-seed')?.value || current.seed || '').trim();
+            return {
+                ...current,
+                pRatedKw: Math.max(0, Number(document.getElementById('epc-pv-simulator-rated-kw')?.value) || current.pRatedKw),
+                weatherMode: document.getElementById('epc-pv-simulator-weather')?.value || current.weatherMode,
+                dcAcRatio: Math.max(1, Number(document.getElementById('epc-pv-simulator-dc-ac')?.value) || current.dcAcRatio),
+                inverterLimitKw: Math.max(0, Number(document.getElementById('epc-pv-simulator-inverter-limit')?.value) || 0),
+                fixedRandomState: lock,
+                seed: lock ? (seedInput || current.seed) : `pv-${Date.now()}-${Math.floor(Math.random() * 100000)}`
+            };
+        }
+
+        function generateEpcPvSimulator() {
+            const project = getActiveEpcDesignProject();
+            const result = window.__lastEpcDesignResult || calculateEpcDesignProject(project, { defaults: epcDesignDefaults });
+            const settings = getEpcPvSimulatorDomSettings(result);
+            const profile = buildEpcPvSimulatorProfile(settings);
+            // solarResource.hourlyPvProfile is the shared PV integration point for EMS Flow and Device Work.
+            project.solarResource = {
+                ...(project.solarResource || {}),
+                dataSource: 'PV Simulator',
+                hourlyPvProfile: profile.rows.map(row => ({
+                    timestamp: row.timestamp,
+                    hour: row.hour,
+                    timelineMinute: row.timelineMinute,
+                    intervalMinutes: row.intervalMinutes,
+                    pvMw: row.pvPowerKw / 1000,
+                    clearSkyKw: row.clearSkyKw,
+                    irradianceCf: row.irradianceCf,
+                    cloudState: row.cloudState,
+                    temperatureFactor: row.temperatureFactor,
+                    soilingFactor: row.soilingFactor,
+                    inverterLimitActive: row.inverterLimitActive,
+                    curtailmentActive: row.curtailmentActive,
+                    clippingLossKw: row.clippingLossKw
+                })),
+                pvSimulator: {
+                    settings: profile.settings,
+                    summary: profile.summary,
+                    generatedAt: new Date().toISOString()
+                }
+            };
+            updateEpcProject(project);
+            renderEpcDesignResult(project);
+        }
+
+        function renderEpcPvSimulatorChart(rows = []) {
+            const chart = { left: 54, right: 28, top: 28, bottom: 34, width: 880, height: 260 };
+            const plotWidth = chart.width - chart.left - chart.right;
+            const plotHeight = chart.height - chart.top - chart.bottom;
+            const maxKw = Math.max(1, ...rows.flatMap(row => [row.pvPowerKw, row.clearSkyKw || 0]));
+            const xFor = index => chart.left + (rows.length <= 1 ? 0 : (index / (rows.length - 1)) * plotWidth);
+            const yFor = value => chart.top + ((maxKw - Math.max(0, Number(value) || 0)) / maxKw) * plotHeight;
+            const lineD = key => rows.map((row, index) => `${index ? 'L' : 'M'} ${epcChartRound(xFor(index), 2)} ${epcChartRound(yFor(row[key]), 2)}`).join(' ');
+            const labels = [0, 6, 12, 18, 24].map(hour => ({ hour, x: chart.left + (hour / 24) * plotWidth }));
+            return `
+                <svg class="w-full min-h-[260px]" viewBox="0 0 ${chart.width} ${chart.height}" role="img" aria-label="PV Simulator daily output chart">
+                    ${[0, 0.25, 0.5, 0.75, 1].map(pct => {
+                        const value = maxKw * pct;
+                        return `<line x1="${chart.left}" x2="${chart.width - chart.right}" y1="${epcChartRound(yFor(value), 2)}" y2="${epcChartRound(yFor(value), 2)}" stroke="#e2e8f0"/>
+                        <text x="${chart.left - 10}" y="${epcChartRound(yFor(value) + 4, 2)}" text-anchor="end" class="text-[10px] fill-slate-400 font-bold">${htmlSafe(formatEpcNumber(value, 0))}</text>`;
+                    }).join('')}
+                    ${labels.map(item => `<line x1="${epcChartRound(item.x, 2)}" x2="${epcChartRound(item.x, 2)}" y1="${chart.top}" y2="${chart.top + plotHeight}" stroke="#f1f5f9"/>
+                    <text x="${epcChartRound(item.x, 2)}" y="${chart.height - 10}" text-anchor="middle" class="text-[10px] fill-slate-400 font-bold">${String(item.hour).padStart(2, '0')}:00</text>`).join('')}
+                    <path d="${lineD('clearSkyKw')}" fill="none" stroke="#cbd5e1" stroke-width="3" stroke-dasharray="6 6"/>
+                    <path d="${lineD('pvPowerKw')}" fill="none" stroke="#f59e0b" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                    <text x="12" y="${chart.top + plotHeight / 2}" transform="rotate(-90 12 ${chart.top + plotHeight / 2})" class="text-[10px] fill-slate-500 font-black">kW</text>
+                </svg>
+            `;
+        }
+
+        function renderEpcPvSimulatorPage(result) {
+            const target = document.getElementById('epc-pv-simulator-page');
+            if (!target) return;
+            const settings = getEpcPvSimulatorSettings(result);
+            const sim = result.solar?.pvSimulator || {};
+            const storedRows = Array.isArray(result.solar?.hourlyPvProfile) && result.solar?.dataSource === 'PV Simulator'
+                ? result.solar.hourlyPvProfile.map(row => ({
+                    ...row,
+                    pvPowerKw: (Number(row.pvMw) || 0) * 1000,
+                    clearSkyKw: Number(row.clearSkyKw) || 0
+                }))
+                : [];
+            const preview = storedRows.length
+                ? { rows: storedRows, summary: sim.summary || {} }
+                : buildEpcPvSimulatorProfile(settings);
+            const summary = preview.summary || {};
+            const generatedAt = sim.generatedAt ? new Date(sim.generatedAt).toLocaleString() : 'Not generated yet';
+            target.innerHTML = `
+                <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+                    <div class="border-b border-slate-100 px-4 py-3">
+                        <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-3">
+                            <div>
+                                <div class="text-sm font-black text-slate-800">PV Simulator</div>
+                                <div class="text-[11px] font-bold text-slate-400">Malaysia 5-minute stochastic PV output profile feeding EMS Flow and Device Work.</div>
+                            </div>
+                            <div class="text-[11px] font-black text-slate-500">Generated: ${htmlSafe(generatedAt)}</div>
+                        </div>
+                    </div>
+                    <div class="p-4 grid grid-cols-1 xl:grid-cols-5 gap-4">
+                        <div class="xl:col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                            <div class="grid grid-cols-2 gap-3 text-xs">
+                                <div>
+                                    <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">P rated kW</label>
+                                    <input id="epc-pv-simulator-rated-kw" type="number" min="0" step="1" value="${htmlSafe(epcChartRound(settings.pRatedKw, 2))}" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-bold outline-none focus:border-purple-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">weather_mode</label>
+                                    <select id="epc-pv-simulator-weather" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-bold outline-none focus:border-purple-500">
+                                        ${['clear', 'mixed', 'rainy'].map(mode => `<option value="${mode}" ${settings.weatherMode === mode ? 'selected' : ''}>${mode}</option>`).join('')}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">DC/AC ratio</label>
+                                    <input id="epc-pv-simulator-dc-ac" type="number" min="1" step="0.05" value="${htmlSafe(epcChartRound(settings.dcAcRatio, 2))}" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-bold outline-none focus:border-purple-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Inverter limit kW</label>
+                                    <input id="epc-pv-simulator-inverter-limit" type="number" min="0" step="1" value="${htmlSafe(settings.inverterLimitKw || '')}" placeholder="auto" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-bold outline-none focus:border-purple-500">
+                                </div>
+                                <label class="col-span-2 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 font-black text-slate-700">
+                                    <input id="epc-pv-simulator-lock-seed" type="checkbox" ${settings.fixedRandomState ? 'checked' : ''} class="h-4 w-4 accent-purple-700">
+                                    <span>Fixed random state</span>
+                                </label>
+                                <div class="col-span-2">
+                                    <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Seed</label>
+                                    <input id="epc-pv-simulator-seed" value="${htmlSafe(settings.seed)}" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-xs font-bold outline-none focus:border-purple-500">
+                                </div>
+                                <button type="button" onclick="generateEpcPvSimulator()" class="col-span-2 rounded-xl bg-purple-700 px-4 py-2.5 text-xs font-black text-white hover:bg-purple-800">Generate PV Simulator Profile</button>
+                            </div>
+                        </div>
+                        <div class="xl:col-span-3 rounded-xl border border-slate-200 bg-white overflow-hidden">
+                            ${renderEpcPvSimulatorChart(preview.rows || [])}
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3 px-4 pb-4">
+                        ${[
+                            ['Energy', formatEpcNumber(summary.totalPvEnergyKwh || 0, 0, 'kWh')],
+                            ['Peak', formatEpcNumber(summary.peakPowerKw || 0, 0, 'kW')],
+                            ['Capacity', formatEpcNumber(summary.capacityFactorPct || 0, 1, '%')],
+                            ['Variability', formatEpcNumber(summary.cloudVariabilityIndex || 0, 2)],
+                            ['Clipping', formatEpcNumber(summary.clippingLossPct || 0, 1, '%')],
+                            ['Curtailment', formatEpcNumber(summary.curtailmentLossPct || 0, 1, '%')],
+                            ['Temp loss', formatEpcNumber(summary.temperatureLossPct || 0, 1, '%')],
+                            ['Soiling', formatEpcNumber(summary.soilingLossPct || 0, 1, '%')]
+                        ].map(([label, value]) => `<div class="rounded-xl border border-slate-200 bg-slate-50 p-3"><div class="text-[10px] font-black uppercase text-slate-400">${htmlSafe(label)}</div><div class="mt-1 text-sm font-black text-slate-800">${htmlSafe(value)}</div></div>`).join('')}
+                    </div>
+                    <div class="px-4 pb-4">
+                        <div class="overflow-x-auto rounded-xl border border-slate-200">
+                            <table class="w-full text-left text-xs whitespace-nowrap">
+                                <thead class="bg-slate-50 text-slate-400 uppercase">
+                                    <tr>
+                                        <th class="px-3 py-2">Time</th>
+                                        <th class="px-3 py-2 text-right">PV kW</th>
+                                        <th class="px-3 py-2 text-right">cloud_state</th>
+                                        <th class="px-3 py-2 text-right">temperature_factor</th>
+                                        <th class="px-3 py-2 text-right">soiling_factor</th>
+                                        <th class="px-3 py-2 text-right">inverter_limit_active</th>
+                                        <th class="px-3 py-2 text-right">curtailment_active</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    ${(preview.rows || []).filter((_, index) => index % 36 === 0).map(row => `
+                                        <tr>
+                                            <td class="px-3 py-2 font-black text-slate-700">${htmlSafe(epcMinutesToTime(row.timelineMinute || 0))}</td>
+                                            <td class="px-3 py-2 text-right">${formatEpcNumber(row.pvPowerKw || 0, 1)}</td>
+                                            <td class="px-3 py-2 text-right">${formatEpcNumber(row.cloudState ?? row.cloud_state ?? 0, 0)}</td>
+                                            <td class="px-3 py-2 text-right">${formatEpcNumber(row.temperatureFactor ?? row.temperature_factor ?? 0, 3)}</td>
+                                            <td class="px-3 py-2 text-right">${formatEpcNumber(row.soilingFactor ?? row.soiling_factor ?? 0, 3)}</td>
+                                            <td class="px-3 py-2 text-right">${row.inverterLimitActive || row.inverter_limit_active ? 'yes' : 'no'}</td>
+                                            <td class="px-3 py-2 text-right">${row.curtailmentActive || row.curtailment_active ? 'yes' : 'no'}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        window.generateEpcPvSimulator = generateEpcPvSimulator;
+
         window.toggleEpcEmsFlowSeries = (seriesId, visible = false) => {
             const validIds = EPC_EMS_FLOW_SERIES.map(series => series.id);
             if (!validIds.includes(seriesId)) return;
@@ -12077,6 +12426,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             renderEpcRisks(result);
             renderEpcEnergyFlow(result);
             renderEpcDeviceWorkPage(result);
+            renderEpcPvSimulatorPage(result);
             renderEpcReports(result);
             updateEpcWizardStepStatus(result, project);
             renderEpcLoadMeasurementPanels(project, result);

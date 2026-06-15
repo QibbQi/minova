@@ -732,8 +732,8 @@ test('EPC design project preserves EMS Flow display settings', () => {
       }
     ],
     manualOverrides: [
-      { timelineMinute: 540, batteryKw: -174 },
-      { timelineMinute: 600, batteryKw: 120 }
+      { timelineMinute: 540, pvBatteryKw: 0, batteryLoadKw: 174 },
+      { timelineMinute: 600, pvBatteryKw: 120, batteryLoadKw: 0 }
     ]
   });
 

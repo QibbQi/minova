@@ -273,7 +273,7 @@
         }
         .epc-flow-svg {
             width: 100%;
-            min-height: 420px;
+            min-height: 504px;
             display: block;
         }
         .epc-flow-node-card {
@@ -11300,10 +11300,18 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 if (!priorityOrder.includes(id)) priorityOrder.push(id);
             });
             const manualOverrides = Array.isArray(input.manualOverrides)
-                ? input.manualOverrides.map(item => ({
-                    timelineMinute: Math.round(Math.max(0, Math.min(24 * 60, Number(item?.timelineMinute) || 0))),
-                    batteryKw: epcChartRound(Math.max(-100000, Math.min(100000, Number(item?.batteryKw) || 0)), 2)
-                })).filter(item => item.batteryKw !== 0)
+                ? input.manualOverrides.map(item => {
+                    const legacyBatteryKw = Math.max(-100000, Math.min(100000, Number(item?.batteryKw) || 0));
+                    const batteryLoadKw = epcChartRound(Math.max(0, Math.min(100000, Number(item?.batteryLoadKw) || (legacyBatteryKw < 0 ? Math.abs(legacyBatteryKw) : 0))), 2);
+                    const pvBatteryKw = batteryLoadKw > 0
+                        ? 0
+                        : epcChartRound(Math.max(0, Math.min(100000, Number(item?.pvBatteryKw) || (legacyBatteryKw > 0 ? legacyBatteryKw : 0))), 2);
+                    return {
+                        timelineMinute: Math.round(Math.max(0, Math.min(24 * 60, Number(item?.timelineMinute) || 0))),
+                        pvBatteryKw,
+                        batteryLoadKw
+                    };
+                }).filter(item => item.pvBatteryKw > 0 || item.batteryLoadKw > 0)
                 : [];
             const customStrategies = Array.isArray(input.customStrategies)
                 ? input.customStrategies.map((item, index) => {
@@ -11526,13 +11534,17 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             updateEpcDeviceWorkSettings({ batteryControl: next });
         }
 
-        function updateEpcBatteryManualOverride(timelineMinute, value) {
+        function updateEpcBatteryManualOverride(timelineMinute, field, value) {
             const project = getActiveEpcDesignProject();
             const current = getEpcBatteryControlSettings(project.emsFlowDisplaySettings?.batteryControl);
             const minute = Math.round(Math.max(0, Math.min(24 * 60, Number(timelineMinute) || 0)));
-            const batteryKw = epcChartRound(Math.max(-100000, Math.min(100000, Number(value) || 0)), 2);
+            const requestKw = epcChartRound(Math.max(0, Math.min(100000, Number(value) || 0)), 2);
             const manualOverrides = current.manualOverrides.filter(item => Number(item.timelineMinute) !== minute);
-            if (batteryKw !== 0) manualOverrides.push({ timelineMinute: minute, batteryKw });
+            const existing = current.manualOverrides.find(item => Number(item.timelineMinute) === minute) || { pvBatteryKw: 0, batteryLoadKw: 0 };
+            const nextOverride = field === 'pvBatteryKw'
+                ? { timelineMinute: minute, pvBatteryKw: requestKw, batteryLoadKw: requestKw > 0 ? 0 : Number(existing.batteryLoadKw) || 0 }
+                : { timelineMinute: minute, pvBatteryKw: requestKw > 0 ? 0 : Number(existing.pvBatteryKw) || 0, batteryLoadKw: requestKw };
+            if (nextOverride.pvBatteryKw > 0 || nextOverride.batteryLoadKw > 0) manualOverrides.push(nextOverride);
             updateEpcDeviceWorkSettings({ batteryControl: getEpcBatteryControlSettings({ ...current, mode: 'manual', manualOverrides }) });
         }
 
@@ -11799,11 +11811,16 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return peak * platform;
         }
 
-        function getEpcBatteryManualOverrideKw(batteryControl = EPC_BATTERY_CONTROL_DEFAULT, timelineMinute = 0) {
+        function getEpcBatteryManualOverride(batteryControl = EPC_BATTERY_CONTROL_DEFAULT, timelineMinute = 0) {
             const settings = getEpcBatteryControlSettings(batteryControl);
             const minute = Math.round(Number(timelineMinute) || 0);
-            const match = settings.manualOverrides.find(item => Math.abs(Number(item.timelineMinute) - minute) < 0.5);
-            return match ? Number(match.batteryKw) || 0 : null;
+            const intervalMinutes = [5, 60].includes(Number(settings.manualIntervalMinutes)) ? Number(settings.manualIntervalMinutes) : 60;
+            const overrideMinute = Math.floor(minute / intervalMinutes) * intervalMinutes;
+            const match = settings.manualOverrides.find(item => Math.abs(Number(item.timelineMinute) - overrideMinute) < 0.5);
+            return match ? {
+                pvBatteryKw: Math.max(0, Number(match.pvBatteryKw) || 0),
+                batteryLoadKw: Math.max(0, Number(match.batteryLoadKw) || 0)
+            } : null;
         }
 
         function dispatchEpcDeviceWorkProfileRow(row = {}, model = EPC_DEVICE_WORK_DEFAULT_MODEL, batteryControl = EPC_BATTERY_CONTROL_DEFAULT) {
@@ -11831,13 +11848,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             let pvToBatteryKw = 0;
             let gensetToLoadKw = 0;
             let gensetReason = '';
-            const manualBatteryKw = settings.mode === 'manual' ? getEpcBatteryManualOverrideKw(settings, row.timelineMinute) : null;
-            if (manualBatteryKw !== null) {
-                if (manualBatteryKw < 0) {
-                    batteryToLoadKw = Math.min(remainingLoadKw, Math.abs(manualBatteryKw), batteryDischargeAllowedKw);
+            const manualOverride = settings.mode === 'manual' ? getEpcBatteryManualOverride(settings, row.timelineMinute) : null;
+            if (manualOverride !== null) {
+                if (manualOverride.batteryLoadKw > 0) {
+                    batteryToLoadKw = Math.min(remainingLoadKw, manualOverride.batteryLoadKw, batteryDischargeAllowedKw);
                     remainingLoadKw = Math.max(0, remainingLoadKw - batteryToLoadKw);
-                } else if (manualBatteryKw > 0) {
-                    pvToBatteryKw = Math.min(batteryChargeLimitedKw, manualBatteryKw);
+                } else if (manualOverride.pvBatteryKw > 0) {
+                    pvToBatteryKw = Math.min(batteryChargeLimitedKw, manualOverride.pvBatteryKw);
                     surplusPvKw = Math.max(0, surplusPvKw - pvToBatteryKw);
                 }
             }
@@ -11855,7 +11872,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const gensetPriorityIndex = settings.priorityOrder.indexOf('genset_to_load');
             settings.priorityOrder.forEach(priority => {
                 if (priority === 'pv_to_load') return;
-                if (priority === 'battery_to_load' && remainingLoadKw > 0 && manualBatteryKw === null) {
+                if (priority === 'battery_to_load' && remainingLoadKw > 0 && manualOverride === null) {
                     let batteryLimitKw = batteryDischargeAllowedKw;
                     if (!settings.batteryFirstAboveMinSoc) {
                         batteryLimitKw = Math.min(batteryDischargeAllowedKw, baseBatteryToLoadKw > 0 ? baseBatteryToLoadKw : remainingLoadKw);
@@ -11876,7 +11893,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             : (row.batteryDischargeLimitReason || 'Battery unavailable');
                     }
                 }
-                if (priority === 'pv_to_battery' && surplusPvKw > 0 && manualBatteryKw === null) {
+                if (priority === 'pv_to_battery' && surplusPvKw > 0 && manualOverride === null) {
                     const chargeKw = Math.min(surplusPvKw, batteryChargeLimitedKw);
                     pvToBatteryKw += chargeKw;
                     surplusPvKw = Math.max(0, surplusPvKw - chargeKw);
@@ -11888,7 +11905,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 gensetToLoadKw += gensetSupportKw;
                 remainingLoadKw = Math.max(0, remainingLoadKw - gensetSupportKw);
                 if (gensetSupportKw > 0 && !gensetReason) {
-                    gensetReason = manualBatteryKw !== null
+                    gensetReason = manualOverride !== null
                         ? 'Manual battery limit'
                         : (row.batteryDischargeLimitReason || 'Battery unavailable');
                 }
@@ -12463,21 +12480,19 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         function renderEpcDeviceWorkLoadSummaryRow(rows = []) {
             const source = applyEpcDeviceWorkDurations(Array.isArray(rows) ? rows : []);
             const duration = row => Math.max(0, Number(row.durationHours) || 0);
-            const totalDuration = source.reduce((total, row) => total + duration(row), 0) || 1;
-            const weightedAverage = key => source.reduce((total, row) => total + (Number(row[key]) || 0) * duration(row), 0) / totalDuration;
-            const modeledEnergyKwh = source.reduce((total, row) => total + (Number(row.loadKw) || 0) * duration(row), 0);
+            const summarizeEnergy = key => source.reduce((total, row) => total + (Number(row[key]) || 0) * duration(row), 0);
             const finalSoc = source.at(-1)?.socPct || 0;
             return `
                 <tr class="border-t-2 border-slate-200 bg-slate-50 text-slate-800">
-                    <td class="px-3 py-3 font-black">Modeled ${formatEpcNumber(modeledEnergyKwh, 1)} kWh</td>
-                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(weightedAverage('baseLoadKw'), 1)}</td>
-                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(weightedAverage('loadNoiseKw'), 1)}</td>
-                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(weightedAverage('loadShockKw'), 1)}</td>
-                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(weightedAverage('loadKw'), 1)}</td>
-                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(weightedAverage('pvToLoadKw'), 1)}</td>
-                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(weightedAverage('batteryToLoadKw'), 1)}</td>
-                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(weightedAverage('gensetToLoadKw'), 1)}</td>
-                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(weightedAverage('unmetLoadKw'), 1)}</td>
+                    <td class="px-3 py-3 font-black">Summary</td>
+                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(summarizeEnergy('baseLoadKw'), 1, 'kWh')}</td>
+                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(summarizeEnergy('loadNoiseKw'), 1, 'kWh')}</td>
+                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(summarizeEnergy('loadShockKw'), 1, 'kWh')}</td>
+                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(summarizeEnergy('loadKw'), 1, 'kWh')}</td>
+                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(summarizeEnergy('pvToLoadKw'), 1, 'kWh')}</td>
+                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(summarizeEnergy('batteryToLoadKw'), 1, 'kWh')}</td>
+                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(summarizeEnergy('gensetToLoadKw'), 1, 'kWh')}</td>
+                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(summarizeEnergy('unmetLoadKw'), 1, 'kWh')}</td>
                     <td class="px-3 py-3 text-right font-black">${formatEpcNumber(finalSoc, 1, '%')}</td>
                 </tr>
             `;
@@ -12591,7 +12606,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const settings = getEpcDeviceWorkSettings(result);
             const control = settings.batteryControl;
             const rows = getEpcBatteryControlRows(result, control);
-            const overrideMap = new Map(control.manualOverrides.map(item => [Number(item.timelineMinute), Number(item.batteryKw)]));
+            const overrideMap = new Map(control.manualOverrides.map(item => [Number(item.timelineMinute), item]));
             target.innerHTML = `
                 <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden">
                     <div class="px-4 py-3 border-b border-slate-100">
@@ -12604,7 +12619,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                                 <span class="block text-[10px] font-black uppercase text-slate-400 mb-1">Control mode</span>
                                 <select id="epc-battery-control-mode" onchange="updateEpcBatteryControlSettings()" class="w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs font-black text-slate-700">
                                     <option value="auto" ${control.mode === 'auto' ? 'selected' : ''}>Auto strategy priority</option>
-                                    <option value="manual" ${control.mode === 'manual' ? 'selected' : ''}>Manual charge/discharge kW</option>
+                                    <option value="manual" ${control.mode === 'manual' ? 'selected' : ''}>Manual battery power</option>
                                 </select>
                             </label>
                             <label class="block rounded-xl border border-slate-200 bg-slate-50 p-3">
@@ -12678,8 +12693,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <div class="rounded-xl border border-slate-200 overflow-hidden">
                             <div class="flex flex-wrap items-center justify-between gap-2 bg-slate-50 px-3 py-2">
                                 <div>
-                                    <div class="text-xs font-black text-slate-800">Manual charge/discharge kW</div>
-                                    <div class="text-[11px] font-bold text-slate-400">Positive charges battery; negative discharges battery to load.</div>
+                                    <div class="text-xs font-black text-slate-800">Manual battery power requests</div>
+                                    <div class="text-[11px] font-bold text-slate-400">PV Battery uses available curtailment; Battery load supplies remaining demand. SOC and PCS limits always apply.</div>
                                 </div>
                                 <div class="text-[11px] font-black text-slate-500">${htmlSafe(control.priorityOrder.map(id => EPC_BATTERY_CONTROL_PRIORITY_OPTIONS.find(option => option.id === id)?.label || id).join(' -> '))}</div>
                             </div>
@@ -12690,7 +12705,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                                             <th class="px-3 py-2">Time</th>
                                             <th class="px-3 py-2 text-right">PV kW</th>
                                             <th class="px-3 py-2 text-right">Load kW</th>
-                                            <th class="px-3 py-2 text-right">Override kW</th>
+                                            <th class="px-3 py-2 text-right">PV Battery kW</th>
+                                            <th class="px-3 py-2 text-right">Battery load kW</th>
                                         </tr>
                                     </thead>
                                     <tbody class="divide-y divide-slate-100">
@@ -12702,7 +12718,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                                                     <td class="px-3 py-2 text-right">${formatEpcNumber(row.pvOutputKw, 0)}</td>
                                                     <td class="px-3 py-2 text-right">${formatEpcNumber(row.loadKw, 0)}</td>
                                                     <td class="px-3 py-2 text-right">
-                                                        <input id="epc-battery-control-override-${minute}" type="number" step="1" value="${htmlSafe(overrideMap.get(minute) || '')}" onchange="updateEpcBatteryManualOverride(${minute}, this.value)" class="w-28 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-right font-black text-slate-700">
+                                                        <input id="epc-battery-control-pv-battery-${minute}" type="number" min="0" step="1" value="${htmlSafe(overrideMap.get(minute)?.pvBatteryKw || '')}" onchange="updateEpcBatteryManualOverride(${minute}, 'pvBatteryKw', this.value)" class="w-28 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-right font-black text-slate-700">
+                                                    </td>
+                                                    <td class="px-3 py-2 text-right">
+                                                        <input id="epc-battery-control-battery-load-${minute}" type="number" min="0" step="1" value="${htmlSafe(overrideMap.get(minute)?.batteryLoadKw || '')}" onchange="updateEpcBatteryManualOverride(${minute}, 'batteryLoadKw', this.value)" class="w-28 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-right font-black text-slate-700">
                                                     </td>
                                                 </tr>
                                             `;
@@ -13313,6 +13332,20 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
         window.setEpcEmsFlowTableInterval = setEpcEmsFlowTableInterval;
 
+        function captureEpcEmsFlowTableScroll() {
+            const table = document.getElementById('epc-ems-flow-table-scroll');
+            return table ? { top: table.scrollTop, left: table.scrollLeft } : { top: 0, left: 0 };
+        }
+
+        function restoreEpcEmsFlowTableScroll(position = {}) {
+            requestAnimationFrame(() => {
+                const table = document.getElementById('epc-ems-flow-table-scroll');
+                if (!table) return;
+                table.scrollTop = Math.max(0, Number(position.top) || 0);
+                table.scrollLeft = Math.max(0, Number(position.left) || 0);
+            });
+        }
+
         function renderEpcEnergyFlow(result) {
             const target = document.getElementById('epc-energy-flow-table');
             if (!target) return;
@@ -13338,7 +13371,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <button id="epc-ems-flow-table-60m" type="button" onclick="setEpcEmsFlowTableInterval(60)" class="rounded-md px-3 py-1.5 ${emsTableIntervalMinutes === 60 ? 'bg-purple-700 text-white' : 'text-slate-500'}">1 hour</button>
                     </div>
                 </div>
-                <div class="max-h-[32rem] overflow-auto rounded-xl border border-slate-200">
+                <div id="epc-ems-flow-table-scroll" class="max-h-[32rem] overflow-auto rounded-xl border border-slate-200">
                     <table class="w-full text-left text-xs whitespace-nowrap">
                         <thead class="sticky top-0 z-10 bg-slate-50 text-slate-500 uppercase">
                             <tr>
@@ -13488,9 +13521,11 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         };
 
         window.selectEpcEnergyFlowHour = (hour) => {
+            const scrollPosition = captureEpcEmsFlowTableScroll();
             epcSelectedFlowHour = String(hour || epcSelectedFlowHour);
             if (window.__lastEpcDesignResult) {
                 renderEpcEnergyFlow(window.__lastEpcDesignResult);
+                restoreEpcEmsFlowTableScroll(scrollPosition);
             }
         };
 

@@ -251,10 +251,18 @@ function normalizeEmsFlowDisplaySettings(value = {}) {
     if (!priorityOrder.includes(item)) priorityOrder.push(item);
   });
   const manualOverrides = Array.isArray(batteryControlInput.manualOverrides)
-    ? batteryControlInput.manualOverrides.map(item => ({
-        timelineMinute: Math.round(clamp(item?.timelineMinute, 0, 24 * 60, 0)),
-        batteryKw: round(clamp(item?.batteryKw, -100000, 100000, 0), 2)
-      })).filter(item => item.batteryKw !== 0)
+    ? batteryControlInput.manualOverrides.map(item => {
+        const legacyBatteryKw = clamp(item?.batteryKw, -100000, 100000, 0);
+        const batteryLoadKw = round(clamp(item?.batteryLoadKw, 0, 100000, legacyBatteryKw < 0 ? Math.abs(legacyBatteryKw) : 0), 2);
+        const pvBatteryKw = batteryLoadKw > 0
+          ? 0
+          : round(clamp(item?.pvBatteryKw, 0, 100000, legacyBatteryKw > 0 ? legacyBatteryKw : 0), 2);
+        return {
+          timelineMinute: Math.round(clamp(item?.timelineMinute, 0, 24 * 60, 0)),
+          pvBatteryKw,
+          batteryLoadKw
+        };
+      }).filter(item => item.pvBatteryKw > 0 || item.batteryLoadKw > 0)
     : [];
   const customStrategies = Array.isArray(batteryControlInput.customStrategies)
     ? batteryControlInput.customStrategies.map((item, index) => {

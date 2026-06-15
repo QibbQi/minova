@@ -661,13 +661,14 @@ test('EPC Battery Control is a standalone page between Device Work and PV Simula
     'epc-battery-control-custom-label',
     'Add manual strategy',
     'epc-battery-control-manual-table',
-    'epc-battery-control-override-',
+    'epc-battery-control-pv-battery-',
+    'epc-battery-control-battery-load-',
     'PV -> Load',
     'Battery -> Load',
     'Genset -> Load',
     'PV -> Battery',
     'Auto strategy priority',
-    'Manual charge/discharge kW',
+    'Manual battery power requests',
     'renderEpcBatteryControlPage(result)'
   ]) {
     assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing Battery Control snippet: ${snippet}`);
@@ -725,7 +726,8 @@ test('EPC Device Work exposes auditable load work rows at 5-minute and hourly re
   assert.match(html, /const weightedAverageKeys = \['baseLoadKw', 'loadNoiseKw', 'loadShockKw', 'loadKw', 'pvToLoadKw', 'batteryToLoadKw', 'gensetToLoadKw', 'unmetLoadKw'\]/);
   assert.match(html, /const finalSoc = items\.at\(-1\)\?\.socPct/);
   assert.match(html, /<tfoot class="sticky bottom-0 z-10/);
-  assert.match(html, /Modeled .* kWh/);
+  assert.match(html, />Summary</);
+  assert.match(html, /const summarizeEnergy = key =>/);
   assert.match(html, /renderEpcDeviceWorkAnalysis\(result\)[\s\S]*renderEpcDeviceWorkLoadTable\(result\)/, 'load table should render below the chart analysis cards');
 });
 

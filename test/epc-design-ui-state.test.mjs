@@ -517,7 +517,7 @@ test('EPC PV Simulator is a standalone page feeding EMS and Device Work PV data'
   assert.ok(pvSimulatorPos < reportsPos, 'PV Simulator tab is before Reports');
 });
 
-test('EPC PV Simulator auto-syncs recommendation rating and exposes EMS hourly merge controls', () => {
+test('EPC PV Simulator auto-syncs recommendation rating and project DC AC ratio', () => {
   for (const snippet of [
     'function getEpcRecommendedPvRatedKw(result = {})',
     'function refreshEpcPvSimulatorProfileForRecommendation(project, result)',
@@ -529,6 +529,8 @@ test('EPC PV Simulator auto-syncs recommendation rating and exposes EMS hourly m
     'PV DC',
     'PV AC',
     'DC/AC ratio',
+    'epc-design-dc-ac-ratio',
+    'data-epc-field="assumptions.pvDcAcRatio"',
     'epc-pv-simulator-ac-kw',
     'epc-pv-simulator-random-scale',
     'epc-pv-simulator-cloud-volatility',
@@ -537,11 +539,9 @@ test('EPC PV Simulator auto-syncs recommendation rating and exposes EMS hourly m
     'function updateEpcPvSimulatorFromControls(',
     'function getEpcPvSimulatorDomSettings(result = {}, { regenerateSeed = false } = {})',
     'getEpcPvSimulatorDomSettings(result, { regenerateSeed: true })',
-    'function setEpcEmsFlowMergeHourly(',
-    'function mergeEpcEnergyFlowRowsByHour(',
-    'epc-ems-flow-merge-hourly',
-    'Merge hourly',
-    'project.emsFlowDisplaySettings = { ...(project.emsFlowDisplaySettings || {}), mergeHourly: Boolean(checked) }'
+    'const projectDcAcRatio = Number(project.assumptions?.pvDcAcRatio)',
+    'epc-pv-simulator-dc-ac',
+    'readonly'
   ]) {
     assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing PV Simulator refinement snippet: ${snippet}`);
   }
@@ -574,6 +574,7 @@ test('EPC Device Work profile renders realistic load and genset device behavior'
     'function dispatchEpcDeviceWorkProfileRow(row = {}, model = EPC_DEVICE_WORK_DEFAULT_MODEL, batteryControl = EPC_BATTERY_CONTROL_DEFAULT)',
     'function epcDeviceWorkDeterministicNoise(seed = 0)',
     'function getEpcDeviceWorkLoadShockMultiplier(row, index, rows, model = EPC_DEVICE_WORK_DEFAULT_MODEL, component = \'load\')',
+    'function getEpcDeviceWorkActiveWindow(rows = [], component = \'load\')',
     'function quantizeEpcDeviceWorkGensetPlatform(value, peakValue, platforms = EPC_DEVICE_WORK_GENSET_PLATFORMS, enabled = true)',
     'function getEpcDeviceWorkStepPathD(series, rows, xForIndex, yForPower, yForSoc)',
     "series.id === 'load' || series.id === 'genset'",
@@ -599,16 +600,14 @@ test('EPC Device Work profile renders realistic load and genset device behavior'
     'epc-device-work-genset-shock-duration-min',
     'epc-device-work-genset-shock-impact-pct',
     'epc-device-work-genset-shock-position',
-    'epc-device-work-genset-step-enabled',
-    'epc-device-work-genset-platforms',
     'Apply profile to EMS Flow',
     'Load noise %',
     'Load shock count',
     'Load shock position',
     'Genset shock count',
     'Genset shock position',
-    'Genset stepped platforms',
-    'Platform levels'
+    'data-epc-device-model-row="load"',
+    'data-epc-device-model-row="genset"'
   ]) {
     assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing Device Work profile snippet: ${snippet}`);
   }
@@ -618,6 +617,10 @@ test('EPC Device Work profile renders realistic load and genset device behavior'
   assert.doesNotMatch(profileSource[0], /Math\.random\(\)/, 'Device Work profile must be deterministic across refreshes');
   assert.doesNotMatch(profileSource[0], /(^|[^.A-Za-z0-9_$])round\(/, 'Device Work profile must use browser-local rounding helpers');
   assert.match(html, /loadKw:\s*epcChartRound\(loadKwWithShock, 2\)/, 'Load profile should include deterministic fluctuation and shock');
+  const shockSource = html.match(/function getEpcDeviceWorkLoadShockMultiplier\([\s\S]*?function quantizeEpcDeviceWorkGensetPlatform/);
+  assert.ok(shockSource, 'Device Work shock source should be found');
+  assert.match(shockSource[0], /const activeWindow = getEpcDeviceWorkActiveWindow\(rows, component\)/, 'shock position should use the active equipment window');
+  assert.doesNotMatch(shockSource[0], /const firstMinute = Number\(rows\[0\]/, 'shock position should not start at the first zero-load timeline row');
   assert.match(html, /pvToLoadKw:\s*epcChartRound\(adjusted\.pvToLoadKw, 2\)/, 'PV to load should come from SOC-ledger dispatch output');
   assert.match(html, /batteryToLoadKw:\s*epcChartRound\(adjusted\.batteryToLoadKw, 2\)/, 'Battery should come from SOC-ledger dispatch output');
   assert.match(html, /gensetToLoadKw:\s*epcChartRound\(adjusted\.gensetToLoadKw, 2\)/, 'Genset should come from SOC-ledger dispatch output');
@@ -691,12 +694,17 @@ test('EPC Device Work model controls update the profile immediately', () => {
     assert.match(modelControls[0], scheduledInputPattern, `${id} should debounce live profile updates`);
   }
   assert.match(html, /function scheduleEpcDeviceWorkModelUpdate\(\)/);
+  assert.match(modelControls[0], /data-epc-device-model-row="load"/);
+  assert.match(modelControls[0], /data-epc-device-model-row="genset"/);
+  assert.doesNotMatch(modelControls[0], /id="epc-device-work-genset-step-enabled"/);
+  assert.doesNotMatch(modelControls[0], /id="epc-device-work-genset-platforms"/);
 });
 
 test('EPC Device Work exposes auditable load work rows at 5-minute and hourly resolution', () => {
   for (const snippet of [
     'function getEpcDeviceWorkLoadTableRows(rows = [], intervalMinutes = 5)',
     'function renderEpcDeviceWorkLoadTable(result)',
+    'function renderEpcDeviceWorkLoadSummaryRow(rows = [])',
     'function setEpcDeviceWorkLoadTableInterval(minutes)',
     'id="epc-device-work-load-table"',
     'id="epc-device-work-load-table-5m"',
@@ -716,6 +724,8 @@ test('EPC Device Work exposes auditable load work rows at 5-minute and hourly re
   }
   assert.match(html, /const weightedAverageKeys = \['baseLoadKw', 'loadNoiseKw', 'loadShockKw', 'loadKw', 'pvToLoadKw', 'batteryToLoadKw', 'gensetToLoadKw', 'unmetLoadKw'\]/);
   assert.match(html, /const finalSoc = items\.at\(-1\)\?\.socPct/);
+  assert.match(html, /<tfoot class="sticky bottom-0 z-10/);
+  assert.match(html, /Modeled .* kWh/);
   assert.match(html, /renderEpcDeviceWorkAnalysis\(result\)[\s\S]*renderEpcDeviceWorkLoadTable\(result\)/, 'load table should render below the chart analysis cards');
 });
 
@@ -736,6 +746,29 @@ test('EPC Battery Control keeps available battery ahead of genset and curtailmen
   assert.match(dispatch[0], /const chargeKw = Math\.min\(surplusPvKw, batteryChargeLimitedKw\);/, 'all chargeable PV surplus should go to battery before curtailment');
   assert.match(dispatch[0], /const gensetShockMayPreempt = settings\.gensetShockPreemptBattery === true;/, 'genset shock preemption should be an explicit strategy setting');
   assert.match(dispatch[0], /curtailmentKw: Math\.max\(0, surplusPvKw\)/, 'curtailment should only receive final PV surplus');
+  assert.match(dispatch[0], /gensetReason/, 'dispatch should explain why genset was required');
+  assert.match(html, /batteryDischargeLimitReason/, 'SOC ledger should expose the active battery discharge limit reason');
+  assert.match(html, /PCS limit/, 'PCS-limited residual load should be explicit');
+});
+
+test('EPC EMS table uses fixed five-minute or hourly display with final SOC', () => {
+  for (const snippet of [
+    'function setEpcEmsFlowTableInterval(minutes)',
+    'epc-ems-flow-table-5m',
+    'epc-ems-flow-table-60m',
+    'emsTableIntervalMinutes',
+    'Genset reason',
+    'max-h-[32rem] overflow-auto',
+    '<thead class="sticky top-0 z-10',
+    '<tfoot class="sticky bottom-0 z-10'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing fixed EMS table snippet: ${snippet}`);
+  }
+  const hourlyMerge = html.match(/function mergeEpcEnergyFlowRowsByHour\(rows = \[\]\)[\s\S]*?function getEpcEnergyFlowDisplayRows/);
+  assert.ok(hourlyMerge, 'hourly EMS merge should be found');
+  assert.match(hourlyMerge[0], /const finalRow = items\.at\(-1\)/, 'hourly SOC should come from the final five-minute row');
+  assert.match(hourlyMerge[0], /socPct: epcChartRound\(finalRow\?\.socPct/, 'hourly SOC should not be averaged');
+  assert.doesNotMatch(html, /id="epc-ems-flow-merge-hourly"/, 'legacy Merge hourly checkbox should be removed');
 });
 
 test('EPC finish time changes do not open the working time confirmation dialog', () => {

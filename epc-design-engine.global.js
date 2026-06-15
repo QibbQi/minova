@@ -207,6 +207,9 @@ const GLOBAL_SOLAR_ATLAS_API_BASE = 'https://2eueu84zmf.execute-api.eu-west-1.am
 
   function normalizeEmsFlowDisplaySettings(value = {}) {
     const input = value && typeof value === 'object' ? value : {};
+    const emsTableIntervalMinutes = [5, 60].includes(Number(input.emsTableIntervalMinutes))
+      ? Number(input.emsTableIntervalMinutes)
+      : (input.mergeHourly === false ? 5 : 60);
     const rawSeries = Array.isArray(input.visibleSeries) ? input.visibleSeries : EMS_FLOW_DISPLAY_SERIES;
     const visibleSeries = rawSeries
       .map(item => String(item || '').trim().toLowerCase())
@@ -274,6 +277,7 @@ const GLOBAL_SOLAR_ATLAS_API_BASE = 'https://2eueu84zmf.execute-api.eu-west-1.am
     return {
       visibleSeries: visibleSeries.length ? visibleSeries : [...EMS_FLOW_DISPLAY_SERIES],
       mergeHourly: input.mergeHourly !== false,
+      emsTableIntervalMinutes,
       intervalMinutes: EMS_FLOW_INTERVAL_MINUTES.includes(Number(input.intervalMinutes)) ? Number(input.intervalMinutes) : 5,
       selectedRange,
       peakBand: {
@@ -419,6 +423,10 @@ const GLOBAL_SOLAR_ATLAS_API_BASE = 'https://2eueu84zmf.execute-api.eu-west-1.am
       normalizedAssumptions.minSocPct = EPC_DESIGN_DEFAULTS.minSocPct;
       normalizedAssumptions.bessDod = EPC_DESIGN_DEFAULTS.bessDod;
     }
+    const rawPvDcAcRatio = Number(assumptions.pvDcAcRatio ?? defaults.pvDcAcRatio);
+    normalizedAssumptions.pvDcAcRatio = Number.isFinite(rawPvDcAcRatio) && rawPvDcAcRatio >= 1
+      ? rawPvDcAcRatio
+      : 1.2;
 
     return {
       id,

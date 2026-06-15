@@ -11319,6 +11319,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
         function getEpcDeviceWorkSettings(result = {}) {
             const raw = result.emsFlowDisplaySettings || {};
+            const recommended = getRecommendedEpcScheme(result);
             const colorInput = raw.seriesColors && typeof raw.seriesColors === 'object' ? raw.seriesColors : {};
             const seriesColors = Object.fromEntries(EPC_EMS_FLOW_SERIES.map(series => {
                 const color = String(colorInput[series.id] || series.color || '#64748b').trim();
@@ -11347,7 +11348,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 },
                 deviceWorkModel: getEpcDeviceWorkModelSettings(raw.deviceWorkModel),
                 batteryControl: getEpcBatteryControlSettings(raw.batteryControl),
+                socMinPct: Math.max(0, Math.min(100, Number(result.energyFlow?.summary?.socMinPct) || 0)),
                 socMaxPct: Math.max(0, Math.min(100, Number(result.energyFlow?.summary?.socMaxPct) || 100)),
+                batteryCapacityKwh: Math.max(0, Number(recommended?.bessRecommendedMwh) || 0) * 1000,
+                pcsKw: Math.max(0, Number(recommended?.pcsRecommendedMw) || 0) * 1000,
                 seriesColors
             };
         }
@@ -11767,21 +11771,27 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const rawSocPct = Number(row.socPct);
             const socPct = Number.isFinite(rawSocPct) ? Math.max(0, Math.min(100, rawSocPct)) : null;
             const socMaxPct = Math.max(0, Math.min(100, Number(row.socMaxPct) || 100));
+            const socMinPct = Math.max(0, Math.min(socMaxPct, Number(row.socMinPct) || 0));
             const batteryCanCharge = socPct === null || socPct < socMaxPct - 0.05;
+            const batteryCanDischarge = socPct === null || socPct > socMinPct + 0.05;
             const pvToLoadKw = Math.min(pvOutputKw, loadKw);
             let remainingLoadKw = Math.max(0, loadKw - pvToLoadKw);
             let surplusPvKw = Math.max(0, pvOutputKw - pvToLoadKw);
+            const chargeLimitInput = Number(row.batteryChargeLimitKw);
+            const chargeLimitKw = Number.isFinite(chargeLimitInput) ? Math.max(0, chargeLimitInput) : surplusPvKw;
             const batteryChargeAllowedKw = batteryCanCharge ? surplusPvKw : 0;
+            const batteryChargeLimitedKw = Math.min(batteryChargeAllowedKw, chargeLimitKw);
+            const batteryDischargeAllowedKw = batteryCanDischarge ? Math.max(0, Number(row.batteryDischargeLimitKw) || 0) : 0;
             let batteryToLoadKw = 0;
             let pvToBatteryKw = 0;
             let gensetToLoadKw = 0;
             const manualBatteryKw = settings.mode === 'manual' ? getEpcBatteryManualOverrideKw(settings, row.timelineMinute) : null;
             if (manualBatteryKw !== null) {
                 if (manualBatteryKw < 0) {
-                    batteryToLoadKw = Math.min(remainingLoadKw, Math.abs(manualBatteryKw));
+                    batteryToLoadKw = Math.min(remainingLoadKw, Math.abs(manualBatteryKw), batteryDischargeAllowedKw);
                     remainingLoadKw = Math.max(0, remainingLoadKw - batteryToLoadKw);
                 } else if (manualBatteryKw > 0) {
-                    pvToBatteryKw = Math.min(batteryChargeAllowedKw, manualBatteryKw);
+                    pvToBatteryKw = Math.min(batteryChargeLimitedKw, manualBatteryKw);
                     surplusPvKw = Math.max(0, surplusPvKw - pvToBatteryKw);
                 }
             }
@@ -11796,22 +11806,21 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             settings.priorityOrder.forEach(priority => {
                 if (priority === 'pv_to_load') return;
                 if (priority === 'battery_to_load' && remainingLoadKw > 0 && manualBatteryKw === null) {
-                    const batteryLimitKw = baseBatteryToLoadKw > 0 ? baseBatteryToLoadKw : remainingLoadKw;
+                    const batteryLimitKw = Math.min(batteryDischargeAllowedKw, baseBatteryToLoadKw > 0 ? baseBatteryToLoadKw : remainingLoadKw);
                     const batterySupportKw = Math.min(remainingLoadKw, batteryLimitKw);
                     batteryToLoadKw += batterySupportKw;
                     remainingLoadKw = Math.max(0, remainingLoadKw - batterySupportKw);
                 }
                 if (priority === 'genset_to_load' && remainingLoadKw > 0) {
-                    const finalGensetDemandKw = Math.max(0, remainingLoadKw - batteryToLoadKw);
-                    const demandKw = finalGensetDemandKw > 0 ? remainingLoadKw : 0;
+                    const demandKw = remainingLoadKw;
                     const steppedGensetKw = quantizeEpcDeviceWorkGensetPlatform(demandKw, gensetPeakKw, model.gensetPlatforms, model.gensetStepEnabled);
                     const gensetSupportKw = Math.min(remainingLoadKw, steppedGensetKw);
                     gensetToLoadKw += gensetSupportKw;
                     remainingLoadKw = Math.max(0, remainingLoadKw - gensetSupportKw);
                 }
                 if (priority === 'pv_to_battery' && surplusPvKw > 0 && manualBatteryKw === null) {
-                    const chargeLimitKw = basePvToBatteryKw > 0 ? basePvToBatteryKw : batteryChargeAllowedKw;
-                    const chargeKw = Math.min(batteryChargeAllowedKw, chargeLimitKw);
+                    const dispatchChargeLimitKw = basePvToBatteryKw > 0 ? basePvToBatteryKw : batteryChargeLimitedKw;
+                    const chargeKw = Math.min(batteryChargeLimitedKw, dispatchChargeLimitKw);
                     pvToBatteryKw += chargeKw;
                     surplusPvKw = Math.max(0, surplusPvKw - chargeKw);
                 }
@@ -11830,6 +11839,57 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 curtailmentKw: Math.max(0, surplusPvKw),
                 unmetLoadKw: Math.max(0, remainingLoadKw)
             };
+        }
+
+        function applyEpcDeviceWorkSocLedger(profiled = [], settings = {}) {
+            const rows = applyEpcDeviceWorkDurations(Array.isArray(profiled) ? profiled : []);
+            if (!rows.length) return rows;
+            const model = getEpcDeviceWorkModelSettings(settings.deviceWorkModel);
+            const batteryControl = getEpcBatteryControlSettings(settings.batteryControl);
+            const socMaxPct = Math.max(0, Math.min(100, Number(settings.socMaxPct) || 100));
+            const socMinPct = Math.max(0, Math.min(socMaxPct, Number(settings.socMinPct) || 0));
+            const batteryCapacityKwh = Math.max(0, Number(settings.batteryCapacityKwh) || 0);
+            const rawPcsKw = Number(settings.pcsKw);
+            const pcsLimitKw = Number.isFinite(rawPcsKw) && rawPcsKw > 0 ? rawPcsKw : Number.POSITIVE_INFINITY;
+            const firstSoc = Number(rows[0]?.socPct);
+            const initialSocPct = Number.isFinite(firstSoc) ? Math.max(socMinPct, Math.min(socMaxPct, firstSoc)) : socMaxPct;
+            const minSocKwh = batteryCapacityKwh * socMinPct / 100;
+            const maxSocKwh = batteryCapacityKwh * socMaxPct / 100;
+            let socKwh = batteryCapacityKwh * initialSocPct / 100;
+            socKwh = Math.max(minSocKwh, Math.min(maxSocKwh, socKwh));
+            return rows.map((row, index) => {
+                const durationHours = Math.max(0.001, Number(row.durationHours) || (Number(row.intervalMinutes) > 0 ? Number(row.intervalMinutes) / 60 : 1));
+                const currentSocPct = batteryCapacityKwh > 0 ? (socKwh / batteryCapacityKwh) * 100 : socMinPct;
+                const batteryChargeLimitKw = batteryCapacityKwh > 0
+                    ? Math.min(pcsLimitKw, Math.max(0, maxSocKwh - socKwh) / durationHours)
+                    : 0;
+                const batteryDischargeLimitKw = batteryCapacityKwh > 0
+                    ? Math.min(pcsLimitKw, Math.max(0, socKwh - minSocKwh) / durationHours)
+                    : 0;
+                const adjusted = dispatchEpcDeviceWorkProfileRow({
+                    ...row,
+                    rowIndex: index,
+                    rows,
+                    socPct: currentSocPct,
+                    socMinPct,
+                    socMaxPct,
+                    batteryChargeLimitKw,
+                    batteryDischargeLimitKw
+                }, model, batteryControl);
+                socKwh += ((Number(adjusted.pvToBatteryKw) || 0) - (Number(adjusted.batteryToLoadKw) || 0)) * durationHours;
+                socKwh = Math.max(minSocKwh, Math.min(maxSocKwh, socKwh));
+                adjusted.socPct = batteryCapacityKwh > 0 ? (socKwh / batteryCapacityKwh) * 100 : currentSocPct;
+                return {
+                    ...row,
+                    pvToLoadKw: epcChartRound(adjusted.pvToLoadKw, 2),
+                    pvToBatteryKw: epcChartRound(adjusted.pvToBatteryKw, 2),
+                    batteryToLoadKw: epcChartRound(adjusted.batteryToLoadKw, 2),
+                    gensetToLoadKw: epcChartRound(adjusted.gensetToLoadKw, 2),
+                    curtailmentKw: epcChartRound(adjusted.curtailmentKw, 2),
+                    unmetLoadKw: epcChartRound(adjusted.unmetLoadKw, 2),
+                    socPct: epcChartRound(adjusted.socPct, 1)
+                };
+            });
         }
 
         function interpolateEpcDeviceWorkRow(a = {}, b = {}, pct = 0, index = 0, intervalMinutes = 60, minute = null) {
@@ -11904,23 +11964,19 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 const loadShock = getEpcDeviceWorkLoadShockMultiplier(row, index, rows, model, 'load');
                 // Load shock is a concept-design visual assumption, not a replacement for measured load study.
                 const loadKwWithShock = Math.min(loadPeakKw * 1.25, Math.max(0, baseLoadKw * (1 + loadNoise + loadShock)));
-                const dispatch = dispatchEpcDeviceWorkProfileRow(
-                    { ...row, loadKw: loadKwWithShock, gensetPeakKw, rowIndex: index, rows, socMaxPct: settings.socMaxPct },
-                    model,
-                    batteryControl
-                );
                 return {
                     ...row,
+                    gensetPeakKw,
+                    rowIndex: index,
                     loadKw: epcChartRound(loadKwWithShock, 2),
-                    pvToLoadKw: epcChartRound(dispatch.pvToLoadKw, 2),
-                    pvToBatteryKw: epcChartRound(dispatch.pvToBatteryKw, 2),
-                    batteryToLoadKw: epcChartRound(dispatch.batteryToLoadKw, 2),
-                    gensetToLoadKw: epcChartRound(dispatch.gensetToLoadKw, 2),
-                    curtailmentKw: epcChartRound(dispatch.curtailmentKw, 2),
-                    unmetLoadKw: epcChartRound(dispatch.unmetLoadKw, 2)
+                    rows
                 };
             });
-            return applyEpcDeviceWorkDurations(profiled);
+            return applyEpcDeviceWorkSocLedger(profiled.map((row, index) => ({ ...row, rowIndex: index, rows: profiled })), {
+                ...settings,
+                deviceWorkModel: model,
+                batteryControl
+            });
         }
 
         function getEpcDeviceWorkRowsForSettings(sourceRows = [], settings = {}) {
@@ -12721,14 +12777,23 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
 
         function renderEpcPvSimulatorChart(rows = []) {
+            const chartRows = Array.isArray(rows) ? rows.filter(Boolean) : [];
             const chart = { left: 54, right: 28, top: 28, bottom: 34, width: 880, height: 260 };
             const plotWidth = chart.width - chart.left - chart.right;
             const plotHeight = chart.height - chart.top - chart.bottom;
-            const maxKw = Math.max(1, ...rows.flatMap(row => [row.pvPowerKw, row.clearSkyKw || 0]));
-            const xFor = index => chart.left + (rows.length <= 1 ? 0 : (index / (rows.length - 1)) * plotWidth);
+            const maxKw = Math.max(1, ...chartRows.flatMap(row => [row.pvPowerKw, row.clearSkyKw || 0]));
+            const minutes = chartRows.map((row, index) => Number.isFinite(Number(row.timelineMinute)) ? Number(row.timelineMinute) : index * 5);
+            const firstMinute = Number.isFinite(minutes[0]) ? minutes[0] : 6 * 60;
+            const lastMinute = Number.isFinite(minutes.at(-1)) && minutes.at(-1) > firstMinute ? minutes.at(-1) : 20 * 60;
+            const xForMinute = minute => chart.left + ((Math.max(firstMinute, Math.min(lastMinute, minute)) - firstMinute) / Math.max(1, lastMinute - firstMinute)) * plotWidth;
             const yFor = value => chart.top + ((maxKw - Math.max(0, Number(value) || 0)) / maxKw) * plotHeight;
-            const lineD = key => rows.map((row, index) => `${index ? 'L' : 'M'} ${epcChartRound(xFor(index), 2)} ${epcChartRound(yFor(row[key]), 2)}`).join(' ');
-            const labels = [0, 6, 12, 18, 24].map(hour => ({ hour, x: chart.left + (hour / 24) * plotWidth }));
+            const lineD = key => chartRows.map((row, index) => {
+                const minute = Number.isFinite(Number(row.timelineMinute)) ? Number(row.timelineMinute) : firstMinute + index * 5;
+                return `${index ? 'L' : 'M'} ${epcChartRound(xForMinute(minute), 2)} ${epcChartRound(yFor(row[key]), 2)}`;
+            }).join(' ');
+            const labelMinutes = [firstMinute, 9 * 60, 12 * 60, 15 * 60, 18 * 60, lastMinute]
+                .filter((minute, index, array) => minute >= firstMinute && minute <= lastMinute && array.indexOf(minute) === index);
+            const labels = labelMinutes.map(minute => ({ minute, x: xForMinute(minute) }));
             return `
                 <svg class="w-full min-h-[260px]" viewBox="0 0 ${chart.width} ${chart.height}" role="img" aria-label="PV Simulator daily output chart">
                     ${[0, 0.25, 0.5, 0.75, 1].map(pct => {
@@ -12737,12 +12802,53 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <text x="${chart.left - 10}" y="${epcChartRound(yFor(value) + 4, 2)}" text-anchor="end" class="text-[10px] fill-slate-400 font-bold">${htmlSafe(formatEpcNumber(value, 0))}</text>`;
                     }).join('')}
                     ${labels.map(item => `<line x1="${epcChartRound(item.x, 2)}" x2="${epcChartRound(item.x, 2)}" y1="${chart.top}" y2="${chart.top + plotHeight}" stroke="#f1f5f9"/>
-                    <text x="${epcChartRound(item.x, 2)}" y="${chart.height - 10}" text-anchor="middle" class="text-[10px] fill-slate-400 font-bold">${String(item.hour).padStart(2, '0')}:00</text>`).join('')}
+                    <text x="${epcChartRound(item.x, 2)}" y="${chart.height - 10}" text-anchor="middle" class="text-[10px] fill-slate-400 font-bold">${htmlSafe(epcMinutesToTime(item.minute))}</text>`).join('')}
                     <path d="${lineD('clearSkyKw')}" fill="none" stroke="#cbd5e1" stroke-width="3" stroke-dasharray="6 6"/>
                     <path d="${lineD('pvPowerKw')}" fill="none" stroke="#f59e0b" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
                     <text x="12" y="${chart.top + plotHeight / 2}" transform="rotate(-90 12 ${chart.top + plotHeight / 2})" class="text-[10px] fill-slate-500 font-black">kW</text>
                 </svg>
             `;
+        }
+
+        function getEpcPvSimulatorDisplayRows(rows = [], intervalMinutes = 60) {
+            const daylightRows = (Array.isArray(rows) ? rows : []).map((row, index) => {
+                const timelineMinute = Number.isFinite(Number(row.timelineMinute))
+                    ? Number(row.timelineMinute)
+                    : Number.isFinite(Number(row.hour))
+                    ? Number(row.hour) * 60
+                    : index * 5;
+                return { ...row, timelineMinute };
+            }).filter(row => {
+                const timelineMinute = Number(row.timelineMinute) || 0;
+                return timelineMinute >= 6 * 60 && timelineMinute <= 20 * 60;
+            });
+            if (Number(intervalMinutes) !== 60) return daylightRows;
+            const groups = new Map();
+            daylightRows.forEach(row => {
+                const hourMinute = Math.floor((Number(row.timelineMinute) || 0) / 60) * 60;
+                if (!groups.has(hourMinute)) groups.set(hourMinute, []);
+                groups.get(hourMinute).push(row);
+            });
+            const average = (items, key) => items.reduce((total, item) => total + (Number(item[key]) || 0), 0) / Math.max(1, items.length);
+            return [...groups.entries()].sort(([a], [b]) => a - b).map(([timelineMinute, items]) => {
+                const first = items[0] || {};
+                return {
+                    ...first,
+                    timelineMinute,
+                    pvPowerKw: average(items, 'pvPowerKw'),
+                    clearSkyKw: average(items, 'clearSkyKw'),
+                    cloudState: Math.round(average(items, 'cloudState')),
+                    cloud_state: Math.round(average(items, 'cloud_state')),
+                    temperatureFactor: average(items, 'temperatureFactor'),
+                    temperature_factor: average(items, 'temperature_factor'),
+                    soilingFactor: average(items, 'soilingFactor'),
+                    soiling_factor: average(items, 'soiling_factor'),
+                    inverterLimitActive: items.some(item => item.inverterLimitActive || item.inverter_limit_active),
+                    inverter_limit_active: items.some(item => item.inverterLimitActive || item.inverter_limit_active),
+                    curtailmentActive: items.some(item => item.curtailmentActive || item.curtailment_active),
+                    curtailment_active: items.some(item => item.curtailmentActive || item.curtailment_active)
+                };
+            });
         }
 
         function renderEpcPvSimulatorPage(result) {
@@ -12831,7 +12937,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             </div>
                         </div>
                         <div class="xl:col-span-3 rounded-xl border border-slate-200 bg-white overflow-hidden">
-                            ${renderEpcPvSimulatorChart(preview.rows || [])}
+                            <div class="px-3 pt-3 text-[10px] font-black uppercase text-slate-400">Display window 06:00-20:00</div>
+                            ${renderEpcPvSimulatorChart(getEpcPvSimulatorDisplayRows(preview.rows || [], 5))}
                         </div>
                     </div>
                     <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3 px-4 pb-4">
@@ -12861,7 +12968,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
-                                    ${(preview.rows || []).filter((_, index) => index % 36 === 0).map(row => `
+                                    ${getEpcPvSimulatorDisplayRows(preview.rows || [], 60).map(row => `
                                         <tr>
                                             <td class="px-3 py-2 font-black text-slate-700">${htmlSafe(epcMinutesToTime(row.timelineMinute || 0))}</td>
                                             <td class="px-3 py-2 text-right">${formatEpcNumber(row.pvPowerKw || 0, 1)}</td>

@@ -548,9 +548,25 @@ test('EPC PV Simulator auto-syncs recommendation rating and exposes EMS hourly m
   assert.doesNotMatch(html, /Math\.random\(\) \* 100000/, 'PV Simulator should use deterministic seed helpers for random profile state');
 });
 
+test('EPC PV Simulator display focuses daylight chart and hourly preview table', () => {
+  for (const snippet of [
+    'function getEpcPvSimulatorDisplayRows(rows = [], intervalMinutes = 60)',
+    'timelineMinute >= 6 * 60',
+    'timelineMinute <= 20 * 60',
+    'renderEpcPvSimulatorChart(getEpcPvSimulatorDisplayRows(preview.rows || [], 5))',
+    'getEpcPvSimulatorDisplayRows(preview.rows || [], 60)',
+    '06:00',
+    '20:00'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing PV Simulator daylight snippet: ${snippet}`);
+  }
+  assert.doesNotMatch(html, /\(preview\.rows \|\| \[\]\)\.filter\(\(_, index\) => index % 36 === 0\)/, 'PV Simulator table should not use fixed 3-hour sampling');
+});
+
 test('EPC Device Work profile renders realistic load and genset device behavior', () => {
   for (const snippet of [
     'function buildEpcDeviceWorkProfileRows(sourceRows = [], settings = {})',
+    'function applyEpcDeviceWorkSocLedger(profiled = [], settings = {})',
     'function getEpcEmsFlowProfileRows(result = {})',
     'function getEpcDeviceWorkModelSettings(raw = {})',
     'function updateEpcDeviceWorkModelSettings()',
@@ -602,15 +618,20 @@ test('EPC Device Work profile renders realistic load and genset device behavior'
   assert.doesNotMatch(profileSource[0], /Math\.random\(\)/, 'Device Work profile must be deterministic across refreshes');
   assert.doesNotMatch(profileSource[0], /(^|[^.A-Za-z0-9_$])round\(/, 'Device Work profile must use browser-local rounding helpers');
   assert.match(html, /loadKw:\s*epcChartRound\(loadKwWithShock, 2\)/, 'Load profile should include deterministic fluctuation and shock');
-  assert.match(html, /pvToLoadKw:\s*epcChartRound\(dispatch\.pvToLoadKw, 2\)/, 'PV to load should come from dispatch output');
-  assert.match(html, /batteryToLoadKw:\s*epcChartRound\(dispatch\.batteryToLoadKw, 2\)/, 'Battery should come from dispatch output');
-  assert.match(html, /gensetToLoadKw:\s*epcChartRound\(dispatch\.gensetToLoadKw, 2\)/, 'Genset should come from dispatch output');
+  assert.match(html, /pvToLoadKw:\s*epcChartRound\(adjusted\.pvToLoadKw, 2\)/, 'PV to load should come from SOC-ledger dispatch output');
+  assert.match(html, /batteryToLoadKw:\s*epcChartRound\(adjusted\.batteryToLoadKw, 2\)/, 'Battery should come from SOC-ledger dispatch output');
+  assert.match(html, /gensetToLoadKw:\s*epcChartRound\(adjusted\.gensetToLoadKw, 2\)/, 'Genset should come from SOC-ledger dispatch output');
   assert.match(html, /const pvToLoadKw = Math\.min\(pvOutputKw, loadKw\)/, 'PV should serve load before charging or curtailing');
   assert.match(html, /let remainingLoadKw = Math\.max\(0, loadKw - pvToLoadKw\)/, 'Battery and genset should only serve remaining load');
-  assert.match(html, /Math\.max\(0, remainingLoadKw - batteryToLoadKw\)/, 'Genset should be last priority after battery unless strategy changes');
+  assert.match(html, /const demandKw = remainingLoadKw;/, 'Genset should serve only the remaining load unless strategy changes');
   assert.match(html, /const socMaxPct = Math\.max\(0, Math\.min\(100, Number\(row\.socMaxPct\) \|\| 100\)\)/, 'Device Work dispatch should know the active EMS max SOC');
+  assert.match(html, /const socMinPct = Math\.max\(0, Math\.min\(socMaxPct, Number\(row\.socMinPct\) \|\| 0\)\)/, 'Device Work dispatch should know the active EMS min SOC');
   assert.match(html, /const batteryCanCharge = socPct === null \|\| socPct < socMaxPct - 0\.05/, 'Battery should not charge when displayed SOC is already capped');
+  assert.match(html, /const batteryCanDischarge = socPct === null \|\| socPct > socMinPct \+ 0\.05/, 'Battery should not discharge when displayed SOC is already at minimum');
   assert.match(html, /const batteryChargeAllowedKw = batteryCanCharge \? surplusPvKw : 0/, 'PV surplus should curtail instead of charging at max SOC');
+  assert.match(html, /const batteryDischargeAllowedKw = batteryCanDischarge \? Math\.max\(0, Number\(row\.batteryDischargeLimitKw\) \|\| 0\) : 0/, 'Battery discharge should be capped by SOC energy headroom');
+  assert.match(html, /socKwh = Math\.max\(minSocKwh, Math\.min\(maxSocKwh, socKwh\)\)/, 'Device Work SOC should be maintained by a sequential energy ledger');
+  assert.match(html, /socPct: epcChartRound\(adjusted\.socPct, 1\)/, 'Profile rows should expose recalculated SOC from the ledger');
   const flowRenderer = html.match(/function renderEpcEnergyFlow\(result\)[\s\S]*?function renderEpcReports\(result\)/);
   assert.ok(flowRenderer, 'EMS Flow renderer should be found');
   assert.match(flowRenderer[0], /getEpcEnergyFlowDisplayRows\(result\)/, 'EMS Flow table should use profiled display rows');

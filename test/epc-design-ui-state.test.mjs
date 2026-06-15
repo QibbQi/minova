@@ -375,7 +375,7 @@ test('EPC EMS flow exposes animated system diagram and clickable hour rows', () 
 });
 
 test('EPC Device Work is a standalone chart page with status analysis', () => {
-  assert.match(html, /data-epc-panel-tab="flow"[\s\S]*?EMS Flow[\s\S]*?data-epc-panel-tab="devicework"[\s\S]*?Device Work[\s\S]*?data-epc-panel-tab="pvsimulator"[\s\S]*?PV Simulator[\s\S]*?data-epc-panel-tab="reports"[\s\S]*?Reports/);
+  assert.match(html, /data-epc-panel-tab="flow"[\s\S]*?EMS Flow[\s\S]*?data-epc-panel-tab="devicework"[\s\S]*?Device Work[\s\S]*?data-epc-panel-tab="batterycontrol"[\s\S]*?Battery Control[\s\S]*?data-epc-panel-tab="pvsimulator"[\s\S]*?PV Simulator[\s\S]*?data-epc-panel-tab="reports"[\s\S]*?Reports/);
   for (const snippet of [
     'id="epc-device-work-page"',
     'data-epc-panel="devicework"',
@@ -509,9 +509,11 @@ test('EPC PV Simulator is a standalone page feeding EMS and Device Work PV data'
   }
 
   const deviceWorkPos = source.indexOf('data-epc-panel-tab="devicework"');
+  const batteryControlPos = source.indexOf('data-epc-panel-tab="batterycontrol"');
   const pvSimulatorPos = source.indexOf('data-epc-panel-tab="pvsimulator"');
   const reportsPos = source.indexOf('data-epc-panel-tab="reports"');
-  assert.ok(deviceWorkPos < pvSimulatorPos, 'PV Simulator tab is after Device Work');
+  assert.ok(deviceWorkPos < batteryControlPos, 'Battery Control tab is after Device Work');
+  assert.ok(batteryControlPos < pvSimulatorPos, 'PV Simulator tab is after Battery Control');
   assert.ok(pvSimulatorPos < reportsPos, 'PV Simulator tab is before Reports');
 });
 
@@ -553,8 +555,9 @@ test('EPC Device Work profile renders realistic load and genset device behavior'
     'function getEpcDeviceWorkModelSettings(raw = {})',
     'function updateEpcDeviceWorkModelSettings()',
     'const numberOrDefault = (value, fallback) => Number.isFinite(Number(value)) ? Number(value) : fallback;',
+    'function dispatchEpcDeviceWorkProfileRow(row = {}, model = EPC_DEVICE_WORK_DEFAULT_MODEL, batteryControl = EPC_BATTERY_CONTROL_DEFAULT)',
     'function epcDeviceWorkDeterministicNoise(seed = 0)',
-    'function getEpcDeviceWorkLoadShockMultiplier(row, index, rows, model = EPC_DEVICE_WORK_DEFAULT_MODEL)',
+    'function getEpcDeviceWorkLoadShockMultiplier(row, index, rows, model = EPC_DEVICE_WORK_DEFAULT_MODEL, component = \'load\')',
     'function quantizeEpcDeviceWorkGensetPlatform(value, peakValue, platforms = EPC_DEVICE_WORK_GENSET_PLATFORMS, enabled = true)',
     'function getEpcDeviceWorkStepPathD(series, rows, xForIndex, yForPower, yForSoc)',
     "series.id === 'load' || series.id === 'genset'",
@@ -572,16 +575,22 @@ test('EPC Device Work profile renders realistic load and genset device behavior'
     'epc-device-work-model-controls',
     'epc-device-work-apply-ems',
     'epc-device-work-load-noise-pct',
-    'epc-device-work-shock-count',
-    'epc-device-work-shock-duration-min',
-    'epc-device-work-shock-impact-pct',
+    'epc-device-work-load-shock-count',
+    'epc-device-work-load-shock-duration-min',
+    'epc-device-work-load-shock-impact-pct',
+    'epc-device-work-load-shock-position',
+    'epc-device-work-genset-shock-count',
+    'epc-device-work-genset-shock-duration-min',
+    'epc-device-work-genset-shock-impact-pct',
+    'epc-device-work-genset-shock-position',
     'epc-device-work-genset-step-enabled',
     'epc-device-work-genset-platforms',
     'Apply profile to EMS Flow',
     'Load noise %',
-    'Shock count',
-    'Shock duration min',
-    'Shock impact %',
+    'Load shock count',
+    'Load shock position',
+    'Genset shock count',
+    'Genset shock position',
     'Genset stepped platforms',
     'Platform levels'
   ]) {
@@ -593,11 +602,43 @@ test('EPC Device Work profile renders realistic load and genset device behavior'
   assert.doesNotMatch(profileSource[0], /Math\.random\(\)/, 'Device Work profile must be deterministic across refreshes');
   assert.doesNotMatch(profileSource[0], /(^|[^.A-Za-z0-9_$])round\(/, 'Device Work profile must use browser-local rounding helpers');
   assert.match(html, /loadKw:\s*epcChartRound\(loadKwWithShock, 2\)/, 'Load profile should include deterministic fluctuation and shock');
-  assert.match(html, /gensetToLoadKw:\s*epcChartRound\(quantizeEpcDeviceWorkGensetPlatform\(gensetDemandKw, gensetPeakKw, model\.gensetPlatforms, model\.gensetStepEnabled\), 2\)/, 'Genset profile should use stepped platform output');
+  assert.match(html, /pvToLoadKw:\s*epcChartRound\(dispatch\.pvToLoadKw, 2\)/, 'PV to load should come from dispatch output');
+  assert.match(html, /batteryToLoadKw:\s*epcChartRound\(dispatch\.batteryToLoadKw, 2\)/, 'Battery should come from dispatch output');
+  assert.match(html, /gensetToLoadKw:\s*epcChartRound\(dispatch\.gensetToLoadKw, 2\)/, 'Genset should come from dispatch output');
+  assert.match(html, /const pvToLoadKw = Math\.min\(pvOutputKw, loadKw\)/, 'PV should serve load before charging or curtailing');
+  assert.match(html, /let remainingLoadKw = Math\.max\(0, loadKw - pvToLoadKw\)/, 'Battery and genset should only serve remaining load');
+  assert.match(html, /Math\.max\(0, remainingLoadKw - batteryToLoadKw\)/, 'Genset should be last priority after battery unless strategy changes');
   const flowRenderer = html.match(/function renderEpcEnergyFlow\(result\)[\s\S]*?function renderEpcReports\(result\)/);
   assert.ok(flowRenderer, 'EMS Flow renderer should be found');
   assert.match(flowRenderer[0], /getEpcEnergyFlowDisplayRows\(result\)/, 'EMS Flow table should use profiled display rows');
   assert.doesNotMatch(flowRenderer[0], /const rows = result\.energyFlow\?\.rows \|\| \[\]/, 'EMS Flow table should not render raw rows directly');
+});
+
+test('EPC Battery Control is a standalone page between Device Work and PV Simulator', () => {
+  assert.match(html, /data-epc-panel-tab="devicework"[\s\S]*?Device Work[\s\S]*?data-epc-panel-tab="batterycontrol"[\s\S]*?Battery Control[\s\S]*?data-epc-panel-tab="pvsimulator"[\s\S]*?PV Simulator/);
+  for (const snippet of [
+    'id="epc-battery-control-page"',
+    'data-epc-panel="batterycontrol"',
+    'function getEpcBatteryControlSettings(raw = {})',
+    'function renderEpcBatteryControlPage(result)',
+    'function updateEpcBatteryControlSettings()',
+    'function updateEpcBatteryManualOverride(',
+    'EPC_BATTERY_CONTROL_DEFAULT',
+    'epc-battery-control-mode',
+    'epc-battery-control-interval',
+    'epc-battery-control-priority',
+    'epc-battery-control-manual-table',
+    'epc-battery-control-override-',
+    'PV -> Load',
+    'Battery -> Load',
+    'Genset -> Load',
+    'PV -> Battery',
+    'Auto strategy priority',
+    'Manual charge/discharge kW',
+    'renderEpcBatteryControlPage(result)'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing Battery Control snippet: ${snippet}`);
+  }
 });
 
 test('EPC finish time changes do not open the working time confirmation dialog', () => {

@@ -3108,6 +3108,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 <button type="button" data-epc-panel-tab="risks" onclick="setEpcPanelTab('risks')" class="px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-50">Risks</button>
                 <button type="button" data-epc-panel-tab="flow" onclick="setEpcPanelTab('flow')" class="px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-50">EMS Flow</button>
                 <button type="button" data-epc-panel-tab="devicework" onclick="setEpcPanelTab('devicework')" class="px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-50">Device Work</button>
+                <button type="button" data-epc-panel-tab="batterycontrol" onclick="setEpcPanelTab('batterycontrol')" class="px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-50">Battery Control</button>
                 <button type="button" data-epc-panel-tab="pvsimulator" onclick="setEpcPanelTab('pvsimulator')" class="px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-50">PV Simulator</button>
                 <button type="button" data-epc-panel-tab="reports" onclick="setEpcPanelTab('reports')" class="px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-50">Reports</button>
             </div>
@@ -3119,6 +3120,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 <div id="epc-design-risks" data-epc-panel="risks" class="hidden"></div>
                 <div id="epc-energy-flow-table" data-epc-panel="flow" class="hidden"></div>
                 <div id="epc-device-work-page" data-epc-panel="devicework" class="hidden"></div>
+                <div id="epc-battery-control-page" data-epc-panel="batterycontrol" class="hidden"></div>
                 <div id="epc-pv-simulator-page" data-epc-panel="pvsimulator" class="hidden"></div>
                 <div id="epc-design-reports" data-epc-panel="reports" class="hidden"></div>
             </div>
@@ -11217,17 +11219,38 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         const EPC_DEVICE_WORK_DEFAULT_MODEL = {
             applyToEmsFlow: true,
             loadNoisePct: 3,
-            shockCount: 2,
-            shockDurationMinutes: 14,
-            shockImpactPct: 20,
+            loadShockCount: 2,
+            loadShockDurationMinutes: 14,
+            loadShockImpactPct: 20,
+            loadShockPosition: 'startup',
+            gensetShockCount: 0,
+            gensetShockDurationMinutes: 12,
+            gensetShockImpactPct: 0,
+            gensetShockPosition: 'startup',
             gensetStepEnabled: true,
             gensetPlatforms: [0.3, 0.5, 0.75, 1]
+        };
+        const EPC_BATTERY_CONTROL_PRIORITY_OPTIONS = [
+            { id: 'pv_to_load', label: 'PV -> Load' },
+            { id: 'battery_to_load', label: 'Battery -> Load' },
+            { id: 'genset_to_load', label: 'Genset -> Load' },
+            { id: 'pv_to_battery', label: 'PV -> Battery' }
+        ];
+        const EPC_BATTERY_CONTROL_DEFAULT = {
+            mode: 'auto',
+            manualIntervalMinutes: 60,
+            priorityOrder: ['pv_to_load', 'battery_to_load', 'genset_to_load', 'pv_to_battery'],
+            manualOverrides: []
         };
         let epcDeviceWorkOpenColorSeries = null;
 
         function getEpcDeviceWorkModelSettings(raw = {}) {
             const input = raw && typeof raw === 'object' ? raw : {};
             const numberOrDefault = (value, fallback) => Number.isFinite(Number(value)) ? Number(value) : fallback;
+            const normalizeShockPosition = (value) => {
+                const rawValue = String(value || '').trim().toLowerCase();
+                return ['startup', 'early', 'middle', 'late', 'distributed'].includes(rawValue) ? rawValue : 'startup';
+            };
             const rawPlatforms = Array.isArray(input.gensetPlatforms)
                 ? input.gensetPlatforms
                 : String(input.gensetPlatforms || '')
@@ -11240,11 +11263,40 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return {
                 applyToEmsFlow: input.applyToEmsFlow === false ? false : true,
                 loadNoisePct: Math.max(0, Math.min(12, numberOrDefault(input.loadNoisePct, EPC_DEVICE_WORK_DEFAULT_MODEL.loadNoisePct))),
-                shockCount: Math.round(Math.max(0, Math.min(4, numberOrDefault(input.shockCount, EPC_DEVICE_WORK_DEFAULT_MODEL.shockCount)))),
-                shockDurationMinutes: Math.max(1, Math.min(60, numberOrDefault(input.shockDurationMinutes, EPC_DEVICE_WORK_DEFAULT_MODEL.shockDurationMinutes))),
-                shockImpactPct: Math.max(0, Math.min(40, numberOrDefault(input.shockImpactPct, EPC_DEVICE_WORK_DEFAULT_MODEL.shockImpactPct))),
+                loadShockCount: Math.round(Math.max(0, Math.min(4, numberOrDefault(input.loadShockCount ?? input.shockCount, EPC_DEVICE_WORK_DEFAULT_MODEL.loadShockCount)))),
+                loadShockDurationMinutes: Math.max(1, Math.min(60, numberOrDefault(input.loadShockDurationMinutes ?? input.shockDurationMinutes, EPC_DEVICE_WORK_DEFAULT_MODEL.loadShockDurationMinutes))),
+                loadShockImpactPct: Math.max(0, Math.min(40, numberOrDefault(input.loadShockImpactPct ?? input.shockImpactPct, EPC_DEVICE_WORK_DEFAULT_MODEL.loadShockImpactPct))),
+                loadShockPosition: normalizeShockPosition(input.loadShockPosition),
+                gensetShockCount: Math.round(Math.max(0, Math.min(4, numberOrDefault(input.gensetShockCount, EPC_DEVICE_WORK_DEFAULT_MODEL.gensetShockCount)))),
+                gensetShockDurationMinutes: Math.max(1, Math.min(60, numberOrDefault(input.gensetShockDurationMinutes, EPC_DEVICE_WORK_DEFAULT_MODEL.gensetShockDurationMinutes))),
+                gensetShockImpactPct: Math.max(0, Math.min(40, numberOrDefault(input.gensetShockImpactPct, EPC_DEVICE_WORK_DEFAULT_MODEL.gensetShockImpactPct))),
+                gensetShockPosition: normalizeShockPosition(input.gensetShockPosition),
                 gensetStepEnabled: input.gensetStepEnabled === false ? false : true,
                 gensetPlatforms: gensetPlatforms.length ? gensetPlatforms : [...EPC_DEVICE_WORK_DEFAULT_MODEL.gensetPlatforms]
+            };
+        }
+
+        function getEpcBatteryControlSettings(raw = {}) {
+            const input = raw && typeof raw === 'object' ? raw : {};
+            const validIds = EPC_BATTERY_CONTROL_PRIORITY_OPTIONS.map(option => option.id);
+            const rawPriority = Array.isArray(input.priorityOrder) ? input.priorityOrder : EPC_BATTERY_CONTROL_DEFAULT.priorityOrder;
+            const priorityOrder = rawPriority
+                .map(item => String(item || '').trim().toLowerCase())
+                .filter((item, index, array) => validIds.includes(item) && array.indexOf(item) === index);
+            validIds.forEach(id => {
+                if (!priorityOrder.includes(id)) priorityOrder.push(id);
+            });
+            const manualOverrides = Array.isArray(input.manualOverrides)
+                ? input.manualOverrides.map(item => ({
+                    timelineMinute: Math.round(Math.max(0, Math.min(24 * 60, Number(item?.timelineMinute) || 0))),
+                    batteryKw: epcChartRound(Math.max(-100000, Math.min(100000, Number(item?.batteryKw) || 0)), 2)
+                })).filter(item => item.batteryKw !== 0)
+                : [];
+            return {
+                mode: String(input.mode || '').toLowerCase() === 'manual' ? 'manual' : 'auto',
+                manualIntervalMinutes: [5, 60].includes(Number(input.manualIntervalMinutes)) ? Number(input.manualIntervalMinutes) : EPC_BATTERY_CONTROL_DEFAULT.manualIntervalMinutes,
+                priorityOrder,
+                manualOverrides
             };
         }
 
@@ -11277,6 +11329,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     endMinute: rawPeakEnd > peakStart ? rawPeakEnd : Math.min(24 * 60, peakStart + 60)
                 },
                 deviceWorkModel: getEpcDeviceWorkModelSettings(raw.deviceWorkModel),
+                batteryControl: getEpcBatteryControlSettings(raw.batteryControl),
                 seriesColors
             };
         }
@@ -11401,13 +11454,40 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 ...current,
                 applyToEmsFlow: document.getElementById('epc-device-work-apply-ems')?.checked ?? true,
                 loadNoisePct: Number(document.getElementById('epc-device-work-load-noise-pct')?.value),
-                shockCount: Number(document.getElementById('epc-device-work-shock-count')?.value),
-                shockDurationMinutes: Number(document.getElementById('epc-device-work-shock-duration-min')?.value),
-                shockImpactPct: Number(document.getElementById('epc-device-work-shock-impact-pct')?.value),
+                loadShockCount: Number(document.getElementById('epc-device-work-load-shock-count')?.value),
+                loadShockDurationMinutes: Number(document.getElementById('epc-device-work-load-shock-duration-min')?.value),
+                loadShockImpactPct: Number(document.getElementById('epc-device-work-load-shock-impact-pct')?.value),
+                loadShockPosition: document.getElementById('epc-device-work-load-shock-position')?.value || current.loadShockPosition,
+                gensetShockCount: Number(document.getElementById('epc-device-work-genset-shock-count')?.value),
+                gensetShockDurationMinutes: Number(document.getElementById('epc-device-work-genset-shock-duration-min')?.value),
+                gensetShockImpactPct: Number(document.getElementById('epc-device-work-genset-shock-impact-pct')?.value),
+                gensetShockPosition: document.getElementById('epc-device-work-genset-shock-position')?.value || current.gensetShockPosition,
                 gensetStepEnabled: document.getElementById('epc-device-work-genset-step-enabled')?.checked ?? true,
                 gensetPlatforms: platformInput || current.gensetPlatforms
             });
             updateEpcDeviceWorkSettings({ deviceWorkModel: next, selectedRange: null });
+        }
+
+        function updateEpcBatteryControlSettings() {
+            const current = getActiveEpcDesignProject().emsFlowDisplaySettings?.batteryControl || {};
+            const priorityValue = String(document.getElementById('epc-battery-control-priority')?.value || '').split(',').filter(Boolean);
+            const next = getEpcBatteryControlSettings({
+                ...current,
+                mode: document.getElementById('epc-battery-control-mode')?.value || current.mode,
+                manualIntervalMinutes: Number(document.getElementById('epc-battery-control-interval')?.value),
+                priorityOrder: priorityValue.length ? priorityValue : current.priorityOrder
+            });
+            updateEpcDeviceWorkSettings({ batteryControl: next });
+        }
+
+        function updateEpcBatteryManualOverride(timelineMinute, value) {
+            const project = getActiveEpcDesignProject();
+            const current = getEpcBatteryControlSettings(project.emsFlowDisplaySettings?.batteryControl);
+            const minute = Math.round(Math.max(0, Math.min(24 * 60, Number(timelineMinute) || 0)));
+            const batteryKw = epcChartRound(Math.max(-100000, Math.min(100000, Number(value) || 0)), 2);
+            const manualOverrides = current.manualOverrides.filter(item => Number(item.timelineMinute) !== minute);
+            if (batteryKw !== 0) manualOverrides.push({ timelineMinute: minute, batteryKw });
+            updateEpcDeviceWorkSettings({ batteryControl: getEpcBatteryControlSettings({ ...current, mode: 'manual', manualOverrides }) });
         }
 
         function toggleEpcDeviceWorkColorPicker(seriesId) {
@@ -11439,6 +11519,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         window.setEpcDeviceWorkPeakBandColor = setEpcDeviceWorkPeakBandColor;
         window.setEpcDeviceWorkPeakBandTime = setEpcDeviceWorkPeakBandTime;
         window.updateEpcDeviceWorkModelSettings = updateEpcDeviceWorkModelSettings;
+        window.updateEpcBatteryControlSettings = updateEpcBatteryControlSettings;
+        window.updateEpcBatteryManualOverride = updateEpcBatteryManualOverride;
         window.toggleEpcDeviceWorkColorPicker = toggleEpcDeviceWorkColorPicker;
         window.setEpcDeviceWorkSeriesColor = setEpcDeviceWorkSeriesColor;
 
@@ -11568,20 +11650,29 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return (value - Math.floor(value)) * 2 - 1;
         }
 
-        function getEpcDeviceWorkLoadShockMultiplier(row, index, rows, model = EPC_DEVICE_WORK_DEFAULT_MODEL) {
-            const shockCount = Math.round(Math.max(0, Math.min(4, Number(model.shockCount) || 0)));
+        function getEpcDeviceWorkLoadShockMultiplier(row, index, rows, model = EPC_DEVICE_WORK_DEFAULT_MODEL, component = 'load') {
+            const prefix = component === 'genset' ? 'genset' : 'load';
+            const shockCount = Math.round(Math.max(0, Math.min(4, Number(model[`${prefix}ShockCount`]) || 0)));
             if (!Array.isArray(rows) || rows.length < 3 || !shockCount) return 0;
             const firstMinute = Number(rows[0]?.timelineMinute) || 0;
             const lastMinute = Number(rows[rows.length - 1]?.timelineMinute) || firstMinute;
             const span = Math.max(1, lastMinute - firstMinute);
             const minute = Number(row?.timelineMinute) || firstMinute + index;
+            const positionPreset = String(model[`${prefix}ShockPosition`] || 'startup').toLowerCase();
+            const positionForIndex = (shockIndex) => {
+                if (positionPreset === 'startup') return Math.min(0.12, (shockIndex + 0.2) / Math.max(1, shockCount + 6));
+                if (positionPreset === 'early') return 0.25 + (shockIndex - (shockCount - 1) / 2) * 0.06;
+                if (positionPreset === 'middle') return 0.5 + (shockIndex - (shockCount - 1) / 2) * 0.06;
+                if (positionPreset === 'late') return 0.75 + (shockIndex - (shockCount - 1) / 2) * 0.06;
+                return shockCount === 1 ? 0.55 : (shockIndex + 1) / (shockCount + 1);
+            };
             const shockWindows = Array.from({ length: shockCount }, (_, shockIndex) => {
-                const position = shockCount === 1 ? 0.55 : (shockIndex + 1) / (shockCount + 1);
-                const seedBase = firstMinute + span + (shockIndex + 1) * 97;
+                const position = Math.max(0, Math.min(0.95, positionForIndex(shockIndex)));
+                const seedBase = firstMinute + span + (shockIndex + 1) * 97 + (prefix === 'genset' ? 1009 : 0);
                 const durationNoise = (epcDeviceWorkDeterministicNoise(seedBase) + 1) / 2;
                 const ratioNoise = (epcDeviceWorkDeterministicNoise(seedBase + 31) + 1) / 2;
-                const duration = Math.max(1, Number(model.shockDurationMinutes) || EPC_DEVICE_WORK_DEFAULT_MODEL.shockDurationMinutes) * (0.75 + durationNoise * 0.5);
-                const ratio = Math.max(0, Number(model.shockImpactPct) || 0) / 100 * (0.75 + ratioNoise * 0.5);
+                const duration = Math.max(1, Number(model[`${prefix}ShockDurationMinutes`]) || EPC_DEVICE_WORK_DEFAULT_MODEL[`${prefix}ShockDurationMinutes`]) * (0.75 + durationNoise * 0.5);
+                const ratio = Math.max(0, Number(model[`${prefix}ShockImpactPct`]) || 0) / 100 * (0.75 + ratioNoise * 0.5);
                 return {
                     start: firstMinute + span * position,
                     end: firstMinute + span * position + duration,
@@ -11601,6 +11692,84 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const validPlatforms = Array.isArray(platforms) && platforms.length ? platforms : EPC_DEVICE_WORK_GENSET_PLATFORMS;
             const platform = validPlatforms.find(level => level >= ratio) || 1;
             return peak * platform;
+        }
+
+        function getEpcBatteryManualOverrideKw(batteryControl = EPC_BATTERY_CONTROL_DEFAULT, timelineMinute = 0) {
+            const settings = getEpcBatteryControlSettings(batteryControl);
+            const minute = Math.round(Number(timelineMinute) || 0);
+            const match = settings.manualOverrides.find(item => Math.abs(Number(item.timelineMinute) - minute) < 0.5);
+            return match ? Number(match.batteryKw) || 0 : null;
+        }
+
+        function dispatchEpcDeviceWorkProfileRow(row = {}, model = EPC_DEVICE_WORK_DEFAULT_MODEL, batteryControl = EPC_BATTERY_CONTROL_DEFAULT) {
+            const settings = getEpcBatteryControlSettings(batteryControl);
+            const loadKw = Math.max(0, Number(row.loadKw) || 0);
+            const pvOutputKw = Math.max(0, Number(row.pvOutputKw) || 0);
+            const baseBatteryToLoadKw = Math.max(0, Number(row.batteryToLoadKw) || 0);
+            const basePvToBatteryKw = Math.max(0, Number(row.pvToBatteryKw) || 0);
+            const baseGensetKw = Math.max(0, Number(row.gensetToLoadKw) || 0);
+            const gensetPeakKw = Math.max(0, Number(row.gensetPeakKw) || baseGensetKw || loadKw);
+            const pvToLoadKw = Math.min(pvOutputKw, loadKw);
+            let remainingLoadKw = Math.max(0, loadKw - pvToLoadKw);
+            let surplusPvKw = Math.max(0, pvOutputKw - pvToLoadKw);
+            let batteryToLoadKw = 0;
+            let pvToBatteryKw = 0;
+            let gensetToLoadKw = 0;
+            const manualBatteryKw = settings.mode === 'manual' ? getEpcBatteryManualOverrideKw(settings, row.timelineMinute) : null;
+            if (manualBatteryKw !== null) {
+                if (manualBatteryKw < 0) {
+                    batteryToLoadKw = Math.min(remainingLoadKw, Math.abs(manualBatteryKw));
+                    remainingLoadKw = Math.max(0, remainingLoadKw - batteryToLoadKw);
+                } else if (manualBatteryKw > 0) {
+                    pvToBatteryKw = Math.min(surplusPvKw, manualBatteryKw);
+                    surplusPvKw = Math.max(0, surplusPvKw - pvToBatteryKw);
+                }
+            }
+            const gensetShockMultiplier = getEpcDeviceWorkLoadShockMultiplier(row, Number(row.rowIndex) || 0, row.rows || [], model, 'genset');
+            if (gensetShockMultiplier > 0 && remainingLoadKw > 0 && gensetPeakKw > 0) {
+                const shockDemandKw = Math.min(remainingLoadKw, gensetPeakKw * gensetShockMultiplier);
+                const steppedShockKw = quantizeEpcDeviceWorkGensetPlatform(shockDemandKw, gensetPeakKw, model.gensetPlatforms, model.gensetStepEnabled);
+                const shockSupportKw = Math.min(remainingLoadKw, steppedShockKw);
+                gensetToLoadKw += shockSupportKw;
+                remainingLoadKw = Math.max(0, remainingLoadKw - shockSupportKw);
+            }
+            settings.priorityOrder.forEach(priority => {
+                if (priority === 'pv_to_load') return;
+                if (priority === 'battery_to_load' && remainingLoadKw > 0 && manualBatteryKw === null) {
+                    const batteryLimitKw = baseBatteryToLoadKw > 0 ? baseBatteryToLoadKw : remainingLoadKw;
+                    const batterySupportKw = Math.min(remainingLoadKw, batteryLimitKw);
+                    batteryToLoadKw += batterySupportKw;
+                    remainingLoadKw = Math.max(0, remainingLoadKw - batterySupportKw);
+                }
+                if (priority === 'genset_to_load' && remainingLoadKw > 0) {
+                    const finalGensetDemandKw = Math.max(0, remainingLoadKw - batteryToLoadKw);
+                    const demandKw = finalGensetDemandKw > 0 ? remainingLoadKw : 0;
+                    const steppedGensetKw = quantizeEpcDeviceWorkGensetPlatform(demandKw, gensetPeakKw, model.gensetPlatforms, model.gensetStepEnabled);
+                    const gensetSupportKw = Math.min(remainingLoadKw, steppedGensetKw);
+                    gensetToLoadKw += gensetSupportKw;
+                    remainingLoadKw = Math.max(0, remainingLoadKw - gensetSupportKw);
+                }
+                if (priority === 'pv_to_battery' && surplusPvKw > 0 && manualBatteryKw === null) {
+                    const chargeLimitKw = basePvToBatteryKw > 0 ? basePvToBatteryKw : surplusPvKw;
+                    const chargeKw = Math.min(surplusPvKw, chargeLimitKw);
+                    pvToBatteryKw += chargeKw;
+                    surplusPvKw = Math.max(0, surplusPvKw - chargeKw);
+                }
+            });
+            if (remainingLoadKw > 0 && gensetPeakKw > 0) {
+                const steppedGensetKw = quantizeEpcDeviceWorkGensetPlatform(remainingLoadKw, gensetPeakKw, model.gensetPlatforms, model.gensetStepEnabled);
+                const gensetSupportKw = Math.min(remainingLoadKw, steppedGensetKw);
+                gensetToLoadKw += gensetSupportKw;
+                remainingLoadKw = Math.max(0, remainingLoadKw - gensetSupportKw);
+            }
+            return {
+                pvToLoadKw,
+                pvToBatteryKw,
+                batteryToLoadKw,
+                gensetToLoadKw,
+                curtailmentKw: Math.max(0, surplusPvKw),
+                unmetLoadKw: Math.max(0, remainingLoadKw)
+            };
         }
 
         function interpolateEpcDeviceWorkRow(a = {}, b = {}, pct = 0, index = 0, intervalMinutes = 60, minute = null) {
@@ -11664,6 +11833,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const rows = getEpcDeviceWorkTimelineRows(sourceRows, settings);
             if (!rows.length) return rows;
             const model = getEpcDeviceWorkModelSettings(settings.deviceWorkModel);
+            const batteryControl = getEpcBatteryControlSettings(settings.batteryControl);
             const loadPeakKw = Math.max(1, ...rows.map(row => Number(row.loadKw) || 0));
             const gensetPeakKw = Math.max(0, ...rows.map(row => Math.max(Number(row.gensetToLoadKw) || 0, (Number(row.loadKw) || 0) - (Number(row.pvOutputKw) || 0))));
             const profiled = rows.map((row, index) => {
@@ -11671,30 +11841,23 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 const baseLoadKw = Math.max(0, Number(row.loadKw) || 0);
                 const loadNoise = epcDeviceWorkDeterministicNoise(timelineMinute + index * 17 + Math.round(loadPeakKw))
                     * (model.loadNoisePct / 100);
-                const loadShock = getEpcDeviceWorkLoadShockMultiplier(row, index, rows, model);
+                const loadShock = getEpcDeviceWorkLoadShockMultiplier(row, index, rows, model, 'load');
                 // Load shock is a concept-design visual assumption, not a replacement for measured load study.
                 const loadKwWithShock = Math.min(loadPeakKw * 1.25, Math.max(0, baseLoadKw * (1 + loadNoise + loadShock)));
-                const pvOutputKw = Math.max(0, Number(row.pvOutputKw) || 0);
-                const pvToLoadKw = Math.min(pvOutputKw, loadKwWithShock);
-                const surplusPvKw = Math.max(0, pvOutputKw - loadKwWithShock);
-                const loadDeficitKw = Math.max(0, loadKwWithShock - pvOutputKw);
-                const baseGensetKw = Math.max(0, Number(row.gensetToLoadKw) || 0);
-                const baseBatteryToLoadKw = Math.max(0, Number(row.batteryToLoadKw) || 0);
-                const basePvToBatteryKw = Math.max(0, Number(row.pvToBatteryKw) || 0);
-                const batteryToLoadKw = loadDeficitKw > 0
-                    ? Math.min(loadDeficitKw, Math.max(0, Math.min(baseBatteryToLoadKw, loadDeficitKw - baseGensetKw)))
-                    : 0;
-                const pvToBatteryKw = surplusPvKw > 0 ? Math.min(surplusPvKw, basePvToBatteryKw) : 0;
-                const gensetDemandKw = Math.max(0, loadDeficitKw - batteryToLoadKw);
-                const curtailmentKw = Math.max(0, surplusPvKw - pvToBatteryKw);
+                const dispatch = dispatchEpcDeviceWorkProfileRow(
+                    { ...row, loadKw: loadKwWithShock, gensetPeakKw, rowIndex: index, rows },
+                    model,
+                    batteryControl
+                );
                 return {
                     ...row,
                     loadKw: epcChartRound(loadKwWithShock, 2),
-                    pvToLoadKw: epcChartRound(pvToLoadKw, 2),
-                    pvToBatteryKw: epcChartRound(pvToBatteryKw, 2),
-                    batteryToLoadKw: epcChartRound(batteryToLoadKw, 2),
-                    gensetToLoadKw: epcChartRound(quantizeEpcDeviceWorkGensetPlatform(gensetDemandKw, gensetPeakKw, model.gensetPlatforms, model.gensetStepEnabled), 2),
-                    curtailmentKw: epcChartRound(curtailmentKw, 2)
+                    pvToLoadKw: epcChartRound(dispatch.pvToLoadKw, 2),
+                    pvToBatteryKw: epcChartRound(dispatch.pvToBatteryKw, 2),
+                    batteryToLoadKw: epcChartRound(dispatch.batteryToLoadKw, 2),
+                    gensetToLoadKw: epcChartRound(dispatch.gensetToLoadKw, 2),
+                    curtailmentKw: epcChartRound(dispatch.curtailmentKw, 2),
+                    unmetLoadKw: epcChartRound(dispatch.unmetLoadKw, 2)
                 };
             });
             return applyEpcDeviceWorkDurations(profiled);
@@ -11877,22 +12040,46 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                                 Apply profile to EMS Flow
                             </label>
                         </div>
-                        <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2">
+                        <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-2">
                             <label class="block">
                                 <span class="block text-[10px] font-black uppercase text-slate-400 mb-1">Load noise %</span>
                                 <input id="epc-device-work-load-noise-pct" type="number" min="0" max="12" step="0.5" value="${htmlSafe(model.loadNoisePct)}" onchange="updateEpcDeviceWorkModelSettings()" class="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-black text-slate-600">
                             </label>
                             <label class="block">
-                                <span class="block text-[10px] font-black uppercase text-slate-400 mb-1">Shock count</span>
-                                <input id="epc-device-work-shock-count" type="number" min="0" max="4" step="1" value="${htmlSafe(model.shockCount)}" onchange="updateEpcDeviceWorkModelSettings()" class="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-black text-slate-600">
+                                <span class="block text-[10px] font-black uppercase text-slate-400 mb-1">Load shock count</span>
+                                <input id="epc-device-work-load-shock-count" type="number" min="0" max="4" step="1" value="${htmlSafe(model.loadShockCount)}" onchange="updateEpcDeviceWorkModelSettings()" class="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-black text-slate-600">
                             </label>
                             <label class="block">
-                                <span class="block text-[10px] font-black uppercase text-slate-400 mb-1">Shock duration min</span>
-                                <input id="epc-device-work-shock-duration-min" type="number" min="1" max="60" step="1" value="${htmlSafe(model.shockDurationMinutes)}" onchange="updateEpcDeviceWorkModelSettings()" class="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-black text-slate-600">
+                                <span class="block text-[10px] font-black uppercase text-slate-400 mb-1">Load shock duration min</span>
+                                <input id="epc-device-work-load-shock-duration-min" type="number" min="1" max="60" step="1" value="${htmlSafe(model.loadShockDurationMinutes)}" onchange="updateEpcDeviceWorkModelSettings()" class="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-black text-slate-600">
                             </label>
                             <label class="block">
-                                <span class="block text-[10px] font-black uppercase text-slate-400 mb-1">Shock impact %</span>
-                                <input id="epc-device-work-shock-impact-pct" type="number" min="0" max="40" step="1" value="${htmlSafe(model.shockImpactPct)}" onchange="updateEpcDeviceWorkModelSettings()" class="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-black text-slate-600">
+                                <span class="block text-[10px] font-black uppercase text-slate-400 mb-1">Load shock impact %</span>
+                                <input id="epc-device-work-load-shock-impact-pct" type="number" min="0" max="40" step="1" value="${htmlSafe(model.loadShockImpactPct)}" onchange="updateEpcDeviceWorkModelSettings()" class="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-black text-slate-600">
+                            </label>
+                            <label class="block">
+                                <span class="block text-[10px] font-black uppercase text-slate-400 mb-1">Load shock position</span>
+                                <select id="epc-device-work-load-shock-position" onchange="updateEpcDeviceWorkModelSettings()" class="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-black text-slate-600">
+                                    ${['startup', 'early', 'middle', 'late', 'distributed'].map(option => `<option value="${option}" ${model.loadShockPosition === option ? 'selected' : ''}>${htmlSafe(option)}</option>`).join('')}
+                                </select>
+                            </label>
+                            <label class="block">
+                                <span class="block text-[10px] font-black uppercase text-slate-400 mb-1">Genset shock count</span>
+                                <input id="epc-device-work-genset-shock-count" type="number" min="0" max="4" step="1" value="${htmlSafe(model.gensetShockCount)}" onchange="updateEpcDeviceWorkModelSettings()" class="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-black text-slate-600">
+                            </label>
+                            <label class="block">
+                                <span class="block text-[10px] font-black uppercase text-slate-400 mb-1">Genset shock duration min</span>
+                                <input id="epc-device-work-genset-shock-duration-min" type="number" min="1" max="60" step="1" value="${htmlSafe(model.gensetShockDurationMinutes)}" onchange="updateEpcDeviceWorkModelSettings()" class="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-black text-slate-600">
+                            </label>
+                            <label class="block">
+                                <span class="block text-[10px] font-black uppercase text-slate-400 mb-1">Genset shock impact %</span>
+                                <input id="epc-device-work-genset-shock-impact-pct" type="number" min="0" max="40" step="1" value="${htmlSafe(model.gensetShockImpactPct)}" onchange="updateEpcDeviceWorkModelSettings()" class="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-black text-slate-600">
+                            </label>
+                            <label class="block">
+                                <span class="block text-[10px] font-black uppercase text-slate-400 mb-1">Genset shock position</span>
+                                <select id="epc-device-work-genset-shock-position" onchange="updateEpcDeviceWorkModelSettings()" class="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-black text-slate-600">
+                                    ${['startup', 'early', 'middle', 'late', 'distributed'].map(option => `<option value="${option}" ${model.gensetShockPosition === option ? 'selected' : ''}>${htmlSafe(option)}</option>`).join('')}
+                                </select>
                             </label>
                             <label class="flex items-end">
                                 <span class="inline-flex h-9 w-full items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 font-black text-slate-600">
@@ -12048,6 +12235,103 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             target.innerHTML = `
                 ${renderEpcDeviceWorkChart(result)}
                 ${renderEpcDeviceWorkAnalysis(result)}
+            `;
+        }
+
+        function renderEpcBatteryControlPriorityOptions(control) {
+            const presets = [
+                ['pv_to_load', 'battery_to_load', 'genset_to_load', 'pv_to_battery'],
+                ['pv_to_load', 'genset_to_load', 'battery_to_load', 'pv_to_battery'],
+                ['pv_to_load', 'pv_to_battery', 'battery_to_load', 'genset_to_load']
+            ];
+            const current = control.priorityOrder.join(',');
+            return presets.map(order => {
+                const value = order.join(',');
+                const label = order.map(id => EPC_BATTERY_CONTROL_PRIORITY_OPTIONS.find(option => option.id === id)?.label || id).join(' | ');
+                return `<option value="${htmlSafe(value)}" ${value === current ? 'selected' : ''}>${htmlSafe(label)}</option>`;
+            }).join('');
+        }
+
+        function getEpcBatteryControlRows(result = {}, control = EPC_BATTERY_CONTROL_DEFAULT) {
+            const intervalMinutes = [5, 60].includes(Number(control.manualIntervalMinutes)) ? Number(control.manualIntervalMinutes) : 60;
+            return getEpcDeviceWorkTimelineRows(result.energyFlow?.rows || [], { intervalMinutes })
+                .filter(row => Number(row.timelineMinute) < 24 * 60);
+        }
+
+        function renderEpcBatteryControlPage(result) {
+            const target = document.getElementById('epc-battery-control-page');
+            if (!target) return;
+            const settings = getEpcDeviceWorkSettings(result);
+            const control = settings.batteryControl;
+            const rows = getEpcBatteryControlRows(result, control);
+            const overrideMap = new Map(control.manualOverrides.map(item => [Number(item.timelineMinute), Number(item.batteryKw)]));
+            target.innerHTML = `
+                <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+                    <div class="px-4 py-3 border-b border-slate-100">
+                        <div class="text-sm font-black text-slate-800">Battery Control</div>
+                        <div class="text-[11px] font-bold text-slate-400">EMS battery dispatch strategy for EMS Flow and Device Work only.</div>
+                    </div>
+                    <div class="p-4 space-y-3">
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                            <label class="block rounded-xl border border-slate-200 bg-slate-50 p-3">
+                                <span class="block text-[10px] font-black uppercase text-slate-400 mb-1">Control mode</span>
+                                <select id="epc-battery-control-mode" onchange="updateEpcBatteryControlSettings()" class="w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs font-black text-slate-700">
+                                    <option value="auto" ${control.mode === 'auto' ? 'selected' : ''}>Auto strategy priority</option>
+                                    <option value="manual" ${control.mode === 'manual' ? 'selected' : ''}>Manual charge/discharge kW</option>
+                                </select>
+                            </label>
+                            <label class="block rounded-xl border border-slate-200 bg-slate-50 p-3">
+                                <span class="block text-[10px] font-black uppercase text-slate-400 mb-1">Manual interval</span>
+                                <select id="epc-battery-control-interval" onchange="updateEpcBatteryControlSettings()" class="w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs font-black text-slate-700">
+                                    <option value="5" ${control.manualIntervalMinutes === 5 ? 'selected' : ''}>5 minutes</option>
+                                    <option value="60" ${control.manualIntervalMinutes === 60 ? 'selected' : ''}>1 hour</option>
+                                </select>
+                            </label>
+                            <label class="block rounded-xl border border-slate-200 bg-slate-50 p-3">
+                                <span class="block text-[10px] font-black uppercase text-slate-400 mb-1">Auto strategy priority</span>
+                                <select id="epc-battery-control-priority" onchange="updateEpcBatteryControlSettings()" class="w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs font-black text-slate-700">
+                                    ${renderEpcBatteryControlPriorityOptions(control)}
+                                </select>
+                            </label>
+                        </div>
+                        <div class="rounded-xl border border-slate-200 overflow-hidden">
+                            <div class="flex flex-wrap items-center justify-between gap-2 bg-slate-50 px-3 py-2">
+                                <div>
+                                    <div class="text-xs font-black text-slate-800">Manual charge/discharge kW</div>
+                                    <div class="text-[11px] font-bold text-slate-400">Positive charges battery; negative discharges battery to load.</div>
+                                </div>
+                                <div class="text-[11px] font-black text-slate-500">${htmlSafe(control.priorityOrder.map(id => EPC_BATTERY_CONTROL_PRIORITY_OPTIONS.find(option => option.id === id)?.label || id).join(' -> '))}</div>
+                            </div>
+                            <div class="max-h-80 overflow-auto">
+                                <table id="epc-battery-control-manual-table" class="w-full text-left text-xs">
+                                    <thead class="sticky top-0 bg-white text-slate-400 uppercase">
+                                        <tr>
+                                            <th class="px-3 py-2">Time</th>
+                                            <th class="px-3 py-2 text-right">PV kW</th>
+                                            <th class="px-3 py-2 text-right">Load kW</th>
+                                            <th class="px-3 py-2 text-right">Override kW</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100">
+                                        ${rows.map(row => {
+                                            const minute = Math.round(Number(row.timelineMinute) || 0);
+                                            return `
+                                                <tr>
+                                                    <td class="px-3 py-2 font-black text-slate-700">${htmlSafe(row.hourLabel || epcMinutesToTime(minute))}</td>
+                                                    <td class="px-3 py-2 text-right">${formatEpcNumber(row.pvOutputKw, 0)}</td>
+                                                    <td class="px-3 py-2 text-right">${formatEpcNumber(row.loadKw, 0)}</td>
+                                                    <td class="px-3 py-2 text-right">
+                                                        <input id="epc-battery-control-override-${minute}" type="number" step="1" value="${htmlSafe(overrideMap.get(minute) || '')}" onchange="updateEpcBatteryManualOverride(${minute}, this.value)" class="w-28 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-right font-black text-slate-700">
+                                                    </td>
+                                                </tr>
+                                            `;
+                                        }).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             `;
         }
 
@@ -12703,6 +12987,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             renderEpcRisks(result);
             renderEpcEnergyFlow(result);
             renderEpcDeviceWorkPage(result);
+            renderEpcBatteryControlPage(result);
             renderEpcPvSimulatorPage(result);
             renderEpcReports(result);
             updateEpcWizardStepStatus(result, project);

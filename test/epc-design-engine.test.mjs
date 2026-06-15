@@ -660,11 +660,25 @@ test('EPC design project preserves EMS Flow display settings', () => {
       deviceWorkModel: {
         applyToEmsFlow: false,
         loadNoisePct: 4,
-        shockCount: 3,
-        shockDurationMinutes: 22,
-        shockImpactPct: 18,
+        loadShockCount: 3,
+        loadShockDurationMinutes: 22,
+        loadShockImpactPct: 18,
+        loadShockPosition: 'startup',
+        gensetShockCount: 1,
+        gensetShockDurationMinutes: 15,
+        gensetShockImpactPct: 12,
+        gensetShockPosition: 'startup',
         gensetStepEnabled: false,
         gensetPlatforms: [0.25, 0.5, 1]
+      },
+      batteryControl: {
+        mode: 'manual',
+        manualIntervalMinutes: 60,
+        priorityOrder: ['pv_to_load', 'battery_to_load', 'genset_to_load', 'pv_to_battery'],
+        manualOverrides: [
+          { timelineMinute: 540, batteryKw: -174 },
+          { timelineMinute: 600, batteryKw: 120 }
+        ]
       }
     }
   }, { now: '2026-06-12T00:00:00.000Z' });
@@ -678,11 +692,25 @@ test('EPC design project preserves EMS Flow display settings', () => {
   assert.deepEqual(project.emsFlowDisplaySettings.deviceWorkModel, {
     applyToEmsFlow: false,
     loadNoisePct: 4,
-    shockCount: 3,
-    shockDurationMinutes: 22,
-    shockImpactPct: 18,
+    loadShockCount: 3,
+    loadShockDurationMinutes: 22,
+    loadShockImpactPct: 18,
+    loadShockPosition: 'startup',
+    gensetShockCount: 1,
+    gensetShockDurationMinutes: 15,
+    gensetShockImpactPct: 12,
+    gensetShockPosition: 'startup',
     gensetStepEnabled: false,
     gensetPlatforms: [0.25, 0.5, 1]
+  });
+  assert.deepEqual(project.emsFlowDisplaySettings.batteryControl, {
+    mode: 'manual',
+    manualIntervalMinutes: 60,
+    priorityOrder: ['pv_to_load', 'battery_to_load', 'genset_to_load', 'pv_to_battery'],
+    manualOverrides: [
+      { timelineMinute: 540, batteryKw: -174 },
+      { timelineMinute: 600, batteryKw: 120 }
+    ]
   });
 
   const darkPeakBand = normalizeEpcDesignProject({
@@ -702,6 +730,10 @@ test('EPC design project preserves EMS Flow display settings', () => {
   assert.equal(defaultSettings.emsFlowDisplaySettings.intervalMinutes, 5);
   assert.equal(defaultSettings.emsFlowDisplaySettings.deviceWorkModel.applyToEmsFlow, true);
   assert.equal(defaultSettings.emsFlowDisplaySettings.deviceWorkModel.loadNoisePct, 3);
+  assert.equal(defaultSettings.emsFlowDisplaySettings.deviceWorkModel.loadShockPosition, 'startup');
+  assert.equal(defaultSettings.emsFlowDisplaySettings.deviceWorkModel.gensetShockPosition, 'startup');
+  assert.equal(defaultSettings.emsFlowDisplaySettings.batteryControl.mode, 'auto');
+  assert.deepEqual(defaultSettings.emsFlowDisplaySettings.batteryControl.priorityOrder.slice(0, 3), ['pv_to_load', 'battery_to_load', 'genset_to_load']);
 });
 
 test('EPC design engine makes PF and distance affect LV MV architecture output', () => {

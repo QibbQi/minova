@@ -234,6 +234,25 @@ function normalizeEmsFlowDisplaySettings(value = {}) {
     .map(value => clamp(value, 0.05, 1, 0))
     .filter((value, index, array) => value > 0 && array.indexOf(value) === index)
     .sort((a, b) => a - b);
+  const normalizeShockPosition = (value) => {
+    const raw = String(value || '').trim().toLowerCase();
+    return ['startup', 'early', 'middle', 'late', 'distributed'].includes(raw) ? raw : 'startup';
+  };
+  const batteryControlInput = input.batteryControl && typeof input.batteryControl === 'object' ? input.batteryControl : {};
+  const allowedPriority = ['pv_to_load', 'battery_to_load', 'genset_to_load', 'pv_to_battery'];
+  const rawPriority = Array.isArray(batteryControlInput.priorityOrder) ? batteryControlInput.priorityOrder : allowedPriority;
+  const priorityOrder = rawPriority
+    .map(item => String(item || '').trim().toLowerCase())
+    .filter((item, index, array) => allowedPriority.includes(item) && array.indexOf(item) === index);
+  allowedPriority.forEach(item => {
+    if (!priorityOrder.includes(item)) priorityOrder.push(item);
+  });
+  const manualOverrides = Array.isArray(batteryControlInput.manualOverrides)
+    ? batteryControlInput.manualOverrides.map(item => ({
+        timelineMinute: Math.round(clamp(item?.timelineMinute, 0, 24 * 60, 0)),
+        batteryKw: round(clamp(item?.batteryKw, -100000, 100000, 0), 2)
+      })).filter(item => item.batteryKw !== 0)
+    : [];
   return {
     visibleSeries: visibleSeries.length ? visibleSeries : [...EMS_FLOW_DISPLAY_SERIES],
     mergeHourly: input.mergeHourly !== false,
@@ -249,11 +268,22 @@ function normalizeEmsFlowDisplaySettings(value = {}) {
     deviceWorkModel: {
       applyToEmsFlow: deviceWorkModelInput.applyToEmsFlow === false ? false : true,
       loadNoisePct: clamp(deviceWorkModelInput.loadNoisePct, 0, 12, 3),
-      shockCount: Math.round(clamp(deviceWorkModelInput.shockCount, 0, 4, 2)),
-      shockDurationMinutes: clamp(deviceWorkModelInput.shockDurationMinutes, 1, 60, 14),
-      shockImpactPct: clamp(deviceWorkModelInput.shockImpactPct, 0, 40, 20),
+      loadShockCount: Math.round(clamp(deviceWorkModelInput.loadShockCount ?? deviceWorkModelInput.shockCount, 0, 4, 2)),
+      loadShockDurationMinutes: clamp(deviceWorkModelInput.loadShockDurationMinutes ?? deviceWorkModelInput.shockDurationMinutes, 1, 60, 14),
+      loadShockImpactPct: clamp(deviceWorkModelInput.loadShockImpactPct ?? deviceWorkModelInput.shockImpactPct, 0, 40, 20),
+      loadShockPosition: normalizeShockPosition(deviceWorkModelInput.loadShockPosition),
+      gensetShockCount: Math.round(clamp(deviceWorkModelInput.gensetShockCount, 0, 4, 0)),
+      gensetShockDurationMinutes: clamp(deviceWorkModelInput.gensetShockDurationMinutes, 1, 60, 12),
+      gensetShockImpactPct: clamp(deviceWorkModelInput.gensetShockImpactPct, 0, 40, 0),
+      gensetShockPosition: normalizeShockPosition(deviceWorkModelInput.gensetShockPosition),
       gensetStepEnabled: deviceWorkModelInput.gensetStepEnabled === false ? false : true,
       gensetPlatforms: gensetPlatforms.length ? gensetPlatforms : [0.3, 0.5, 0.75, 1]
+    },
+    batteryControl: {
+      mode: String(batteryControlInput.mode || '').toLowerCase() === 'manual' ? 'manual' : 'auto',
+      manualIntervalMinutes: [5, 60].includes(Number(batteryControlInput.manualIntervalMinutes)) ? Number(batteryControlInput.manualIntervalMinutes) : 60,
+      priorityOrder,
+      manualOverrides
     }
   };
 }

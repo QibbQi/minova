@@ -652,6 +652,7 @@ test('EPC design project preserves EMS Flow display settings', () => {
   const project = normalizeEpcDesignProject({
     emsFlowDisplaySettings: {
       visibleSeries: ['pv', 'load', 'soc'],
+      mergeHourly: false,
       intervalMinutes: 5,
       selectedRange: { start: 2, end: 8 },
       peakBand: { visible: false, color: '#e0f2fe', startMinute: 15 * 60, endMinute: 21 * 60 },
@@ -660,6 +661,7 @@ test('EPC design project preserves EMS Flow display settings', () => {
   }, { now: '2026-06-12T00:00:00.000Z' });
 
   assert.deepEqual(project.emsFlowDisplaySettings.visibleSeries, ['pv', 'load', 'soc']);
+  assert.equal(project.emsFlowDisplaySettings.mergeHourly, false);
   assert.equal(project.emsFlowDisplaySettings.intervalMinutes, 5);
   assert.deepEqual(project.emsFlowDisplaySettings.selectedRange, { start: 2, end: 8 });
   assert.deepEqual(project.emsFlowDisplaySettings.peakBand, { visible: false, color: '#e0f2fe', startMinute: 900, endMinute: 1260 });
@@ -678,6 +680,7 @@ test('EPC design project preserves EMS Flow display settings', () => {
   });
 
   const defaultSettings = normalizeEpcDesignProject({}, { now: '2026-06-12T00:00:00.000Z' });
+  assert.equal(defaultSettings.emsFlowDisplaySettings.mergeHourly, true);
   assert.equal(defaultSettings.emsFlowDisplaySettings.intervalMinutes, 5);
 });
 

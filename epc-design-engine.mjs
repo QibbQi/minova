@@ -230,6 +230,7 @@ function normalizeEmsFlowDisplaySettings(value = {}) {
   const endMinute = clamp(peakBandInput.endMinute, 0, 24 * 60, EMS_FLOW_DEFAULT_PEAK_BAND_END_MINUTE);
   return {
     visibleSeries: visibleSeries.length ? visibleSeries : [...EMS_FLOW_DISPLAY_SERIES],
+    mergeHourly: input.mergeHourly !== false,
     intervalMinutes: EMS_FLOW_INTERVAL_MINUTES.includes(Number(input.intervalMinutes)) ? Number(input.intervalMinutes) : 5,
     selectedRange,
     peakBand: {

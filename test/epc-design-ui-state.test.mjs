@@ -515,6 +515,37 @@ test('EPC PV Simulator is a standalone page feeding EMS and Device Work PV data'
   assert.ok(pvSimulatorPos < reportsPos, 'PV Simulator tab is before Reports');
 });
 
+test('EPC PV Simulator auto-syncs recommendation rating and exposes EMS hourly merge controls', () => {
+  for (const snippet of [
+    'function getEpcRecommendedPvRatedKw(result = {})',
+    'function refreshEpcPvSimulatorProfileForRecommendation(project, result)',
+    'refreshEpcPvSimulatorProfileForRecommendation(project, result)',
+    'P rated kW (DC)',
+    'Live Recommendation PV DC',
+    'epc-pv-simulator-rated-kw',
+    'readonly',
+    'PV DC',
+    'PV AC',
+    'DC/AC ratio',
+    'epc-pv-simulator-ac-kw',
+    'epc-pv-simulator-random-scale',
+    'epc-pv-simulator-cloud-volatility',
+    'epc-pv-simulator-event-impact',
+    'updateEpcPvSimulatorFromControls()',
+    'function updateEpcPvSimulatorFromControls(',
+    'function getEpcPvSimulatorDomSettings(result = {}, { regenerateSeed = false } = {})',
+    'getEpcPvSimulatorDomSettings(result, { regenerateSeed: true })',
+    'function setEpcEmsFlowMergeHourly(',
+    'function mergeEpcEnergyFlowRowsByHour(',
+    'epc-ems-flow-merge-hourly',
+    'Merge hourly',
+    'project.emsFlowDisplaySettings = { ...(project.emsFlowDisplaySettings || {}), mergeHourly: Boolean(checked) }'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing PV Simulator refinement snippet: ${snippet}`);
+  }
+  assert.doesNotMatch(html, /Math\.random\(\) \* 100000/, 'PV Simulator should use deterministic seed helpers for random profile state');
+});
+
 test('EPC Device Work profile renders realistic load and genset device behavior', () => {
   for (const snippet of [
     'function buildEpcDeviceWorkProfileRows(sourceRows = [], settings = {})',

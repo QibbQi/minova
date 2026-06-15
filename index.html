@@ -11977,21 +11977,40 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             };
         }
 
-        function getEpcPvSimulatorSettings(result = {}) {
-            const project = getActiveEpcDesignProject();
+        function createEpcPvSimulatorSeed(project = getActiveEpcDesignProject()) {
+            const bytes = new Uint32Array(2);
+            if (window.crypto?.getRandomValues) {
+                window.crypto.getRandomValues(bytes);
+            } else {
+                bytes[0] = Date.now() >>> 0;
+                bytes[1] = epcPvSimulatorHashSeed(`${project.id || ''}-${Date.now()}`);
+            }
+            return `pv-${project.id || 'project'}-${bytes[0].toString(16)}${bytes[1].toString(16)}`;
+        }
+
+        function getEpcRecommendedPvRatedKw(result = {}) {
+            const recommended = getRecommendedEpcScheme(result);
+            return Math.max(0, Number(recommended.pvRecommendedMwp) || 0) * 1000;
+        }
+
+        function getEpcPvSimulatorSettings(result = {}, project = getActiveEpcDesignProject()) {
             const sim = project.solarResource?.pvSimulator || result.solar?.pvSimulator || {};
             const stored = sim.settings || {};
-            const recommended = getRecommendedEpcScheme(result);
-            const fallbackRatedKw = Math.max(1, (recommended.pvRecommendedMwp || 0) * 1000);
+            const fallbackRatedKw = Math.max(1, getEpcRecommendedPvRatedKw(result));
             const seed = String(stored.seed || sim.seed || `pv-${project.id || Date.now()}`);
+            const dcAcRatio = Math.max(1, Number(stored.dcAcRatio) || 1.2);
             return {
-                pRatedKw: Math.max(0, Number(stored.pRatedKw) || fallbackRatedKw),
+                pRatedKw: fallbackRatedKw,
                 location: String(stored.location || project.site?.country || 'Malaysia'),
                 timezone: String(stored.timezone || 'UTC+8'),
                 stepMinutes: 5,
                 weatherMode: ['clear', 'mixed', 'rainy'].includes(stored.weatherMode) ? stored.weatherMode : 'mixed',
-                dcAcRatio: Math.max(1, Number(stored.dcAcRatio) || 1.2),
+                dcAcRatio,
+                acRatedKw: fallbackRatedKw / dcAcRatio,
                 inverterLimitKw: Math.max(0, Number(stored.inverterLimitKw) || 0),
+                randomScale: Math.max(0, Math.min(1, Number(stored.randomScale) || 0.45)),
+                cloudVolatility: Math.max(0, Math.min(1, Number(stored.cloudVolatility) || 0.5)),
+                eventImpact: Math.max(0, Math.min(1, Number(stored.eventImpact) || 0.5)),
                 fixedRandomState: Boolean(stored.fixedRandomState),
                 seed
             };
@@ -12010,6 +12029,11 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return rng() * 0.3;
         }
 
+        function softenEpcPvSimulatorCloudFactor(factor, impact = 0.5) {
+            const safeImpact = Math.max(0, Math.min(1, Number(impact) || 0));
+            return 1 - (1 - Math.max(0, Math.min(1, Number(factor) || 0))) * safeImpact;
+        }
+
         function buildEpcPvSimulatorProfile(settings = {}) {
             const stepMinutes = 5;
             const points = Math.floor((24 * 60) / stepMinutes);
@@ -12019,13 +12043,17 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const pRatedKw = Math.max(0, Number(settings.pRatedKw) || 0);
             const dcAcRatio = Math.max(1, Number(settings.dcAcRatio) || 1.2);
             const inverterLimitKw = Math.max(0, Number(settings.inverterLimitKw) || (pRatedKw / dcAcRatio));
+            const randomScale = Math.max(0, Math.min(1, Number(settings.randomScale) || 0.45));
+            const cloudVolatility = Math.max(0, Math.min(1, Number(settings.cloudVolatility) || 0.5));
+            const eventImpact = Math.max(0, Math.min(1, Number(settings.eventImpact) || 0.5));
             let cloud_state = weather_mode === 'clear' ? 0 : weather_mode === 'rainy' ? 2 : 1;
-            let soilingLoss = weather_mode === 'rainy' ? 0 : rng() * 0.035;
-            const eventCount = weather_mode === 'clear' ? 2 : weather_mode === 'rainy' ? 6 : 4;
+            let soilingLoss = weather_mode === 'rainy' ? 0 : rng() * 0.02;
+            const baseEventCount = weather_mode === 'clear' ? 1 : weather_mode === 'rainy' ? 4 : 3;
+            const eventCount = Math.max(0, Math.round(baseEventCount * (0.5 + cloudVolatility * 0.7)));
             const events = Array.from({ length: eventCount }, (_, index) => {
                 const startMinute = 7 * 60 + rng() * 11 * 60;
-                const duration = 10 + rng() * 50;
-                const severity = weather_mode === 'rainy' ? 3 : Math.min(3, 1 + Math.floor(rng() * 3));
+                const duration = 8 + rng() * 32 * (0.5 + eventImpact);
+                const severity = weather_mode === 'rainy' ? 2 + Math.round(eventImpact) : Math.min(3, 1 + Math.floor(rng() * (1 + eventImpact * 2)));
                 return { startMinute, endMinute: startMinute + duration, severity, index };
             });
             const rows = [];
@@ -12042,8 +12070,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 const clearSky = daylight ? Math.pow(Math.max(0, Math.sin(Math.PI * (hour - 7) / 12)), 1.2) : 0;
                 if (clearSky > 0) {
                     const roll = rng();
-                    if (roll < 0.8) cloud_state = cloud_state;
-                    else if (roll < 0.95) cloud_state += rng() > 0.5 ? 1 : -1;
+                    const stayThreshold = 0.88 + (1 - cloudVolatility) * 0.08;
+                    const smallThreshold = stayThreshold + 0.1 * cloudVolatility;
+                    if (roll < stayThreshold) cloud_state = cloud_state;
+                    else if (roll < smallThreshold) cloud_state += rng() > 0.5 ? 1 : -1;
                     else cloud_state += rng() > 0.5 ? 2 : -2;
                     cloud_state = Math.max(0, Math.min(3, cloud_state));
                 } else {
@@ -12051,14 +12081,17 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 }
                 const activeEvent = events.find(event => timelineMinute >= event.startMinute && timelineMinute <= event.endMinute);
                 const effective_cloud_state = activeEvent ? Math.max(cloud_state, activeEvent.severity) : cloud_state;
-                const irradiance_cf = clearSky * epcPvSimulatorCloudFactor(effective_cloud_state, rng);
+                const rawCloudFactor = epcPvSimulatorCloudFactor(effective_cloud_state, rng);
+                const cloudImpact = activeEvent ? Math.min(1, eventImpact + 0.15) : Math.max(0.15, cloudVolatility);
+                const irradiance_cf = clearSky * softenEpcPvSimulatorCloudFactor(rawCloudFactor, cloudImpact);
                 const ambientC = 30 + 10 * Math.max(0, clearSky) + (rng() - 0.5) * 1.8;
                 const moduleTempC = ambientC + 25 + 10 * clearSky;
                 const temperature_factor = Math.max(0.85, 1 - 0.0045 * (moduleTempC - 25));
                 if (weather_mode === 'rainy' && effective_cloud_state === 3 && clearSky > 0.05) soilingLoss = 0;
                 else soilingLoss = Math.min(0.1, soilingLoss + 0.000035);
                 const soiling_factor = 1 - soilingLoss;
-                const noise = Math.max(0.88, Math.min(1.12, 1 + epcPvSimulatorGaussian(rng, weather_mode === 'clear' ? 0.02 : 0.04)));
+                const noiseSigma = (weather_mode === 'clear' ? 0.01 : 0.02) * randomScale;
+                const noise = Math.max(0.94, Math.min(1.06, 1 + epcPvSimulatorGaussian(rng, noiseSigma)));
                 const clearSkyKw = pRatedKw * clearSky;
                 let pvPowerKw = pRatedKw * irradiance_cf * temperature_factor * soiling_factor * noise;
                 const unclippedKw = pvPowerKw;
@@ -12070,7 +12103,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 pvPowerKw *= curtailmentFactor;
                 const clipping_loss_kw = Math.max(0, unclippedKw - clippedBeforeCurtailmentKw);
                 const curtailmentLossKw = Math.max(0, clippedBeforeCurtailmentKw - pvPowerKw);
-                baselineKwSum += pRatedKw * clearSky * Math.max(0, epcPvSimulatorCloudFactor(effective_cloud_state, () => 0.5));
+                baselineKwSum += pRatedKw * clearSky * Math.max(0, softenEpcPvSimulatorCloudFactor(epcPvSimulatorCloudFactor(effective_cloud_state, () => 0.5), cloudImpact));
                 clearSkyKwSum += clearSkyKw;
                 tempLossKwh += Math.max(0, pRatedKw * irradiance_cf * (1 - temperature_factor)) * stepMinutes / 60;
                 soilingLossKwh += Math.max(0, pRatedKw * irradiance_cf * temperature_factor * (1 - soiling_factor)) * stepMinutes / 60;
@@ -12116,56 +12149,107 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 baselineClearSkyKwh: epcChartRound(clearSkyKwSum * stepMinutes / 60, 2),
                 modeledCloudKwh: epcChartRound(baselineKwSum * stepMinutes / 60, 2)
             };
-            return { settings: { ...settings, stepMinutes, weatherMode: weather_mode, seed }, rows, summary };
+            return { settings: { ...settings, pRatedKw, dcAcRatio, randomScale, cloudVolatility, eventImpact, stepMinutes, weatherMode: weather_mode, seed }, rows, summary };
         }
 
-        function getEpcPvSimulatorDomSettings(result = {}) {
+        function getEpcPvSimulatorDomSettings(result = {}, { regenerateSeed = false } = {}) {
             const current = getEpcPvSimulatorSettings(result);
             const lock = document.getElementById('epc-pv-simulator-lock-seed')?.checked ?? current.fixedRandomState;
             const seedInput = String(document.getElementById('epc-pv-simulator-seed')?.value || current.seed || '').trim();
+            const nextSeed = lock
+                ? (seedInput || current.seed)
+                : regenerateSeed
+                ? createEpcPvSimulatorSeed()
+                : (seedInput || current.seed);
             return {
                 ...current,
-                pRatedKw: Math.max(0, Number(document.getElementById('epc-pv-simulator-rated-kw')?.value) || current.pRatedKw),
+                pRatedKw: current.pRatedKw,
                 weatherMode: document.getElementById('epc-pv-simulator-weather')?.value || current.weatherMode,
                 dcAcRatio: Math.max(1, Number(document.getElementById('epc-pv-simulator-dc-ac')?.value) || current.dcAcRatio),
                 inverterLimitKw: Math.max(0, Number(document.getElementById('epc-pv-simulator-inverter-limit')?.value) || 0),
+                randomScale: Math.max(0, Math.min(1, Number(document.getElementById('epc-pv-simulator-random-scale')?.value) || current.randomScale)),
+                cloudVolatility: Math.max(0, Math.min(1, Number(document.getElementById('epc-pv-simulator-cloud-volatility')?.value) || current.cloudVolatility)),
+                eventImpact: Math.max(0, Math.min(1, Number(document.getElementById('epc-pv-simulator-event-impact')?.value) || current.eventImpact)),
                 fixedRandomState: lock,
-                seed: lock ? (seedInput || current.seed) : `pv-${Date.now()}-${Math.floor(Math.random() * 100000)}`
+                seed: nextSeed
             };
         }
 
-        function generateEpcPvSimulator() {
-            const project = getActiveEpcDesignProject();
-            const result = window.__lastEpcDesignResult || calculateEpcDesignProject(project, { defaults: epcDesignDefaults });
-            const settings = getEpcPvSimulatorDomSettings(result);
-            const profile = buildEpcPvSimulatorProfile(settings);
-            // solarResource.hourlyPvProfile is the shared PV integration point for EMS Flow and Device Work.
+        function epcPvSimulatorRowsToHourlyProfile(rows = []) {
+            return rows.map(row => ({
+                timestamp: row.timestamp,
+                hour: row.hour,
+                timelineMinute: row.timelineMinute,
+                intervalMinutes: row.intervalMinutes,
+                pvMw: row.pvPowerKw / 1000,
+                clearSkyKw: row.clearSkyKw,
+                irradianceCf: row.irradianceCf,
+                cloudState: row.cloudState,
+                temperatureFactor: row.temperatureFactor,
+                soilingFactor: row.soilingFactor,
+                inverterLimitActive: row.inverterLimitActive,
+                curtailmentActive: row.curtailmentActive,
+                clippingLossKw: row.clippingLossKw
+            }));
+        }
+
+        function applyEpcPvSimulatorProfile(project, profile) {
             project.solarResource = {
                 ...(project.solarResource || {}),
                 dataSource: 'PV Simulator',
-                hourlyPvProfile: profile.rows.map(row => ({
-                    timestamp: row.timestamp,
-                    hour: row.hour,
-                    timelineMinute: row.timelineMinute,
-                    intervalMinutes: row.intervalMinutes,
-                    pvMw: row.pvPowerKw / 1000,
-                    clearSkyKw: row.clearSkyKw,
-                    irradianceCf: row.irradianceCf,
-                    cloudState: row.cloudState,
-                    temperatureFactor: row.temperatureFactor,
-                    soilingFactor: row.soilingFactor,
-                    inverterLimitActive: row.inverterLimitActive,
-                    curtailmentActive: row.curtailmentActive,
-                    clippingLossKw: row.clippingLossKw
-                })),
+                hourlyPvProfile: epcPvSimulatorRowsToHourlyProfile(profile.rows),
                 pvSimulator: {
                     settings: profile.settings,
                     summary: profile.summary,
                     generatedAt: new Date().toISOString()
                 }
             };
+            return project;
+        }
+
+        function generateEpcPvSimulator() {
+            const project = getActiveEpcDesignProject();
+            const result = window.__lastEpcDesignResult || calculateEpcDesignProject(project, { defaults: epcDesignDefaults });
+            const settings = getEpcPvSimulatorDomSettings(result, { regenerateSeed: true });
+            const profile = buildEpcPvSimulatorProfile(settings);
+            // solarResource.hourlyPvProfile is the shared PV integration point for EMS Flow and Device Work.
+            applyEpcPvSimulatorProfile(project, profile);
             updateEpcProject(project);
             renderEpcDesignResult(project);
+        }
+
+        function updateEpcPvSimulatorFromControls() {
+            const project = getActiveEpcDesignProject();
+            const result = window.__lastEpcDesignResult || calculateEpcDesignProject(project, { defaults: epcDesignDefaults });
+            const settings = getEpcPvSimulatorDomSettings(result);
+            const profile = buildEpcPvSimulatorProfile(settings);
+            applyEpcPvSimulatorProfile(project, profile);
+            updateEpcProject(project);
+            renderEpcDesignResult(project);
+        }
+
+        function getEpcPvSimulatorSettingsKey(settings = {}) {
+            return [
+                settings.pRatedKw,
+                settings.dcAcRatio,
+                settings.inverterLimitKw || 0,
+                settings.weatherMode,
+                settings.randomScale,
+                settings.cloudVolatility,
+                settings.eventImpact,
+                settings.seed
+            ].map(value => String(Math.round((Number(value) || 0) * 1000) / 1000 || value)).join('|');
+        }
+
+        function refreshEpcPvSimulatorProfileForRecommendation(project, result) {
+            if (project.solarResource?.dataSource !== 'PV Simulator' || !project.solarResource?.pvSimulator) return project;
+            const settings = getEpcPvSimulatorSettings(result, project);
+            const currentKey = getEpcPvSimulatorSettingsKey(project.solarResource.pvSimulator.settings || {});
+            const nextKey = getEpcPvSimulatorSettingsKey(settings);
+            if (currentKey === nextKey && Array.isArray(project.solarResource.hourlyPvProfile) && project.solarResource.hourlyPvProfile.length) return project;
+            const profile = buildEpcPvSimulatorProfile(settings);
+            applyEpcPvSimulatorProfile(project, profile);
+            return updateEpcProject(project);
         }
 
         function renderEpcPvSimulatorChart(rows = []) {
@@ -12197,6 +12281,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const target = document.getElementById('epc-pv-simulator-page');
             if (!target) return;
             const settings = getEpcPvSimulatorSettings(result);
+            const acRatedKw = settings.dcAcRatio > 0 ? settings.pRatedKw / settings.dcAcRatio : 0;
             const sim = result.solar?.pvSimulator || {};
             const storedRows = Array.isArray(result.solar?.hourlyPvProfile) && result.solar?.dataSource === 'PV Simulator'
                 ? result.solar.hourlyPvProfile.map(row => ({
@@ -12225,30 +12310,54 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <div class="xl:col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
                             <div class="grid grid-cols-2 gap-3 text-xs">
                                 <div>
-                                    <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">P rated kW</label>
-                                    <input id="epc-pv-simulator-rated-kw" type="number" min="0" step="1" value="${htmlSafe(epcChartRound(settings.pRatedKw, 2))}" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-bold outline-none focus:border-purple-500">
+                                    <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">P rated kW (DC)</label>
+                                    <input id="epc-pv-simulator-rated-kw" type="number" min="0" step="1" value="${htmlSafe(epcChartRound(settings.pRatedKw, 2))}" readonly class="w-full rounded-xl border border-slate-200 bg-slate-100 px-3 py-2 font-bold text-slate-600 outline-none">
                                 </div>
                                 <div>
                                     <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">weather_mode</label>
-                                    <select id="epc-pv-simulator-weather" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-bold outline-none focus:border-purple-500">
+                                    <select id="epc-pv-simulator-weather" onchange="updateEpcPvSimulatorFromControls()" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-bold outline-none focus:border-purple-500">
                                         ${['clear', 'mixed', 'rainy'].map(mode => `<option value="${mode}" ${settings.weatherMode === mode ? 'selected' : ''}>${mode}</option>`).join('')}
                                     </select>
                                 </div>
                                 <div>
                                     <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">DC/AC ratio</label>
-                                    <input id="epc-pv-simulator-dc-ac" type="number" min="1" step="0.05" value="${htmlSafe(epcChartRound(settings.dcAcRatio, 2))}" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-bold outline-none focus:border-purple-500">
+                                    <input id="epc-pv-simulator-dc-ac" type="number" min="1" step="0.05" value="${htmlSafe(epcChartRound(settings.dcAcRatio, 2))}" oninput="updateEpcPvSimulatorFromControls()" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-bold outline-none focus:border-purple-500">
                                 </div>
                                 <div>
                                     <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Inverter limit kW</label>
-                                    <input id="epc-pv-simulator-inverter-limit" type="number" min="0" step="1" value="${htmlSafe(settings.inverterLimitKw || '')}" placeholder="auto" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-bold outline-none focus:border-purple-500">
+                                    <input id="epc-pv-simulator-inverter-limit" type="number" min="0" step="1" value="${htmlSafe(settings.inverterLimitKw || '')}" placeholder="auto" oninput="updateEpcPvSimulatorFromControls()" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-bold outline-none focus:border-purple-500">
+                                </div>
+                                <div class="col-span-2 grid grid-cols-2 gap-2">
+                                    <div class="rounded-xl border border-slate-200 bg-white p-2">
+                                        <div class="text-[10px] font-black uppercase text-slate-400">Live Recommendation PV DC</div>
+                                        <div class="text-sm font-black text-slate-800">PV DC ${htmlSafe(formatEpcNumber(settings.pRatedKw, 0, 'kW'))}</div>
+                                    </div>
+                                    <div class="rounded-xl border border-slate-200 bg-white p-2">
+                                        <div class="text-[10px] font-black uppercase text-slate-400">Derived inverter AC</div>
+                                        <div id="epc-pv-simulator-ac-kw" class="text-sm font-black text-slate-800">PV AC ${htmlSafe(formatEpcNumber(acRatedKw, 0, 'kW'))}</div>
+                                    </div>
+                                </div>
+                                <div class="col-span-2 grid grid-cols-1 gap-2">
+                                    <label class="block">
+                                        <span class="block text-[10px] font-black uppercase text-slate-400 mb-1">Random noise</span>
+                                        <input id="epc-pv-simulator-random-scale" type="range" min="0" max="1" step="0.05" value="${htmlSafe(settings.randomScale)}" oninput="updateEpcPvSimulatorFromControls()" class="w-full accent-purple-700">
+                                    </label>
+                                    <label class="block">
+                                        <span class="block text-[10px] font-black uppercase text-slate-400 mb-1">Cloud volatility</span>
+                                        <input id="epc-pv-simulator-cloud-volatility" type="range" min="0" max="1" step="0.05" value="${htmlSafe(settings.cloudVolatility)}" oninput="updateEpcPvSimulatorFromControls()" class="w-full accent-purple-700">
+                                    </label>
+                                    <label class="block">
+                                        <span class="block text-[10px] font-black uppercase text-slate-400 mb-1">Event impact</span>
+                                        <input id="epc-pv-simulator-event-impact" type="range" min="0" max="1" step="0.05" value="${htmlSafe(settings.eventImpact)}" oninput="updateEpcPvSimulatorFromControls()" class="w-full accent-purple-700">
+                                    </label>
                                 </div>
                                 <label class="col-span-2 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 font-black text-slate-700">
-                                    <input id="epc-pv-simulator-lock-seed" type="checkbox" ${settings.fixedRandomState ? 'checked' : ''} class="h-4 w-4 accent-purple-700">
+                                    <input id="epc-pv-simulator-lock-seed" type="checkbox" ${settings.fixedRandomState ? 'checked' : ''} onchange="updateEpcPvSimulatorFromControls()" class="h-4 w-4 accent-purple-700">
                                     <span>Fixed random state</span>
                                 </label>
                                 <div class="col-span-2">
                                     <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Seed</label>
-                                    <input id="epc-pv-simulator-seed" value="${htmlSafe(settings.seed)}" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-xs font-bold outline-none focus:border-purple-500">
+                                    <input id="epc-pv-simulator-seed" value="${htmlSafe(settings.seed)}" onchange="updateEpcPvSimulatorFromControls()" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-xs font-bold outline-none focus:border-purple-500">
                                 </div>
                                 <button type="button" onclick="generateEpcPvSimulator()" class="col-span-2 rounded-xl bg-purple-700 px-4 py-2.5 text-xs font-black text-white hover:bg-purple-800">Generate PV Simulator Profile</button>
                             </div>
@@ -12324,10 +12433,64 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             window.toggleEpcEmsFlowSeries(seriesId, true);
         };
 
+        function getEpcEnergyFlowDurationHours(row = {}) {
+            return Math.max(0, Number(row.durationHours) || (Number(row.intervalMinutes) > 0 ? Number(row.intervalMinutes) / 60 : 1));
+        }
+
+        function mergeEpcEnergyFlowRowsByHour(rows = []) {
+            const groups = new Map();
+            rows.forEach((row, index) => {
+                const minute = Number.isFinite(Number(row.timelineMinute))
+                    ? Number(row.timelineMinute)
+                    : Number.isFinite(Number(row.hour))
+                    ? Number(row.hour) * 60
+                    : index * 60;
+                const hour = Math.floor((((minute % 1440) + 1440) % 1440) / 60);
+                if (!groups.has(hour)) groups.set(hour, []);
+                groups.get(hour).push(row);
+            });
+            const averageKeys = ['pvOutputKw', 'loadKw', 'pvToLoadKw', 'pvToBatteryKw', 'batteryToLoadKw', 'gensetToLoadKw', 'curtailmentKw', 'socPct'];
+            return [...groups.entries()].sort(([a], [b]) => a - b).map(([hour, items]) => {
+                const totalDuration = items.reduce((total, item) => total + getEpcEnergyFlowDurationHours(item), 0) || items.length || 1;
+                const merged = {
+                    hour,
+                    hourLabel: `${epcMinutesToTime(hour * 60)}-${epcMinutesToTime((hour + 1) * 60)}`,
+                    flowKey: `merged-hour-${hour}`,
+                    timelineMinute: hour * 60,
+                    intervalMinutes: 60,
+                    durationHours: totalDuration
+                };
+                averageKeys.forEach(key => {
+                    const weightedTotal = items.reduce((total, item) => total + (Number(item[key]) || 0) * getEpcEnergyFlowDurationHours(item), 0);
+                    merged[key] = epcChartRound(weightedTotal / totalDuration, key === 'socPct' ? 1 : 2);
+                });
+                return merged;
+            });
+        }
+
+        function getEpcEnergyFlowDisplayRows(result = {}) {
+            const rows = result.energyFlow?.rows || [];
+            const shouldMerge = result.emsFlowDisplaySettings?.mergeHourly !== false
+                && rows.some(row => Number(row.intervalMinutes) > 0 && Number(row.intervalMinutes) < 60);
+            return shouldMerge ? mergeEpcEnergyFlowRowsByHour(rows) : rows;
+        }
+
+        function setEpcEmsFlowMergeHourly(checked) {
+            const project = getActiveEpcDesignProject();
+            project.emsFlowDisplaySettings = { ...(project.emsFlowDisplaySettings || {}), mergeHourly: Boolean(checked) };
+            updateEpcProject(project);
+            renderEpcDesignResult(project);
+        }
+
+        window.setEpcEmsFlowMergeHourly = setEpcEmsFlowMergeHourly;
+
         function renderEpcEnergyFlow(result) {
             const target = document.getElementById('epc-energy-flow-table');
             if (!target) return;
-            const rows = result.energyFlow?.rows || [];
+            const sourceRows = result.energyFlow?.rows || [];
+            const rows = getEpcEnergyFlowDisplayRows(result);
+            const mergeHourly = result.emsFlowDisplaySettings?.mergeHourly !== false;
+            const canMerge = sourceRows.some(row => Number(row.intervalMinutes) > 0 && Number(row.intervalMinutes) < 60);
             const stringDesign = result.pvStringDesign || {};
             const rowKey = row => String(row.flowKey || row.hour);
             if (!rows.some(row => rowKey(row) === String(epcSelectedFlowHour))) epcSelectedFlowHour = rowKey(rows[0] || { hour: 13 });
@@ -12344,7 +12507,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     <table class="w-full text-left text-xs whitespace-nowrap">
                         <thead class="bg-slate-50 text-slate-500 uppercase">
                             <tr>
-                                <th class="px-3 py-2">Hour</th>
+                                <th class="px-3 py-2">
+                                    <label class="mr-3 inline-flex items-center gap-1.5 text-[10px] font-black text-slate-500 normal-case">
+                                        <input id="epc-ems-flow-merge-hourly" type="checkbox" ${mergeHourly ? 'checked' : ''} ${canMerge ? '' : 'disabled'} onchange="setEpcEmsFlowMergeHourly(this.checked)" class="h-3.5 w-3.5 accent-purple-700">
+                                        <span>Merge hourly</span>
+                                    </label>
+                                    <span>Hour</span>
+                                </th>
                                 <th class="px-3 py-2 text-right">PV kW</th>
                                 <th class="px-3 py-2 text-right">Load kW</th>
                                 <th class="px-3 py-2 text-right">PV Load</th>
@@ -12415,7 +12584,14 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
 
         function renderEpcDesignResult(project = getActiveEpcDesignProject()) {
-            const result = calculateEpcDesignProject(project, { defaults: epcDesignDefaults });
+            let result = calculateEpcDesignProject(project, { defaults: epcDesignDefaults });
+            if (project.solarResource?.dataSource === 'PV Simulator' && project.solarResource?.pvSimulator) {
+                const refreshedProject = refreshEpcPvSimulatorProfileForRecommendation(project, result);
+                if (refreshedProject !== project) {
+                    project = refreshedProject;
+                    result = calculateEpcDesignProject(project, { defaults: epcDesignDefaults });
+                }
+            }
             const recommended = getRecommendedEpcScheme(result);
             renderEpcRecommendationTargetToggle(result);
             renderEpcKpis(result);

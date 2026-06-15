@@ -549,9 +549,13 @@ test('EPC PV Simulator auto-syncs recommendation rating and exposes EMS hourly m
 test('EPC Device Work profile renders realistic load and genset device behavior', () => {
   for (const snippet of [
     'function buildEpcDeviceWorkProfileRows(sourceRows = [], settings = {})',
+    'function getEpcEmsFlowProfileRows(result = {})',
+    'function getEpcDeviceWorkModelSettings(raw = {})',
+    'function updateEpcDeviceWorkModelSettings()',
+    'const numberOrDefault = (value, fallback) => Number.isFinite(Number(value)) ? Number(value) : fallback;',
     'function epcDeviceWorkDeterministicNoise(seed = 0)',
-    'function getEpcDeviceWorkLoadShockMultiplier(row, index, rows)',
-    'function quantizeEpcDeviceWorkGensetPlatform(value, peakValue)',
+    'function getEpcDeviceWorkLoadShockMultiplier(row, index, rows, model = EPC_DEVICE_WORK_DEFAULT_MODEL)',
+    'function quantizeEpcDeviceWorkGensetPlatform(value, peakValue, platforms = EPC_DEVICE_WORK_GENSET_PLATFORMS, enabled = true)',
     'function getEpcDeviceWorkStepPathD(series, rows, xForIndex, yForPower, yForSoc)',
     "series.id === 'load' || series.id === 'genset'",
     'Load shock is a concept-design visual assumption',
@@ -559,10 +563,27 @@ test('EPC Device Work profile renders realistic load and genset device behavior'
     'EPC_DEVICE_WORK_LOAD_NOISE_RATIO',
     'EPC_DEVICE_WORK_LOAD_SHOCK_MINUTES',
     'EPC_DEVICE_WORK_GENSET_PLATFORMS',
+    'getEpcEmsFlowProfileRows(result)',
     'buildEpcDeviceWorkProfileRows(result.energyFlow?.rows || [], settings)',
-    'getEpcDeviceWorkRowsForSettings(result.energyFlow?.rows || [], settings)',
+    'const sourceRows = getEpcEmsFlowProfileRows(result);',
     'const path = (series.id === \'load\' || series.id === \'genset\')',
-    'profile rows'
+    'profile rows',
+    'deviceWorkModel',
+    'epc-device-work-model-controls',
+    'epc-device-work-apply-ems',
+    'epc-device-work-load-noise-pct',
+    'epc-device-work-shock-count',
+    'epc-device-work-shock-duration-min',
+    'epc-device-work-shock-impact-pct',
+    'epc-device-work-genset-step-enabled',
+    'epc-device-work-genset-platforms',
+    'Apply profile to EMS Flow',
+    'Load noise %',
+    'Shock count',
+    'Shock duration min',
+    'Shock impact %',
+    'Genset stepped platforms',
+    'Platform levels'
   ]) {
     assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing Device Work profile snippet: ${snippet}`);
   }
@@ -572,7 +593,18 @@ test('EPC Device Work profile renders realistic load and genset device behavior'
   assert.doesNotMatch(profileSource[0], /Math\.random\(\)/, 'Device Work profile must be deterministic across refreshes');
   assert.doesNotMatch(profileSource[0], /(^|[^.A-Za-z0-9_$])round\(/, 'Device Work profile must use browser-local rounding helpers');
   assert.match(html, /loadKw:\s*epcChartRound\(loadKwWithShock, 2\)/, 'Load profile should include deterministic fluctuation and shock');
-  assert.match(html, /gensetToLoadKw:\s*epcChartRound\(quantizeEpcDeviceWorkGensetPlatform\(gensetDemandKw, gensetPeakKw\), 2\)/, 'Genset profile should use stepped platform output');
+  assert.match(html, /gensetToLoadKw:\s*epcChartRound\(quantizeEpcDeviceWorkGensetPlatform\(gensetDemandKw, gensetPeakKw, model\.gensetPlatforms, model\.gensetStepEnabled\), 2\)/, 'Genset profile should use stepped platform output');
+  const flowRenderer = html.match(/function renderEpcEnergyFlow\(result\)[\s\S]*?function renderEpcReports\(result\)/);
+  assert.ok(flowRenderer, 'EMS Flow renderer should be found');
+  assert.match(flowRenderer[0], /getEpcEnergyFlowDisplayRows\(result\)/, 'EMS Flow table should use profiled display rows');
+  assert.doesNotMatch(flowRenderer[0], /const rows = result\.energyFlow\?\.rows \|\| \[\]/, 'EMS Flow table should not render raw rows directly');
+});
+
+test('EPC finish time changes do not open the working time confirmation dialog', () => {
+  const handler = html.match(/window\.onEpcScheduleInputChanged = \(source = ''\) => \{[\s\S]*?window\.onEpcDesignInputChanged\(\);\n        \}/);
+  assert.ok(handler, 'schedule input handler should be found');
+  assert.match(handler[0], /source !== 'finish'/, 'finish-time edits should bypass the confirmation prompt');
+  assert.doesNotMatch(handler[0], /source === 'finish'[\s\S]{0,500}confirm\(/, 'finish-time branch should not call confirm');
 });
 
 test('EPC energy flow uses compact non-overlapping lane layout', () => {

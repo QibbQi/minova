@@ -656,7 +656,16 @@ test('EPC design project preserves EMS Flow display settings', () => {
       intervalMinutes: 5,
       selectedRange: { start: 2, end: 8 },
       peakBand: { visible: false, color: '#e0f2fe', startMinute: 15 * 60, endMinute: 21 * 60 },
-      seriesColors: { pv: '#f59e0b', load: '#2563eb', battery: '#16a34a', genset: '#ef4444', soc: '#0ea5e9' }
+      seriesColors: { pv: '#f59e0b', load: '#2563eb', battery: '#16a34a', genset: '#ef4444', soc: '#0ea5e9' },
+      deviceWorkModel: {
+        applyToEmsFlow: false,
+        loadNoisePct: 4,
+        shockCount: 3,
+        shockDurationMinutes: 22,
+        shockImpactPct: 18,
+        gensetStepEnabled: false,
+        gensetPlatforms: [0.25, 0.5, 1]
+      }
     }
   }, { now: '2026-06-12T00:00:00.000Z' });
 
@@ -666,6 +675,15 @@ test('EPC design project preserves EMS Flow display settings', () => {
   assert.deepEqual(project.emsFlowDisplaySettings.selectedRange, { start: 2, end: 8 });
   assert.deepEqual(project.emsFlowDisplaySettings.peakBand, { visible: false, color: '#e0f2fe', startMinute: 900, endMinute: 1260 });
   assert.equal(project.emsFlowDisplaySettings.seriesColors.genset, '#ef4444');
+  assert.deepEqual(project.emsFlowDisplaySettings.deviceWorkModel, {
+    applyToEmsFlow: false,
+    loadNoisePct: 4,
+    shockCount: 3,
+    shockDurationMinutes: 22,
+    shockImpactPct: 18,
+    gensetStepEnabled: false,
+    gensetPlatforms: [0.25, 0.5, 1]
+  });
 
   const darkPeakBand = normalizeEpcDesignProject({
     emsFlowDisplaySettings: {
@@ -682,6 +700,8 @@ test('EPC design project preserves EMS Flow display settings', () => {
   const defaultSettings = normalizeEpcDesignProject({}, { now: '2026-06-12T00:00:00.000Z' });
   assert.equal(defaultSettings.emsFlowDisplaySettings.mergeHourly, true);
   assert.equal(defaultSettings.emsFlowDisplaySettings.intervalMinutes, 5);
+  assert.equal(defaultSettings.emsFlowDisplaySettings.deviceWorkModel.applyToEmsFlow, true);
+  assert.equal(defaultSettings.emsFlowDisplaySettings.deviceWorkModel.loadNoisePct, 3);
 });
 
 test('EPC design engine makes PF and distance affect LV MV architecture output', () => {

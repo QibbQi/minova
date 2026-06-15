@@ -10577,7 +10577,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             }
             const scheduleHours = epcHoursBetween(startEl.value, finishEl.value);
             const changed = Math.abs(scheduleHours - hours) > 0.01;
-            if (changed && changeEl && !changeEl.checked) {
+            if (changed && source !== 'finish' && changeEl && !changeEl.checked) {
                 const ok = confirm(`PV working time is ${scheduleHours}h, while original genset Hours/Day is ${hours}h. Enable "change working time" and recalculate Daily Load from the new working hours?`);
                 if (ok) {
                     changeEl.checked = true;
@@ -11214,7 +11214,39 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         const EPC_DEVICE_WORK_LOAD_SHOCK_MINUTES = { min: 10, max: 18 };
         const EPC_DEVICE_WORK_LOAD_SHOCK_RATIO = { min: 0.15, max: 0.25 };
         const EPC_DEVICE_WORK_GENSET_PLATFORMS = [0, 0.3, 0.5, 0.75, 1];
+        const EPC_DEVICE_WORK_DEFAULT_MODEL = {
+            applyToEmsFlow: true,
+            loadNoisePct: 3,
+            shockCount: 2,
+            shockDurationMinutes: 14,
+            shockImpactPct: 20,
+            gensetStepEnabled: true,
+            gensetPlatforms: [0.3, 0.5, 0.75, 1]
+        };
         let epcDeviceWorkOpenColorSeries = null;
+
+        function getEpcDeviceWorkModelSettings(raw = {}) {
+            const input = raw && typeof raw === 'object' ? raw : {};
+            const numberOrDefault = (value, fallback) => Number.isFinite(Number(value)) ? Number(value) : fallback;
+            const rawPlatforms = Array.isArray(input.gensetPlatforms)
+                ? input.gensetPlatforms
+                : String(input.gensetPlatforms || '')
+                    .split(',')
+                    .map(value => Number(value.trim()) / (Number(value.trim()) > 1 ? 100 : 1));
+            const gensetPlatforms = rawPlatforms
+                .map(value => Math.max(0.05, Math.min(1, Number(value) || 0)))
+                .filter((value, index, array) => value > 0 && array.indexOf(value) === index)
+                .sort((a, b) => a - b);
+            return {
+                applyToEmsFlow: input.applyToEmsFlow === false ? false : true,
+                loadNoisePct: Math.max(0, Math.min(12, numberOrDefault(input.loadNoisePct, EPC_DEVICE_WORK_DEFAULT_MODEL.loadNoisePct))),
+                shockCount: Math.round(Math.max(0, Math.min(4, numberOrDefault(input.shockCount, EPC_DEVICE_WORK_DEFAULT_MODEL.shockCount)))),
+                shockDurationMinutes: Math.max(1, Math.min(60, numberOrDefault(input.shockDurationMinutes, EPC_DEVICE_WORK_DEFAULT_MODEL.shockDurationMinutes))),
+                shockImpactPct: Math.max(0, Math.min(40, numberOrDefault(input.shockImpactPct, EPC_DEVICE_WORK_DEFAULT_MODEL.shockImpactPct))),
+                gensetStepEnabled: input.gensetStepEnabled === false ? false : true,
+                gensetPlatforms: gensetPlatforms.length ? gensetPlatforms : [...EPC_DEVICE_WORK_DEFAULT_MODEL.gensetPlatforms]
+            };
+        }
 
         function getEpcDeviceWorkSettings(result = {}) {
             const raw = result.emsFlowDisplaySettings || {};
@@ -11244,6 +11276,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     startMinute: peakStart,
                     endMinute: rawPeakEnd > peakStart ? rawPeakEnd : Math.min(24 * 60, peakStart + 60)
                 },
+                deviceWorkModel: getEpcDeviceWorkModelSettings(raw.deviceWorkModel),
                 seriesColors
             };
         }
@@ -11361,6 +11394,22 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             updateEpcDeviceWorkSettings({ peakBand: next });
         }
 
+        function updateEpcDeviceWorkModelSettings() {
+            const current = getActiveEpcDesignProject().emsFlowDisplaySettings?.deviceWorkModel || {};
+            const platformInput = String(document.getElementById('epc-device-work-genset-platforms')?.value || '').trim();
+            const next = getEpcDeviceWorkModelSettings({
+                ...current,
+                applyToEmsFlow: document.getElementById('epc-device-work-apply-ems')?.checked ?? true,
+                loadNoisePct: Number(document.getElementById('epc-device-work-load-noise-pct')?.value),
+                shockCount: Number(document.getElementById('epc-device-work-shock-count')?.value),
+                shockDurationMinutes: Number(document.getElementById('epc-device-work-shock-duration-min')?.value),
+                shockImpactPct: Number(document.getElementById('epc-device-work-shock-impact-pct')?.value),
+                gensetStepEnabled: document.getElementById('epc-device-work-genset-step-enabled')?.checked ?? true,
+                gensetPlatforms: platformInput || current.gensetPlatforms
+            });
+            updateEpcDeviceWorkSettings({ deviceWorkModel: next, selectedRange: null });
+        }
+
         function toggleEpcDeviceWorkColorPicker(seriesId) {
             const validIds = EPC_EMS_FLOW_SERIES.map(series => series.id);
             epcDeviceWorkOpenColorSeries = epcDeviceWorkOpenColorSeries === seriesId || !validIds.includes(seriesId) ? null : seriesId;
@@ -11389,6 +11438,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         window.setEpcDeviceWorkPeakBandVisible = setEpcDeviceWorkPeakBandVisible;
         window.setEpcDeviceWorkPeakBandColor = setEpcDeviceWorkPeakBandColor;
         window.setEpcDeviceWorkPeakBandTime = setEpcDeviceWorkPeakBandTime;
+        window.updateEpcDeviceWorkModelSettings = updateEpcDeviceWorkModelSettings;
         window.toggleEpcDeviceWorkColorPicker = toggleEpcDeviceWorkColorPicker;
         window.setEpcDeviceWorkSeriesColor = setEpcDeviceWorkSeriesColor;
 
@@ -11518,20 +11568,20 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return (value - Math.floor(value)) * 2 - 1;
         }
 
-        function getEpcDeviceWorkLoadShockMultiplier(row, index, rows) {
-            if (!Array.isArray(rows) || rows.length < 3) return 0;
+        function getEpcDeviceWorkLoadShockMultiplier(row, index, rows, model = EPC_DEVICE_WORK_DEFAULT_MODEL) {
+            const shockCount = Math.round(Math.max(0, Math.min(4, Number(model.shockCount) || 0)));
+            if (!Array.isArray(rows) || rows.length < 3 || !shockCount) return 0;
             const firstMinute = Number(rows[0]?.timelineMinute) || 0;
             const lastMinute = Number(rows[rows.length - 1]?.timelineMinute) || firstMinute;
             const span = Math.max(1, lastMinute - firstMinute);
             const minute = Number(row?.timelineMinute) || firstMinute + index;
-            const shockWindows = [0.38, 0.72].map((position, shockIndex) => {
+            const shockWindows = Array.from({ length: shockCount }, (_, shockIndex) => {
+                const position = shockCount === 1 ? 0.55 : (shockIndex + 1) / (shockCount + 1);
                 const seedBase = firstMinute + span + (shockIndex + 1) * 97;
                 const durationNoise = (epcDeviceWorkDeterministicNoise(seedBase) + 1) / 2;
                 const ratioNoise = (epcDeviceWorkDeterministicNoise(seedBase + 31) + 1) / 2;
-                const duration = EPC_DEVICE_WORK_LOAD_SHOCK_MINUTES.min
-                    + durationNoise * (EPC_DEVICE_WORK_LOAD_SHOCK_MINUTES.max - EPC_DEVICE_WORK_LOAD_SHOCK_MINUTES.min);
-                const ratio = EPC_DEVICE_WORK_LOAD_SHOCK_RATIO.min
-                    + ratioNoise * (EPC_DEVICE_WORK_LOAD_SHOCK_RATIO.max - EPC_DEVICE_WORK_LOAD_SHOCK_RATIO.min);
+                const duration = Math.max(1, Number(model.shockDurationMinutes) || EPC_DEVICE_WORK_DEFAULT_MODEL.shockDurationMinutes) * (0.75 + durationNoise * 0.5);
+                const ratio = Math.max(0, Number(model.shockImpactPct) || 0) / 100 * (0.75 + ratioNoise * 0.5);
                 return {
                     start: firstMinute + span * position,
                     end: firstMinute + span * position + duration,
@@ -11542,12 +11592,14 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return activeShock ? activeShock.ratio : 0;
         }
 
-        function quantizeEpcDeviceWorkGensetPlatform(value, peakValue) {
+        function quantizeEpcDeviceWorkGensetPlatform(value, peakValue, platforms = EPC_DEVICE_WORK_GENSET_PLATFORMS, enabled = true) {
             const demand = Math.max(0, Number(value) || 0);
             const peak = Math.max(0, Number(peakValue) || 0);
             if (!demand || !peak) return 0;
+            if (!enabled) return demand;
             const ratio = demand / peak;
-            const platform = EPC_DEVICE_WORK_GENSET_PLATFORMS.find(level => level >= ratio) || 1;
+            const validPlatforms = Array.isArray(platforms) && platforms.length ? platforms : EPC_DEVICE_WORK_GENSET_PLATFORMS;
+            const platform = validPlatforms.find(level => level >= ratio) || 1;
             return peak * platform;
         }
 
@@ -11611,14 +11663,15 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         function buildEpcDeviceWorkProfileRows(sourceRows = [], settings = {}) {
             const rows = getEpcDeviceWorkTimelineRows(sourceRows, settings);
             if (!rows.length) return rows;
+            const model = getEpcDeviceWorkModelSettings(settings.deviceWorkModel);
             const loadPeakKw = Math.max(1, ...rows.map(row => Number(row.loadKw) || 0));
-            const gensetPeakKw = Math.max(0, ...rows.map(row => Number(row.gensetToLoadKw) || 0));
+            const gensetPeakKw = Math.max(0, ...rows.map(row => Math.max(Number(row.gensetToLoadKw) || 0, (Number(row.loadKw) || 0) - (Number(row.pvOutputKw) || 0))));
             const profiled = rows.map((row, index) => {
                 const timelineMinute = Number(row.timelineMinute) || 0;
                 const baseLoadKw = Math.max(0, Number(row.loadKw) || 0);
                 const loadNoise = epcDeviceWorkDeterministicNoise(timelineMinute + index * 17 + Math.round(loadPeakKw))
-                    * EPC_DEVICE_WORK_LOAD_NOISE_RATIO;
-                const loadShock = getEpcDeviceWorkLoadShockMultiplier(row, index, rows);
+                    * (model.loadNoisePct / 100);
+                const loadShock = getEpcDeviceWorkLoadShockMultiplier(row, index, rows, model);
                 // Load shock is a concept-design visual assumption, not a replacement for measured load study.
                 const loadKwWithShock = Math.min(loadPeakKw * 1.25, Math.max(0, baseLoadKw * (1 + loadNoise + loadShock)));
                 const pvOutputKw = Math.max(0, Number(row.pvOutputKw) || 0);
@@ -11640,7 +11693,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     pvToLoadKw: epcChartRound(pvToLoadKw, 2),
                     pvToBatteryKw: epcChartRound(pvToBatteryKw, 2),
                     batteryToLoadKw: epcChartRound(batteryToLoadKw, 2),
-                    gensetToLoadKw: epcChartRound(quantizeEpcDeviceWorkGensetPlatform(gensetDemandKw, gensetPeakKw), 2),
+                    gensetToLoadKw: epcChartRound(quantizeEpcDeviceWorkGensetPlatform(gensetDemandKw, gensetPeakKw, model.gensetPlatforms, model.gensetStepEnabled), 2),
                     curtailmentKw: epcChartRound(curtailmentKw, 2)
                 };
             });
@@ -11772,6 +11825,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const endPct = maxIndex ? (selected.end / maxIndex) * 100 : 100;
             const peakStartValue = epcMinutesToTime(settings.peakBand.startMinute);
             const peakEndValue = epcMinutesToTime(settings.peakBand.endMinute);
+            const model = getEpcDeviceWorkModelSettings(settings.deviceWorkModel);
+            const platformText = model.gensetPlatforms.map(value => epcChartRound(value * 100, 0)).join(',');
             return `
                 <div id="epc-device-work-controls" class="epc-device-work-controls mt-3 space-y-3 text-xs">
                     <div id="epc-device-work-time-row" class="epc-device-work-time-row grid grid-cols-1 xl:grid-cols-[auto_1fr] gap-3">
@@ -11812,6 +11867,43 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                                 </div>
                             </div>
                             <button id="epc-device-work-reset" type="button" onclick="resetEpcDeviceWorkRange()" class="shrink-0 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 font-black text-slate-600 hover:bg-slate-50">Reset</button>
+                        </div>
+                    </div>
+                    <div id="epc-device-work-model-controls" class="rounded-xl border border-slate-200 bg-slate-50 p-2.5">
+                        <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+                            <span class="text-[10px] font-black uppercase text-slate-400">Device Work Profile Model</span>
+                            <label class="inline-flex items-center gap-1.5 font-black text-slate-600">
+                                <input id="epc-device-work-apply-ems" type="checkbox" ${model.applyToEmsFlow ? 'checked' : ''} onchange="updateEpcDeviceWorkModelSettings()" class="h-3.5 w-3.5 accent-purple-700">
+                                Apply profile to EMS Flow
+                            </label>
+                        </div>
+                        <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2">
+                            <label class="block">
+                                <span class="block text-[10px] font-black uppercase text-slate-400 mb-1">Load noise %</span>
+                                <input id="epc-device-work-load-noise-pct" type="number" min="0" max="12" step="0.5" value="${htmlSafe(model.loadNoisePct)}" onchange="updateEpcDeviceWorkModelSettings()" class="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-black text-slate-600">
+                            </label>
+                            <label class="block">
+                                <span class="block text-[10px] font-black uppercase text-slate-400 mb-1">Shock count</span>
+                                <input id="epc-device-work-shock-count" type="number" min="0" max="4" step="1" value="${htmlSafe(model.shockCount)}" onchange="updateEpcDeviceWorkModelSettings()" class="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-black text-slate-600">
+                            </label>
+                            <label class="block">
+                                <span class="block text-[10px] font-black uppercase text-slate-400 mb-1">Shock duration min</span>
+                                <input id="epc-device-work-shock-duration-min" type="number" min="1" max="60" step="1" value="${htmlSafe(model.shockDurationMinutes)}" onchange="updateEpcDeviceWorkModelSettings()" class="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-black text-slate-600">
+                            </label>
+                            <label class="block">
+                                <span class="block text-[10px] font-black uppercase text-slate-400 mb-1">Shock impact %</span>
+                                <input id="epc-device-work-shock-impact-pct" type="number" min="0" max="40" step="1" value="${htmlSafe(model.shockImpactPct)}" onchange="updateEpcDeviceWorkModelSettings()" class="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-black text-slate-600">
+                            </label>
+                            <label class="flex items-end">
+                                <span class="inline-flex h-9 w-full items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 font-black text-slate-600">
+                                    <input id="epc-device-work-genset-step-enabled" type="checkbox" ${model.gensetStepEnabled ? 'checked' : ''} onchange="updateEpcDeviceWorkModelSettings()" class="h-3.5 w-3.5 accent-purple-700">
+                                    Genset stepped platforms
+                                </span>
+                            </label>
+                            <label class="block">
+                                <span class="block text-[10px] font-black uppercase text-slate-400 mb-1">Platform levels</span>
+                                <input id="epc-device-work-genset-platforms" value="${htmlSafe(platformText)}" placeholder="30,50,75,100" onchange="updateEpcDeviceWorkModelSettings()" class="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-black text-slate-600">
+                            </label>
                         </div>
                     </div>
                 </div>
@@ -12433,6 +12525,14 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             window.toggleEpcEmsFlowSeries(seriesId, true);
         };
 
+        function getEpcEmsFlowProfileRows(result = {}) {
+            const sourceRows = result.energyFlow?.rows || [];
+            const settings = getEpcDeviceWorkSettings(result);
+            return settings.deviceWorkModel.applyToEmsFlow
+                ? buildEpcDeviceWorkProfileRows(sourceRows, { ...settings, selectedRange: null })
+                : sourceRows;
+        }
+
         function getEpcEnergyFlowDurationHours(row = {}) {
             return Math.max(0, Number(row.durationHours) || (Number(row.intervalMinutes) > 0 ? Number(row.intervalMinutes) / 60 : 1));
         }
@@ -12469,7 +12569,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
 
         function getEpcEnergyFlowDisplayRows(result = {}) {
-            const rows = result.energyFlow?.rows || [];
+            const rows = getEpcEmsFlowProfileRows(result);
             const shouldMerge = result.emsFlowDisplaySettings?.mergeHourly !== false
                 && rows.some(row => Number(row.intervalMinutes) > 0 && Number(row.intervalMinutes) < 60);
             return shouldMerge ? mergeEpcEnergyFlowRowsByHour(rows) : rows;
@@ -12487,10 +12587,11 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         function renderEpcEnergyFlow(result) {
             const target = document.getElementById('epc-energy-flow-table');
             if (!target) return;
-            const sourceRows = result.energyFlow?.rows || [];
+            const sourceRows = getEpcEmsFlowProfileRows(result);
             const rows = getEpcEnergyFlowDisplayRows(result);
             const mergeHourly = result.emsFlowDisplaySettings?.mergeHourly !== false;
             const canMerge = sourceRows.some(row => Number(row.intervalMinutes) > 0 && Number(row.intervalMinutes) < 60);
+            const profileApplied = getEpcDeviceWorkSettings(result).deviceWorkModel.applyToEmsFlow;
             const stringDesign = result.pvStringDesign || {};
             const rowKey = row => String(row.flowKey || row.hour);
             if (!rows.some(row => rowKey(row) === String(epcSelectedFlowHour))) epcSelectedFlowHour = rowKey(rows[0] || { hour: 13 });
@@ -12544,7 +12645,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         </tbody>
                     </table>
                 </div>
-                <div class="mt-3 text-[11px] font-bold text-slate-400">${htmlSafe(result.energyFlow?.method || '')}</div>
+                <div class="mt-3 text-[11px] font-bold text-slate-400">${htmlSafe(result.energyFlow?.method || '')}${profileApplied ? ' Display layer uses Device Work stepped load/genset profile; EPC sizing and recommendation values remain unchanged.' : ''}</div>
                 ${(stringDesign.warnings || []).map(warning => `<div class="mt-2 rounded-xl border border-yellow-200 bg-yellow-50 p-3 text-xs font-bold text-yellow-800">${htmlSafe(warning)}</div>`).join('')}
             `;
         }

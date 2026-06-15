@@ -230,6 +230,12 @@ const GLOBAL_SOLAR_ATLAS_API_BASE = 'https://2eueu84zmf.execute-api.eu-west-1.am
     const peakBandColor = String(peakBandInput.color || '#fee2e2').trim();
     const startMinute = clamp(peakBandInput.startMinute, 0, 24 * 60, EMS_FLOW_DEFAULT_PEAK_BAND_START_MINUTE);
     const endMinute = clamp(peakBandInput.endMinute, 0, 24 * 60, EMS_FLOW_DEFAULT_PEAK_BAND_END_MINUTE);
+    const deviceWorkModelInput = input.deviceWorkModel && typeof input.deviceWorkModel === 'object' ? input.deviceWorkModel : {};
+    const rawPlatforms = Array.isArray(deviceWorkModelInput.gensetPlatforms) ? deviceWorkModelInput.gensetPlatforms : [0.3, 0.5, 0.75, 1];
+    const gensetPlatforms = rawPlatforms
+      .map(value => clamp(value, 0.05, 1, 0))
+      .filter((value, index, array) => value > 0 && array.indexOf(value) === index)
+      .sort((a, b) => a - b);
     return {
       visibleSeries: visibleSeries.length ? visibleSeries : [...EMS_FLOW_DISPLAY_SERIES],
       mergeHourly: input.mergeHourly !== false,
@@ -241,7 +247,16 @@ const GLOBAL_SOLAR_ATLAS_API_BASE = 'https://2eueu84zmf.execute-api.eu-west-1.am
         startMinute,
         endMinute: endMinute > startMinute ? endMinute : Math.min(24 * 60, startMinute + 60)
       },
-      seriesColors
+      seriesColors,
+      deviceWorkModel: {
+        applyToEmsFlow: deviceWorkModelInput.applyToEmsFlow === false ? false : true,
+        loadNoisePct: clamp(deviceWorkModelInput.loadNoisePct, 0, 12, 3),
+        shockCount: Math.round(clamp(deviceWorkModelInput.shockCount, 0, 4, 2)),
+        shockDurationMinutes: clamp(deviceWorkModelInput.shockDurationMinutes, 1, 60, 14),
+        shockImpactPct: clamp(deviceWorkModelInput.shockImpactPct, 0, 40, 20),
+        gensetStepEnabled: deviceWorkModelInput.gensetStepEnabled === false ? false : true,
+        gensetPlatforms: gensetPlatforms.length ? gensetPlatforms : [0.3, 0.5, 0.75, 1]
+      }
     };
   }
 

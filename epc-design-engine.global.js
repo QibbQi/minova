@@ -556,8 +556,7 @@ function buildStandardTopologyGraph(id = 'C5') {
         edge('pcs-lv-discharge', 'pcs', 'lv-bus', 'AC_LV_POWER', 'ONE_WAY', 415),
         edge('genset-lv', 'genset', 'lv-bus', 'AC_LV_POWER', 'ONE_WAY', 415),
         edge('lv-load', 'lv-bus', 'load', 'AC_LV_POWER', 'ONE_WAY', 415),
-        edge('ems-pcs', 'ems', 'pcs', 'COMMUNICATION', 'BIDIRECTIONAL', 0),
-        edge('ems-genset', 'ems', 'genset', 'CONTROL', 'BIDIRECTIONAL', 0)
+        edge('ems-pcs', 'ems', 'pcs', 'COMMUNICATION', 'BIDIRECTIONAL', 0)
       ]
     };
   }
@@ -594,7 +593,7 @@ function buildStandardTopologyGraph(id = 'C5') {
         edge('rmu-load-tx', 'rmu', 'load-tx', 'AC_MV_POWER', 'ONE_WAY', 11000),
         edge('load-tx-lv', 'load-tx', 'lv-bus', 'AC_LV_POWER', 'ONE_WAY', 415),
         edge('lv-load', 'lv-bus', 'load', 'AC_LV_POWER', 'ONE_WAY', 415),
-        edge('ems-mv', 'ems', 'mv-bus', 'COMMUNICATION', 'BIDIRECTIONAL', 0),
+        edge('ems-mv-switchboard', 'ems', 'mv-bus', 'COMMUNICATION', 'BIDIRECTIONAL', 0),
         edge('ems-pcs', 'ems', 'pcs', 'COMMUNICATION', 'BIDIRECTIONAL', 0)
       ]
     };
@@ -634,8 +633,7 @@ function buildStandardTopologyGraph(id = 'C5') {
       edge('load-tx-critical', 'lv-load-bus', 'critical-load', 'AC_LV_POWER', 'ONE_WAY', 415),
       edge('load-tx-flex', 'lv-load-bus', 'load', 'AC_LV_POWER', 'ONE_WAY', 415),
       edge('ems-pcs', 'ems', 'pcs', 'COMMUNICATION', 'BIDIRECTIONAL', 0),
-      edge('ems-genset', 'ems', 'genset', 'CONTROL', 'BIDIRECTIONAL', 0),
-      edge('ems-load', 'ems', 'critical-load', 'CONTROL', 'BIDIRECTIONAL', 0)
+      edge('ems-mv-switchboard', 'ems', 'mv-switchboard', 'COMMUNICATION', 'BIDIRECTIONAL', 0)
     ]
   };
 }

@@ -1005,6 +1005,27 @@ test('EPC standard topologies charge battery directly from PV inverter through P
   assert.equal(c2Template.edges.some((edge) => edge.id === 'pcs-battery-charge'), false);
 });
 
+test('EPC MV topologies limit EMS control links to PCS and MV switchboard', () => {
+  const resultForTopology = (selectedTopologyId) => calculateEpcDesignProject({
+    selectedTopologyId,
+    site: { gridMode: 'island' },
+    loads: { dailyLoadKwh: 12000, operationHoursPerDay: 8 },
+    designTargets: { replacementPct: 80 }
+  }, { now: '2026-06-16T00:00:00.000Z' });
+
+  const c5 = resultForTopology('C5');
+  const c5EmsEdges = c5.topology.edges.filter((edge) => edge.source === 'ems').map((edge) => `${edge.id}:${edge.target}`);
+  assert.ok(c5EmsEdges.includes('ems-pcs:pcs'));
+  assert.ok(c5EmsEdges.includes('ems-mv-switchboard:mv-switchboard'));
+  assert.equal(c5EmsEdges.some((edge) => /genset|load/.test(edge)), false);
+
+  const c7 = resultForTopology('C7');
+  const c7EmsEdges = c7.topology.edges.filter((edge) => edge.source === 'ems').map((edge) => `${edge.id}:${edge.target}`);
+  assert.ok(c7EmsEdges.includes('ems-pcs:pcs'));
+  assert.ok(c7EmsEdges.includes('ems-mv-switchboard:mv-bus'));
+  assert.equal(c7EmsEdges.some((edge) => /genset|load/.test(edge)), false);
+});
+
 test('EPC topology recommendations exclude common 415V bus topologies for MV pass architecture', () => {
   const project = buildEpcDesignProjectFromQuickInputs({
     ...quarryInputs,

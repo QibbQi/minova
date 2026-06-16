@@ -285,7 +285,7 @@
         }
         .epc-flow-node-frame {
             width: 112px;
-            height: 88px;
+            height: 96px;
         }
         .epc-flow-line {
             stroke: #cbd5e1;
@@ -11323,10 +11323,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         function renderEpcFlowNode({ className, x, y, stroke, fill, title, value, icon }) {
             return `
                 <g class="epc-flow-node ${className}" transform="translate(${x} ${y})">
-                    <rect class="epc-flow-node-card epc-flow-node-frame" x="0" y="0" width="112" height="88" rx="13" fill="${fill}" stroke="${stroke}"/>
+                    <rect class="epc-flow-node-card epc-flow-node-frame" x="0" y="0" width="112" height="96" rx="13" fill="${fill}" stroke="${stroke}"/>
                     ${icon}
-                    <text x="56" y="68" text-anchor="middle" font-size="10.5" font-weight="900" fill="#334155">${htmlSafe(title)}</text>
-                    <text x="56" y="82" text-anchor="middle" font-size="9.5" font-weight="800" fill="#64748b">${htmlSafe(value)}</text>
+                    <text x="56" y="74" text-anchor="middle" font-size="10.5" font-weight="900" fill="#334155">${htmlSafe(title)}</text>
+                    <text x="56" y="88" text-anchor="middle" font-size="9.5" font-weight="800" fill="#64748b">${htmlSafe(value)}</text>
                 </g>
             `;
         }
@@ -11456,7 +11456,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         const EPC_TOPOLOGY_FLOW_SPLIT_EDGE_IDS = ['pv-pcs-charge', 'pcs-battery-charge', 'battery-pcs-discharge', 'pcs-lv-discharge'];
         const EPC_TOPOLOGY_FLOW_LABEL_KEYS = ['pvOutputKw', 'pvToLoadKw', 'pvToBatteryKw', 'batteryToLoadKw', 'gensetToLoadKw'];
         const EPC_TOPOLOGY_FLOW_NODE_W = 112;
-        const EPC_TOPOLOGY_FLOW_NODE_H = 88;
+        const EPC_TOPOLOGY_FLOW_NODE_H = 96;
         const EPC_TOPOLOGY_FLOW_NODE_STYLES = {
             PV_ARRAY: { stroke: '#f59e0b', fill: '#fff7d6', icon: '<circle cx="56" cy="32" r="15" fill="#FFC107"/><path d="M56 9v9M56 46v9M33 32h9M70 32h9M40 16l6 6M66 42l6 6M72 16l-6 6M46 42l-6 6" stroke="#f59e0b" stroke-width="3" stroke-linecap="round"/>' },
             PV_INVERTER: { stroke: '#2563eb', fill: '#dbeafe', icon: '<path d="M26 22h60v38H26zM35 32h42M35 43h42M47 22v38M65 22v38" fill="none" stroke="#2563eb" stroke-width="3" stroke-linecap="round"/>' },
@@ -11531,7 +11531,59 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             };
         }
 
+        function epcTopologyFlowPairLaneRoute(source = {}, target = {}, edge = {}) {
+            if (edge.id === 'pcs-battery-charge') {
+                const start = {
+                    x: Number(source.x) || 0,
+                    y: (Number(source.y) || 0) + 34
+                };
+                const end = {
+                    x: (Number(target.x) || 0) + EPC_TOPOLOGY_FLOW_NODE_W,
+                    y: (Number(target.y) || 0) + 34
+                };
+                const midX = (start.x + end.x) / 2;
+                const laneY = Math.min(start.y, end.y) - 32;
+                return {
+                    d: `M${start.x} ${start.y} H${midX} V${laneY} H${end.x} V${end.y}`,
+                    labelX: midX,
+                    labelY: laneY - 8
+                };
+            }
+            if (edge.id === 'battery-pcs-discharge') {
+                const start = {
+                    x: (Number(source.x) || 0) + EPC_TOPOLOGY_FLOW_NODE_W,
+                    y: (Number(source.y) || 0) + 64
+                };
+                const end = {
+                    x: Number(target.x) || 0,
+                    y: (Number(target.y) || 0) + 64
+                };
+                const midX = (start.x + end.x) / 2;
+                const laneY = Math.max(start.y, end.y) + 32;
+                return {
+                    d: `M${start.x} ${start.y} H${midX} V${laneY} H${end.x} V${end.y}`,
+                    labelX: midX,
+                    labelY: laneY + 18
+                };
+            }
+            return null;
+        }
+
+        function epcTopologyFlowControlRoute(source = {}, target = {}) {
+            const start = epcTopologyFlowPort(source, 'top');
+            const end = epcTopologyFlowPort(target, 'bottom');
+            const laneY = Math.max(end.y + 70, start.y - 36);
+            const safeLaneY = Math.min(start.y - 18, laneY);
+            return {
+                d: `M${start.x} ${start.y} V${safeLaneY} H${end.x} V${end.y}`,
+                labelX: (start.x + end.x) / 2,
+                labelY: safeLaneY - 8
+            };
+        }
+
         function epcTopologyFlowRoute(source = {}, target = {}, index = 0, edge = {}) {
+            const pairRoute = epcTopologyFlowPairLaneRoute(source, target, edge);
+            if (pairRoute) return pairRoute;
             const sourceBeforeTarget = (Number(source.x) || 0) <= (Number(target.x) || 0);
             const start = epcTopologyFlowPort(source, sourceBeforeTarget ? 'right' : 'left');
             const end = epcTopologyFlowPort(target, sourceBeforeTarget ? 'left' : 'right');
@@ -11548,6 +11600,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     d: `M${sourceCenterX} ${startY} V${endY}`,
                     labelX: sourceCenterX + 42,
                     labelY
+                };
+            }
+            if (Math.abs(start.y - end.y) < 6) {
+                return {
+                    d: `M${start.x} ${start.y} H${end.x}`,
+                    labelX: (start.x + end.x) / 2,
+                    labelY: start.y - 10
                 };
             }
             let d = '';
@@ -11596,7 +11655,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const flowEdges = edges.map((edge, index) => {
                 const source = nodeMap.get(edge.source);
                 const target = nodeMap.get(edge.target);
-                const route = source && target ? epcTopologyFlowRoute(source, target, index, edge) : { d: '', labelX: 0, labelY: 0 };
+                const route = source && target
+                    ? edge.role === 'control' ? epcTopologyFlowControlRoute(source, target, index, edge) : epcTopologyFlowRoute(source, target, index, edge)
+                    : { d: '', labelX: 0, labelY: 0 };
                 const value = epcTopologyFlowValue(edge, row);
                 return {
                     ...edge,

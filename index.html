@@ -305,13 +305,31 @@
         }
         .epc-flow-lane-main,
         .epc-flow-lane-branch,
-        .epc-flow-lane-genset {
+        .epc-flow-lane-genset,
+        .epc-flow-lane-control {
             vector-effect: non-scaling-stroke;
         }
         .epc-flow-line-pv { stroke: #f59e0b; }
         .epc-flow-line-battery { stroke: #22c55e; }
         .epc-flow-line-genset { stroke: #64748b; }
         .epc-flow-line-curtail { stroke: #ef4444; }
+        .epc-flow-line-load { stroke: #0891b2; }
+        .epc-flow-line-mv { stroke: #7c3aed; }
+        .epc-flow-line-control {
+            stroke: #94a3b8;
+            stroke-dasharray: 6 7;
+            opacity: 0.5;
+        }
+        .epc-flow-line-warning {
+            stroke: #f59e0b;
+            stroke-dasharray: 5 6;
+        }
+        .epc-flow-line-blocked {
+            stroke: #ef4444;
+            stroke-dasharray: 4 5;
+            opacity: 0.95;
+            animation: none;
+        }
         .epc-flow-label-badge {
             pointer-events: none;
         }
@@ -11066,10 +11084,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                                 <div class="text-sm font-black text-slate-800">Standard Topology Library</div>
                                 <div class="text-xs font-bold text-slate-400">Select a budget-level off-grid topology. Suggested fixes are advisory and require manual approval.</div>
                             </div>
-                            <select id="epc-topology-selector" onchange="updateEpcSelectedTopology(this.value)" class="md:ml-auto rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black outline-none focus:border-purple-500">
-                                ${topologies.map(item => `<option value="${htmlSafe(item.id)}" ${item.id === result.selectedTopologyId ? 'selected' : ''}>${htmlSafe(item.id)} - ${htmlSafe(item.name)}</option>`).join('')}
-                                <option value="CUSTOM" ${result.selectedTopologyId === 'CUSTOM' ? 'selected' : ''}>CUSTOM - Manual Graph</option>
-                            </select>
+                            <div class="md:ml-auto flex flex-wrap items-center gap-2">
+                                <select id="epc-topology-selector" onchange="updateEpcSelectedTopology(this.value)" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black outline-none focus:border-purple-500">
+                                    ${topologies.map(item => `<option value="${htmlSafe(item.id)}" ${item.id === result.selectedTopologyId ? 'selected' : ''}>${htmlSafe(item.id)} - ${htmlSafe(item.name)}</option>`).join('')}
+                                    <option value="CUSTOM" ${result.selectedTopologyId === 'CUSTOM' ? 'selected' : ''}>CUSTOM - Manual Graph</option>
+                                </select>
+                                <button type="button" onclick="openEpcTopologyConnectionModal()" class="rounded-xl border border-purple-200 bg-white px-3 py-2 text-xs font-black text-purple-700 hover:bg-purple-50">Customize Connections</button>
+                            </div>
                         </div>
                         ${renderEpcTopologySld(topology)}
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
@@ -11272,7 +11293,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             `;
         }
 
-        function renderEpcFlowDiagram(result, row) {
+        function renderLegacyEpcFlowDiagram(result, row) {
             const hour = row?.hour ?? 13;
             const hourLabel = row?.hourLabel || `${hour}:00`;
             const equipment = getEpcLoadEquipmentMeta(result);
@@ -11391,6 +11412,198 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     </svg>
                 </div>
             `;
+        }
+
+        const EPC_TOPOLOGY_FLOW_COMPONENT_HINTS = ['Step-up TX', 'MV Switchboard', 'Ring RMU', 'MV BUS', 'Load TX', 'LV BUS'];
+        const EPC_TOPOLOGY_FLOW_NODE_W = 112;
+        const EPC_TOPOLOGY_FLOW_NODE_H = 88;
+        const EPC_TOPOLOGY_FLOW_NODE_STYLES = {
+            PV_ARRAY: { stroke: '#f59e0b', fill: '#fff7d6', icon: '<circle cx="56" cy="32" r="15" fill="#FFC107"/><path d="M56 9v9M56 46v9M33 32h9M70 32h9M40 16l6 6M66 42l6 6M72 16l-6 6M46 42l-6 6" stroke="#f59e0b" stroke-width="3" stroke-linecap="round"/>' },
+            PV_INVERTER: { stroke: '#2563eb', fill: '#dbeafe', icon: '<path d="M26 22h60v38H26zM35 32h42M35 43h42M47 22v38M65 22v38" fill="none" stroke="#2563eb" stroke-width="3" stroke-linecap="round"/>' },
+            BATTERY: { stroke: '#16a34a', fill: '#dcfce7', icon: '<rect x="30" y="27" width="52" height="26" rx="7" fill="#bbf7d0" stroke="#16a34a" stroke-width="3"/><rect x="82" y="35" width="7" height="10" rx="2" fill="#16a34a"/><rect x="36" y="33" width="30" height="14" rx="4" fill="#22c55e"/>' },
+            PCS: { stroke: '#7c3aed', fill: '#ede9fe', icon: '<path d="M22 40c10-18 24-18 34 0s24 18 34 0" fill="none" stroke="#7c3aed" stroke-width="4.2" stroke-linecap="round"/><path d="M34 22h44M34 58h44" stroke="#7c3aed" stroke-width="3" stroke-linecap="round"/>' },
+            GENSET: { stroke: '#64748b', fill: '#f1f5f9', icon: '<circle cx="40" cy="39" r="15" fill="#e2e8f0" stroke="#64748b" stroke-width="3"/><path d="M66 31h26M66 44h18" stroke="#64748b" stroke-width="4" stroke-linecap="round"/>' },
+            TRANSFORMER: { stroke: '#7c3aed', fill: '#f5f3ff', icon: '<circle cx="42" cy="40" r="13" fill="none" stroke="#7c3aed" stroke-width="3"/><circle cx="70" cy="40" r="13" fill="none" stroke="#7c3aed" stroke-width="3"/><path d="M22 40h7M83 40h9" stroke="#7c3aed" stroke-width="3" stroke-linecap="round"/>' },
+            LV_BUS: { stroke: '#0891b2', fill: '#ecfeff', icon: '<path d="M26 28h60M26 42h60M26 56h60" stroke="#0891b2" stroke-width="5" stroke-linecap="round"/>' },
+            MV_BUS: { stroke: '#7c3aed', fill: '#f5f3ff', icon: '<path d="M24 32h64M24 48h64" stroke="#7c3aed" stroke-width="6" stroke-linecap="round"/><path d="M38 24v32M56 24v32M74 24v32" stroke="#7c3aed" stroke-width="3" stroke-linecap="round"/>' },
+            MV_SWITCHBOARD: { stroke: '#582C83', fill: '#f5f3ff', icon: '<rect x="27" y="22" width="58" height="40" rx="7" fill="#ede9fe" stroke="#582C83" stroke-width="3"/><path d="M38 34h36M38 46h28M38 56h36" stroke="#582C83" stroke-width="3" stroke-linecap="round"/>' },
+            LOAD: { stroke: '#0891b2', fill: '#ecfeff', icon: renderEpcEquipmentIcon('load') },
+            CRITICAL_LOAD_PANEL: { stroke: '#0891b2', fill: '#ecfeff', icon: renderEpcEquipmentIcon('line') },
+            EMS: { stroke: '#0f172a', fill: '#f8fafc', icon: '<rect x="28" y="22" width="56" height="38" rx="8" fill="#e2e8f0" stroke="#0f172a" stroke-width="3"/><path d="M39 35h34M39 47h22" stroke="#0f172a" stroke-width="3" stroke-linecap="round"/>' }
+        };
+
+        function getEpcTopologyFlowNodeStyle(type = '') {
+            return EPC_TOPOLOGY_FLOW_NODE_STYLES[type] || { stroke: '#94a3b8', fill: '#f8fafc', icon: '<circle cx="56" cy="42" r="20" fill="#e2e8f0" stroke="#94a3b8" stroke-width="3"/>' };
+        }
+
+        function getEpcTopologyFlowNodeValue(node = {}, row = {}) {
+            if (node.type === 'PV_ARRAY') return formatEpcNumber(row?.pvOutputKw || 0, 0, 'kW');
+            if (node.type === 'BATTERY') return `SOC ${formatEpcNumber(row?.socPct || 0, 1, '%')}`;
+            if (node.type === 'PCS') return `PCS ${formatEpcNumber(row?.pcsLimitKw || 0, 0, 'kW')}`;
+            if (node.type === 'GENSET') return formatEpcNumber(row?.gensetToLoadKw || 0, 0, 'kW');
+            if (node.type === 'LOAD' || node.type === 'CRITICAL_LOAD_PANEL') return formatEpcNumber(row?.loadKw || 0, 0, 'kW');
+            return node.voltageV ? formatEpcNumber(node.voltageV, 0, 'V') : htmlSafe(node.type || '');
+        }
+
+        function epcTopologyFlowValue(flowKeys = [], row = {}) {
+            const keys = Array.isArray(flowKeys) ? flowKeys : [];
+            return keys.reduce((total, key) => total + Math.max(0, Number(row?.[key]) || 0), 0);
+        }
+
+        function epcTopologyFlowLineType(role = 'load') {
+            if (role === 'pv') return 'pv';
+            if (role === 'battery') return 'battery';
+            if (role === 'genset') return 'genset';
+            if (role === 'mv') return 'mv';
+            if (role === 'control') return 'control';
+            if (role === 'blocked') return 'blocked';
+            return 'load';
+        }
+
+        function epcTopologyFlowLane(role = 'load') {
+            if (role === 'pv') return 'main';
+            if (role === 'genset') return 'genset';
+            if (role === 'control') return 'control';
+            return 'branch';
+        }
+
+        function epcTopologyFlowPort(node = {}, side = 'right') {
+            return {
+                x: (Number(node.x) || 0) + (side === 'right' ? EPC_TOPOLOGY_FLOW_NODE_W : 0),
+                y: (Number(node.y) || 0) + EPC_TOPOLOGY_FLOW_NODE_H / 2
+            };
+        }
+
+        function epcTopologyFlowRoute(source = {}, target = {}, index = 0) {
+            const sourceBeforeTarget = (Number(source.x) || 0) <= (Number(target.x) || 0);
+            const start = epcTopologyFlowPort(source, sourceBeforeTarget ? 'right' : 'left');
+            const end = epcTopologyFlowPort(target, sourceBeforeTarget ? 'left' : 'right');
+            const gap = Math.abs(end.x - start.x);
+            const direction = sourceBeforeTarget ? 1 : -1;
+            let d = '';
+            if (gap > 56) {
+                const midX = start.x + direction * Math.max(42, gap / 2);
+                d = `M${start.x} ${start.y} H${midX} V${end.y} H${end.x}`;
+            } else {
+                const laneY = Math.max(28, Math.min(492, Math.min(start.y, end.y) - 38 - (index % 3) * 24));
+                d = `M${start.x} ${start.y} H${start.x + direction * 38} V${laneY} H${end.x - direction * 38} V${end.y} H${end.x}`;
+            }
+            return {
+                d,
+                labelX: (start.x + end.x) / 2,
+                labelY: (start.y + end.y) / 2 - 10
+            };
+        }
+
+        function buildEpcTopologyFlowRenderModel(result, row) {
+            const topologyFlow = result.topologyFlow || { nodes: [], edges: [], flowBindings: [] };
+            const nodes = Array.isArray(topologyFlow.nodes) ? topologyFlow.nodes : [];
+            const edges = Array.isArray(topologyFlow.edges) ? topologyFlow.edges : [];
+            const minX = Math.min(0, ...nodes.map(node => Number(node.position?.x) || 0));
+            const minY = Math.min(0, ...nodes.map(node => Number(node.position?.y) || 0));
+            const maxX = Math.max(1180, ...nodes.map(node => (Number(node.position?.x) || 0) - minX + EPC_TOPOLOGY_FLOW_NODE_W + 80));
+            const maxY = Math.max(460, ...nodes.map(node => (Number(node.position?.y) || 0) - minY + EPC_TOPOLOGY_FLOW_NODE_H + 96));
+            const flowNodes = nodes.map(node => ({
+                ...node,
+                x: (Number(node.position?.x) || 0) - minX + 48,
+                y: (Number(node.position?.y) || 0) - minY + 64
+            }));
+            const nodeMap = new Map(flowNodes.map(node => [node.id, node]));
+            const flowEdges = edges.map((edge, index) => {
+                const source = nodeMap.get(edge.source);
+                const target = nodeMap.get(edge.target);
+                const route = source && target ? epcTopologyFlowRoute(source, target, index) : { d: '', labelX: 0, labelY: 0 };
+                const value = epcTopologyFlowValue(edge.flowKeys, row);
+                return {
+                    ...edge,
+                    route,
+                    value,
+                    active: value > 0 && !edge.blocked && edge.role !== 'control'
+                };
+            });
+            return {
+                topologyFlow,
+                nodes: flowNodes,
+                edges: flowEdges,
+                viewBox: `0 0 ${Math.ceil(maxX + 96)} ${Math.ceil(maxY + 48)}`,
+                componentHints: EPC_TOPOLOGY_FLOW_COMPONENT_HINTS.join(' | ')
+            };
+        }
+
+        function renderEpcTopologyFlowEdge(edge = {}) {
+            if (!edge.route?.d) return '';
+            const role = edge.blocked ? 'blocked' : edge.role;
+            const lineType = epcTopologyFlowLineType(role);
+            const lane = epcTopologyFlowLane(role);
+            const extraClass = [
+                edge.blocked ? 'epc-flow-line-blocked' : '',
+                edge.warning ? 'epc-flow-line-warning' : '',
+                role === 'control' ? 'epc-flow-line-control' : ''
+            ].filter(Boolean).join(' ');
+            const marker = role === 'control' ? '' : ' marker-end="url(#epc-arrow-load)"';
+            return `<path data-epc-topology-flow-edge="${htmlSafe(edge.id)}" class="${flowLineClass(edge.active ? edge.value : 0, lineType, lane)} ${extraClass}"${marker} d="${htmlSafe(edge.route.d)}"/>`;
+        }
+
+        function renderEpcTopologyFlowEdgeLabel(edge = {}) {
+            if (!(Number(edge.value) > 0) || edge.blocked || edge.role === 'control') return '';
+            return renderEpcFlowLabel(edge.value, edge.route.labelX, edge.route.labelY, edge.role === 'mv' ? 'MV' : '');
+        }
+
+        function renderEpcTopologyFlowNode(node = {}, row = {}) {
+            const style = getEpcTopologyFlowNodeStyle(node.type);
+            return renderEpcFlowNode({
+                className: `epc-flow-topology-node epc-flow-topology-${String(node.type || '').toLowerCase().replace(/_/g, '-')}`,
+                x: node.x,
+                y: node.y,
+                stroke: style.stroke,
+                fill: style.fill,
+                title: node.label,
+                value: getEpcTopologyFlowNodeValue(node, row),
+                icon: style.icon
+            });
+        }
+
+        function renderEpcTopologyFlowDiagram(result, row) {
+            const model = buildEpcTopologyFlowRenderModel(result, row);
+            const topologyFlow = model.topologyFlow;
+            const errors = result.topologyValidation?.errors || [];
+            const warnings = result.topologyValidation?.warnings || [];
+            const flowSummary = [
+                row?.pvToLoadKw > 0 ? `PV -> load ${formatEpcNumber(row.pvToLoadKw, 0, 'kW')}` : '',
+                row?.pvToBatteryKw > 0 ? `PV -> battery ${formatEpcNumber(row.pvToBatteryKw, 0, 'kW')}` : '',
+                row?.batteryToLoadKw > 0 ? `Battery -> load ${formatEpcNumber(row.batteryToLoadKw, 0, 'kW')}` : '',
+                row?.gensetToLoadKw > 0 ? `Genset -> load ${formatEpcNumber(row.gensetToLoadKw, 0, 'kW')}` : ''
+            ].filter(Boolean).join(' | ') || 'No active flow at selected hour.';
+            return `
+                <div id="epc-flow-diagram" class="epc-flow-diagram mb-4">
+                    <div class="px-4 py-3 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                        <div>
+                            <div class="text-sm font-black text-slate-800">Topology-aware EMS Flow - ${htmlSafe(row?.hourLabel || `${row?.hour ?? 13}:00`)}</div>
+                            <div id="epc-flow-summary" class="text-xs text-slate-500">${htmlSafe(flowSummary)}</div>
+                            <div class="mt-1 text-[10px] font-black uppercase text-slate-400">${htmlSafe(topologyFlow.topologyId || result.selectedTopologyId || 'C5')} | ${htmlSafe(model.componentHints)}</div>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="rounded-full px-3 py-1 text-[10px] font-black ${topologyFlow.validationBlocked ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}">${topologyFlow.validationBlocked ? `${errors.length} topology error(s)` : 'Topology valid'}</span>
+                            ${warnings.length ? `<span class="rounded-full border border-yellow-200 bg-yellow-50 px-3 py-1 text-[10px] font-black text-yellow-700">${warnings.length} warning(s)</span>` : ''}
+                            <button type="button" onclick="openEpcTopologyConnectionModal()" class="rounded-lg border border-purple-200 bg-white px-3 py-2 text-[10px] font-black text-purple-700 hover:bg-purple-50">Customize Connections</button>
+                        </div>
+                    </div>
+                    ${topologyFlow.validationBlocked ? `<div class="border-b border-red-100 bg-red-50 px-4 py-2 text-xs font-bold text-red-700">${htmlSafe(errors.map(item => `${item.code}: ${item.message}`).join(' | '))}</div>` : ''}
+                    <svg id="epc-flow-svg" class="epc-flow-svg" viewBox="${htmlSafe(model.viewBox)}" role="img" aria-label="Topology-aware hybrid energy flow diagram">
+                        <defs>
+                            <marker id="epc-arrow-load" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#64748b"/></marker>
+                        </defs>
+                        ${model.edges.map(edge => renderEpcTopologyFlowEdge(edge)).join('')}
+                        ${model.edges.map(edge => renderEpcTopologyFlowEdgeLabel(edge)).join('')}
+                        ${model.nodes.map(node => renderEpcTopologyFlowNode(node, row)).join('')}
+                    </svg>
+                    <div class="border-t border-slate-100 px-4 py-2 text-[11px] font-bold text-slate-400">${htmlSafe(topologyFlow.disclaimer || '')}</div>
+                </div>
+            `;
+        }
+
+        function renderEpcFlowDiagram(result, row) {
+            return renderEpcTopologyFlowDiagram(result, row);
         }
 
         function renderEpcSocBadge(socPct = 0) {
@@ -13615,7 +13828,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (!rows.some(row => rowKey(row) === String(epcSelectedFlowHour))) epcSelectedFlowHour = rowKey(rows[0] || { hour: 13 });
             const selectedRow = rows.find(row => rowKey(row) === String(epcSelectedFlowHour)) || rows[0] || {};
             target.innerHTML = `
-                ${renderEpcFlowDiagram(result, selectedRow)}
+                ${renderEpcTopologyFlowDiagram(result, selectedRow)}
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                     <div class="rounded-xl border border-slate-100 bg-slate-50 p-3"><div class="text-[10px] font-black text-slate-400 uppercase">Modules</div><div class="text-lg font-black text-slate-800">${formatEpcNumber(stringDesign.modules, 0)}</div></div>
                     <div class="rounded-xl border border-slate-100 bg-slate-50 p-3"><div class="text-[10px] font-black text-slate-400 uppercase">Strings</div><div class="text-lg font-black text-slate-800">${formatEpcNumber(stringDesign.strings, 0)}</div></div>
@@ -13805,6 +14018,262 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             renderEpcDesignWorkspace();
         }
         window.resetEpcCapacityOverrides = resetEpcCapacityOverrides;
+
+        function cloneEpcJson(value) {
+            return JSON.parse(JSON.stringify(value || {}));
+        }
+
+        function getEpcTopologyEditProject() {
+            return captureEpcDesignFromDom();
+        }
+
+        function copyEpcStandardTopologyToCustom(options = {}) {
+            if (!canEditEpcEngineering()) {
+                alert('No engineering edit permission.');
+                return getActiveEpcDesignProject();
+            }
+            const project = getEpcTopologyEditProject();
+            const currentResult = window.__lastEpcDesignResult || calculateEpcDesignProject(project, { defaults: epcDesignDefaults });
+            const sourceTopology = cloneEpcJson(currentResult.topology || project.topology || {});
+            project.selectedTopologyId = 'CUSTOM';
+            project.topology = {
+                ...sourceTopology,
+                selectedTopologyId: 'CUSTOM',
+                sourceTopologyId: currentResult.selectedTopologyId || project.selectedTopologyId || 'C5',
+                customEditedAt: new Date().toISOString()
+            };
+            updateEpcProject(project);
+            if (options.render !== false) renderEpcDesignWorkspace();
+            const status = document.getElementById('epc-design-save-status');
+            if (status) status.textContent = 'Draft changed locally';
+            return getActiveEpcDesignProject();
+        }
+        window.copyEpcStandardTopologyToCustom = copyEpcStandardTopologyToCustom;
+
+        function ensureEpcCustomTopologyForConnections() {
+            const project = getEpcTopologyEditProject();
+            if (project.selectedTopologyId === 'CUSTOM' && project.topology?.selectedTopologyId === 'CUSTOM') {
+                updateEpcProject(project);
+                return project;
+            }
+            return copyEpcStandardTopologyToCustom({ render: false });
+        }
+
+        function epcCustomTopologyNodes(project = getActiveEpcDesignProject()) {
+            return Array.isArray(project.topology?.nodes) ? project.topology.nodes : [];
+        }
+
+        function epcCustomTopologyEdges(project = getActiveEpcDesignProject()) {
+            return Array.isArray(project.topology?.edges) ? project.topology.edges : [];
+        }
+
+        function renderEpcTopologyConnectionModal(project = getActiveEpcDesignProject()) {
+            const nodes = epcCustomTopologyNodes(project);
+            const edges = epcCustomTopologyEdges(project);
+            const optionMarkup = nodes.map(node => `<option value="${htmlSafe(node.id)}">${htmlSafe(node.label || node.id)} | ${htmlSafe(node.type)}</option>`).join('');
+            const source = document.getElementById('epc-custom-edge-source');
+            const target = document.getElementById('epc-custom-edge-target');
+            if (source) source.innerHTML = optionMarkup;
+            if (target) target.innerHTML = optionMarkup;
+            if (target && nodes[1]) target.value = nodes[1].id;
+            const voltage = document.getElementById('epc-custom-edge-voltage');
+            if (voltage && !voltage.value) voltage.value = '415';
+            const note = document.getElementById('epc-topology-connection-mode-note');
+            if (note) {
+                note.textContent = project.selectedTopologyId === 'CUSTOM'
+                    ? 'Editing a Custom topology copy. Standard C2/C3/C5/C7 templates remain read-only.'
+                    : 'Copy standard topology to Custom before editing connections.';
+            }
+            const list = document.getElementById('epc-custom-connection-list');
+            if (list) {
+                list.innerHTML = edges.map(edge => `
+                    <div data-epc-custom-connection-row="${htmlSafe(edge.id)}" class="grid grid-cols-[1fr_auto] gap-3 px-3 py-2">
+                        <div class="min-w-0">
+                            <div class="font-mono font-black text-slate-700 truncate">${htmlSafe(edge.source)} -> ${htmlSafe(edge.target)}</div>
+                            <div class="mt-1 text-[10px] font-bold text-slate-400">${htmlSafe(edge.type)} | ${htmlSafe(edge.direction)} | ${formatEpcNumber(edge.voltageV || 0, 0, 'V')}</div>
+                        </div>
+                        <button type="button" onclick="removeEpcCustomTopologyConnection('${htmlSafe(edge.id)}')" class="rounded-lg border border-red-100 bg-red-50 px-3 py-1 text-[10px] font-black text-red-700 hover:bg-red-100">Remove</button>
+                    </div>
+                `).join('') || '<div class="p-4 text-xs font-bold text-slate-400">No custom connections.</div>';
+            }
+            validateEpcCustomTopologyConnectionDraft();
+        }
+        window.renderEpcTopologyConnectionModal = renderEpcTopologyConnectionModal;
+
+        function openEpcTopologyConnectionModal() {
+            if (!canEditEpcEngineering()) return alert('No engineering edit permission.');
+            const project = ensureEpcCustomTopologyForConnections();
+            renderEpcDesignWorkspace();
+            const modal = document.getElementById('epc-topology-connection-modal');
+            if (!modal) return;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            renderEpcTopologyConnectionModal(getActiveEpcDesignProject());
+        }
+        window.openEpcTopologyConnectionModal = openEpcTopologyConnectionModal;
+
+        function closeEpcTopologyConnectionModal() {
+            const modal = document.getElementById('epc-topology-connection-modal');
+            if (!modal) return;
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+        window.closeEpcTopologyConnectionModal = closeEpcTopologyConnectionModal;
+
+        function readEpcCustomTopologyConnectionDraft() {
+            const source = String(document.getElementById('epc-custom-edge-source')?.value || '').trim();
+            const target = String(document.getElementById('epc-custom-edge-target')?.value || '').trim();
+            const type = String(document.getElementById('epc-custom-edge-type')?.value || 'AC_LV_POWER').trim().toUpperCase();
+            const direction = String(document.getElementById('epc-custom-edge-direction')?.value || 'ONE_WAY').trim().toUpperCase() === 'BIDIRECTIONAL' ? 'BIDIRECTIONAL' : 'ONE_WAY';
+            const voltageV = Math.max(0, Number(document.getElementById('epc-custom-edge-voltage')?.value) || 0);
+            const id = `${source}-${target}-${type}`.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || `custom-edge-${Date.now()}`;
+            return { id, source, target, type, direction, voltageV };
+        }
+
+        function epcTopologyConnectionSegmentsFromRoute(route = '') {
+            const numbers = String(route || '').match(/-?\d+(?:\.\d+)?/g)?.map(Number) || [];
+            const points = [];
+            for (let i = 0; i < numbers.length; i += 2) points.push({ x: numbers[i], y: numbers[i + 1] });
+            return points.slice(1).map((point, index) => ({ a: points[index], b: point })).filter(segment => segment.a && segment.b);
+        }
+
+        function epcTopologyRectForNode(node = {}) {
+            return {
+                x: Number(node.position?.x) || 0,
+                y: Number(node.position?.y) || 0,
+                w: EPC_TOPOLOGY_FLOW_NODE_W,
+                h: EPC_TOPOLOGY_FLOW_NODE_H
+            };
+        }
+
+        function epcTopologySegmentHitsRect(segment = {}, rect = {}) {
+            const minX = Math.min(segment.a.x, segment.b.x);
+            const maxX = Math.max(segment.a.x, segment.b.x);
+            const minY = Math.min(segment.a.y, segment.b.y);
+            const maxY = Math.max(segment.a.y, segment.b.y);
+            const rectMinX = rect.x - 4;
+            const rectMaxX = rect.x + rect.w + 4;
+            const rectMinY = rect.y - 4;
+            const rectMaxY = rect.y + rect.h + 4;
+            if (Math.abs(segment.a.x - segment.b.x) < 0.01) return segment.a.x >= rectMinX && segment.a.x <= rectMaxX && maxY >= rectMinY && minY <= rectMaxY;
+            if (Math.abs(segment.a.y - segment.b.y) < 0.01) return segment.a.y >= rectMinY && segment.a.y <= rectMaxY && maxX >= rectMinX && minX <= rectMaxX;
+            return false;
+        }
+
+        function epcTopologySegmentsCross(a = {}, b = {}) {
+            const aVertical = Math.abs(a.a.x - a.b.x) < 0.01;
+            const bVertical = Math.abs(b.a.x - b.b.x) < 0.01;
+            if (aVertical === bVertical) return false;
+            const vertical = aVertical ? a : b;
+            const horizontal = aVertical ? b : a;
+            const vx = vertical.a.x;
+            const hy = horizontal.a.y;
+            const vMinY = Math.min(vertical.a.y, vertical.b.y);
+            const vMaxY = Math.max(vertical.a.y, vertical.b.y);
+            const hMinX = Math.min(horizontal.a.x, horizontal.b.x);
+            const hMaxX = Math.max(horizontal.a.x, horizontal.b.x);
+            return vx > hMinX && vx < hMaxX && hy > vMinY && hy < vMaxY;
+        }
+
+        function validateEpcCustomTopologyLayout(topology = {}, edge = {}) {
+            const nodes = Array.isArray(topology.nodes) ? topology.nodes : [];
+            const nodeMap = new Map(nodes.map(node => [node.id, node]));
+            const source = nodeMap.get(edge.source);
+            const target = nodeMap.get(edge.target);
+            if (!source || !target) return { valid: false, messages: ['Source or target node is missing.'] };
+            const route = epcTopologyFlowRoute(
+                { ...source, x: Number(source.position?.x) || 0, y: Number(source.position?.y) || 0 },
+                { ...target, x: Number(target.position?.x) || 0, y: Number(target.position?.y) || 0 },
+                topology.edges?.length || 0
+            );
+            const draftSegments = epcTopologyConnectionSegmentsFromRoute(route.d);
+            const hitNode = nodes.find(node => ![edge.source, edge.target].includes(node.id) && draftSegments.some(segment => epcTopologySegmentHitsRect(segment, epcTopologyRectForNode(node))));
+            if (hitNode) return { valid: false, messages: [`Route crosses component card: ${hitNode.label || hitNode.id}.`] };
+            const existingSegments = (Array.isArray(topology.edges) ? topology.edges : [])
+                .filter(item => item.id !== edge.id)
+                .flatMap((item, index) => {
+                    const s = nodeMap.get(item.source);
+                    const t = nodeMap.get(item.target);
+                    if (!s || !t) return [];
+                    const existingRoute = epcTopologyFlowRoute(
+                        { ...s, x: Number(s.position?.x) || 0, y: Number(s.position?.y) || 0 },
+                        { ...t, x: Number(t.position?.x) || 0, y: Number(t.position?.y) || 0 },
+                        index
+                    );
+                    return epcTopologyConnectionSegmentsFromRoute(existingRoute.d).map(segment => ({ ...segment, edgeId: item.id }));
+                });
+            const crossing = existingSegments.find(existing => draftSegments.some(segment => epcTopologySegmentsCross(segment, existing)));
+            if (crossing) return { valid: false, messages: [`Route crosses existing connection: ${crossing.edgeId}.`] };
+            return { valid: true, messages: ['Route is clear: no component card overlap or line crossing detected.'] };
+        }
+        window.validateEpcCustomTopologyLayout = validateEpcCustomTopologyLayout;
+
+        function validateEpcCustomTopologyConnectionDraft() {
+            const status = document.getElementById('epc-custom-edge-validation');
+            const project = getActiveEpcDesignProject();
+            const draft = readEpcCustomTopologyConnectionDraft();
+            const topology = cloneEpcJson(project.topology || {});
+            topology.nodes = Array.isArray(topology.nodes) ? topology.nodes : [];
+            topology.edges = Array.isArray(topology.edges) ? topology.edges : [];
+            const messages = [];
+            if (!draft.source || !draft.target) messages.push('Source and target are required.');
+            if (draft.source && draft.source === draft.target) messages.push('Source and target must be different.');
+            if (topology.edges.some(edge => edge.source === draft.source && edge.target === draft.target && edge.type === draft.type)) {
+                messages.push('Duplicate connection already exists.');
+            }
+            const draftEdge = { ...draft, id: `draft-${draft.id}` };
+            const simulatedTopology = { ...topology, selectedTopologyId: 'CUSTOM', edges: [...topology.edges, draftEdge] };
+            const simulated = calculateEpcDesignProject({ ...project, selectedTopologyId: 'CUSTOM', topology: simulatedTopology }, { defaults: epcDesignDefaults });
+            const edgeErrors = (simulated.topologyValidation?.errors || []).filter(item => item.edgeId === draftEdge.id);
+            const edgeWarnings = (simulated.topologyValidation?.warnings || []).filter(item => item.edgeId === draftEdge.id);
+            edgeErrors.forEach(item => messages.push(`${item.code}: ${item.message}`));
+            edgeWarnings.forEach(item => messages.push(`${item.code}: ${item.message}`));
+            const layout = validateEpcCustomTopologyLayout(topology, draftEdge);
+            if (!layout.valid) messages.push(...layout.messages);
+            const valid = !messages.length;
+            if (status) {
+                status.className = valid
+                    ? 'rounded-lg border border-green-200 bg-green-50 p-3 text-xs font-bold text-green-700'
+                    : 'rounded-lg border border-red-200 bg-red-50 p-3 text-xs font-bold text-red-700';
+                status.textContent = valid ? layout.messages.join(' ') : messages.join(' ');
+            }
+            return { valid, messages, edge: { ...draft, id: draft.id } };
+        }
+        window.validateEpcCustomTopologyConnectionDraft = validateEpcCustomTopologyConnectionDraft;
+
+        function addEpcCustomTopologyConnection() {
+            if (!canEditEpcEngineering()) return alert('No engineering edit permission.');
+            const project = ensureEpcCustomTopologyForConnections();
+            const validation = validateEpcCustomTopologyConnectionDraft();
+            if (!validation.valid) return;
+            project.topology = {
+                ...(project.topology || {}),
+                selectedTopologyId: 'CUSTOM',
+                edges: [...epcCustomTopologyEdges(project), validation.edge]
+            };
+            project.selectedTopologyId = 'CUSTOM';
+            updateEpcProject(project);
+            renderEpcDesignWorkspace();
+            renderEpcTopologyConnectionModal(getActiveEpcDesignProject());
+        }
+        window.addEpcCustomTopologyConnection = addEpcCustomTopologyConnection;
+
+        function removeEpcCustomTopologyConnection(edgeId) {
+            if (!canEditEpcEngineering()) return alert('No engineering edit permission.');
+            const project = ensureEpcCustomTopologyForConnections();
+            const id = String(edgeId || '').trim();
+            project.topology = {
+                ...(project.topology || {}),
+                selectedTopologyId: 'CUSTOM',
+                edges: epcCustomTopologyEdges(project).filter(edge => edge.id !== id)
+            };
+            project.selectedTopologyId = 'CUSTOM';
+            updateEpcProject(project);
+            renderEpcDesignWorkspace();
+            const modal = document.getElementById('epc-topology-connection-modal');
+            if (modal && !modal.classList.contains('hidden')) renderEpcTopologyConnectionModal(getActiveEpcDesignProject());
+        }
+        window.removeEpcCustomTopologyConnection = removeEpcCustomTopologyConnection;
 
         function updateEpcSelectedTopology(value) {
             const project = captureEpcDesignFromDom();
@@ -25332,6 +25801,67 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             <div class="flex justify-end gap-3">
                 <button id="so-custom-modal-cancel" onclick="closeRoofCustomModuleModal()" class="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg">Cancel</button>
                 <button id="so-custom-modal-add" onclick="confirmAddRoofCustomModule()" class="px-4 py-2 text-sm font-bold text-white bg-purple-700 hover:bg-purple-800 rounded-lg">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="epc-topology-connection-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-[420] p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl border border-slate-100 overflow-hidden">
+            <div class="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
+                <div>
+                    <h3 class="text-lg font-black text-slate-800">Customize Connections</h3>
+                    <p id="epc-topology-connection-mode-note" class="mt-1 text-xs font-bold text-slate-400">Copy standard topology to Custom before editing connections.</p>
+                </div>
+                <button type="button" onclick="closeEpcTopologyConnectionModal()" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-500 hover:bg-slate-50">Close</button>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr] gap-4 p-5">
+                <section class="rounded-xl border border-slate-200 overflow-hidden">
+                    <div class="bg-slate-50 px-3 py-2 text-[10px] font-black uppercase text-slate-500">Add Connection</div>
+                    <div class="space-y-3 p-4 text-xs">
+                        <div class="grid grid-cols-2 gap-3">
+                            <label class="block">
+                                <span class="mb-1 block font-black text-slate-500">Source</span>
+                                <select id="epc-custom-edge-source" onchange="validateEpcCustomTopologyConnectionDraft()" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 font-bold outline-none focus:border-purple-500"></select>
+                            </label>
+                            <label class="block">
+                                <span class="mb-1 block font-black text-slate-500">Target</span>
+                                <select id="epc-custom-edge-target" onchange="validateEpcCustomTopologyConnectionDraft()" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 font-bold outline-none focus:border-purple-500"></select>
+                            </label>
+                        </div>
+                        <div class="grid grid-cols-3 gap-3">
+                            <label class="block">
+                                <span class="mb-1 block font-black text-slate-500">Type</span>
+                                <select id="epc-custom-edge-type" onchange="validateEpcCustomTopologyConnectionDraft()" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 font-bold outline-none focus:border-purple-500">
+                                    <option value="AC_LV_POWER">AC_LV_POWER</option>
+                                    <option value="AC_MV_POWER">AC_MV_POWER</option>
+                                    <option value="DC_POWER">DC_POWER</option>
+                                    <option value="COMMUNICATION">COMMUNICATION</option>
+                                    <option value="CONTROL">CONTROL</option>
+                                </select>
+                            </label>
+                            <label class="block">
+                                <span class="mb-1 block font-black text-slate-500">Direction</span>
+                                <select id="epc-custom-edge-direction" onchange="validateEpcCustomTopologyConnectionDraft()" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 font-bold outline-none focus:border-purple-500">
+                                    <option value="ONE_WAY">ONE_WAY</option>
+                                    <option value="BIDIRECTIONAL">BIDIRECTIONAL</option>
+                                </select>
+                            </label>
+                            <label class="block">
+                                <span class="mb-1 block font-black text-slate-500">Voltage</span>
+                                <input id="epc-custom-edge-voltage" type="number" value="415" oninput="validateEpcCustomTopologyConnectionDraft()" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 font-bold outline-none focus:border-purple-500">
+                            </label>
+                        </div>
+                        <button type="button" onclick="addEpcCustomTopologyConnection()" class="w-full rounded-xl bg-purple-700 px-4 py-3 text-xs font-black text-white hover:bg-purple-800">Add Connection</button>
+                        <div id="epc-custom-edge-validation" class="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs font-bold text-slate-500">Select source and target to validate the route.</div>
+                    </div>
+                </section>
+                <section class="rounded-xl border border-slate-200 overflow-hidden">
+                    <div class="flex items-center justify-between gap-3 bg-slate-50 px-3 py-2">
+                        <div class="text-[10px] font-black uppercase text-slate-500">Current Connections</div>
+                        <button type="button" onclick="copyEpcStandardTopologyToCustom()" class="rounded-lg border border-purple-200 bg-white px-3 py-1.5 text-[10px] font-black text-purple-700 hover:bg-purple-50">Copy standard topology to Custom</button>
+                    </div>
+                    <div id="epc-custom-connection-list" class="max-h-[28rem] overflow-auto divide-y divide-slate-100 text-xs"></div>
+                </section>
             </div>
         </div>
     </div>

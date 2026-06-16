@@ -601,11 +601,14 @@ function buildStandardTopologyGraph(id = 'C5') {
       node('pcs', 'PCS', 'Grid-forming PCS', 220, 180, 415),
       node('genset', 'GENSET', 'Genset', 220, 320, 415),
       node('lv-bus', 'LV_BUS', 'Microgrid 415V Bus', 450, 180, 415),
-      node('step-up-tx', 'TRANSFORMER', 'Step-up Transformer', 650, 180, 11000),
-      node('mv-bus', 'MV_BUS', '11kV MV Bus', 850, 180, 11000),
-      node('load-tx', 'TRANSFORMER', 'Load Step-down TX', 1050, 180, 415),
-      node('critical-load', 'CRITICAL_LOAD_PANEL', 'Critical Loads', 1260, 120, 415),
-      node('load', 'LOAD', 'Flexible Loads', 1260, 250, 415),
+      node('step-up-tx', 'TRANSFORMER', 'Step-up TX', 620, 180, 11000),
+      node('mv-switchboard', 'MV_SWITCHBOARD', 'MV Switchboard', 800, 180, 11000),
+      node('ring-rmu', 'MV_BUS', 'Ring RMU', 980, 180, 11000),
+      node('mv-bus', 'MV_BUS', 'MV BUS', 1160, 180, 11000),
+      node('load-tx', 'TRANSFORMER', 'Load TX', 1340, 180, 415),
+      node('lv-load-bus', 'LV_BUS', 'LV BUS', 1520, 180, 415),
+      node('critical-load', 'CRITICAL_LOAD_PANEL', 'Critical Loads', 1700, 120, 415),
+      node('load', 'LOAD', 'Flexible Loads', 1700, 250, 415),
       commonEms
     ],
     edges: [
@@ -615,10 +618,13 @@ function buildStandardTopologyGraph(id = 'C5') {
       edge('pcs-lv', 'pcs', 'lv-bus', 'AC_LV_POWER', 'BIDIRECTIONAL', 415),
       edge('genset-lv', 'genset', 'lv-bus', 'AC_LV_POWER', 'ONE_WAY', 415),
       edge('lv-step-up', 'lv-bus', 'step-up-tx', 'AC_LV_POWER', 'BIDIRECTIONAL', 415),
-      edge('step-up-mv', 'step-up-tx', 'mv-bus', 'AC_MV_POWER', 'BIDIRECTIONAL', 11000),
+      edge('step-up-mv', 'step-up-tx', 'mv-switchboard', 'AC_MV_POWER', 'BIDIRECTIONAL', 11000),
+      edge('mv-switchboard-rmu', 'mv-switchboard', 'ring-rmu', 'AC_MV_POWER', 'BIDIRECTIONAL', 11000),
+      edge('rmu-mv-bus', 'ring-rmu', 'mv-bus', 'AC_MV_POWER', 'BIDIRECTIONAL', 11000),
       edge('mv-load-tx', 'mv-bus', 'load-tx', 'AC_MV_POWER', 'ONE_WAY', 11000),
-      edge('load-tx-critical', 'load-tx', 'critical-load', 'AC_LV_POWER', 'ONE_WAY', 415),
-      edge('load-tx-flex', 'load-tx', 'load', 'AC_LV_POWER', 'ONE_WAY', 415),
+      edge('load-tx-lv-bus', 'load-tx', 'lv-load-bus', 'AC_LV_POWER', 'ONE_WAY', 415),
+      edge('load-tx-critical', 'lv-load-bus', 'critical-load', 'AC_LV_POWER', 'ONE_WAY', 415),
+      edge('load-tx-flex', 'lv-load-bus', 'load', 'AC_LV_POWER', 'ONE_WAY', 415),
       edge('ems-pcs', 'ems', 'pcs', 'COMMUNICATION', 'BIDIRECTIONAL', 0),
       edge('ems-genset', 'ems', 'genset', 'CONTROL', 'BIDIRECTIONAL', 0),
       edge('ems-load', 'ems', 'critical-load', 'CONTROL', 'BIDIRECTIONAL', 0)
@@ -1559,6 +1565,107 @@ function validatePowerTopology(topology = {}) {
   };
 }
 
+function topologyFlowNodeLabel(node = {}) {
+  const typeLabels = {
+    PV_ARRAY: 'PV',
+    PV_INVERTER: 'PV Inverter',
+    HYBRID_INVERTER: 'Hybrid Inverter',
+    BATTERY: 'Battery',
+    PCS: 'PCS',
+    GENSET: 'Genset',
+    LV_BUS: 'LV BUS',
+    MV_BUS: 'MV BUS',
+    LV_SWITCHBOARD: 'LV Switchboard',
+    MV_SWITCHBOARD: 'MV Switchboard',
+    TRANSFORMER: node.id?.includes('load') ? 'Load TX' : 'Step-up TX',
+    ATS: 'ATS',
+    STS: 'STS',
+    LOAD: 'Load',
+    CRITICAL_LOAD_PANEL: 'Critical Load',
+    EMS: 'EMS',
+    SCADA: 'SCADA',
+    METER: 'Meter'
+  };
+  const label = String(node.label || '').trim();
+  if (/ring\s*rmu/i.test(label)) return 'Ring RMU';
+  if (/mv\s*switchboard/i.test(label)) return 'MV Switchboard';
+  if (/load\s*tx/i.test(label)) return 'Load TX';
+  if (/step[-\s]*up/i.test(label)) return 'Step-up TX';
+  return typeLabels[node.type] || label || String(node.type || 'Node').replaceAll('_', ' ');
+}
+
+function topologyFlowRole(edge = {}, source = {}, target = {}) {
+  if (edge.type === 'COMMUNICATION' || edge.type === 'CONTROL') return 'control';
+  if (source.type === 'PV_ARRAY' || source.type === 'PV_INVERTER' || target.type === 'PV_INVERTER') return 'pv';
+  if (source.type === 'BATTERY' || target.type === 'BATTERY' || source.type === 'PCS' || target.type === 'PCS') return 'battery';
+  if (source.type === 'GENSET' || target.type === 'GENSET') return 'genset';
+  return edge.type === 'AC_MV_POWER' ? 'mv' : 'load';
+}
+
+function topologyFlowKeysForEdge(edge = {}, source = {}, target = {}) {
+  if (edge.type === 'COMMUNICATION' || edge.type === 'CONTROL') return [];
+  if (source.type === 'PV_ARRAY') return ['pvOutputKw'];
+  if (source.type === 'PV_INVERTER' || target.type === 'PV_INVERTER') return ['pvToLoadKw', 'pvToBatteryKw', 'curtailmentKw'];
+  if (source.type === 'BATTERY' || target.type === 'BATTERY') return ['pvToBatteryKw', 'batteryToLoadKw'];
+  if (source.type === 'PCS' || target.type === 'PCS') return ['pvToBatteryKw', 'batteryToLoadKw'];
+  if (source.type === 'GENSET' || target.type === 'GENSET') return ['gensetToLoadKw'];
+  if (target.type === 'LOAD' || target.type === 'CRITICAL_LOAD_PANEL') return ['loadKw'];
+  if (edge.type === 'AC_MV_POWER' || source.type === 'TRANSFORMER' || target.type === 'TRANSFORMER') return ['loadKw'];
+  return ['loadKw'];
+}
+
+function buildTopologyFlowAdapter(topology = {}, validation = validatePowerTopology(topology)) {
+  const nodes = Array.isArray(topology.nodes) ? topology.nodes : [];
+  const edges = Array.isArray(topology.edges) ? topology.edges : [];
+  const nodeMap = new Map(nodes.map(node => [node.id, node]));
+  const errorEdgeIds = new Set((validation.errors || []).map(issue => issue.edgeId).filter(Boolean));
+  const warningEdgeIds = new Set((validation.warnings || []).map(issue => issue.edgeId).filter(Boolean));
+  const flowNodes = nodes.map(node => ({
+    id: node.id,
+    type: node.type,
+    label: topologyFlowNodeLabel(node),
+    sourceLabel: node.label,
+    position: {
+      x: asNumber(node.position?.x, 0),
+      y: asNumber(node.position?.y, 0)
+    },
+    voltageV: asNumber(node.electrical?.voltageV, 0),
+    ratedPowerKw: asNumber(node.electrical?.ratedPowerKw, 0)
+  }));
+  const flowEdges = edges.map(edge => {
+    const source = nodeMap.get(edge.source) || {};
+    const target = nodeMap.get(edge.target) || {};
+    const blocked = errorEdgeIds.has(edge.id);
+    const warning = warningEdgeIds.has(edge.id);
+    const role = blocked ? 'blocked' : topologyFlowRole(edge, source, target);
+    return {
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      type: edge.type,
+      direction: edge.direction,
+      voltageV: asNumber(edge.voltageV, 0),
+      role,
+      blocked,
+      warning,
+      flowKeys: blocked ? [] : topologyFlowKeysForEdge(edge, source, target)
+    };
+  });
+  return {
+    topologyId: topology.selectedTopologyId || 'C5',
+    validationBlocked: Boolean(validation.errors?.length),
+    nodes: flowNodes,
+    edges: flowEdges,
+    flowBindings: flowEdges.map(edge => ({
+      edgeId: edge.id,
+      role: edge.role,
+      flowKeys: edge.flowKeys,
+      blocked: edge.blocked
+    })),
+    disclaimer: 'Topology-aware EMS Flow is a budget-stage operating schematic. Validate the final SLD, protection study and controller sequence before construction.'
+  };
+}
+
 function calculateElectrical(project, recommended) {
   const pf = asNumber(project.electrical.powerFactor, EPC_DESIGN_DEFAULTS.powerFactor);
   const voltageKv = asNumber(project.electrical.voltageKv, EPC_DESIGN_DEFAULTS.lvVoltageKv);
@@ -1877,6 +1984,7 @@ export function calculateEpcDesignProject(rawProject = {}, options = {}) {
   };
   const cableScreening = electrical.cableScreening || { candidates: [] };
   const topologyValidation = validatePowerTopology(project.topology);
+  const topologyFlow = buildTopologyFlowAdapter(project.topology, topologyValidation);
   const protectionMatrix = buildProtectionMatrix(project, electrical);
   const emsStateMachine = buildEmsStateMachine(project);
   const pvStringDesign = calculatePvStringDesign({
@@ -1950,6 +2058,7 @@ export function calculateEpcDesignProject(rawProject = {}, options = {}) {
     recommendedSchemeId: recommended.id,
     standardTopologies: standardTopologies(),
     topologyValidation,
+    topologyFlow,
     electrical,
     electricalArchitecture,
     cableScreening,

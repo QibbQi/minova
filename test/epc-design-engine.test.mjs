@@ -931,3 +931,54 @@ test('EPC electrical architecture returns LV MV candidates cable screening and p
   assert.ok(result.protectionMatrix.functions.some((item) => item.code === 'ANTI_ISLANDING'));
   assert.match(result.protectionMatrix.disclaimer, /concept-stage/i);
 });
+
+test('EPC topology flow adapter maps standard topology paths to EMS flow keys', () => {
+  const result = calculateEpcDesignProject({
+    selectedTopologyId: 'C5',
+    site: { gridMode: 'island' },
+    loads: { dailyLoadKwh: 12000, operationHoursPerDay: 8 },
+    designTargets: { replacementPct: 80 }
+  }, { now: '2026-06-16T00:00:00.000Z' });
+  const nodesByType = new Set(result.topologyFlow.nodes.map((node) => node.type));
+  const edge = (id) => result.topologyFlow.edges.find((item) => item.id === id);
+
+  assert.equal(result.topologyFlow.topologyId, 'C5');
+  assert.ok(nodesByType.has('LV_BUS'));
+  assert.ok(nodesByType.has('TRANSFORMER'));
+  assert.ok(nodesByType.has('MV_BUS'));
+  assert.ok(nodesByType.has('LOAD'));
+  assert.deepEqual(edge('pv-dc').flowKeys, ['pvOutputKw']);
+  assert.ok(edge('pv-lv').flowKeys.includes('pvToLoadKw'));
+  assert.ok(edge('battery-dc').flowKeys.includes('pvToBatteryKw'));
+  assert.ok(edge('battery-dc').flowKeys.includes('batteryToLoadKw'));
+  assert.ok(edge('genset-lv').flowKeys.includes('gensetToLoadKw'));
+  assert.ok(edge('mv-load-tx').flowKeys.includes('loadKw'));
+  assert.equal(result.topologyFlow.validationBlocked, false);
+});
+
+test('EPC topology flow adapter suppresses active flow on invalid custom connections', () => {
+  const result = calculateEpcDesignProject({
+    selectedTopologyId: 'CUSTOM',
+    topology: {
+      selectedTopologyId: 'CUSTOM',
+      nodes: [
+        { id: 'pv-array', type: 'PV_ARRAY', label: 'PV Array', electrical: { voltageV: 1000 } },
+        { id: 'lv-bus', type: 'LV_BUS', label: 'LV Bus', electrical: { voltageV: 415 } },
+        { id: 'load', type: 'LOAD', label: 'Load', electrical: { voltageV: 415 } }
+      ],
+      edges: [
+        { id: 'bad-pv-direct', source: 'pv-array', target: 'lv-bus', type: 'DC_POWER', direction: 'ONE_WAY' },
+        { id: 'lv-load', source: 'lv-bus', target: 'load', type: 'AC_LV_POWER', direction: 'ONE_WAY' }
+      ]
+    }
+  }, { now: '2026-06-16T00:00:00.000Z' });
+  const invalidEdge = result.topologyFlow.edges.find((edge) => edge.id === 'bad-pv-direct');
+  const validEdge = result.topologyFlow.edges.find((edge) => edge.id === 'lv-load');
+
+  assert.equal(result.topologyValidation.valid, false);
+  assert.equal(result.topologyFlow.validationBlocked, true);
+  assert.equal(invalidEdge.blocked, true);
+  assert.deepEqual(invalidEdge.flowKeys, []);
+  assert.equal(validEdge.blocked, false);
+  assert.ok(validEdge.flowKeys.includes('loadKw'));
+});

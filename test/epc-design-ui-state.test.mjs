@@ -869,3 +869,49 @@ test('EPC Topology and Electrical panels render graph validation LV MV and cable
     assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing EPC topology/electrical snippet: ${snippet}`);
   }
 });
+
+test('EPC EMS Flow renders topology-aware standard components and validation state', () => {
+  const flowRenderer = html.match(/function renderEpcFlowDiagram\(result, row\)[\s\S]*?function renderEpcSocBadge/);
+  assert.ok(flowRenderer, 'EMS Flow renderer should be found');
+  for (const snippet of [
+    'function buildEpcTopologyFlowRenderModel(result, row)',
+    'function renderEpcTopologyFlowDiagram(result, row)',
+    'result.topologyFlow',
+    'topologyFlow.nodes',
+    'topologyFlow.edges',
+    'flowKeys',
+    'Step-up TX',
+    'MV Switchboard',
+    'Ring RMU',
+    'MV BUS',
+    'Load TX',
+    'LV BUS',
+    'topologyFlow.validationBlocked',
+    'epc-flow-line-blocked',
+    'renderEpcTopologyFlowDiagram(result, selectedRow)'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing topology-aware flow snippet: ${snippet}`);
+  }
+  assert.doesNotMatch(flowRenderer[0], /<path class="\$\{flowLineClass\(row\?\.pvOutputKw/, 'EMS Flow should not render fixed legacy paths directly');
+});
+
+test('EPC custom topology connection modal exposes add remove and standard copy behavior', () => {
+  for (const snippet of [
+    'id="epc-topology-connection-modal"',
+    'openEpcTopologyConnectionModal',
+    'closeEpcTopologyConnectionModal',
+    'copyEpcStandardTopologyToCustom',
+    'addEpcCustomTopologyConnection',
+    'removeEpcCustomTopologyConnection',
+    'validateEpcCustomTopologyConnectionDraft',
+    'Customize Connections',
+    'Copy standard topology to Custom',
+    'data-epc-custom-connection-row',
+    'epc-custom-edge-source',
+    'epc-custom-edge-target',
+    'epc-custom-edge-type',
+    'canEditEpcEngineering()'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing custom connection snippet: ${snippet}`);
+  }
+});

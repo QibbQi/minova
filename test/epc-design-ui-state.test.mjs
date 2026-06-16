@@ -819,3 +819,53 @@ test('EPC design projects persist through app state and sync merge', () => {
   assert.match(mergeSource, /epcDesignProjects:\s*mergeByKey/);
   assert.match(mergeSource, /epcDesignDefaults:\s*\{\s*\.\.\.\(rData\.epcDesignDefaults/);
 });
+
+test('EPC workspace exposes Topology and Electrical engineering panels', () => {
+  const section = html.match(/<main id="view-epcdesign"[\s\S]*?<main id="view-engineering"/);
+  assert.ok(section, 'EPC design view exists before Engineering workspace');
+  const source = section[0];
+  for (const snippet of [
+    'data-epc-panel-tab="topology"',
+    "setEpcPanelTab('topology')",
+    '>Topology</button>',
+    'data-epc-panel-tab="electrical"',
+    "setEpcPanelTab('electrical')",
+    '>Electrical</button>',
+    'id="epc-topology-workspace"',
+    'data-epc-panel="topology"',
+    'id="epc-electrical-workspace"',
+    'data-epc-panel="electrical"'
+  ]) {
+    assert.match(source, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing EPC panel snippet: ${snippet}`);
+  }
+  assert.match(html, /renderEpcTopologyWorkspace\(result, project\)/);
+  assert.match(html, /renderEpcElectricalWorkspace\(result\)/);
+  assert.match(html, /renderEpcTopologyWorkspace\(result, project\)[\s\S]*renderEpcElectricalWorkspace\(result\)/);
+});
+
+test('EPC Topology and Electrical panels render graph validation LV MV and cable screening', () => {
+  for (const snippet of [
+    'function renderEpcTopologyWorkspace(result, project = getActiveEpcDesignProject())',
+    'function renderEpcTopologySld(topology = {})',
+    'function updateEpcSelectedTopology(value)',
+    'id="epc-topology-selector"',
+    'Standard Topology Library',
+    'LV_BUS',
+    'MV_BUS',
+    'AC_MV_POWER',
+    'topologyValidation.errors',
+    'topologyValidation.warnings',
+    'Apply suggested fix manually',
+    'function renderEpcElectricalWorkspace(result)',
+    'Architecture Comparison',
+    'Transformer Sizing',
+    'Cable Sizing Screening',
+    'Protection Matrix',
+    'electricalArchitecture.candidates',
+    'cableScreening.candidates',
+    'protectionMatrix.functions',
+    'concept-stage protection matrix'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing EPC topology/electrical snippet: ${snippet}`);
+  }
+});

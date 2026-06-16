@@ -3123,6 +3123,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 <button type="button" data-epc-panel-tab="formula" onclick="setEpcPanelTab('formula')" class="px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-50">Formula Trace</button>
                 <button type="button" data-epc-panel-tab="boq" onclick="setEpcPanelTab('boq')" class="px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-50">BOQ</button>
                 <button type="button" data-epc-panel-tab="risks" onclick="setEpcPanelTab('risks')" class="px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-50">Risks</button>
+                <button type="button" data-epc-panel-tab="topology" onclick="setEpcPanelTab('topology')" class="px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-50">Topology</button>
+                <button type="button" data-epc-panel-tab="electrical" onclick="setEpcPanelTab('electrical')" class="px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-50">Electrical</button>
                 <button type="button" data-epc-panel-tab="flow" onclick="setEpcPanelTab('flow')" class="px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-50">EMS Flow</button>
                 <button type="button" data-epc-panel-tab="devicework" onclick="setEpcPanelTab('devicework')" class="px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-50">Device Work</button>
                 <button type="button" data-epc-panel-tab="batterycontrol" onclick="setEpcPanelTab('batterycontrol')" class="px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-slate-50">Battery Control</button>
@@ -3135,6 +3137,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 <div id="epc-design-formula-trace" data-epc-panel="formula" class="hidden"></div>
                 <div id="epc-design-boq" data-epc-panel="boq" class="hidden"></div>
                 <div id="epc-design-risks" data-epc-panel="risks" class="hidden"></div>
+                <div id="epc-topology-workspace" data-epc-panel="topology" class="hidden"></div>
+                <div id="epc-electrical-workspace" data-epc-panel="electrical" class="hidden"></div>
                 <div id="epc-energy-flow-table" data-epc-panel="flow" class="hidden"></div>
                 <div id="epc-device-work-page" data-epc-panel="devicework" class="hidden"></div>
                 <div id="epc-battery-control-page" data-epc-panel="batterycontrol" class="hidden"></div>
@@ -10999,6 +11003,215 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             `;
         }
 
+        function renderEpcTopologySld(topology = {}) {
+            const nodes = Array.isArray(topology.nodes) ? topology.nodes : [];
+            const edges = Array.isArray(topology.edges) ? topology.edges : [];
+            const nodeMap = new Map(nodes.map(node => [node.id, node]));
+            const nodeMarkup = nodes.map((node, index) => {
+                const x = Math.max(18, Math.min(1010, Number(node.position?.x) || (index * 145 + 32)));
+                const y = Math.max(18, Math.min(330, Number(node.position?.y) || 80));
+                const color = node.type === 'MV_BUS' || node.type === 'MV_SWITCHBOARD' ? '#1d4ed8'
+                    : node.type === 'LV_BUS' || node.type === 'LV_SWITCHBOARD' ? '#0ea5e9'
+                    : node.type === 'BATTERY' || node.type === 'PCS' ? '#f97316'
+                    : node.type === 'GENSET' ? '#ef4444'
+                    : node.type === 'EMS' || node.type === 'SCADA' ? '#64748b'
+                    : node.type === 'PV_ARRAY' || node.type === 'PV_INVERTER' ? '#16a34a'
+                    : '#582C83';
+                return `
+                    <g>
+                        <rect x="${x}" y="${y}" width="124" height="58" rx="8" fill="#ffffff" stroke="${color}" stroke-width="2"/>
+                        <text x="${x + 62}" y="${y + 22}" text-anchor="middle" class="text-[10px] font-black fill-slate-700">${htmlSafe(node.label).slice(0, 24)}</text>
+                        <text x="${x + 62}" y="${y + 40}" text-anchor="middle" class="text-[9px] font-bold fill-slate-400">${htmlSafe(node.type)}</text>
+                    </g>
+                `;
+            }).join('');
+            const edgeMarkup = edges.map(edge => {
+                const source = nodeMap.get(edge.source);
+                const target = nodeMap.get(edge.target);
+                if (!source || !target) return '';
+                const x1 = Math.max(80, Math.min(1080, (Number(source.position?.x) || 0) + 124));
+                const y1 = Math.max(45, Math.min(370, (Number(source.position?.y) || 0) + 29));
+                const x2 = Math.max(18, Math.min(1010, Number(target.position?.x) || 0));
+                const y2 = Math.max(45, Math.min(370, (Number(target.position?.y) || 0) + 29));
+                const color = edge.type === 'AC_MV_POWER' ? '#1d4ed8'
+                    : edge.type === 'AC_LV_POWER' ? '#0ea5e9'
+                    : edge.type === 'DC_POWER' ? '#16a34a'
+                    : '#94a3b8';
+                const dash = edge.type === 'COMMUNICATION' || edge.type === 'CONTROL' ? ' stroke-dasharray="6 6"' : '';
+                return `<path d="M${x1} ${y1} C${x1 + 36} ${y1}, ${x2 - 36} ${y2}, ${x2} ${y2}" fill="none" stroke="${color}" stroke-width="2.4"${dash}/>`;
+            }).join('');
+            return `
+                <div class="rounded-xl border border-slate-200 bg-slate-50 p-3 overflow-x-auto">
+                    <svg viewBox="0 0 1180 420" class="min-w-[880px] w-full h-auto">
+                        ${edgeMarkup}
+                        ${nodeMarkup}
+                    </svg>
+                </div>
+            `;
+        }
+
+        function renderEpcTopologyWorkspace(result, project = getActiveEpcDesignProject()) {
+            const target = document.getElementById('epc-topology-workspace');
+            if (!target) return;
+            const topology = result.topology || {};
+            const topologies = Array.isArray(result.standardTopologies) ? result.standardTopologies : [];
+            const topologyValidation = result.topologyValidation || { errors: [], warnings: [], suggestedFixes: [] };
+            const errors = topologyValidation.errors || [];
+            const warnings = topologyValidation.warnings || [];
+            target.innerHTML = `
+                <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+                    <section class="xl:col-span-2 space-y-3">
+                        <div class="flex flex-col md:flex-row md:items-center gap-3">
+                            <div>
+                                <div class="text-sm font-black text-slate-800">Standard Topology Library</div>
+                                <div class="text-xs font-bold text-slate-400">Select a budget-level off-grid topology. Suggested fixes are advisory and require manual approval.</div>
+                            </div>
+                            <select id="epc-topology-selector" onchange="updateEpcSelectedTopology(this.value)" class="md:ml-auto rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black outline-none focus:border-purple-500">
+                                ${topologies.map(item => `<option value="${htmlSafe(item.id)}" ${item.id === result.selectedTopologyId ? 'selected' : ''}>${htmlSafe(item.id)} - ${htmlSafe(item.name)}</option>`).join('')}
+                                <option value="CUSTOM" ${result.selectedTopologyId === 'CUSTOM' ? 'selected' : ''}>CUSTOM - Manual Graph</option>
+                            </select>
+                        </div>
+                        ${renderEpcTopologySld(topology)}
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                            <div class="rounded-xl border border-slate-200 overflow-hidden">
+                                <div class="bg-slate-50 px-3 py-2 text-[10px] font-black uppercase text-slate-500">Nodes</div>
+                                <div class="max-h-80 overflow-auto divide-y divide-slate-100 text-xs">
+                                    ${(topology.nodes || []).map(node => `
+                                        <div class="grid grid-cols-3 gap-2 px-3 py-2">
+                                            <span class="font-black text-slate-700">${htmlSafe(node.label)}</span>
+                                            <span class="font-mono text-slate-500">${htmlSafe(node.type)}</span>
+                                            <span class="text-right text-slate-500">${formatEpcNumber(node.electrical?.voltageV || 0, 0, 'V')}</span>
+                                        </div>
+                                    `).join('') || '<div class="p-3 text-slate-400">No topology nodes.</div>'}
+                                </div>
+                            </div>
+                            <div class="rounded-xl border border-slate-200 overflow-hidden">
+                                <div class="bg-slate-50 px-3 py-2 text-[10px] font-black uppercase text-slate-500">Edges</div>
+                                <div class="max-h-80 overflow-auto divide-y divide-slate-100 text-xs">
+                                    ${(topology.edges || []).map(edge => `
+                                        <div class="grid grid-cols-3 gap-2 px-3 py-2">
+                                            <span class="font-mono text-slate-700">${htmlSafe(edge.source)} -> ${htmlSafe(edge.target)}</span>
+                                            <span class="font-mono text-slate-500">${htmlSafe(edge.type)}</span>
+                                            <span class="text-right text-slate-500">${htmlSafe(edge.direction)}</span>
+                                        </div>
+                                    `).join('') || '<div class="p-3 text-slate-400">No topology edges.</div>'}
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                    <aside class="space-y-3">
+                        <div class="rounded-xl border ${topologyValidation.valid ? 'border-green-200 bg-green-50 text-green-700' : 'border-red-200 bg-red-50 text-red-700'} p-3 text-xs">
+                            <div class="font-black">${topologyValidation.valid ? 'Topology valid for concept screen' : 'Topology requires engineering review'}</div>
+                            <div class="mt-1 font-bold">${htmlSafe(topologyValidation.disclaimer || '')}</div>
+                        </div>
+                        <div class="rounded-xl border border-red-100 overflow-hidden">
+                            <div class="bg-red-50 px-3 py-2 text-[10px] font-black uppercase text-red-600">Errors</div>
+                            <div class="divide-y divide-red-100 text-xs">
+                                ${errors.map(item => `<div class="p-3"><span class="font-black">${htmlSafe(item.code)}</span><br>${htmlSafe(item.message)}</div>`).join('') || '<div class="p-3 text-slate-400">No errors.</div>'}
+                            </div>
+                        </div>
+                        <div class="rounded-xl border border-yellow-100 overflow-hidden">
+                            <div class="bg-yellow-50 px-3 py-2 text-[10px] font-black uppercase text-yellow-700">Warnings</div>
+                            <div class="divide-y divide-yellow-100 text-xs">
+                                ${warnings.map(item => `<div class="p-3"><span class="font-black">${htmlSafe(item.code)}</span><br>${htmlSafe(item.message)}</div>`).join('') || '<div class="p-3 text-slate-400">No warnings.</div>'}
+                            </div>
+                        </div>
+                        <div class="rounded-xl border border-slate-200 p-3 text-xs">
+                            <div class="text-[10px] font-black uppercase text-slate-400 mb-2">Apply suggested fix manually</div>
+                            ${(topologyValidation.suggestedFixes || []).map(fix => `<div class="rounded-lg bg-slate-50 p-2 mb-2 font-mono text-[11px]">${htmlSafe(fix.code)} | ${htmlSafe(JSON.stringify(fix))}</div>`).join('') || '<div class="text-slate-400">No suggested fixes.</div>'}
+                        </div>
+                    </aside>
+                </div>
+            `;
+        }
+
+        function renderEpcElectricalWorkspace(result) {
+            const target = document.getElementById('epc-electrical-workspace');
+            if (!target) return;
+            const electricalArchitecture = result.electricalArchitecture || { candidates: [] };
+            const cableScreening = result.cableScreening || { candidates: [] };
+            const protectionMatrix = result.protectionMatrix || { functions: [] };
+            const transformer = result.electrical?.transformerSizing || {};
+            const candidates = electricalArchitecture.candidates || [];
+            const cableCandidates = cableScreening.candidates || [];
+            const protectionFunctions = protectionMatrix.functions || [];
+            target.innerHTML = `
+                <div class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div class="rounded-xl border border-slate-200 p-3">
+                            <div class="text-[10px] font-black uppercase text-slate-400">Recommended Architecture</div>
+                            <div class="text-lg font-black text-slate-800">${htmlSafe(result.electrical?.architecture || '--')}</div>
+                            <div class="mt-1 text-xs font-bold text-slate-500">${htmlSafe(electricalArchitecture.recommendation || result.electrical?.recommendation || '')}</div>
+                        </div>
+                        <div class="rounded-xl border border-slate-200 p-3">
+                            <div class="text-[10px] font-black uppercase text-slate-400">Transformer Sizing</div>
+                            <div class="text-lg font-black text-slate-800">${formatEpcNumber(transformer.selectedStandardKva || 0, 0, 'kVA')}</div>
+                            <div class="mt-1 text-xs font-bold text-slate-500">${htmlSafe(transformer.formula || '')}</div>
+                        </div>
+                        <div class="rounded-xl border border-slate-200 p-3">
+                            <div class="text-[10px] font-black uppercase text-slate-400">Cable Sizing Screening</div>
+                            <div class="text-lg font-black text-slate-800">${htmlSafe((cableCandidates.find(item => item.status === 'PASS') || cableCandidates[0] || {}).voltageClass || '--')}</div>
+                            <div class="mt-1 text-xs font-bold text-slate-500">${htmlSafe(cableScreening.method || '')}</div>
+                        </div>
+                    </div>
+                    <section class="rounded-xl border border-slate-200 overflow-hidden">
+                        <div class="bg-slate-50 px-3 py-2 text-[10px] font-black uppercase text-slate-500">Architecture Comparison</div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-xs">
+                                <thead class="text-left text-slate-400 uppercase"><tr><th class="px-3 py-2">Architecture</th><th class="px-3 py-2 text-right">Voltage</th><th class="px-3 py-2 text-right">Current A</th><th class="px-3 py-2 text-right">Drop %</th><th class="px-3 py-2">Status</th><th class="px-3 py-2">Reasons</th></tr></thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    ${candidates.map(candidate => `
+                                        <tr class="${candidate.id === electricalArchitecture.recommendedId ? 'bg-yellow-50' : ''}">
+                                            <td class="px-3 py-2 font-black text-slate-700">${htmlSafe(candidate.name)}</td>
+                                            <td class="px-3 py-2 text-right">${formatEpcNumber(candidate.voltageKv, 3, 'kV')}</td>
+                                            <td class="px-3 py-2 text-right">${formatEpcNumber(candidate.currentA, 0)}</td>
+                                            <td class="px-3 py-2 text-right">${formatEpcNumber(candidate.voltageDropPct, 2)}</td>
+                                            <td class="px-3 py-2 font-black">${htmlSafe(candidate.status)}</td>
+                                            <td class="px-3 py-2 text-slate-500">${htmlSafe((candidate.reasons || []).join('; ') || '--')}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                    <section class="rounded-xl border border-slate-200 overflow-hidden">
+                        <div class="bg-slate-50 px-3 py-2 text-[10px] font-black uppercase text-slate-500">Cable Sizing Screening</div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-xs">
+                                <thead class="text-left text-slate-400 uppercase"><tr><th class="px-3 py-2">Voltage</th><th class="px-3 py-2">Conductor</th><th class="px-3 py-2 text-right">Size</th><th class="px-3 py-2 text-right">Runs</th><th class="px-3 py-2 text-right">Drop %</th><th class="px-3 py-2 text-right">Loss kW</th><th class="px-3 py-2">Status</th></tr></thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    ${cableCandidates.map(candidate => `
+                                        <tr>
+                                            <td class="px-3 py-2 font-black text-slate-700">${htmlSafe(candidate.voltageClass)}</td>
+                                            <td class="px-3 py-2">${htmlSafe(candidate.conductor)}</td>
+                                            <td class="px-3 py-2 text-right">${formatEpcNumber(candidate.sizeMm2, 0, 'mm2')}</td>
+                                            <td class="px-3 py-2 text-right">${formatEpcNumber(candidate.parallelRuns, 0)}</td>
+                                            <td class="px-3 py-2 text-right">${formatEpcNumber(candidate.voltageDropPct, 2)}</td>
+                                            <td class="px-3 py-2 text-right">${formatEpcNumber(candidate.estimatedLossKw, 2)}</td>
+                                            <td class="px-3 py-2 font-black">${htmlSafe(candidate.status)}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                    <section class="rounded-xl border border-slate-200 overflow-hidden">
+                        <div class="bg-slate-50 px-3 py-2 text-[10px] font-black uppercase text-slate-500">Protection Matrix</div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 p-3">
+                            ${protectionFunctions.map(item => `
+                                <div class="rounded-lg border border-slate-100 bg-white p-3 text-xs">
+                                    <div class="font-black text-slate-800">${htmlSafe(item.code)} | ${htmlSafe(item.label)}</div>
+                                    <div class="mt-1 font-black text-purple-700">${htmlSafe(item.status)}</div>
+                                    <div class="mt-1 text-slate-500">${htmlSafe(item.notes)}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="border-t border-slate-100 p-3 text-[11px] font-bold text-slate-400">${htmlSafe(protectionMatrix.disclaimer || 'concept-stage protection matrix only.')}</div>
+                    </section>
+                </div>
+            `;
+        }
+
         function flowLineClass(value, type, lane = 'branch') {
             return `epc-flow-line epc-flow-orthogonal epc-flow-lane-${lane} epc-flow-line-${type}${Number(value) > 0 ? ' epc-flow-line-active' : ''}`;
         }
@@ -13510,6 +13723,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             renderEpcTrace(result);
             renderEpcBoq(result);
             renderEpcRisks(result);
+            renderEpcTopologyWorkspace(result, project);
+            renderEpcElectricalWorkspace(result);
             renderEpcEnergyFlow(result);
             renderEpcDeviceWorkPage(result);
             renderEpcBatteryControlPage(result);
@@ -13590,6 +13805,20 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             renderEpcDesignWorkspace();
         }
         window.resetEpcCapacityOverrides = resetEpcCapacityOverrides;
+
+        function updateEpcSelectedTopology(value) {
+            const project = captureEpcDesignFromDom();
+            const selectedTopologyId = String(value || 'C5').trim().toUpperCase();
+            project.selectedTopologyId = selectedTopologyId;
+            project.topology = selectedTopologyId === 'CUSTOM'
+                ? { ...(project.topology || {}), selectedTopologyId: 'CUSTOM' }
+                : { selectedTopologyId };
+            updateEpcProject(project);
+            renderEpcDesignWorkspace();
+            const status = document.getElementById('epc-design-save-status');
+            if (status) status.textContent = 'Draft changed locally';
+        }
+        window.updateEpcSelectedTopology = updateEpcSelectedTopology;
 
         function canReadEpcEngineering() {
             return window.__minovaAuth?.canPerformAction?.('epcDesignEngineering', 'read') ?? true;

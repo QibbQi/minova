@@ -853,3 +853,81 @@ test('EPC PV string design supports module specs and architecture warnings', () 
   assert.equal(design.totalStringInputs, 672);
   assert.ok(design.warnings.some((warning) => warning.includes('module/string ratio')));
 });
+
+test('EPC off-grid projects default to the C5 standard topology with LV and MV buses', () => {
+  const project = normalizeEpcDesignProject({
+    site: { gridMode: 'island' }
+  }, { now: '2026-06-16T00:00:00.000Z' });
+  const result = calculateEpcDesignProject(project, { now: '2026-06-16T00:00:00.000Z' });
+
+  assert.equal(result.selectedTopologyId, 'C5');
+  assert.ok(result.standardTopologies.some((topology) => topology.id === 'C5' && /Off-Grid Microgrid/.test(topology.name)));
+  assert.ok(result.topology.nodes.some((node) => node.type === 'LV_BUS'));
+  assert.ok(result.topology.nodes.some((node) => node.type === 'MV_BUS'));
+  assert.ok(result.topology.nodes.some((node) => node.type === 'EMS'));
+  assert.ok(result.topology.edges.some((edge) => edge.type === 'AC_MV_POWER'));
+  assert.equal(result.topologyValidation.valid, true);
+});
+
+test('EPC topology validator reports illegal connections and advisory fixes', () => {
+  const result = calculateEpcDesignProject({
+    selectedTopologyId: 'CUSTOM',
+    topology: {
+      nodes: [
+        { id: 'pv-array', type: 'PV_ARRAY', label: 'PV Array', electrical: { voltageV: 1000 } },
+        { id: 'pcs', type: 'PCS', label: 'PCS', electrical: { voltageV: 690, ratedPowerKw: 3000 } },
+        { id: 'lv-bus', type: 'LV_BUS', label: '415V LV Bus', electrical: { voltageV: 415 } },
+        { id: 'mv-bus', type: 'MV_BUS', label: '11kV MV Bus', electrical: { voltageV: 11000 } },
+        { id: 'load', type: 'LOAD', label: 'Load', electrical: { voltageV: 415 } },
+        { id: 'ems', type: 'EMS', label: 'EMS' }
+      ],
+      edges: [
+        { id: 'bad-pv', source: 'pv-array', target: 'lv-bus', type: 'DC_POWER', direction: 'ONE_WAY' },
+        { id: 'bad-pcs-mv', source: 'pcs', target: 'mv-bus', type: 'AC_MV_POWER', direction: 'BIDIRECTIONAL' },
+        { id: 'bad-ems-power', source: 'ems', target: 'lv-bus', type: 'AC_LV_POWER', direction: 'ONE_WAY' },
+        { id: 'pcs-load-direct', source: 'pcs', target: 'load', type: 'AC_LV_POWER', direction: 'ONE_WAY' }
+      ]
+    }
+  }, { now: '2026-06-16T00:00:00.000Z' });
+  const errorCodes = result.topologyValidation.errors.map((error) => error.code);
+  const warningCodes = result.topologyValidation.warnings.map((warning) => warning.code);
+
+  assert.equal(result.topologyValidation.valid, false);
+  assert.ok(errorCodes.includes('PV_INVERTER_REQUIRED'));
+  assert.ok(errorCodes.includes('TRANSFORMER_REQUIRED'));
+  assert.ok(errorCodes.includes('EMS_POWER_EDGE_INVALID'));
+  assert.ok(warningCodes.includes('BUS_OR_SWITCHBOARD_RECOMMENDED'));
+  assert.ok(result.topologyValidation.errors.some((error) => error.suggestedFix?.insertNode === 'TRANSFORMER'));
+});
+
+test('EPC electrical architecture returns LV MV candidates cable screening and protection matrix', () => {
+  const project = buildEpcDesignProjectFromQuickInputs({
+    ...quarryInputs,
+    distanceToInterconnectionM: 650
+  }, {
+    defaults: EPC_DESIGN_DEFAULTS,
+    now: '2026-06-16T00:00:00.000Z'
+  });
+  const result = calculateEpcDesignProject({
+    ...project,
+    electrical: {
+      ...project.electrical,
+      distanceToInterconnectionM: 650,
+      newMvSystem: true
+    }
+  }, { now: '2026-06-16T00:00:00.000Z' });
+  const candidateIds = result.electricalArchitecture.candidates.map((candidate) => candidate.id);
+  const cableStatuses = result.cableScreening.candidates.map((candidate) => candidate.status);
+
+  assert.deepEqual(candidateIds, ['lv_415_centralized', 'lv_415_distributed', 'mv_6_6_radial', 'mv_11_radial', 'mv_11_ring']);
+  assert.equal(result.electricalArchitecture.recommendedId, 'mv_11_ring');
+  assert.equal(result.electricalArchitecture.candidates.find((candidate) => candidate.id === 'mv_11_ring').voltageKv, 11);
+  assert.ok(result.electrical.transformerSizing.requiredKva > 4900);
+  assert.equal(result.electrical.transformerSizing.selectedStandardKva, 5000);
+  assert.ok(result.cableScreening.candidates.some((candidate) => candidate.voltageClass === '415V'));
+  assert.ok(result.cableScreening.candidates.some((candidate) => candidate.voltageClass === '11kV'));
+  assert.ok(cableStatuses.includes('PASS') || cableStatuses.includes('REVIEW'));
+  assert.ok(result.protectionMatrix.functions.some((item) => item.code === 'SYNC_CHECK'));
+  assert.ok(result.protectionMatrix.functions.some((item) => item.code === 'ANTI_ISLANDING'));
+  assert.match(result.protectionMatrix.disclaimer, /concept-stage/i);
+});

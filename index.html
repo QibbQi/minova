@@ -14181,6 +14181,37 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return Math.max(0, Number(row.durationHours) || (Number(row.intervalMinutes) > 0 ? Number(row.intervalMinutes) / 60 : 1));
         }
 
+        function mergeEpcEnergyFlowLoadSplits(items = []) {
+            const totalDuration = items.reduce((total, item) => total + getEpcEnergyFlowDurationHours(item), 0) || items.length || 1;
+            const splitMap = new Map();
+            items.forEach(item => {
+                const duration = getEpcEnergyFlowDurationHours(item);
+                (Array.isArray(item.loadSplits) ? item.loadSplits : []).forEach((split, index) => {
+                    const id = String(split.id || `load-${index + 1}`);
+                    const current = splitMap.get(id) || {
+                        id,
+                        label: String(split.label || `Load ${index + 1}`),
+                        ratioPct: 0,
+                        loadKwWeighted: 0,
+                        order: index
+                    };
+                    current.label = String(split.label || current.label || `Load ${index + 1}`);
+                    current.ratioPct = Number(split.ratioPct) || current.ratioPct || 0;
+                    current.loadKwWeighted += (Number(split.loadKw) || 0) * duration;
+                    current.order = Math.min(current.order, index);
+                    splitMap.set(id, current);
+                });
+            });
+            return [...splitMap.values()]
+                .sort((a, b) => a.order - b.order)
+                .map(split => ({
+                    id: split.id,
+                    label: split.label,
+                    ratioPct: epcChartRound(split.ratioPct, 2),
+                    loadKw: epcChartRound(split.loadKwWeighted / totalDuration, 2)
+                }));
+        }
+
         function mergeEpcEnergyFlowRowsByHour(rows = []) {
             const groups = new Map();
             rows.forEach((row, index) => {
@@ -14205,6 +14236,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     intervalMinutes: 60,
                     durationHours: totalDuration,
                     socPct: epcChartRound(finalRow?.socPct, 1),
+                    loadSplits: mergeEpcEnergyFlowLoadSplits(items),
                     gensetReason: [...new Set(items.map(item => String(item.gensetReason || '').trim()).filter(Boolean))].join(' / '),
                     batteryDischargeLimitReason: [...new Set(items.map(item => String(item.batteryDischargeLimitReason || '').trim()).filter(Boolean))].join(' / ')
                 };

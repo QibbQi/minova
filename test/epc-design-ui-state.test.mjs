@@ -773,6 +773,13 @@ test('EPC EMS table uses fixed five-minute or hourly display with final SOC', ()
   assert.doesNotMatch(html, /id="epc-ems-flow-merge-hourly"/, 'legacy Merge hourly checkbox should be removed');
 });
 
+test('EPC hourly EMS Flow preserves load split branch values after merging rows', () => {
+  assert.match(html, /function mergeEpcEnergyFlowLoadSplits\(items = \[\]\)/, 'hourly merge should have a load split aggregator');
+  const hourlyMerge = html.match(/function mergeEpcEnergyFlowRowsByHour\(rows = \[\]\)[\s\S]*?function getEpcEnergyFlowDisplayRows/);
+  assert.ok(hourlyMerge, 'hourly EMS merge should be found');
+  assert.match(hourlyMerge[0], /loadSplits: mergeEpcEnergyFlowLoadSplits\(items\)/, 'merged hourly rows should retain per-branch load kW for EMS Flow labels and animation');
+});
+
 test('EPC finish time changes do not open the working time confirmation dialog', () => {
   const handler = html.match(/window\.onEpcScheduleInputChanged = \(source = ''\) => \{[\s\S]*?window\.onEpcDesignInputChanged\(\);\n        \}/);
   assert.ok(handler, 'schedule input handler should be found');

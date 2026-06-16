@@ -949,7 +949,7 @@ test('EPC topology flow adapter maps standard topology paths to EMS flow keys', 
   assert.ok(nodesByType.has('LOAD'));
   assert.deepEqual(edge('pv-dc').flowKeys, ['pvOutputKw']);
   assert.ok(edge('pv-lv').flowKeys.includes('pvToLoadKw'));
-  assert.ok(edge('pv-pcs-charge').flowKeys.includes('pvToBatteryKw'));
+  assert.ok(edge('lv-pcs-charge').flowKeys.includes('pvToBatteryKw'));
   assert.ok(edge('battery-pcs-discharge').flowKeys.includes('batteryToLoadKw'));
   assert.ok(edge('genset-lv').flowKeys.includes('gensetToLoadKw'));
   assert.ok(edge('mv-load-tx').flowKeys.includes('loadKw'));
@@ -970,18 +970,18 @@ test('EPC topology flow adapter separates simultaneous PV charge and battery dis
 
   assert.deepEqual(edge('pv-dc').flowKeys, ['pvOutputKw']);
   assert.deepEqual(edge('pv-lv').flowKeys, ['pvToLoadKw']);
-  assert.deepEqual(edge('pv-pcs-charge').flowKeys, ['pvToBatteryKw']);
+  assert.deepEqual(edge('lv-pcs-charge').flowKeys, ['pvToBatteryKw']);
   assert.deepEqual(edge('pcs-battery-charge').flowKeys, ['pvToBatteryKw']);
   assert.deepEqual(edge('battery-pcs-discharge').flowKeys, ['batteryToLoadKw']);
   assert.deepEqual(edge('pcs-lv-discharge').flowKeys, ['batteryToLoadKw']);
   assert.equal(new Set(pvLoadEdges).has('pv-lv'), true);
   assert.equal(pvBatteryEdges.includes('pv-lv'), false);
-  assert.equal(pvBatteryEdges.includes('lv-pcs-charge'), false);
-  assert.equal(pvBatteryEdges.includes('pv-pcs-charge'), true);
+  assert.equal(pvBatteryEdges.includes('lv-pcs-charge'), true);
+  assert.equal(pvBatteryEdges.includes('pv-pcs-charge'), false);
   assert.equal(batteryLoadEdges.includes('battery-dc'), false);
 });
 
-test('EPC standard topologies charge battery directly from PV inverter through PCS', () => {
+test('EPC standard topologies charge battery through the AC bus before PCS', () => {
   const resultForTopology = (selectedTopologyId) => calculateEpcDesignProject({
     selectedTopologyId,
     site: { gridMode: 'island' },
@@ -992,12 +992,17 @@ test('EPC standard topologies charge battery directly from PV inverter through P
   for (const topologyId of ['C3', 'C5', 'C7']) {
     const result = resultForTopology(topologyId);
     const edge = (id) => result.topologyFlow.edges.find((item) => item.id === id);
+    const directPvPcs = result.topologyFlow.edges.find((item) => item.id === 'pv-pcs-charge');
 
-    assert.equal(edge('pv-pcs-charge').source, 'pv-inverter');
-    assert.equal(edge('pv-pcs-charge').target, 'pcs');
-    assert.deepEqual(edge('pv-pcs-charge').flowKeys, ['pvToBatteryKw']);
+    assert.equal(Boolean(directPvPcs), false, `${topologyId} should not wire PV inverter directly to PCS`);
     assert.deepEqual(edge('pcs-battery-charge').flowKeys, ['pvToBatteryKw']);
-    assert.equal(Boolean(edge('lv-pcs-charge')), false);
+    if (topologyId === 'C7') {
+      assert.deepEqual(edge('mv-bess-charge').flowKeys, ['pvToBatteryKw']);
+      assert.deepEqual(edge('bess-tx-pcs-charge').flowKeys, ['pvToBatteryKw']);
+    } else {
+      assert.deepEqual(edge('lv-pcs-charge').flowKeys, ['pvToBatteryKw']);
+      assert.equal(edge('lv-pcs-charge').target, 'pcs');
+    }
   }
 
   const c2Template = resultForTopology('C2').topologySelection.blockedTopologies.find((topology) => topology.id === 'C2');

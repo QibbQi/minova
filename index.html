@@ -11453,7 +11453,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
 
         const EPC_TOPOLOGY_FLOW_COMPONENT_HINTS = ['Step-up TX', 'MV Switchboard', 'Ring RMU', 'MV BUS', 'Load TX', 'LV BUS'];
-        const EPC_TOPOLOGY_FLOW_SPLIT_EDGE_IDS = ['pv-pcs-charge', 'pcs-battery-charge', 'battery-pcs-discharge', 'pcs-lv-discharge'];
+        const EPC_TOPOLOGY_FLOW_SPLIT_EDGE_IDS = ['lv-pcs-charge', 'bess-tx-pcs-charge', 'pcs-battery-charge', 'battery-pcs-discharge', 'pcs-lv-discharge', 'pcs-tx-discharge'];
         const EPC_TOPOLOGY_FLOW_LABEL_KEYS = ['pvOutputKw', 'pvToLoadKw', 'pvToBatteryKw', 'batteryToLoadKw', 'gensetToLoadKw'];
         const EPC_TOPOLOGY_FLOW_NODE_W = 112;
         const EPC_TOPOLOGY_FLOW_NODE_H = 96;
@@ -11569,6 +11569,60 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return null;
         }
 
+        function epcTopologyFlowPcsAcLaneRoute(source = {}, target = {}, edge = {}) {
+            if (edge.id === 'lv-pcs-charge' || edge.id === 'bess-tx-pcs-charge') {
+                const sourceBeforeTarget = (Number(source.x) || 0) <= (Number(target.x) || 0);
+                const start = {
+                    x: (Number(source.x) || 0) + (sourceBeforeTarget ? EPC_TOPOLOGY_FLOW_NODE_W : 0),
+                    y: (Number(source.y) || 0) + 34
+                };
+                const end = {
+                    x: (Number(target.x) || 0) + (sourceBeforeTarget ? 0 : EPC_TOPOLOGY_FLOW_NODE_W),
+                    y: (Number(target.y) || 0) + 34
+                };
+                if (Math.abs(start.y - end.y) < 6) {
+                    return {
+                        d: `M${start.x} ${start.y} H${end.x}`,
+                        labelX: (start.x + end.x) / 2,
+                        labelY: start.y - 10
+                    };
+                }
+                const midX = (start.x + end.x) / 2;
+                const laneY = Math.min(start.y, end.y) - 24;
+                return {
+                    d: `M${start.x} ${start.y} H${midX} V${laneY} H${end.x} V${end.y}`,
+                    labelX: midX,
+                    labelY: laneY - 8
+                };
+            }
+            if (edge.id === 'pcs-lv-discharge' || edge.id === 'pcs-tx-discharge') {
+                const sourceBeforeTarget = (Number(source.x) || 0) <= (Number(target.x) || 0);
+                const start = {
+                    x: (Number(source.x) || 0) + (sourceBeforeTarget ? EPC_TOPOLOGY_FLOW_NODE_W : 0),
+                    y: (Number(source.y) || 0) + 64
+                };
+                const end = {
+                    x: (Number(target.x) || 0) + (sourceBeforeTarget ? 0 : EPC_TOPOLOGY_FLOW_NODE_W),
+                    y: (Number(target.y) || 0) + 64
+                };
+                if (Math.abs(start.y - end.y) < 6) {
+                    return {
+                        d: `M${start.x} ${start.y} H${end.x}`,
+                        labelX: (start.x + end.x) / 2,
+                        labelY: start.y + 18
+                    };
+                }
+                const midX = (start.x + end.x) / 2;
+                const laneY = Math.max(start.y, end.y) + 24;
+                return {
+                    d: `M${start.x} ${start.y} H${midX} V${laneY} H${end.x} V${end.y}`,
+                    labelX: midX,
+                    labelY: laneY + 18
+                };
+            }
+            return null;
+        }
+
         function epcTopologyFlowControlRoute(source = {}, target = {}) {
             const start = epcTopologyFlowPort(source, 'top');
             const end = epcTopologyFlowPort(target, 'bottom');
@@ -11584,6 +11638,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         function epcTopologyFlowRoute(source = {}, target = {}, index = 0, edge = {}) {
             const pairRoute = epcTopologyFlowPairLaneRoute(source, target, edge);
             if (pairRoute) return pairRoute;
+            const pcsAcRoute = epcTopologyFlowPcsAcLaneRoute(source, target, edge);
+            if (pcsAcRoute) return pcsAcRoute;
             const sourceBeforeTarget = (Number(source.x) || 0) <= (Number(target.x) || 0);
             const start = epcTopologyFlowPort(source, sourceBeforeTarget ? 'right' : 'left');
             const end = epcTopologyFlowPort(target, sourceBeforeTarget ? 'left' : 'right');

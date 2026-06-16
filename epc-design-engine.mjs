@@ -548,7 +548,7 @@ function buildStandardTopologyGraph(id = 'C5') {
       edges: [
         edge('pv-dc', 'pv-array', 'pv-inverter', 'DC_POWER', 'ONE_WAY', 1000),
         edge('pv-lv', 'pv-inverter', 'lv-bus', 'AC_LV_POWER', 'ONE_WAY', 415),
-        edge('pv-pcs-charge', 'pv-inverter', 'pcs', 'AC_LV_POWER', 'ONE_WAY', 415),
+        edge('lv-pcs-charge', 'lv-bus', 'pcs', 'AC_LV_POWER', 'ONE_WAY', 415),
         edge('pcs-battery-charge', 'pcs', 'battery', 'DC_POWER', 'ONE_WAY', 800),
         edge('battery-pcs-discharge', 'battery', 'pcs', 'DC_POWER', 'ONE_WAY', 800),
         edge('pcs-lv-discharge', 'pcs', 'lv-bus', 'AC_LV_POWER', 'ONE_WAY', 415),
@@ -580,7 +580,8 @@ function buildStandardTopologyGraph(id = 'C5') {
         edge('pv-dc', 'pv-array', 'pv-inverter', 'DC_POWER', 'ONE_WAY', 1000),
         edge('pv-tx-lv', 'pv-inverter', 'pv-tx', 'AC_LV_POWER', 'ONE_WAY', 415),
         edge('pv-mv', 'pv-tx', 'mv-bus', 'AC_MV_POWER', 'ONE_WAY', 11000),
-        edge('pv-pcs-charge', 'pv-inverter', 'pcs', 'AC_LV_POWER', 'ONE_WAY', 415),
+        edge('mv-bess-charge', 'mv-bus', 'bess-tx', 'AC_MV_POWER', 'ONE_WAY', 11000),
+        edge('bess-tx-pcs-charge', 'bess-tx', 'pcs', 'AC_LV_POWER', 'ONE_WAY', 415),
         edge('pcs-battery-charge', 'pcs', 'battery', 'DC_POWER', 'ONE_WAY', 800),
         edge('battery-pcs-discharge', 'battery', 'pcs', 'DC_POWER', 'ONE_WAY', 800),
         edge('pcs-tx-discharge', 'pcs', 'bess-tx', 'AC_LV_POWER', 'ONE_WAY', 415),
@@ -617,7 +618,7 @@ function buildStandardTopologyGraph(id = 'C5') {
     edges: [
       edge('pv-dc', 'pv-array', 'pv-inverter', 'DC_POWER', 'ONE_WAY', 1000),
       edge('pv-lv', 'pv-inverter', 'lv-bus', 'AC_LV_POWER', 'ONE_WAY', 415),
-      edge('pv-pcs-charge', 'pv-inverter', 'pcs', 'AC_LV_POWER', 'ONE_WAY', 415),
+      edge('lv-pcs-charge', 'lv-bus', 'pcs', 'AC_LV_POWER', 'ONE_WAY', 415),
       edge('pcs-battery-charge', 'pcs', 'battery', 'DC_POWER', 'ONE_WAY', 800),
       edge('battery-pcs-discharge', 'battery', 'pcs', 'DC_POWER', 'ONE_WAY', 800),
       edge('pcs-lv-discharge', 'pcs', 'lv-bus', 'AC_LV_POWER', 'ONE_WAY', 415),
@@ -1641,6 +1642,7 @@ function topologyFlowNodeLabel(node = {}) {
 
 function topologyFlowRole(edge = {}, source = {}, target = {}) {
   if (edge.type === 'COMMUNICATION' || edge.type === 'CONTROL') return 'control';
+  if (['lv-pcs-charge', 'mv-bess-charge', 'bess-tx-pcs-charge'].includes(edge.id)) return 'battery';
   if (source.type === 'PV_ARRAY' || source.type === 'PV_INVERTER' || target.type === 'PV_INVERTER') return 'pv';
   if (source.type === 'BATTERY' || target.type === 'BATTERY' || source.type === 'PCS' || target.type === 'PCS') return 'battery';
   if (source.type === 'GENSET' || target.type === 'GENSET') return 'genset';
@@ -1654,7 +1656,9 @@ function topologyFlowKeysForEdge(edge = {}, source = {}, target = {}) {
     'pv-lv': ['pvToLoadKw'],
     'pv-tx-lv': ['pvToLoadKw'],
     'pv-mv': ['pvToLoadKw'],
-    'pv-pcs-charge': ['pvToBatteryKw'],
+    'lv-pcs-charge': ['pvToBatteryKw'],
+    'mv-bess-charge': ['pvToBatteryKw'],
+    'bess-tx-pcs-charge': ['pvToBatteryKw'],
     'pcs-battery-charge': ['pvToBatteryKw'],
     'battery-pcs-discharge': ['batteryToLoadKw'],
     'pcs-lv-discharge': ['batteryToLoadKw'],

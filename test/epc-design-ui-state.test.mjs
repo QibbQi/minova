@@ -901,14 +901,17 @@ test('EPC EMS Flow splits simultaneous battery charge discharge and exposes topo
     'renderEpcFlowTopologySelector(result)',
     'result.topologySelection',
     'requiresMvTopology',
-    'lv-pcs-charge',
+    'pv-pcs-charge',
     'pcs-battery-charge',
     'battery-pcs-discharge',
     'pcs-lv-discharge',
     'flowKeyMode',
     "edge.flowKeyMode === 'net'",
-    'PV -> Battery',
-    'Battery -> Load',
+    'EPC_TOPOLOGY_FLOW_LABEL_KEYS',
+    "edge.id === 'pv-pcs-charge'",
+    'sourceCenterX',
+    'markerWidth="4"',
+    "renderEpcFlowLabel(edge.value, edge.route.labelX, edge.route.labelY, '')",
     "role === 'control' ? Math.max(90, laneY + 110)",
     'updateEpcSelectedTopology(this.value)'
   ]) {
@@ -917,6 +920,9 @@ test('EPC EMS Flow splits simultaneous battery charge discharge and exposes topo
   const valueHelper = html.match(/function epcTopologyFlowValue\(edge = \{\}, row = \{\}\)[\s\S]*?function epcTopologyFlowLineType/);
   assert.ok(valueHelper, 'topology flow value helper should exist');
   assert.doesNotMatch(valueHelper[0], /reduce\(\(total, key\) => total \+ Math\.max/, 'edge labels should not sum charge and discharge keys on one line');
+  const edgeLabelHelper = html.match(/function renderEpcTopologyFlowEdgeLabel\(edge = \{\}\)[\s\S]*?function renderEpcTopologyFlowNode/);
+  assert.ok(edgeLabelHelper, 'topology edge label helper should exist');
+  assert.doesNotMatch(edgeLabelHelper[0], /PV -> Battery|Battery -> Load/, 'line labels should only show transfer kW, not semantic route text');
 });
 
 test('EPC custom topology connection modal exposes add remove and standard copy behavior', () => {

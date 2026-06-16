@@ -11453,7 +11453,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
 
         const EPC_TOPOLOGY_FLOW_COMPONENT_HINTS = ['Step-up TX', 'MV Switchboard', 'Ring RMU', 'MV BUS', 'Load TX', 'LV BUS'];
-        const EPC_TOPOLOGY_FLOW_SPLIT_EDGE_IDS = ['lv-pcs-charge', 'pcs-battery-charge', 'battery-pcs-discharge', 'pcs-lv-discharge'];
+        const EPC_TOPOLOGY_FLOW_SPLIT_EDGE_IDS = ['pv-pcs-charge', 'pcs-battery-charge', 'battery-pcs-discharge', 'pcs-lv-discharge'];
+        const EPC_TOPOLOGY_FLOW_LABEL_KEYS = ['pvOutputKw', 'pvToLoadKw', 'pvToBatteryKw', 'batteryToLoadKw', 'gensetToLoadKw'];
         const EPC_TOPOLOGY_FLOW_NODE_W = 112;
         const EPC_TOPOLOGY_FLOW_NODE_H = 88;
         const EPC_TOPOLOGY_FLOW_NODE_STYLES = {
@@ -11512,6 +11513,18 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
 
         function epcTopologyFlowPort(node = {}, side = 'right') {
+            if (side === 'top') {
+                return {
+                    x: (Number(node.x) || 0) + EPC_TOPOLOGY_FLOW_NODE_W / 2,
+                    y: Number(node.y) || 0
+                };
+            }
+            if (side === 'bottom') {
+                return {
+                    x: (Number(node.x) || 0) + EPC_TOPOLOGY_FLOW_NODE_W / 2,
+                    y: (Number(node.y) || 0) + EPC_TOPOLOGY_FLOW_NODE_H
+                };
+            }
             return {
                 x: (Number(node.x) || 0) + (side === 'right' ? EPC_TOPOLOGY_FLOW_NODE_W : 0),
                 y: (Number(node.y) || 0) + EPC_TOPOLOGY_FLOW_NODE_H / 2
@@ -11526,6 +11539,17 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const direction = sourceBeforeTarget ? 1 : -1;
             const isChargePath = Array.isArray(edge.flowKeys) && edge.flowKeys.includes('pvToBatteryKw');
             const isDischargePath = Array.isArray(edge.flowKeys) && edge.flowKeys.includes('batteryToLoadKw');
+            if (edge.id === 'pv-pcs-charge') {
+                const sourceCenterX = epcTopologyFlowPort(source, 'bottom').x;
+                const startY = epcTopologyFlowPort(source, 'bottom').y;
+                const endY = epcTopologyFlowPort(target, 'top').y;
+                const labelY = (startY + endY) / 2 - 8;
+                return {
+                    d: `M${sourceCenterX} ${startY} V${endY}`,
+                    labelX: sourceCenterX + 42,
+                    labelY
+                };
+            }
             let d = '';
             if (gap > 56) {
                 const midX = start.x + direction * Math.max(42, gap / 2);
@@ -11606,12 +11630,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
         function renderEpcTopologyFlowEdgeLabel(edge = {}) {
             if (!(Number(edge.value) > 0) || edge.blocked || edge.role === 'control') return '';
-            const label = Array.isArray(edge.flowKeys) && edge.flowKeys.includes('pvToBatteryKw')
-                ? 'PV -> Battery'
-                : Array.isArray(edge.flowKeys) && edge.flowKeys.includes('batteryToLoadKw')
-                    ? 'Battery -> Load'
-                    : edge.role === 'mv' ? 'MV' : '';
-            return renderEpcFlowLabel(edge.value, edge.route.labelX, edge.route.labelY, label);
+            const shouldLabel = Array.isArray(edge.flowKeys) && edge.flowKeys.some(key => EPC_TOPOLOGY_FLOW_LABEL_KEYS.includes(key));
+            if (!shouldLabel) return '';
+            return renderEpcFlowLabel(edge.value, edge.route.labelX, edge.route.labelY, '');
         }
 
         function renderEpcTopologyFlowNode(node = {}, row = {}) {
@@ -11657,7 +11678,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     ${topologyFlow.validationBlocked ? `<div class="border-b border-red-100 bg-red-50 px-4 py-2 text-xs font-bold text-red-700">${htmlSafe(errors.map(item => `${item.code}: ${item.message}`).join(' | '))}</div>` : ''}
                     <svg id="epc-flow-svg" class="epc-flow-svg" viewBox="${htmlSafe(model.viewBox)}" role="img" aria-label="Topology-aware hybrid energy flow diagram">
                         <defs>
-                            <marker id="epc-arrow-load" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#64748b"/></marker>
+                            <marker id="epc-arrow-load" markerWidth="4" markerHeight="4" refX="3.4" refY="2" orient="auto"><path d="M0,0 L4,2 L0,4 Z" fill="#64748b"/></marker>
                         </defs>
                         ${model.edges.map(edge => renderEpcTopologyFlowEdge(edge)).join('')}
                         ${model.edges.map(edge => renderEpcTopologyFlowEdgeLabel(edge)).join('')}

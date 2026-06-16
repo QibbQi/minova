@@ -949,7 +949,7 @@ test('EPC topology flow adapter maps standard topology paths to EMS flow keys', 
   assert.ok(nodesByType.has('LOAD'));
   assert.deepEqual(edge('pv-dc').flowKeys, ['pvOutputKw']);
   assert.ok(edge('pv-lv').flowKeys.includes('pvToLoadKw'));
-  assert.ok(edge('lv-pcs-charge').flowKeys.includes('pvToBatteryKw'));
+  assert.ok(edge('pv-pcs-charge').flowKeys.includes('pvToBatteryKw'));
   assert.ok(edge('battery-pcs-discharge').flowKeys.includes('batteryToLoadKw'));
   assert.ok(edge('genset-lv').flowKeys.includes('gensetToLoadKw'));
   assert.ok(edge('mv-load-tx').flowKeys.includes('loadKw'));
@@ -970,13 +970,39 @@ test('EPC topology flow adapter separates simultaneous PV charge and battery dis
 
   assert.deepEqual(edge('pv-dc').flowKeys, ['pvOutputKw']);
   assert.deepEqual(edge('pv-lv').flowKeys, ['pvToLoadKw']);
-  assert.deepEqual(edge('lv-pcs-charge').flowKeys, ['pvToBatteryKw']);
+  assert.deepEqual(edge('pv-pcs-charge').flowKeys, ['pvToBatteryKw']);
   assert.deepEqual(edge('pcs-battery-charge').flowKeys, ['pvToBatteryKw']);
   assert.deepEqual(edge('battery-pcs-discharge').flowKeys, ['batteryToLoadKw']);
   assert.deepEqual(edge('pcs-lv-discharge').flowKeys, ['batteryToLoadKw']);
   assert.equal(new Set(pvLoadEdges).has('pv-lv'), true);
   assert.equal(pvBatteryEdges.includes('pv-lv'), false);
+  assert.equal(pvBatteryEdges.includes('lv-pcs-charge'), false);
+  assert.equal(pvBatteryEdges.includes('pv-pcs-charge'), true);
   assert.equal(batteryLoadEdges.includes('battery-dc'), false);
+});
+
+test('EPC standard topologies charge battery directly from PV inverter through PCS', () => {
+  const resultForTopology = (selectedTopologyId) => calculateEpcDesignProject({
+    selectedTopologyId,
+    site: { gridMode: 'island' },
+    loads: { dailyLoadKwh: 1200, operationHoursPerDay: 8 },
+    designTargets: { replacementPct: 80 }
+  }, { now: '2026-06-16T00:00:00.000Z' });
+
+  for (const topologyId of ['C3', 'C5', 'C7']) {
+    const result = resultForTopology(topologyId);
+    const edge = (id) => result.topologyFlow.edges.find((item) => item.id === id);
+
+    assert.equal(edge('pv-pcs-charge').source, 'pv-inverter');
+    assert.equal(edge('pv-pcs-charge').target, 'pcs');
+    assert.deepEqual(edge('pv-pcs-charge').flowKeys, ['pvToBatteryKw']);
+    assert.deepEqual(edge('pcs-battery-charge').flowKeys, ['pvToBatteryKw']);
+    assert.equal(Boolean(edge('lv-pcs-charge')), false);
+  }
+
+  const c2Template = resultForTopology('C2').topologySelection.blockedTopologies.find((topology) => topology.id === 'C2');
+  assert.equal(c2Template.edges.some((edge) => edge.id === 'pv-pcs-charge'), false);
+  assert.equal(c2Template.edges.some((edge) => edge.id === 'pcs-battery-charge'), false);
 });
 
 test('EPC topology recommendations exclude common 415V bus topologies for MV pass architecture', () => {

@@ -922,6 +922,8 @@ test('EPC EMS Flow splits simultaneous battery charge discharge and exposes topo
     "edge.id === 'battery-pcs-discharge'",
     'Math.abs(start.y - end.y) < 6',
     'M${start.x} ${start.y} H${end.x}',
+    "edge.id === 'pv-curtailment'",
+    "CURTAILMENT: { stroke: '#f59e0b'",
     'y="74"',
     'y="88"',
     'markerWidth="4"',
@@ -939,6 +941,22 @@ test('EPC EMS Flow splits simultaneous battery charge discharge and exposes topo
   assert.doesNotMatch(edgeLabelHelper[0], /PV -> Battery|Battery -> Load/, 'line labels should only show transfer kW, not semantic route text');
 });
 
+test('EPC topology-aware flow routes through visible LV bus card and balanced battery PCS lines', () => {
+  const nodeRenderer = html.match(/function renderEpcTopologyFlowNode\(node = \{\}, row = \{\}\)[\s\S]*?function renderEpcTopologyFlowDiagram/);
+  const pairRoute = html.match(/function epcTopologyFlowPairLaneRoute\(source = \{\}, target = \{\}, edge = \{\}\)[\s\S]*?function epcTopologyFlowPcsAcLaneRoute/);
+  const lvRoute = html.match(/function epcTopologyFlowLvBusRoute\(source = \{\}, target = \{\}, edge = \{\}\)[\s\S]*?function epcTopologyFlowControlRoute/);
+
+  assert.ok(nodeRenderer, 'topology node renderer should exist');
+  assert.ok(pairRoute, 'battery PCS route helper should exist');
+  assert.ok(lvRoute, 'LV bus route helper should exist');
+  assert.doesNotMatch(nodeRenderer[0], /renderEpcTopologyFlowVerticalBusNode/, 'source LV bus should use the standard visible LV_BUS card renderer');
+  assert.match(pairRoute[0], /const laneOffset = edge\.id === 'pcs-battery-charge' \? -14 : 14/);
+  assert.match(pairRoute[0], /d: `M\$\{start\.x\} \$\{start\.y\} H\$\{end\.x\}`/);
+  assert.doesNotMatch(pairRoute[0], /V\$\{laneY\}/, 'battery PCS lanes should be straight balanced lines, not dogleg routes');
+  assert.match(lvRoute[0], /epcTopologyFlowPort\(target, 'left'\)/);
+  assert.match(lvRoute[0], /epcTopologyFlowPort\(source, 'right'\)/);
+});
+
 test('EPC inputs expose split load count and ratio controls for EMS Flow', () => {
   for (const snippet of [
     'id="epc-load-count"',
@@ -950,10 +968,18 @@ test('EPC inputs expose split load count and ratio controls for EMS Flow', () =>
     'function updateEpcLoadSplitRatio',
     'Load Qty',
     'Allocation %',
-    'must equal 100%'
+    'must equal 100%',
+    'rebalanceEpcLoadSplits',
+    'setEpcStandardTopologyDirty(project)',
+    'project.loads.loadSplits[index] =',
+    "field === 'label'",
+    'Number(value)'
   ]) {
     assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing split load UI snippet: ${snippet}`);
   }
+  const splitHandler = html.match(/function updateEpcLoadSplitRatio\(index, value, field = 'ratio'\)[\s\S]*?window\.updateEpcLoadSplitRatio/);
+  assert.ok(splitHandler, 'split update handler should exist');
+  assert.doesNotMatch(splitHandler[0], /const project = captureEpcDesignFromDom\(\);\s*project\.loads\.loadSplits = epcLoadSplitsFromDom/, 'split handler should apply the explicit edited value before rerendering');
 });
 
 test('EPC topology-aware flow can label per-branch split load power', () => {

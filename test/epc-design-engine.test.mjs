@@ -953,6 +953,7 @@ test('EPC topology flow adapter maps standard topology paths to EMS flow keys', 
   assert.ok(edge('lv-pcs-charge').flowKeys.includes('pvToBatteryKw'));
   assert.ok(edge('battery-pcs-discharge').flowKeys.includes('batteryToLoadKw'));
   assert.ok(edge('genset-lv').flowKeys.includes('gensetToLoadKw'));
+  assert.deepEqual(edge('pv-curtailment').flowKeys, ['curtailmentKw']);
   assert.ok(edge('ring-rmu-load-1').flowKeys.includes('loadSplit:load-1'));
   assert.ok(edge('lv-load-bus-1-load-1').flowKeys.includes('loadSplit:load-1'));
   assert.equal(result.topologyFlow.validationBlocked, false);
@@ -997,6 +998,45 @@ test('EPC C5 EMS topology follows the source LV bus and RMU load branch sketch',
   assert.equal(Boolean(edge('load-tx-critical')), false);
 });
 
+test('EPC standard topology regenerates from load allocation instead of stale stored graph', () => {
+  const stale = calculateEpcDesignProject({
+    selectedTopologyId: 'C5',
+    site: { gridMode: 'island' },
+    loads: {
+      dailyLoadKwh: 12000,
+      operationHoursPerDay: 8,
+      loadCount: 1
+    },
+    designTargets: { replacementPct: 80 }
+  }, { now: '2026-06-16T00:00:00.000Z' });
+  const result = calculateEpcDesignProject({
+    selectedTopologyId: 'C5',
+    topology: stale.topology,
+    site: { gridMode: 'island' },
+    loadProfile: [{ hour: 12, loadKw: 500 }],
+    loads: {
+      dailyLoadKwh: 12000,
+      operationHoursPerDay: 8,
+      loadCount: 2,
+      loadSplits: [
+        { id: 'load-1', label: 'Crusher', ratioPct: 70 },
+        { id: 'load-2', label: 'Camp', ratioPct: 30 }
+      ]
+    },
+    designTargets: { replacementPct: 80 }
+  }, { now: '2026-06-16T00:00:00.000Z' });
+  const edgeIds = new Set(result.topology.edges.map((edge) => edge.id));
+  const row = result.energyFlow.rows.find((item) => item.loadKw > 0);
+
+  assert.equal(result.topology.selectedTopologyId, 'C5');
+  assert.equal(result.topology.nodes.some((node) => node.id === 'load-2' && node.label === 'Camp'), true);
+  assert.equal(edgeIds.has('ring-rmu-load-2'), true);
+  assert.equal(edgeIds.has('lv-load-bus-2-load-2'), true);
+  assert.ok(result.topologyFlow.edges.some((edge) => edge.id === 'ring-rmu-load-2' && edge.flowKeys.includes('loadSplit:load-2')));
+  assert.equal(row.loadSplits.length, 2);
+  assert.equal(Math.round(row.loadSplits.reduce((sum, split) => sum + split.loadKw, 0) * 100) / 100, row.loadKw);
+});
+
 test('EPC load splits normalize ratios and flow rows sum back to total load', () => {
   const result = calculateEpcDesignProject({
     selectedTopologyId: 'C5',
@@ -1023,6 +1063,34 @@ test('EPC load splits normalize ratios and flow rows sum back to total load', ()
   assert.equal(row.loadSplits.length, 3);
   assert.equal(Math.round(splitKwTotal * 100) / 100, row.loadKw);
   assert.ok(result.topologyFlow.edges.some((edge) => edge.flowKeys.includes('loadSplit:load-3')));
+});
+
+test('EPC load allocation supports six load branches and preserves total kW', () => {
+  const result = calculateEpcDesignProject({
+    selectedTopologyId: 'C5',
+    site: { gridMode: 'island' },
+    loadProfile: [{ hour: 12, loadKw: 600 }],
+    loads: {
+      operationHoursPerDay: 8,
+      loadCount: 6,
+      loadSplits: [
+        { label: 'Load 1', ratioPct: 10 },
+        { label: 'Load 2', ratioPct: 15 },
+        { label: 'Load 3', ratioPct: 20 },
+        { label: 'Load 4', ratioPct: 25 },
+        { label: 'Load 5', ratioPct: 20 },
+        { label: 'Load 6', ratioPct: 10 }
+      ]
+    },
+    designTargets: { replacementPct: 80 }
+  }, { now: '2026-06-16T00:00:00.000Z' });
+  const row = result.energyFlow.rows.find((item) => item.loadKw > 0);
+  const splitKwTotal = row.loadSplits.reduce((sum, split) => sum + split.loadKw, 0);
+
+  assert.equal(result.loads.loadCount, 6);
+  assert.equal(result.topology.nodes.some((node) => node.id === 'load-6'), true);
+  assert.ok(result.topologyFlow.edges.some((edge) => edge.id === 'lv-load-bus-6-load-6' && edge.flowKeys.includes('loadSplit:load-6')));
+  assert.equal(Math.round(splitKwTotal * 100) / 100, 600);
 });
 
 test('EPC topology flow adapter separates simultaneous PV charge and battery discharge paths', () => {

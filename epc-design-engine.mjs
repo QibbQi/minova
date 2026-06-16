@@ -44,7 +44,7 @@ const SCHEME_TARGETS = [
 const POWER_NODE_TYPES = [
   'GRID', 'PV_ARRAY', 'PV_INVERTER', 'BATTERY', 'PCS', 'HYBRID_INVERTER', 'GENSET',
   'LV_BUS', 'MV_BUS', 'MV_SWITCHBOARD', 'LV_SWITCHBOARD', 'TRANSFORMER',
-  'METER', 'ATS', 'STS', 'LOAD', 'CRITICAL_LOAD_PANEL', 'EMS', 'SCADA'
+  'METER', 'ATS', 'STS', 'LOAD', 'CRITICAL_LOAD_PANEL', 'CURTAILMENT', 'EMS', 'SCADA'
 ];
 
 const POWER_EDGE_TYPES = ['DC_POWER', 'AC_LV_POWER', 'AC_MV_POWER', 'COMMUNICATION', 'CONTROL'];
@@ -628,12 +628,14 @@ function buildStandardTopologyGraph(id = 'C5', loads = {}) {
     const nodes = [
       node('pv-array', 'PV_ARRAY', 'PV Array', 40, 60, 1000),
       node('pv-inverter', 'PV_INVERTER', 'PV Inverter', 220, 60, 415),
+      node('curtailment', 'CURTAILMENT', 'Curtailment', 430, 0, 415),
       node('genset', 'GENSET', 'Genset', 220, 210, 415),
       node('lv-bus', 'LV_BUS', 'Common 415V Bus', 430, 130, 415, { busOrientation: 'vertical' }),
       commonEms
     ];
     const edges = [
       edge('pv-dc', 'pv-array', 'pv-inverter', 'DC_POWER', 'ONE_WAY', 1000),
+      edge('pv-curtailment', 'pv-inverter', 'curtailment', 'AC_LV_POWER', 'ONE_WAY', 415),
       edge('pv-lv', 'pv-inverter', 'lv-bus', 'AC_LV_POWER', 'ONE_WAY', 415),
       edge('genset-lv', 'genset', 'lv-bus', 'AC_LV_POWER', 'ONE_WAY', 415),
       edge('ems-pv', 'ems', 'pv-inverter', 'COMMUNICATION', 'BIDIRECTIONAL', 0),
@@ -649,6 +651,7 @@ function buildStandardTopologyGraph(id = 'C5', loads = {}) {
     const nodes = [
       node('pv-array', 'PV_ARRAY', 'PV Array', 40, 50, 1000),
       node('pv-inverter', 'PV_INVERTER', 'PV Inverter', 220, 50, 415),
+      node('curtailment', 'CURTAILMENT', 'Curtailment', 450, 20, 415),
       node('battery', 'BATTERY', 'Battery', 40, 210, 800),
       node('pcs', 'PCS', 'PCS', 220, 210, 415),
       node('genset', 'GENSET', 'Genset', 220, 340, 415),
@@ -657,6 +660,7 @@ function buildStandardTopologyGraph(id = 'C5', loads = {}) {
     ];
     const edges = [
       edge('pv-dc', 'pv-array', 'pv-inverter', 'DC_POWER', 'ONE_WAY', 1000),
+      edge('pv-curtailment', 'pv-inverter', 'curtailment', 'AC_LV_POWER', 'ONE_WAY', 415),
       edge('pv-lv', 'pv-inverter', 'lv-bus', 'AC_LV_POWER', 'ONE_WAY', 415),
       edge('lv-pcs-charge', 'lv-bus', 'pcs', 'AC_LV_POWER', 'ONE_WAY', 415),
       edge('pcs-battery-charge', 'pcs', 'battery', 'DC_POWER', 'ONE_WAY', 800),
@@ -675,6 +679,7 @@ function buildStandardTopologyGraph(id = 'C5', loads = {}) {
     const nodes = [
       node('pv-array', 'PV_ARRAY', 'PV Station', 40, 60, 1000),
       node('pv-inverter', 'PV_INVERTER', 'PV Inverter', 220, 60, 415),
+      node('curtailment', 'CURTAILMENT', 'Curtailment', 460, 40, 415),
       node('battery', 'BATTERY', 'BESS', 40, 210, 800),
       node('pcs', 'PCS', 'PCS', 220, 210, 415),
       node('genset', 'GENSET', 'DG Station', 220, 350, 415),
@@ -686,6 +691,7 @@ function buildStandardTopologyGraph(id = 'C5', loads = {}) {
     ];
     const edges = [
       edge('pv-dc', 'pv-array', 'pv-inverter', 'DC_POWER', 'ONE_WAY', 1000),
+      edge('pv-curtailment', 'pv-inverter', 'curtailment', 'AC_LV_POWER', 'ONE_WAY', 415),
       edge('pv-lv', 'pv-inverter', 'lv-bus', 'AC_LV_POWER', 'ONE_WAY', 415),
       edge('lv-pcs-charge', 'lv-bus', 'pcs', 'AC_LV_POWER', 'ONE_WAY', 415),
       edge('pcs-battery-charge', 'pcs', 'battery', 'DC_POWER', 'ONE_WAY', 800),
@@ -707,6 +713,7 @@ function buildStandardTopologyGraph(id = 'C5', loads = {}) {
   const nodes = [
       node('pv-array', 'PV_ARRAY', 'PV Array', 40, 40, 1000),
       node('pv-inverter', 'PV_INVERTER', 'PV Inverter', 220, 40, 415),
+      node('curtailment', 'CURTAILMENT', 'Curtailment', 450, 20, 415),
       node('battery', 'BATTERY', 'Battery', 40, 180, 800),
       node('pcs', 'PCS', 'Grid-forming PCS', 220, 180, 415),
       node('genset', 'GENSET', 'Genset', 220, 320, 415),
@@ -718,6 +725,7 @@ function buildStandardTopologyGraph(id = 'C5', loads = {}) {
     ];
   const edges = [
       edge('pv-dc', 'pv-array', 'pv-inverter', 'DC_POWER', 'ONE_WAY', 1000),
+      edge('pv-curtailment', 'pv-inverter', 'curtailment', 'AC_LV_POWER', 'ONE_WAY', 415),
       edge('pv-lv', 'pv-inverter', 'lv-bus', 'AC_LV_POWER', 'ONE_WAY', 415),
       edge('lv-pcs-charge', 'lv-bus', 'pcs', 'AC_LV_POWER', 'ONE_WAY', 415),
       edge('pcs-battery-charge', 'pcs', 'battery', 'DC_POWER', 'ONE_WAY', 800),
@@ -746,7 +754,7 @@ function normalizeSelectedTopologyId(value, site = {}) {
 
 function normalizePowerTopology(rawTopology = {}, selectedTopologyId = 'C5', loads = {}) {
   const input = rawTopology && typeof rawTopology === 'object' ? rawTopology : {};
-  const hasCustomGraph = Array.isArray(input.nodes) && input.nodes.length;
+  const hasCustomGraph = selectedTopologyId === 'CUSTOM' && Array.isArray(input.nodes) && input.nodes.length;
   const base = hasCustomGraph ? input : buildStandardTopologyGraph(selectedTopologyId, loads);
   const nodes = (Array.isArray(base.nodes) ? base.nodes : [])
     .map((node, index) => normalizePowerNode(node, index))
@@ -1734,6 +1742,7 @@ function topologyFlowNodeLabel(node = {}) {
     STS: 'STS',
     LOAD: 'Load',
     CRITICAL_LOAD_PANEL: 'Critical Load',
+    CURTAILMENT: 'Curtailment',
     EMS: 'EMS',
     SCADA: 'SCADA',
     METER: 'Meter'
@@ -1748,6 +1757,7 @@ function topologyFlowNodeLabel(node = {}) {
 
 function topologyFlowRole(edge = {}, source = {}, target = {}) {
   if (edge.type === 'COMMUNICATION' || edge.type === 'CONTROL') return 'control';
+  if (source.type === 'CURTAILMENT' || target.type === 'CURTAILMENT') return 'curtail';
   if (['lv-pcs-charge', 'mv-bess-charge', 'bess-tx-pcs-charge'].includes(edge.id)) return 'battery';
   if (source.type === 'PV_ARRAY' || source.type === 'PV_INVERTER' || target.type === 'PV_INVERTER') return 'pv';
   if (source.type === 'BATTERY' || target.type === 'BATTERY' || source.type === 'PCS' || target.type === 'PCS') return 'battery';
@@ -1760,6 +1770,7 @@ function topologyFlowKeysForEdge(edge = {}, source = {}, target = {}) {
   if (edge.loadSplitId) return [`loadSplit:${edge.loadSplitId}`];
   const edgeFlowKeys = {
     'pv-dc': ['pvOutputKw'],
+    'pv-curtailment': ['curtailmentKw'],
     'pv-lv': ['pvToLoadKw'],
     'pv-tx-lv': ['pvToLoadKw'],
     'pv-mv': ['pvToLoadKw'],
@@ -1777,6 +1788,7 @@ function topologyFlowKeysForEdge(edge = {}, source = {}, target = {}) {
   };
   if (edgeFlowKeys[edge.id]) return edgeFlowKeys[edge.id];
   if (source.type === 'PV_ARRAY') return ['pvOutputKw'];
+  if (source.type === 'CURTAILMENT' || target.type === 'CURTAILMENT') return ['curtailmentKw'];
   if (source.type === 'PV_INVERTER' || target.type === 'PV_INVERTER') return ['pvToLoadKw'];
   if (source.type === 'BATTERY' || target.type === 'BATTERY') return edge.direction === 'BIDIRECTIONAL' ? ['pvToBatteryKw', 'batteryToLoadKw'] : ['batteryToLoadKw'];
   if (source.type === 'PCS' || target.type === 'PCS') return edge.direction === 'BIDIRECTIONAL' ? ['pvToBatteryKw', 'batteryToLoadKw'] : ['batteryToLoadKw'];

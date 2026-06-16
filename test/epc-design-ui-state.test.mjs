@@ -895,6 +895,30 @@ test('EPC EMS Flow renders topology-aware standard components and validation sta
   assert.doesNotMatch(flowRenderer[0], /<path class="\$\{flowLineClass\(row\?\.pvOutputKw/, 'EMS Flow should not render fixed legacy paths directly');
 });
 
+test('EPC EMS Flow splits simultaneous battery charge discharge and exposes topology selector', () => {
+  for (const snippet of [
+    'id="epc-flow-topology-selector"',
+    'renderEpcFlowTopologySelector(result)',
+    'result.topologySelection',
+    'requiresMvTopology',
+    'lv-pcs-charge',
+    'pcs-battery-charge',
+    'battery-pcs-discharge',
+    'pcs-lv-discharge',
+    'flowKeyMode',
+    "edge.flowKeyMode === 'net'",
+    'PV -> Battery',
+    'Battery -> Load',
+    "role === 'control' ? Math.max(90, laneY + 110)",
+    'updateEpcSelectedTopology(this.value)'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing split-flow selector snippet: ${snippet}`);
+  }
+  const valueHelper = html.match(/function epcTopologyFlowValue\(edge = \{\}, row = \{\}\)[\s\S]*?function epcTopologyFlowLineType/);
+  assert.ok(valueHelper, 'topology flow value helper should exist');
+  assert.doesNotMatch(valueHelper[0], /reduce\(\(total, key\) => total \+ Math\.max/, 'edge labels should not sum charge and discharge keys on one line');
+});
+
 test('EPC custom topology connection modal exposes add remove and standard copy behavior', () => {
   for (const snippet of [
     'id="epc-topology-connection-modal"',

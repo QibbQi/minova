@@ -949,11 +949,87 @@ test('EPC topology flow adapter maps standard topology paths to EMS flow keys', 
   assert.ok(nodesByType.has('LOAD'));
   assert.deepEqual(edge('pv-dc').flowKeys, ['pvOutputKw']);
   assert.ok(edge('pv-lv').flowKeys.includes('pvToLoadKw'));
-  assert.ok(edge('battery-dc').flowKeys.includes('pvToBatteryKw'));
-  assert.ok(edge('battery-dc').flowKeys.includes('batteryToLoadKw'));
+  assert.ok(edge('lv-pcs-charge').flowKeys.includes('pvToBatteryKw'));
+  assert.ok(edge('battery-pcs-discharge').flowKeys.includes('batteryToLoadKw'));
   assert.ok(edge('genset-lv').flowKeys.includes('gensetToLoadKw'));
   assert.ok(edge('mv-load-tx').flowKeys.includes('loadKw'));
   assert.equal(result.topologyFlow.validationBlocked, false);
+});
+
+test('EPC topology flow adapter separates simultaneous PV charge and battery discharge paths', () => {
+  const result = calculateEpcDesignProject({
+    selectedTopologyId: 'C5',
+    site: { gridMode: 'island' },
+    loads: { dailyLoadKwh: 12000, operationHoursPerDay: 8 },
+    designTargets: { replacementPct: 80 }
+  }, { now: '2026-06-16T00:00:00.000Z' });
+  const edge = (id) => result.topologyFlow.edges.find((item) => item.id === id);
+  const pvLoadEdges = result.topologyFlow.edges.filter((item) => item.flowKeys.includes('pvToLoadKw')).map((item) => item.id);
+  const pvBatteryEdges = result.topologyFlow.edges.filter((item) => item.flowKeys.includes('pvToBatteryKw')).map((item) => item.id);
+  const batteryLoadEdges = result.topologyFlow.edges.filter((item) => item.flowKeys.includes('batteryToLoadKw')).map((item) => item.id);
+
+  assert.deepEqual(edge('pv-dc').flowKeys, ['pvOutputKw']);
+  assert.deepEqual(edge('pv-lv').flowKeys, ['pvToLoadKw']);
+  assert.deepEqual(edge('lv-pcs-charge').flowKeys, ['pvToBatteryKw']);
+  assert.deepEqual(edge('pcs-battery-charge').flowKeys, ['pvToBatteryKw']);
+  assert.deepEqual(edge('battery-pcs-discharge').flowKeys, ['batteryToLoadKw']);
+  assert.deepEqual(edge('pcs-lv-discharge').flowKeys, ['batteryToLoadKw']);
+  assert.equal(new Set(pvLoadEdges).has('pv-lv'), true);
+  assert.equal(pvBatteryEdges.includes('pv-lv'), false);
+  assert.equal(batteryLoadEdges.includes('battery-dc'), false);
+});
+
+test('EPC topology recommendations exclude common 415V bus topologies for MV pass architecture', () => {
+  const project = buildEpcDesignProjectFromQuickInputs({
+    ...quarryInputs,
+    distanceToInterconnectionM: 650
+  }, {
+    defaults: EPC_DESIGN_DEFAULTS,
+    now: '2026-06-16T00:00:00.000Z'
+  });
+  const result = calculateEpcDesignProject({
+    ...project,
+    electrical: {
+      ...project.electrical,
+      distanceToInterconnectionM: 650,
+      newMvSystem: true
+    }
+  }, { now: '2026-06-16T00:00:00.000Z' });
+  const selectableIds = result.topologySelection.selectableTopologies.map((item) => item.id);
+
+  assert.equal(result.electricalArchitecture.recommendedId, 'mv_11_ring');
+  assert.equal(result.topologySelection.requiresMvTopology, true);
+  assert.ok(selectableIds.includes('C5'));
+  assert.ok(selectableIds.includes('C7'));
+  assert.equal(selectableIds.includes('C2'), false);
+  assert.equal(selectableIds.includes('C3'), false);
+});
+
+test('EPC MV architecture displays an MV-capable topology when an old LV-only topology is selected', () => {
+  const project = buildEpcDesignProjectFromQuickInputs({
+    ...quarryInputs,
+    distanceToInterconnectionM: 650
+  }, {
+    defaults: EPC_DESIGN_DEFAULTS,
+    now: '2026-06-16T00:00:00.000Z'
+  });
+  const result = calculateEpcDesignProject({
+    ...project,
+    selectedTopologyId: 'C3',
+    topology: { selectedTopologyId: 'C3' },
+    electrical: {
+      ...project.electrical,
+      distanceToInterconnectionM: 650,
+      newMvSystem: true
+    }
+  }, { now: '2026-06-16T00:00:00.000Z' });
+
+  assert.equal(result.topologySelection.requiresMvTopology, true);
+  assert.equal(result.topologySelection.autoSelectedTopologyId, 'C5');
+  assert.equal(result.selectedTopologyId, 'C5');
+  assert.equal(result.topologyFlow.topologyId, 'C5');
+  assert.ok(result.topology.nodes.some((node) => node.type === 'MV_SWITCHBOARD'));
+  assert.equal(result.topologySelection.blockedTopologies.some((topology) => topology.id === 'C3'), true);
 });
 
 test('EPC topology flow adapter suppresses active flow on invalid custom connections', () => {

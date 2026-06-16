@@ -547,9 +547,11 @@ function buildStandardTopologyGraph(id = 'C5') {
       ],
       edges: [
         edge('pv-dc', 'pv-array', 'pv-inverter', 'DC_POWER', 'ONE_WAY', 1000),
-        edge('battery-dc', 'battery', 'pcs', 'DC_POWER', 'BIDIRECTIONAL', 800),
         edge('pv-lv', 'pv-inverter', 'lv-bus', 'AC_LV_POWER', 'ONE_WAY', 415),
-        edge('pcs-lv', 'pcs', 'lv-bus', 'AC_LV_POWER', 'BIDIRECTIONAL', 415),
+        edge('lv-pcs-charge', 'lv-bus', 'pcs', 'AC_LV_POWER', 'ONE_WAY', 415),
+        edge('pcs-battery-charge', 'pcs', 'battery', 'DC_POWER', 'ONE_WAY', 800),
+        edge('battery-pcs-discharge', 'battery', 'pcs', 'DC_POWER', 'ONE_WAY', 800),
+        edge('pcs-lv-discharge', 'pcs', 'lv-bus', 'AC_LV_POWER', 'ONE_WAY', 415),
         edge('genset-lv', 'genset', 'lv-bus', 'AC_LV_POWER', 'ONE_WAY', 415),
         edge('lv-load', 'lv-bus', 'load', 'AC_LV_POWER', 'ONE_WAY', 415),
         edge('ems-pcs', 'ems', 'pcs', 'COMMUNICATION', 'BIDIRECTIONAL', 0),
@@ -579,9 +581,12 @@ function buildStandardTopologyGraph(id = 'C5') {
         edge('pv-dc', 'pv-array', 'pv-inverter', 'DC_POWER', 'ONE_WAY', 1000),
         edge('pv-tx-lv', 'pv-inverter', 'pv-tx', 'AC_LV_POWER', 'ONE_WAY', 415),
         edge('pv-mv', 'pv-tx', 'mv-bus', 'AC_MV_POWER', 'ONE_WAY', 11000),
-        edge('battery-dc', 'battery', 'pcs', 'DC_POWER', 'BIDIRECTIONAL', 800),
-        edge('pcs-tx-lv', 'pcs', 'bess-tx', 'AC_LV_POWER', 'BIDIRECTIONAL', 415),
-        edge('bess-mv', 'bess-tx', 'mv-bus', 'AC_MV_POWER', 'BIDIRECTIONAL', 11000),
+        edge('mv-bess-charge', 'mv-bus', 'bess-tx', 'AC_MV_POWER', 'ONE_WAY', 11000),
+        edge('bess-tx-pcs-charge', 'bess-tx', 'pcs', 'AC_LV_POWER', 'ONE_WAY', 415),
+        edge('pcs-battery-charge', 'pcs', 'battery', 'DC_POWER', 'ONE_WAY', 800),
+        edge('battery-pcs-discharge', 'battery', 'pcs', 'DC_POWER', 'ONE_WAY', 800),
+        edge('pcs-tx-discharge', 'pcs', 'bess-tx', 'AC_LV_POWER', 'ONE_WAY', 415),
+        edge('bess-mv-discharge', 'bess-tx', 'mv-bus', 'AC_MV_POWER', 'ONE_WAY', 11000),
         edge('dg-tx-lv', 'genset', 'dg-tx', 'AC_LV_POWER', 'ONE_WAY', 415),
         edge('dg-mv', 'dg-tx', 'mv-bus', 'AC_MV_POWER', 'ONE_WAY', 11000),
         edge('mv-ring', 'mv-bus', 'rmu', 'AC_MV_POWER', 'BIDIRECTIONAL', 11000),
@@ -613,9 +618,11 @@ function buildStandardTopologyGraph(id = 'C5') {
     ],
     edges: [
       edge('pv-dc', 'pv-array', 'pv-inverter', 'DC_POWER', 'ONE_WAY', 1000),
-      edge('battery-dc', 'battery', 'pcs', 'DC_POWER', 'BIDIRECTIONAL', 800),
       edge('pv-lv', 'pv-inverter', 'lv-bus', 'AC_LV_POWER', 'ONE_WAY', 415),
-      edge('pcs-lv', 'pcs', 'lv-bus', 'AC_LV_POWER', 'BIDIRECTIONAL', 415),
+      edge('lv-pcs-charge', 'lv-bus', 'pcs', 'AC_LV_POWER', 'ONE_WAY', 415),
+      edge('pcs-battery-charge', 'pcs', 'battery', 'DC_POWER', 'ONE_WAY', 800),
+      edge('battery-pcs-discharge', 'battery', 'pcs', 'DC_POWER', 'ONE_WAY', 800),
+      edge('pcs-lv-discharge', 'pcs', 'lv-bus', 'AC_LV_POWER', 'ONE_WAY', 415),
       edge('genset-lv', 'genset', 'lv-bus', 'AC_LV_POWER', 'ONE_WAY', 415),
       edge('lv-step-up', 'lv-bus', 'step-up-tx', 'AC_LV_POWER', 'BIDIRECTIONAL', 415),
       edge('step-up-mv', 'step-up-tx', 'mv-switchboard', 'AC_MV_POWER', 'BIDIRECTIONAL', 11000),
@@ -650,7 +657,7 @@ function normalizePowerTopology(rawTopology = {}, selectedTopologyId = 'C5') {
   const edges = (Array.isArray(base.edges) ? base.edges : [])
     .map((edge, index) => normalizePowerEdge(edge, index))
     .filter(edge => edge.id && nodeIds.has(edge.source) && nodeIds.has(edge.target));
-  return { nodes, edges };
+  return { selectedTopologyId, nodes, edges };
 }
 
 export function normalizeEpcDesignProject(raw = {}, options = {}) {
@@ -1503,6 +1510,47 @@ function standardTopologies() {
   });
 }
 
+function topologyHasMvDistribution(topology = {}) {
+  const nodes = Array.isArray(topology.nodes) ? topology.nodes : [];
+  const edges = Array.isArray(topology.edges) ? topology.edges : [];
+  return nodes.some(node => isMvNode(node))
+    || edges.some(edge => edge.type === 'AC_MV_POWER' || asNumber(edge.voltageV, 0) >= 6000);
+}
+
+function isMvArchitecture(candidate = {}) {
+  return candidate.voltageClass === 'MV' || asNumber(candidate.voltageKv, 0) >= 6.6 || String(candidate.id || '').startsWith('mv_');
+}
+
+function buildTopologySelection(project = {}, electricalArchitecture = {}) {
+  const candidates = Array.isArray(electricalArchitecture.candidates) ? electricalArchitecture.candidates : [];
+  const passArchitectures = candidates.filter(candidate => candidate.status === 'PASS');
+  const recommended = candidates.find(candidate => candidate.id === electricalArchitecture.recommendedId) || {};
+  const recommendedMvPass = recommended.status === 'PASS' && isMvArchitecture(recommended);
+  const passRequiresMv = passArchitectures.length > 0 && passArchitectures.every(candidate => isMvArchitecture(candidate));
+  const requiresMvTopology = Boolean(recommendedMvPass || passRequiresMv);
+  const allTopologies = standardTopologies();
+  const selectableTopologies = allTopologies.filter(topology => !requiresMvTopology || topologyHasMvDistribution(topology));
+  const blockedTopologies = allTopologies
+    .filter(topology => !selectableTopologies.some(item => item.id === topology.id))
+    .map(topology => ({
+      ...topology,
+      blockedReason: 'Electrical recommended architecture is MV PASS; common 415V bus-only topologies are locked.'
+    }));
+  const selectedTopologyId = String(project.selectedTopologyId || project.topology?.selectedTopologyId || 'C5').toUpperCase();
+  return {
+    requiresMvTopology,
+    recommendedArchitectureId: electricalArchitecture.recommendedId || '',
+    passArchitectureIds: passArchitectures.map(candidate => candidate.id),
+    selectableTopologies,
+    blockedTopologies,
+    selectedTopologyId,
+    selectedTopologyAllowed: selectedTopologyId === 'CUSTOM' || selectableTopologies.some(topology => topology.id === selectedTopologyId),
+    message: requiresMvTopology
+      ? 'Electrical PASS recommendation is MV; EMS Flow topology selection is limited to MV-capable C5/C7 layouts.'
+      : 'Electrical PASS recommendation allows LV common-bus and MV-capable topology layouts.'
+  };
+}
+
 function isMvNode(node) {
   return node?.type === 'MV_BUS' || node?.type === 'MV_SWITCHBOARD' || asNumber(node?.electrical?.voltageV, 0) >= 6000;
 }
@@ -1604,14 +1652,38 @@ function topologyFlowRole(edge = {}, source = {}, target = {}) {
 
 function topologyFlowKeysForEdge(edge = {}, source = {}, target = {}) {
   if (edge.type === 'COMMUNICATION' || edge.type === 'CONTROL') return [];
+  const edgeFlowKeys = {
+    'pv-dc': ['pvOutputKw'],
+    'pv-lv': ['pvToLoadKw'],
+    'pv-tx-lv': ['pvToLoadKw'],
+    'pv-mv': ['pvToLoadKw'],
+    'lv-pcs-charge': ['pvToBatteryKw'],
+    'mv-bess-charge': ['pvToBatteryKw'],
+    'bess-tx-pcs-charge': ['pvToBatteryKw'],
+    'pcs-battery-charge': ['pvToBatteryKw'],
+    'battery-pcs-discharge': ['batteryToLoadKw'],
+    'pcs-lv-discharge': ['batteryToLoadKw'],
+    'pcs-tx-discharge': ['batteryToLoadKw'],
+    'bess-mv-discharge': ['batteryToLoadKw'],
+    'genset-lv': ['gensetToLoadKw'],
+    'dg-tx-lv': ['gensetToLoadKw'],
+    'dg-mv': ['gensetToLoadKw']
+  };
+  if (edgeFlowKeys[edge.id]) return edgeFlowKeys[edge.id];
   if (source.type === 'PV_ARRAY') return ['pvOutputKw'];
-  if (source.type === 'PV_INVERTER' || target.type === 'PV_INVERTER') return ['pvToLoadKw', 'pvToBatteryKw', 'curtailmentKw'];
-  if (source.type === 'BATTERY' || target.type === 'BATTERY') return ['pvToBatteryKw', 'batteryToLoadKw'];
-  if (source.type === 'PCS' || target.type === 'PCS') return ['pvToBatteryKw', 'batteryToLoadKw'];
+  if (source.type === 'PV_INVERTER' || target.type === 'PV_INVERTER') return ['pvToLoadKw'];
+  if (source.type === 'BATTERY' || target.type === 'BATTERY') return edge.direction === 'BIDIRECTIONAL' ? ['pvToBatteryKw', 'batteryToLoadKw'] : ['batteryToLoadKw'];
+  if (source.type === 'PCS' || target.type === 'PCS') return edge.direction === 'BIDIRECTIONAL' ? ['pvToBatteryKw', 'batteryToLoadKw'] : ['batteryToLoadKw'];
   if (source.type === 'GENSET' || target.type === 'GENSET') return ['gensetToLoadKw'];
   if (target.type === 'LOAD' || target.type === 'CRITICAL_LOAD_PANEL') return ['loadKw'];
   if (edge.type === 'AC_MV_POWER' || source.type === 'TRANSFORMER' || target.type === 'TRANSFORMER') return ['loadKw'];
   return ['loadKw'];
+}
+
+function topologyFlowKeyModeForEdge(edge = {}, flowKeys = []) {
+  if (edge.type === 'COMMUNICATION' || edge.type === 'CONTROL') return 'none';
+  if (edge.direction === 'BIDIRECTIONAL' || flowKeys.length > 1) return 'net';
+  return 'single';
 }
 
 function buildTopologyFlowAdapter(topology = {}, validation = validatePowerTopology(topology)) {
@@ -1638,6 +1710,8 @@ function buildTopologyFlowAdapter(topology = {}, validation = validatePowerTopol
     const blocked = errorEdgeIds.has(edge.id);
     const warning = warningEdgeIds.has(edge.id);
     const role = blocked ? 'blocked' : topologyFlowRole(edge, source, target);
+    const flowKeys = blocked ? [] : topologyFlowKeysForEdge(edge, source, target);
+    const flowKeyMode = topologyFlowKeyModeForEdge(edge, flowKeys);
     return {
       id: edge.id,
       source: edge.source,
@@ -1648,7 +1722,8 @@ function buildTopologyFlowAdapter(topology = {}, validation = validatePowerTopol
       role,
       blocked,
       warning,
-      flowKeys: blocked ? [] : topologyFlowKeysForEdge(edge, source, target)
+      flowKeys,
+      flowKeyMode
     };
   });
   return {
@@ -1660,6 +1735,7 @@ function buildTopologyFlowAdapter(topology = {}, validation = validatePowerTopol
       edgeId: edge.id,
       role: edge.role,
       flowKeys: edge.flowKeys,
+      flowKeyMode: edge.flowKeyMode,
       blocked: edge.blocked
     })),
     disclaimer: 'Topology-aware EMS Flow is a budget-stage operating schematic. Validate the final SLD, protection study and controller sequence before construction.'
@@ -1983,8 +2059,25 @@ export function calculateEpcDesignProject(rawProject = {}, options = {}) {
     disclaimer: 'Experience-rule architecture screening only; not a statutory requirement or final engineering design.'
   };
   const cableScreening = electrical.cableScreening || { candidates: [] };
-  const topologyValidation = validatePowerTopology(project.topology);
-  const topologyFlow = buildTopologyFlowAdapter(project.topology, topologyValidation);
+  let topologySelection = buildTopologySelection(project, electricalArchitecture);
+  let topologyProject = project;
+  if (project.selectedTopologyId !== 'CUSTOM' && !topologySelection.selectedTopologyAllowed && topologySelection.selectableTopologies.length) {
+    const autoSelectedTopologyId = topologySelection.selectableTopologies[0].id;
+    topologyProject = {
+      ...project,
+      selectedTopologyId: autoSelectedTopologyId,
+      topology: normalizePowerTopology({ selectedTopologyId: autoSelectedTopologyId }, autoSelectedTopologyId)
+    };
+    topologySelection = {
+      ...topologySelection,
+      selectedTopologyId: autoSelectedTopologyId,
+      selectedTopologyAllowed: true,
+      autoSelectedTopologyId,
+      message: `${topologySelection.message} Current LV-only topology is displayed as ${autoSelectedTopologyId} until a valid topology is selected.`
+    };
+  }
+  const topologyValidation = validatePowerTopology(topologyProject.topology);
+  const topologyFlow = buildTopologyFlowAdapter(topologyProject.topology, topologyValidation);
   const protectionMatrix = buildProtectionMatrix(project, electrical);
   const emsStateMachine = buildEmsStateMachine(project);
   const pvStringDesign = calculatePvStringDesign({
@@ -2051,7 +2144,7 @@ export function calculateEpcDesignProject(rawProject = {}, options = {}) {
   ];
 
   return {
-    ...project,
+    ...topologyProject,
     load,
     solar: project.solarResource,
     schemes,
@@ -2059,6 +2152,7 @@ export function calculateEpcDesignProject(rawProject = {}, options = {}) {
     standardTopologies: standardTopologies(),
     topologyValidation,
     topologyFlow,
+    topologySelection,
     electrical,
     electricalArchitecture,
     cableScreening,

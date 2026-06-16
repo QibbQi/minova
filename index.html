@@ -11068,11 +11068,52 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             `;
         }
 
+        function getEpcTopologySelectionState(result = {}) {
+            const topologySelection = result.topologySelection || {};
+            const selectableTopologies = Array.isArray(topologySelection.selectableTopologies) && topologySelection.selectableTopologies.length
+                ? topologySelection.selectableTopologies
+                : (Array.isArray(result.standardTopologies) ? result.standardTopologies : []);
+            const blockedTopologies = Array.isArray(topologySelection.blockedTopologies) ? topologySelection.blockedTopologies : [];
+            return {
+                topologySelection,
+                selectableTopologies,
+                blockedTopologies,
+                selectedTopologyId: String(result.selectedTopologyId || 'C5').toUpperCase(),
+                requiresMvTopology: Boolean(topologySelection.requiresMvTopology)
+            };
+        }
+
+        function renderEpcTopologySelectorOptions(result = {}) {
+            const state = getEpcTopologySelectionState(result);
+            const selectedId = state.selectedTopologyId;
+            const options = state.selectableTopologies.map(item => `<option value="${htmlSafe(item.id)}" ${item.id === selectedId ? 'selected' : ''}>${htmlSafe(item.id)} - ${htmlSafe(item.name)}</option>`);
+            const blockedOptions = state.blockedTopologies.map(item => `<option value="${htmlSafe(item.id)}" ${item.id === selectedId ? 'selected' : ''} disabled>${htmlSafe(item.id)} - ${htmlSafe(item.name)} locked by Electrical</option>`);
+            return [
+                ...options,
+                ...blockedOptions,
+                `<option value="CUSTOM" ${selectedId === 'CUSTOM' ? 'selected' : ''}>CUSTOM - Manual Graph</option>`
+            ].join('');
+        }
+
+        function renderEpcFlowTopologySelector(result = {}) {
+            const state = getEpcTopologySelectionState(result);
+            const topologySelection = result.topologySelection || {};
+            const lockText = state.requiresMvTopology ? 'MV PASS only' : 'LV/MV options';
+            return `
+                <label class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5">
+                    <span class="text-[10px] font-black uppercase text-slate-400">${htmlSafe(lockText)}</span>
+                    <select id="epc-flow-topology-selector" onchange="updateEpcSelectedTopology(this.value)" class="rounded-md border border-slate-200 bg-white px-2 py-1 text-[10px] font-black text-slate-700 outline-none focus:border-purple-500">
+                        ${renderEpcTopologySelectorOptions(result)}
+                    </select>
+                </label>
+                ${topologySelection.requiresMvTopology ? `<span class="text-[10px] font-bold text-slate-400">${htmlSafe(topologySelection.message || '')}</span>` : ''}
+            `;
+        }
+
         function renderEpcTopologyWorkspace(result, project = getActiveEpcDesignProject()) {
             const target = document.getElementById('epc-topology-workspace');
             if (!target) return;
             const topology = result.topology || {};
-            const topologies = Array.isArray(result.standardTopologies) ? result.standardTopologies : [];
             const topologyValidation = result.topologyValidation || { errors: [], warnings: [], suggestedFixes: [] };
             const errors = topologyValidation.errors || [];
             const warnings = topologyValidation.warnings || [];
@@ -11085,10 +11126,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                                 <div class="text-xs font-bold text-slate-400">Select a budget-level off-grid topology. Suggested fixes are advisory and require manual approval.</div>
                             </div>
                             <div class="md:ml-auto flex flex-wrap items-center gap-2">
-                                <select id="epc-topology-selector" onchange="updateEpcSelectedTopology(this.value)" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black outline-none focus:border-purple-500">
-                                    ${topologies.map(item => `<option value="${htmlSafe(item.id)}" ${item.id === result.selectedTopologyId ? 'selected' : ''}>${htmlSafe(item.id)} - ${htmlSafe(item.name)}</option>`).join('')}
-                                    <option value="CUSTOM" ${result.selectedTopologyId === 'CUSTOM' ? 'selected' : ''}>CUSTOM - Manual Graph</option>
-                                </select>
+                                <select id="epc-topology-selector" onchange="updateEpcSelectedTopology(this.value)" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black outline-none focus:border-purple-500">${renderEpcTopologySelectorOptions(result)}</select>
                                 <button type="button" onclick="openEpcTopologyConnectionModal()" class="rounded-xl border border-purple-200 bg-white px-3 py-2 text-xs font-black text-purple-700 hover:bg-purple-50">Customize Connections</button>
                             </div>
                         </div>
@@ -11415,6 +11453,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
 
         const EPC_TOPOLOGY_FLOW_COMPONENT_HINTS = ['Step-up TX', 'MV Switchboard', 'Ring RMU', 'MV BUS', 'Load TX', 'LV BUS'];
+        const EPC_TOPOLOGY_FLOW_SPLIT_EDGE_IDS = ['lv-pcs-charge', 'pcs-battery-charge', 'battery-pcs-discharge', 'pcs-lv-discharge'];
         const EPC_TOPOLOGY_FLOW_NODE_W = 112;
         const EPC_TOPOLOGY_FLOW_NODE_H = 88;
         const EPC_TOPOLOGY_FLOW_NODE_STYLES = {
@@ -11445,9 +11484,14 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return node.voltageV ? formatEpcNumber(node.voltageV, 0, 'V') : htmlSafe(node.type || '');
         }
 
-        function epcTopologyFlowValue(flowKeys = [], row = {}) {
-            const keys = Array.isArray(flowKeys) ? flowKeys : [];
-            return keys.reduce((total, key) => total + Math.max(0, Number(row?.[key]) || 0), 0);
+        function epcTopologyFlowValue(edge = {}, row = {}) {
+            const keys = Array.isArray(edge.flowKeys) ? edge.flowKeys : [];
+            const values = keys
+                .map(key => Math.max(0, Number(row?.[key]) || 0))
+                .filter(value => value > 0);
+            if (!values.length) return 0;
+            if (edge.flowKeyMode === 'net') return Math.max(...values);
+            return values.length === 1 ? values[0] : Math.max(...values);
         }
 
         function epcTopologyFlowLineType(role = 'load') {
@@ -11474,15 +11518,26 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             };
         }
 
-        function epcTopologyFlowRoute(source = {}, target = {}, index = 0) {
+        function epcTopologyFlowRoute(source = {}, target = {}, index = 0, edge = {}) {
             const sourceBeforeTarget = (Number(source.x) || 0) <= (Number(target.x) || 0);
             const start = epcTopologyFlowPort(source, sourceBeforeTarget ? 'right' : 'left');
             const end = epcTopologyFlowPort(target, sourceBeforeTarget ? 'left' : 'right');
             const gap = Math.abs(end.x - start.x);
             const direction = sourceBeforeTarget ? 1 : -1;
+            const isChargePath = Array.isArray(edge.flowKeys) && edge.flowKeys.includes('pvToBatteryKw');
+            const isDischargePath = Array.isArray(edge.flowKeys) && edge.flowKeys.includes('batteryToLoadKw');
             let d = '';
             if (gap > 56) {
                 const midX = start.x + direction * Math.max(42, gap / 2);
+                if (Math.abs(start.y - end.y) < 6 && (isChargePath || isDischargePath)) {
+                    const laneY = start.y + (isChargePath ? -24 : 24);
+                    d = `M${start.x} ${start.y} H${midX} V${laneY} H${end.x - direction * 28} V${end.y} H${end.x}`;
+                    return {
+                        d,
+                        labelX: (start.x + end.x) / 2,
+                        labelY: laneY - 8
+                    };
+                }
                 d = `M${start.x} ${start.y} H${midX} V${end.y} H${end.x}`;
             } else {
                 const laneY = Math.max(28, Math.min(492, Math.min(start.y, end.y) - 38 - (index % 3) * 24));
@@ -11502,18 +11557,23 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const minX = Math.min(0, ...nodes.map(node => Number(node.position?.x) || 0));
             const minY = Math.min(0, ...nodes.map(node => Number(node.position?.y) || 0));
             const maxX = Math.max(1180, ...nodes.map(node => (Number(node.position?.x) || 0) - minX + EPC_TOPOLOGY_FLOW_NODE_W + 80));
-            const maxY = Math.max(460, ...nodes.map(node => (Number(node.position?.y) || 0) - minY + EPC_TOPOLOGY_FLOW_NODE_H + 96));
-            const flowNodes = nodes.map(node => ({
-                ...node,
-                x: (Number(node.position?.x) || 0) - minX + 48,
-                y: (Number(node.position?.y) || 0) - minY + 64
-            }));
+            const flowNodes = nodes.map(node => {
+                const role = ['EMS', 'SCADA', 'METER'].includes(node.type) ? 'control' : 'power';
+                const laneY = (Number(node.position?.y) || 0) - minY + 64;
+                return {
+                    ...node,
+                    role,
+                    x: (Number(node.position?.x) || 0) - minX + 48,
+                    y: role === 'control' ? Math.max(90, laneY + 110) : laneY
+                };
+            });
+            const maxY = Math.max(460, ...flowNodes.map(node => node.y + EPC_TOPOLOGY_FLOW_NODE_H + 96));
             const nodeMap = new Map(flowNodes.map(node => [node.id, node]));
             const flowEdges = edges.map((edge, index) => {
                 const source = nodeMap.get(edge.source);
                 const target = nodeMap.get(edge.target);
-                const route = source && target ? epcTopologyFlowRoute(source, target, index) : { d: '', labelX: 0, labelY: 0 };
-                const value = epcTopologyFlowValue(edge.flowKeys, row);
+                const route = source && target ? epcTopologyFlowRoute(source, target, index, edge) : { d: '', labelX: 0, labelY: 0 };
+                const value = epcTopologyFlowValue(edge, row);
                 return {
                     ...edge,
                     route,
@@ -11546,7 +11606,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
         function renderEpcTopologyFlowEdgeLabel(edge = {}) {
             if (!(Number(edge.value) > 0) || edge.blocked || edge.role === 'control') return '';
-            return renderEpcFlowLabel(edge.value, edge.route.labelX, edge.route.labelY, edge.role === 'mv' ? 'MV' : '');
+            const label = Array.isArray(edge.flowKeys) && edge.flowKeys.includes('pvToBatteryKw')
+                ? 'PV -> Battery'
+                : Array.isArray(edge.flowKeys) && edge.flowKeys.includes('batteryToLoadKw')
+                    ? 'Battery -> Load'
+                    : edge.role === 'mv' ? 'MV' : '';
+            return renderEpcFlowLabel(edge.value, edge.route.labelX, edge.route.labelY, label);
         }
 
         function renderEpcTopologyFlowNode(node = {}, row = {}) {
@@ -11583,6 +11648,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             <div class="mt-1 text-[10px] font-black uppercase text-slate-400">${htmlSafe(topologyFlow.topologyId || result.selectedTopologyId || 'C5')} | ${htmlSafe(model.componentHints)}</div>
                         </div>
                         <div class="flex flex-wrap items-center gap-2">
+                            ${renderEpcFlowTopologySelector(result)}
                             <span class="rounded-full px-3 py-1 text-[10px] font-black ${topologyFlow.validationBlocked ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}">${topologyFlow.validationBlocked ? `${errors.length} topology error(s)` : 'Topology valid'}</span>
                             ${warnings.length ? `<span class="rounded-full border border-yellow-200 bg-yellow-50 px-3 py-1 text-[10px] font-black text-yellow-700">${warnings.length} warning(s)</span>` : ''}
                             <button type="button" onclick="openEpcTopologyConnectionModal()" class="rounded-lg border border-purple-200 bg-white px-3 py-2 text-[10px] font-black text-purple-700 hover:bg-purple-50">Customize Connections</button>
@@ -14278,6 +14344,15 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         function updateEpcSelectedTopology(value) {
             const project = captureEpcDesignFromDom();
             const selectedTopologyId = String(value || 'C5').trim().toUpperCase();
+            if (selectedTopologyId !== 'CUSTOM') {
+                const currentResult = calculateEpcDesignProject(project, { defaults: epcDesignDefaults });
+                const blocked = currentResult.topologySelection?.blockedTopologies?.some(item => item.id === selectedTopologyId);
+                if (blocked) {
+                    alert(currentResult.topologySelection?.message || 'This topology is locked by the Electrical recommended architecture.');
+                    renderEpcDesignWorkspace();
+                    return;
+                }
+            }
             project.selectedTopologyId = selectedTopologyId;
             project.topology = selectedTopologyId === 'CUSTOM'
                 ? { ...(project.topology || {}), selectedTopologyId: 'CUSTOM' }

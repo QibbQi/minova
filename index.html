@@ -3080,7 +3080,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Must-run load for backup or island mode; blank falls back to average load.">Critical Load kW <span data-epc-help="critical-load" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Must-run load for backup or island mode; blank falls back to average load.">i</span></label>
                             <input id="epc-critical-load" data-epc-field="loads.criticalLoadKw" type="number" min="0" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                         </div>
+                        <div>
+                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Number of downstream load branches in EMS Flow.">Load Qty <span data-epc-help="load-count" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Number of downstream load branches in EMS Flow.">i</span></label>
+                            <input id="epc-load-count" data-epc-field="loads.loadCount" type="number" min="1" max="6" step="1" oninput="onEpcLoadCountChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        </div>
                     </div>
+                    <div id="epc-load-split-controls" class="rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs"></div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="PV modules per string used for string count and combiner sizing.">/ String <span data-epc-help="modules-per-string" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="PV modules per string used for string count and combiner sizing.">i</span></label>
@@ -10322,6 +10327,60 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return Math.max(0, Math.min(100, pct)) / 100;
         }
 
+        function epcNormalizeLoadCount(value) {
+            const n = Math.round(Number(value) || 1);
+            return Math.min(6, Math.max(1, Number.isFinite(n) ? n : 1));
+        }
+
+        function epcDefaultLoadSplits(count = 1) {
+            const loadCount = epcNormalizeLoadCount(count);
+            const base = Math.floor((100 / loadCount) * 100) / 100;
+            let assigned = 0;
+            return Array.from({ length: loadCount }, (_, index) => {
+                const ratioPct = index === loadCount - 1 ? Math.round((100 - assigned) * 100) / 100 : base;
+                assigned += ratioPct;
+                return { id: `load-${index + 1}`, label: `Load ${index + 1}`, ratioPct };
+            });
+        }
+
+        function epcNormalizeLoadSplits(splits = [], count = 1) {
+            const loadCount = epcNormalizeLoadCount(count);
+            const rows = Array.from({ length: loadCount }, (_, index) => {
+                const split = splits[index] || {};
+                return {
+                    id: String(split.id || `load-${index + 1}`),
+                    label: String(split.label || `Load ${index + 1}`),
+                    ratioPct: Math.max(0, Number(split.ratioPct) || 0)
+                };
+            });
+            const sum = rows.reduce((total, row) => total + row.ratioPct, 0);
+            if (!(sum > 0)) return epcDefaultLoadSplits(loadCount);
+            let assigned = 0;
+            return rows.map((row, index) => {
+                const ratioPct = index === rows.length - 1
+                    ? Math.round((100 - assigned) * 100) / 100
+                    : Math.round((row.ratioPct / sum) * 10000) / 100;
+                assigned += ratioPct;
+                return { ...row, ratioPct };
+            });
+        }
+
+        function epcLoadSplitsFromDom(count = 1, fallbackSplits = []) {
+            const loadCount = epcNormalizeLoadCount(count);
+            const rows = [...document.querySelectorAll('[data-epc-load-split-row]')].slice(0, loadCount);
+            if (!rows.length) return epcNormalizeLoadSplits(fallbackSplits, loadCount);
+            const defaults = epcNormalizeLoadSplits(fallbackSplits, loadCount);
+            return epcNormalizeLoadSplits(Array.from({ length: loadCount }, (_, index) => {
+                const row = rows[index];
+                if (!row) return defaults[index] || { id: `load-${index + 1}`, label: `Load ${index + 1}`, ratioPct: 0 };
+                return {
+                    id: `load-${index + 1}`,
+                    label: row.querySelector('[data-epc-load-split-label]')?.value || `Load ${index + 1}`,
+                    ratioPct: Number(row.querySelector('[data-epc-load-split-ratio]')?.value) || 0
+                };
+            }), loadCount);
+        }
+
         function captureEpcDesignFromDom() {
             const current = getActiveEpcDesignProject();
             const draft = JSON.parse(JSON.stringify(current));
@@ -10334,6 +10393,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (current.loads?.measurementMethod !== 'equipment_schedule' && draft.loads?.measurementMethod === 'equipment_schedule') {
                 draft.loads.useEquipmentScheduleForEmsFlow = true;
             }
+            draft.loads = draft.loads || {};
+            draft.loads.loadCount = epcNormalizeLoadCount(draft.loads.loadCount || current.loads?.loadCount || 1);
+            draft.loads.loadSplits = epcLoadSplitsFromDom(draft.loads.loadCount, current.loads?.loadSplits || []);
             draft.assumptions = { ...(draft.assumptions || {}), bessDod: readEpcDodPercentInput() };
             draft.mode = epcDesignMode;
             draft.updatedAt = new Date().toISOString();
@@ -10832,6 +10894,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             setInputValue('epc-allowed-genset-load', project.loads.allowedGensetLoadKw || '');
             setInputValue('epc-load-equipment-type', project.loads.equipmentType || 'water_pump');
             setInputValue('epc-critical-load', project.loads.criticalLoadKw || '');
+            setInputValue('epc-load-count', project.loads.loadCount || 1);
             setInputValue('epc-support-hours', project.designTargets.supportHours || EPC_DESIGN_DEFAULTS.bessAutonomyHours);
             setInputValue('epc-sfc', project.assumptions.dieselSfcLPerKwh || EPC_DESIGN_DEFAULTS.dieselSfcLPerKwh);
             setInputValue('epc-pv-yield', project.solarResource.specificYieldKwhPerKwpDay || EPC_DESIGN_DEFAULTS.malaysiaYieldBase);
@@ -10851,6 +10914,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             setInputValue('epc-solar-dni', project.solarResource.dniKwhM2Day || '');
             setInputValue('epc-solar-temp', project.solarResource.temperatureC || '');
             renderEpcLoadMeasurementPanels(project);
+            renderEpcLoadSplitControls(project, window.__lastEpcDesignResult || null);
         }
 
         function formatEpcNumber(value, digits = 2, unit = '') {
@@ -10858,6 +10922,55 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (!Number.isFinite(n)) return `--${unit ? ` ${unit}` : ''}`;
             return `${n.toLocaleString(undefined, { maximumFractionDigits: digits, minimumFractionDigits: digits })}${unit ? ` ${unit}` : ''}`;
         }
+
+        function renderEpcLoadSplitControls(project = getActiveEpcDesignProject(), result = null) {
+            const container = document.getElementById('epc-load-split-controls');
+            if (!container) return;
+            const splits = epcNormalizeLoadSplits(project.loads?.loadSplits || [], project.loads?.loadCount || 1);
+            const totalPct = splits.reduce((sum, split) => sum + (Number(split.ratioPct) || 0), 0);
+            const rowLoadKw = result?.energyFlow?.rows?.find(row => Number(row.loadKw) > 0)?.loadKw || result?.load?.averageLoadKw || 0;
+            const valid = Math.abs(totalPct - 100) < 0.01;
+            container.innerHTML = `
+                <div class="mb-2 flex items-center justify-between gap-2">
+                    <div class="text-[10px] font-black uppercase text-slate-400">Load Allocation %</div>
+                    <div class="${valid ? 'text-green-700' : 'text-red-600'} text-[10px] font-black">Total ${formatEpcNumber(totalPct, 2, '%')} must equal 100%</div>
+                </div>
+                <div class="space-y-2">
+                    ${splits.map((split, index) => {
+                        const kw = rowLoadKw * (Number(split.ratioPct) || 0) / 100;
+                        return `
+                            <div data-epc-load-split-row="${index}" class="grid grid-cols-[1fr_5rem_5.5rem] items-center gap-2">
+                                <input data-epc-load-split-label value="${htmlSafe(split.label || `Load ${index + 1}`)}" oninput="updateEpcLoadSplitRatio(${index}, this.value, 'label')" class="min-w-0 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold outline-none focus:border-purple-500">
+                                <input data-epc-load-split-ratio type="number" min="0" max="100" step="0.1" value="${htmlSafe(split.ratioPct)}" oninput="updateEpcLoadSplitRatio(${index}, this.value)" class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-right text-[11px] font-bold outline-none focus:border-purple-500" aria-label="Allocation %">
+                                <span class="text-right text-[11px] font-black text-slate-500">${formatEpcNumber(kw, 0, 'kW')}</span>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        function updateEpcLoadSplitRatio(index, value, field = 'ratio') {
+            const project = captureEpcDesignFromDom();
+            project.loads.loadSplits = epcLoadSplitsFromDom(project.loads.loadCount, project.loads.loadSplits || []);
+            updateEpcProject(project);
+            renderEpcDesignResult(project);
+            const status = document.getElementById('epc-design-save-status');
+            if (status) status.textContent = 'Draft changed locally';
+        }
+        window.updateEpcLoadSplitRatio = updateEpcLoadSplitRatio;
+
+        function onEpcLoadCountChanged() {
+            const project = captureEpcDesignFromDom();
+            project.loads.loadCount = epcNormalizeLoadCount(project.loads.loadCount || 1);
+            project.loads.loadSplits = epcLoadSplitsFromDom(project.loads.loadCount, project.loads.loadSplits || []);
+            updateEpcProject(project);
+            syncEpcDesignInputs(project);
+            renderEpcDesignResult(project);
+            const status = document.getElementById('epc-design-save-status');
+            if (status) status.textContent = 'Draft changed locally';
+        }
+        window.onEpcLoadCountChanged = onEpcLoadCountChanged;
 
         function getRecommendedEpcScheme(result) {
             return result.schemes.find(scheme => scheme.id === result.recommendedSchemeId) || result.schemes[0] || {};
@@ -11452,8 +11565,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             `;
         }
 
-        const EPC_TOPOLOGY_FLOW_COMPONENT_HINTS = ['Step-up TX', 'MV Switchboard', 'Ring RMU', 'MV BUS', 'Load TX', 'LV BUS'];
+        const EPC_TOPOLOGY_FLOW_COMPONENT_HINTS = ['LV BUS', 'Step-up TX', 'MV Switchboard', 'Ring RMU', 'MV BUS', 'RMU Station', 'Load TX'];
         const EPC_TOPOLOGY_FLOW_SPLIT_EDGE_IDS = ['lv-pcs-charge', 'bess-tx-pcs-charge', 'pcs-battery-charge', 'battery-pcs-discharge', 'pcs-lv-discharge', 'pcs-tx-discharge'];
+        const EPC_TOPOLOGY_FLOW_LOAD_BRANCH_EDGE_HINTS = ['ring-rmu-load-1', 'lv-load-bus-1-load-1'];
         const EPC_TOPOLOGY_FLOW_LABEL_KEYS = ['pvOutputKw', 'pvToLoadKw', 'pvToBatteryKw', 'batteryToLoadKw', 'gensetToLoadKw'];
         const EPC_TOPOLOGY_FLOW_NODE_W = 112;
         const EPC_TOPOLOGY_FLOW_NODE_H = 96;
@@ -11481,14 +11595,26 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (node.type === 'BATTERY') return `SOC ${formatEpcNumber(row?.socPct || 0, 1, '%')}`;
             if (node.type === 'PCS') return `PCS ${formatEpcNumber(row?.pcsLimitKw || 0, 0, 'kW')}`;
             if (node.type === 'GENSET') return formatEpcNumber(row?.gensetToLoadKw || 0, 0, 'kW');
-            if (node.type === 'LOAD' || node.type === 'CRITICAL_LOAD_PANEL') return formatEpcNumber(row?.loadKw || 0, 0, 'kW');
+            if (node.type === 'LOAD' || node.type === 'CRITICAL_LOAD_PANEL') {
+                const split = Array.isArray(row?.loadSplits) ? row.loadSplits.find(item => item.id === node.loadSplitId) : null;
+                return formatEpcNumber(split?.loadKw ?? row?.loadKw ?? 0, 0, 'kW');
+            }
             return node.voltageV ? formatEpcNumber(node.voltageV, 0, 'V') : htmlSafe(node.type || '');
+        }
+
+        function epcTopologyFlowValueForKey(key, row = {}) {
+            if (String(key || '').startsWith('loadSplit:')) {
+                const splitId = String(key).slice('loadSplit:'.length);
+                const split = Array.isArray(row?.loadSplits) ? row.loadSplits.find(item => item.id === splitId) : null;
+                return Math.max(0, Number(split?.loadKw) || 0);
+            }
+            return Math.max(0, Number(row?.[key]) || 0);
         }
 
         function epcTopologyFlowValue(edge = {}, row = {}) {
             const keys = Array.isArray(edge.flowKeys) ? edge.flowKeys : [];
             const values = keys
-                .map(key => Math.max(0, Number(row?.[key]) || 0))
+                .map(key => epcTopologyFlowValueForKey(key, row))
                 .filter(value => value > 0);
             if (!values.length) return 0;
             if (edge.flowKeyMode === 'net') return Math.max(...values);
@@ -11528,6 +11654,16 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return {
                 x: (Number(node.x) || 0) + (side === 'right' ? EPC_TOPOLOGY_FLOW_NODE_W : 0),
                 y: (Number(node.y) || 0) + EPC_TOPOLOGY_FLOW_NODE_H / 2
+            };
+        }
+
+        function epcTopologyFlowVerticalBusPort(node = {}, side = 'left', preferredY = null) {
+            const y = Number.isFinite(Number(preferredY))
+                ? Math.max((Number(node.y) || 0) + 12, Math.min((Number(node.y) || 0) + EPC_TOPOLOGY_FLOW_NODE_H - 12, Number(preferredY)))
+                : (Number(node.y) || 0) + EPC_TOPOLOGY_FLOW_NODE_H / 2;
+            return {
+                x: (Number(node.x) || 0) + (side === 'right' ? 88 : 24),
+                y
             };
         }
 
@@ -11623,6 +11759,28 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return null;
         }
 
+        function epcTopologyFlowLvBusRoute(source = {}, target = {}, edge = {}) {
+            if (target.id === 'lv-bus' && ['pv-lv', 'genset-lv'].includes(edge.id)) {
+                const start = epcTopologyFlowPort(source, 'right');
+                const end = epcTopologyFlowVerticalBusPort(target, 'left', start.y);
+                return {
+                    d: `M${start.x} ${start.y} H${end.x}`,
+                    labelX: (start.x + end.x) / 2,
+                    labelY: start.y - 10
+                };
+            }
+            if (source.id === 'lv-bus' && edge.id === 'lv-step-up') {
+                const end = epcTopologyFlowPort(target, 'left');
+                const start = epcTopologyFlowVerticalBusPort(source, 'right', end.y);
+                return {
+                    d: `M${start.x} ${start.y} H${end.x}`,
+                    labelX: (start.x + end.x) / 2,
+                    labelY: start.y - 10
+                };
+            }
+            return null;
+        }
+
         function epcTopologyFlowControlRoute(source = {}, target = {}) {
             const start = epcTopologyFlowPort(source, 'top');
             const end = epcTopologyFlowPort(target, 'bottom');
@@ -11640,6 +11798,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (pairRoute) return pairRoute;
             const pcsAcRoute = epcTopologyFlowPcsAcLaneRoute(source, target, edge);
             if (pcsAcRoute) return pcsAcRoute;
+            const lvBusRoute = epcTopologyFlowLvBusRoute(source, target, edge);
+            if (lvBusRoute) return lvBusRoute;
             const sourceBeforeTarget = (Number(source.x) || 0) <= (Number(target.x) || 0);
             const start = epcTopologyFlowPort(source, sourceBeforeTarget ? 'right' : 'left');
             const end = epcTopologyFlowPort(target, sourceBeforeTarget ? 'left' : 'right');
@@ -11747,12 +11907,26 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
         function renderEpcTopologyFlowEdgeLabel(edge = {}) {
             if (!(Number(edge.value) > 0) || edge.blocked || edge.role === 'control') return '';
-            const shouldLabel = Array.isArray(edge.flowKeys) && edge.flowKeys.some(key => EPC_TOPOLOGY_FLOW_LABEL_KEYS.includes(key));
+            const shouldLabel = Array.isArray(edge.flowKeys) && edge.flowKeys.some(key => EPC_TOPOLOGY_FLOW_LABEL_KEYS.includes(key) || key.startsWith('loadSplit:'));
             if (!shouldLabel) return '';
             return renderEpcFlowLabel(edge.value, edge.route.labelX, edge.route.labelY, '');
         }
 
+        function renderEpcTopologyFlowVerticalBusNode(node = {}) {
+            return `
+                <g class="epc-flow-node epc-flow-topology-node epc-flow-topology-lv-bus epc-flow-topology-vertical-bus" transform="translate(${node.x} ${node.y})">
+                    <path d="M56 8 V88" stroke="#0891b2" stroke-width="8" stroke-linecap="round"/>
+                    <circle cx="56" cy="25" r="5" fill="#0891b2"/>
+                    <circle cx="56" cy="48" r="5" fill="#0891b2"/>
+                    <circle cx="56" cy="71" r="5" fill="#0891b2"/>
+                    <text x="56" y="106" text-anchor="middle" font-size="10.5" font-weight="900" fill="#334155">${htmlSafe(node.label || 'LV BUS')}</text>
+                    <text x="56" y="120" text-anchor="middle" font-size="9.5" font-weight="800" fill="#64748b">${getEpcTopologyFlowNodeValue(node, {})}</text>
+                </g>
+            `;
+        }
+
         function renderEpcTopologyFlowNode(node = {}, row = {}) {
+            if (node.id === 'lv-bus' && node.busOrientation === 'vertical') return renderEpcTopologyFlowVerticalBusNode(node);
             const style = getEpcTopologyFlowNodeStyle(node.type);
             return renderEpcFlowNode({
                 className: `epc-flow-topology-node epc-flow-topology-${String(node.type || '').toLowerCase().replace(/_/g, '-')}`,
@@ -14149,6 +14323,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             renderEpcReports(result);
             updateEpcWizardStepStatus(result, project);
             renderEpcLoadMeasurementPanels(project, result);
+            renderEpcLoadSplitControls(project, result);
             const source = document.getElementById('epc-solar-source');
             if (source) source.textContent = `Solar source: ${result.solar.dataSource}`;
             const rec = document.getElementById('epc-design-recommendation');

@@ -506,7 +506,8 @@ test('EPC design engine exposes hourly PV load battery and curtailment simulatio
     'gensetToLoadKw',
     'pcsLimitKw',
     'curtailmentKw',
-    'socPct'
+    'socPct',
+    'loadSplits'
   ]);
   assert.ok(result.energyFlow.rows.some((row) => row.pvToBatteryKw > 0));
   assert.ok(result.energyFlow.rows.some((row) => row.curtailmentKw >= 0));
@@ -952,8 +953,76 @@ test('EPC topology flow adapter maps standard topology paths to EMS flow keys', 
   assert.ok(edge('lv-pcs-charge').flowKeys.includes('pvToBatteryKw'));
   assert.ok(edge('battery-pcs-discharge').flowKeys.includes('batteryToLoadKw'));
   assert.ok(edge('genset-lv').flowKeys.includes('gensetToLoadKw'));
-  assert.ok(edge('mv-load-tx').flowKeys.includes('loadKw'));
+  assert.ok(edge('ring-rmu-load-1').flowKeys.includes('loadSplit:load-1'));
+  assert.ok(edge('lv-load-bus-1-load-1').flowKeys.includes('loadSplit:load-1'));
   assert.equal(result.topologyFlow.validationBlocked, false);
+});
+
+test('EPC C5 EMS topology follows the source LV bus and RMU load branch sketch', () => {
+  const result = calculateEpcDesignProject({
+    selectedTopologyId: 'C5',
+    site: { gridMode: 'island' },
+    loads: {
+      dailyLoadKwh: 12000,
+      operationHoursPerDay: 8,
+      loadCount: 2,
+      loadSplits: [
+        { id: 'load-1', label: 'Crusher Load', ratioPct: 60 },
+        { id: 'load-2', label: 'Camp Load', ratioPct: 40 }
+      ]
+    },
+    designTargets: { replacementPct: 80 }
+  }, { now: '2026-06-16T00:00:00.000Z' });
+  const edge = (id) => result.topology.edges.find((item) => item.id === id);
+  const node = (id) => result.topology.nodes.find((item) => item.id === id);
+
+  assert.equal(node('lv-bus').type, 'LV_BUS');
+  assert.equal(node('load-tx-1').type, 'TRANSFORMER');
+  assert.equal(node('lv-load-bus-1').type, 'LV_BUS');
+  assert.equal(node('load-2').label, 'Camp Load');
+  assert.equal(edge('pv-lv').source, 'pv-inverter');
+  assert.equal(edge('pv-lv').target, 'lv-bus');
+  assert.equal(edge('lv-pcs-charge').source, 'lv-bus');
+  assert.equal(edge('pcs-lv-discharge').target, 'lv-bus');
+  assert.equal(edge('genset-lv').target, 'lv-bus');
+  assert.equal(edge('lv-step-up').source, 'lv-bus');
+  assert.equal(edge('lv-step-up').target, 'step-up-tx');
+  assert.equal(edge('step-up-mv').target, 'mv-switchboard');
+  assert.equal(edge('mv-switchboard-rmu').target, 'ring-rmu');
+  assert.equal(edge('ring-rmu-load-1').target, 'rmu-load-1');
+  assert.equal(edge('rmu-load-1-load-tx-1').target, 'load-tx-1');
+  assert.equal(edge('load-tx-1-lv-load-bus-1').target, 'lv-load-bus-1');
+  assert.equal(edge('lv-load-bus-1-load-1').target, 'load-1');
+  assert.equal(Boolean(edge('mv-load-tx')), false);
+  assert.equal(Boolean(edge('load-tx-critical')), false);
+});
+
+test('EPC load splits normalize ratios and flow rows sum back to total load', () => {
+  const result = calculateEpcDesignProject({
+    selectedTopologyId: 'C5',
+    site: { gridMode: 'island' },
+    loadProfile: [{ hour: 12, loadKw: 300 }],
+    loads: {
+      operationHoursPerDay: 8,
+      loadCount: 3,
+      loadSplits: [
+        { label: 'Load A', ratioPct: 50 },
+        { label: 'Load B', ratioPct: 30 },
+        { label: 'Load C', ratioPct: 20 }
+      ]
+    },
+    designTargets: { replacementPct: 80 }
+  }, { now: '2026-06-16T00:00:00.000Z' });
+  const row = result.energyFlow.rows.find((item) => item.loadKw > 0);
+  const splitKwTotal = row.loadSplits.reduce((sum, split) => sum + split.loadKw, 0);
+  const splitRatioTotal = result.loads.loadSplits.reduce((sum, split) => sum + split.ratioPct, 0);
+
+  assert.equal(result.loads.loadCount, 3);
+  assert.equal(result.loads.loadSplits.map((split) => split.ratioPct).join(','), '50,30,20');
+  assert.equal(splitRatioTotal, 100);
+  assert.equal(row.loadSplits.length, 3);
+  assert.equal(Math.round(splitKwTotal * 100) / 100, row.loadKw);
+  assert.ok(result.topologyFlow.edges.some((edge) => edge.flowKeys.includes('loadSplit:load-3')));
 });
 
 test('EPC topology flow adapter separates simultaneous PV charge and battery discharge paths', () => {
@@ -997,8 +1066,9 @@ test('EPC standard topologies charge battery through the AC bus before PCS', () 
     assert.equal(Boolean(directPvPcs), false, `${topologyId} should not wire PV inverter directly to PCS`);
     assert.deepEqual(edge('pcs-battery-charge').flowKeys, ['pvToBatteryKw']);
     if (topologyId === 'C7') {
-      assert.deepEqual(edge('mv-bess-charge').flowKeys, ['pvToBatteryKw']);
-      assert.deepEqual(edge('bess-tx-pcs-charge').flowKeys, ['pvToBatteryKw']);
+      assert.deepEqual(edge('lv-pcs-charge').flowKeys, ['pvToBatteryKw']);
+      assert.equal(edge('lv-step-up').source, 'lv-bus');
+      assert.equal(edge('lv-step-up').target, 'step-up-tx');
     } else {
       assert.deepEqual(edge('lv-pcs-charge').flowKeys, ['pvToBatteryKw']);
       assert.equal(edge('lv-pcs-charge').target, 'pcs');

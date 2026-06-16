@@ -939,6 +939,35 @@ test('EPC EMS Flow splits simultaneous battery charge discharge and exposes topo
   assert.doesNotMatch(edgeLabelHelper[0], /PV -> Battery|Battery -> Load/, 'line labels should only show transfer kW, not semantic route text');
 });
 
+test('EPC inputs expose split load count and ratio controls for EMS Flow', () => {
+  for (const snippet of [
+    'id="epc-load-count"',
+    'data-epc-field="loads.loadCount"',
+    'id="epc-load-split-controls"',
+    'function renderEpcLoadSplitControls(project',
+    'data-epc-load-split-ratio',
+    'function epcLoadSplitsFromDom',
+    'function updateEpcLoadSplitRatio',
+    'Load Qty',
+    'Allocation %',
+    'must equal 100%'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing split load UI snippet: ${snippet}`);
+  }
+});
+
+test('EPC topology-aware flow can label per-branch split load power', () => {
+  for (const snippet of [
+    'loadSplit:',
+    'row?.loadSplits',
+    'edge.flowKeys.some(key => EPC_TOPOLOGY_FLOW_LABEL_KEYS.includes(key) || key.startsWith',
+    'ring-rmu-load-1',
+    'lv-load-bus-1-load-1'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing split load flow snippet: ${snippet}`);
+  }
+});
+
 test('EPC custom topology connection modal exposes add remove and standard copy behavior', () => {
   for (const snippet of [
     'id="epc-topology-connection-modal"',

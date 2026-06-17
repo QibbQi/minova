@@ -1037,6 +1037,124 @@ test('EPC standard topology regenerates from load allocation instead of stale st
   assert.equal(Math.round(row.loadSplits.reduce((sum, split) => sum + split.loadKw, 0) * 100) / 100, row.loadKw);
 });
 
+test('EPC custom topology regenerates load branches while preserving source-side edits', () => {
+  const stale = calculateEpcDesignProject({
+    selectedTopologyId: 'C5',
+    topology: { selectedTopologyId: 'C5' },
+    site: { gridMode: 'island' },
+    loads: {
+      dailyLoadKwh: 12000,
+      operationHoursPerDay: 8,
+      loadCount: 1
+    },
+    designTargets: { replacementPct: 80 }
+  }, { now: '2026-06-16T00:00:00.000Z' });
+  const customTopology = {
+    ...stale.topology,
+    selectedTopologyId: 'CUSTOM',
+    sourceTopologyId: 'C5',
+    nodes: stale.topology.nodes.map((node) => node.id === 'lv-bus'
+      ? { ...node, position: { x: 512, y: 256 } }
+      : node),
+    edges: [
+      ...stale.topology.edges,
+      { id: 'ems-pv-custom', source: 'ems', target: 'pv-inverter', type: 'COMMUNICATION', direction: 'BIDIRECTIONAL', voltageV: 0 }
+    ]
+  };
+  const result = calculateEpcDesignProject({
+    selectedTopologyId: 'CUSTOM',
+    topology: customTopology,
+    site: { gridMode: 'island' },
+    loads: {
+      dailyLoadKwh: 12000,
+      operationHoursPerDay: 8,
+      loadCount: 3,
+      loadSplits: [
+        { id: 'load-1', label: 'Crusher', ratioPct: 40 },
+        { id: 'load-2', label: 'Camp', ratioPct: 35 },
+        { id: 'load-3', label: 'Office', ratioPct: 25 }
+      ]
+    },
+    designTargets: { replacementPct: 80 }
+  }, { now: '2026-06-16T00:00:00.000Z' });
+
+  assert.equal(result.topology.selectedTopologyId, 'CUSTOM');
+  assert.equal(result.topology.nodes.find((node) => node.id === 'lv-bus')?.position.x, 512);
+  assert.equal(result.topology.nodes.find((node) => node.id === 'load-3')?.label, 'Office');
+  assert.ok(result.topology.edges.some((edge) => edge.id === 'ring-rmu-load-3' && edge.loadSplitId === 'load-3'));
+  assert.ok(result.topology.edges.some((edge) => edge.id === 'ems-pv-custom'));
+  assert.equal(result.topology.edges.some((edge) => edge.id === 'ring-rmu-load-4'), false);
+  assert.ok(result.topologyFlow.edges.some((edge) => edge.id === 'lv-load-bus-3-load-3' && edge.flowKeys.includes('loadSplit:load-3')));
+});
+
+test('EPC saved custom topology templates use generated IDs and remain architecture driven', () => {
+  const defaults = {
+    ...EPC_DESIGN_DEFAULTS,
+    standardTopologyLibrary: {
+      version: 2,
+      customTemplates: {
+        R4: {
+          id: 'R4',
+          name: 'Mine Camp Saved Layout',
+          class: 'RESI',
+          baseTopologyId: 'C5',
+          architectureVariants: {
+            mv_11_radial: {
+              nodes: [
+                { id: 'lv-bus', position: { x: 700, y: 240 } },
+                { id: 'load-2', position: { x: 1530, y: 300 } }
+              ],
+              routes: {
+                'lv-step-up': { manualRoute: true, locked: true, waypoints: [{ x: 860, y: 245 }] }
+              }
+            },
+            mv_11_ring: {
+              nodes: [
+                { id: 'ring-rmu', position: { x: 1110, y: 260 } }
+              ]
+            }
+          }
+        },
+        R8: { id: 'R8', name: 'Existing RESI', class: 'RESI', baseTopologyId: 'C5', architectureVariants: {} },
+        C1: { id: 'C1', name: 'Existing C&I', class: 'C&I', baseTopologyId: 'C7', architectureVariants: {} }
+      }
+    }
+  };
+  const radial = calculateEpcDesignProject({
+    selectedTopologyId: 'R4',
+    site: { gridMode: 'island', distanceToInterconnectionM: 650 },
+    electrical: { selectedArchitectureId: 'mv_11_radial', selectedArchitectureSource: 'user', newMvSystem: true },
+    loads: {
+      dieselTotalLiters: 6000,
+      dieselPeriodDays: 1,
+      operationHoursPerDay: 8,
+      loadCount: 2,
+      loadSplits: [
+        { id: 'load-1', label: 'Plant', ratioPct: 55 },
+        { id: 'load-2', label: 'Camp', ratioPct: 45 }
+      ]
+    }
+  }, { now: '2026-06-17T00:00:00.000Z', defaults });
+  const ring = calculateEpcDesignProject({
+    selectedTopologyId: 'R4',
+    site: { gridMode: 'island', distanceToInterconnectionM: 650 },
+    electrical: { selectedArchitectureId: 'mv_11_ring', selectedArchitectureSource: 'user', newMvSystem: true },
+    loads: { dieselTotalLiters: 6000, dieselPeriodDays: 1, operationHoursPerDay: 8 }
+  }, { now: '2026-06-17T00:00:00.000Z', defaults });
+  const normalized = normalizeEpcDesignProject({}, { defaults });
+
+  assert.equal(radial.selectedTopologyId, 'R4');
+  assert.equal(radial.topology.sourceTopologyId, 'R4');
+  assert.equal(radial.topology.baseTopologyId, 'C5');
+  assert.equal(radial.topology.nodes.some((node) => node.id === 'ring-rmu'), false);
+  assert.equal(radial.topology.nodes.find((node) => node.id === 'lv-bus')?.position.x, 700);
+  assert.equal(radial.topology.nodes.find((node) => node.id === 'load-2')?.label, 'Camp');
+  assert.deepEqual(radial.topology.edges.find((edge) => edge.id === 'lv-step-up')?.route?.waypoints, [{ x: 860, y: 245 }]);
+  assert.equal(ring.topology.nodes.find((node) => node.id === 'ring-rmu')?.position.x, 1110);
+  assert.equal(normalized.calculationAssumptions.standardTopologyLibrary.nextCustomTemplateIds.RESI, 'R9');
+  assert.equal(normalized.calculationAssumptions.standardTopologyLibrary.nextCustomTemplateIds['C&I'], 'C4');
+});
+
 test('EPC load splits normalize ratios and flow rows sum back to total load', () => {
   const result = calculateEpcDesignProject({
     selectedTopologyId: 'C5',

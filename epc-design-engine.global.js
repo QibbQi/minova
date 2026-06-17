@@ -695,13 +695,81 @@ function normalizeRouteTemplate(value = {}) {
   }));
 }
 
+function normalizeTemplateViewport(value = {}) {
+  const input = value && typeof value === 'object' ? value : {};
+  return {
+    x: Math.max(0, asNumber(input.x, 0)),
+    y: Math.max(0, asNumber(input.y, 0)),
+    zoom: clamp(asNumber(input.zoom, 1), 0.35, 2.5, 1)
+  };
+}
+
+function normalizeTemplateCanvas(value = {}) {
+  const input = value && typeof value === 'object' ? value : {};
+  return {
+    width: Math.max(1180, Math.round(asNumber(input.width, 1180))),
+    height: Math.max(420, Math.round(asNumber(input.height, 420)))
+  };
+}
+
 function normalizeTopologyTemplateVariant(value = {}) {
   const input = value && typeof value === 'object' ? value : {};
   return {
     nodes: normalizeTemplateNodes(input.nodes || []),
     edges: normalizeTemplateEdges(input.edges || []),
-    routes: normalizeRouteTemplate(input.routes || {})
+    routes: normalizeRouteTemplate(input.routes || {}),
+    viewport: normalizeTemplateViewport(input.viewport || {}),
+    canvas: normalizeTemplateCanvas(input.canvas || {})
   };
+}
+
+function normalizeCustomTemplateId(value = '') {
+  const id = String(value || '').trim().toUpperCase();
+  return /^[CR]\d+$/.test(id) ? id : '';
+}
+
+function isStandardTopologyId(value = '') {
+  const id = String(value || '').trim().toUpperCase();
+  return STANDARD_TOPOLOGY_META.some(item => item.id === id);
+}
+
+function nextCustomTemplateId(customTemplates = {}, templateClass = 'RESI') {
+  const cls = String(templateClass || '').trim().toUpperCase() === 'C&I' ? 'C&I' : 'RESI';
+  const prefix = cls === 'C&I' ? 'C' : 'R';
+  const min = cls === 'C&I' ? 1 : 4;
+  const used = Object.keys(customTemplates || {})
+    .map(normalizeCustomTemplateId)
+    .filter(id => id.startsWith(prefix))
+    .map(id => Number(id.slice(1)))
+    .filter(Number.isFinite);
+  const reserved = new Set(STANDARD_TOPOLOGY_META.map(item => item.id));
+  let next = Math.max(min, used.length ? Math.max(...used) + 1 : min);
+  while (reserved.has(`${prefix}${next}`)) next += 1;
+  return `${prefix}${next}`;
+}
+
+function normalizeCustomTopologyTemplates(value = {}) {
+  const templates = {};
+  Object.entries(value && typeof value === 'object' ? value : {}).forEach(([templateId, template]) => {
+    const id = normalizeCustomTemplateId(template?.id || templateId);
+    if (!id || isStandardTopologyId(id) || !template || typeof template !== 'object') return;
+    const variants = {};
+    Object.entries(template.architectureVariants || {}).forEach(([architectureId, variant]) => {
+      const archId = normalizeArchitectureId(architectureId);
+      if (archId) variants[archId] = normalizeTopologyTemplateVariant(variant);
+    });
+    const templateClass = String(template.class || template.templateClass || '').trim().toUpperCase() === 'C&I' ? 'C&I' : 'RESI';
+    const baseTopologyId = isStandardTopologyId(template.baseTopologyId) ? String(template.baseTopologyId).toUpperCase() : 'C5';
+    templates[id] = {
+      id,
+      name: String(template.name || `${id} Custom Topology`).trim() || `${id} Custom Topology`,
+      class: templateClass,
+      baseTopologyId,
+      sourceTopologyId: isStandardTopologyId(template.sourceTopologyId) ? String(template.sourceTopologyId).toUpperCase() : baseTopologyId,
+      architectureVariants: variants
+    };
+  });
+  return templates;
 }
 
 function normalizeStandardTopologyLibrary(value = {}) {
@@ -717,9 +785,15 @@ function normalizeStandardTopologyLibrary(value = {}) {
     });
     templates[id] = { architectureVariants: variants };
   });
+  const customTemplates = normalizeCustomTopologyTemplates(input.customTemplates || {});
   return {
     version: Math.max(STANDARD_TOPOLOGY_LIBRARY_VERSION, Math.round(asNumber(input.version, STANDARD_TOPOLOGY_LIBRARY_VERSION))),
     templates,
+    customTemplates,
+    nextCustomTemplateIds: {
+      RESI: nextCustomTemplateId(customTemplates, 'RESI'),
+      'C&I': nextCustomTemplateId(customTemplates, 'C&I')
+    },
     componentCatalog: normalizeComponentCatalog(input.componentCatalog || [])
   };
 }
@@ -727,6 +801,9 @@ function normalizeStandardTopologyLibrary(value = {}) {
 function getStandardTopologyTemplate(library = {}, topologyId = 'C5', architectureId = '') {
   const normalizedTopologyId = String(topologyId || 'C5').trim().toUpperCase();
   const normalizedArchitectureId = normalizeArchitectureId(architectureId);
+  if (library.customTemplates?.[normalizedTopologyId]) {
+    return library.customTemplates[normalizedTopologyId].architectureVariants?.[normalizedArchitectureId] || null;
+  }
   return library.templates?.[normalizedTopologyId]?.architectureVariants?.[normalizedArchitectureId] || null;
 }
 
@@ -772,6 +849,20 @@ function applyStandardTopologyTemplate(graph = {}, template = null, library = no
     } : { ...edge };
     if (route) next.route = route;
     return next;
+  });
+  const nodeIds = new Set(nodes.map(node => node.id));
+  const edgeIds = new Set(edges.map(edge => edge.id));
+  (template.edges || []).forEach((edge) => {
+    if (edgeIds.has(edge.id) || !nodeIds.has(edge.source) || !nodeIds.has(edge.target)) return;
+    edges.push({
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      type: edge.type && POWER_EDGE_TYPES.includes(edge.type) ? edge.type : 'AC_LV_POWER',
+      direction: edge.direction === 'BIDIRECTIONAL' ? 'BIDIRECTIONAL' : 'ONE_WAY',
+      voltageV: edge.voltageV === undefined ? 0 : edge.voltageV,
+      route: template.routes?.[edge.id]
+    });
   });
   return { nodes, edges };
 }
@@ -828,14 +919,27 @@ function appendLvLoadBranchTopology(nodes, edges, node, edge, splits = [], optio
 }
 
 function buildStandardTopologyGraph(id = 'C5', loads = {}, options = {}) {
-  const topologyId = STANDARD_TOPOLOGY_META.some(item => item.id === id) ? id : 'C5';
   const architectureId = normalizeArchitectureId(options.architectureId);
   const topologyLibrary = normalizeStandardTopologyLibrary(options.standardTopologyLibrary || {});
-  const finalize = (graph) => applyStandardTopologyTemplate(
-    graph,
-    getStandardTopologyTemplate(topologyLibrary, topologyId, architectureId),
-    topologyLibrary
-  );
+  const requestedTopologyId = String(id || 'C5').trim().toUpperCase();
+  const customTemplate = isStandardTopologyId(requestedTopologyId) ? null : topologyLibrary.customTemplates?.[requestedTopologyId] || null;
+  const architectureTopologyId = topologyIdForArchitecture(architectureId);
+  const topologyId = isStandardTopologyId(requestedTopologyId)
+    ? requestedTopologyId
+    : isStandardTopologyId(architectureTopologyId)
+      ? architectureTopologyId
+      : customTemplate?.baseTopologyId || 'C5';
+  const finalize = (graph) => {
+    const template = customTemplate
+      ? getStandardTopologyTemplate(topologyLibrary, requestedTopologyId, architectureId)
+      : getStandardTopologyTemplate(topologyLibrary, topologyId, architectureId);
+    const applied = applyStandardTopologyTemplate(graph, template, topologyLibrary);
+    return {
+      ...applied,
+      sourceTopologyId: customTemplate ? requestedTopologyId : topologyId,
+      baseTopologyId: topologyId
+    };
+  };
   const loadSplits = defaultLoadSplitsForTopology(loads);
   const node = (nodeId, type, label, x, y, voltageV = 0, extra = {}) => ({
     id: nodeId,
@@ -1014,15 +1118,87 @@ function buildStandardTopologyGraph(id = 'C5', loads = {}, options = {}) {
 
 function normalizeSelectedTopologyId(value, site = {}) {
   const raw = String(value || '').trim().toUpperCase();
-  if (raw === 'CUSTOM' || STANDARD_TOPOLOGY_META.some(item => item.id === raw)) return raw;
+  if (raw === 'CUSTOM' || isStandardTopologyId(raw) || normalizeCustomTemplateId(raw)) return raw;
   const gridMode = String(site.gridMode || '').toLowerCase();
   return gridMode.includes('island') || gridMode.includes('off') ? 'C5' : 'C3';
+}
+
+function isLoadBranchNode(node = {}) {
+  const id = String(node.id || '').trim();
+  return Boolean(node.loadSplitId)
+    || /^rmu-load-\d+$/.test(id)
+    || /^load-tx-\d+$/.test(id)
+    || /^lv-load-bus-\d+$/.test(id)
+    || /^load-\d+$/.test(id);
+}
+
+function isLoadBranchEdge(edge = {}) {
+  const endpoints = `${edge.source || ''} ${edge.target || ''}`;
+  return Boolean(edge.loadSplitId)
+    || /(^|\s)(rmu-load|load-tx|lv-load-bus|load)-\d+(\s|$)/.test(endpoints);
+}
+
+function mergeCustomTopologyWithGeneratedLoads(input = {}, loads = {}, options = {}) {
+  const sourceTopologyId = isStandardTopologyId(input.sourceTopologyId) ? String(input.sourceTopologyId).toUpperCase()
+    : isStandardTopologyId(input.baseTopologyId) ? String(input.baseTopologyId).toUpperCase()
+      : topologyIdForArchitecture(options.architectureId) || 'C5';
+  const generated = buildStandardTopologyGraph(sourceTopologyId, loads, options);
+  const customNodes = new Map((Array.isArray(input.nodes) ? input.nodes : []).map(node => [String(node.id || ''), node]));
+  const customEdges = new Map((Array.isArray(input.edges) ? input.edges : []).map(edge => [String(edge.id || ''), edge]));
+  const generatedNodeIds = new Set((generated.nodes || []).map(node => node.id));
+  const generatedEdgeIds = new Set((generated.edges || []).map(edge => edge.id));
+  const nodes = (generated.nodes || []).map((node) => {
+    if (isLoadBranchNode(node)) return node;
+    const custom = customNodes.get(node.id);
+    if (!custom || isLoadBranchNode(custom)) return node;
+    return {
+      ...node,
+      ...custom,
+      id: node.id,
+      type: custom.type || node.type,
+      label: custom.label || node.label,
+      electrical: { ...(node.electrical || {}), ...(custom.electrical || {}) },
+      position: custom.position || node.position
+    };
+  });
+  customNodes.forEach((node, id) => {
+    if (!id || generatedNodeIds.has(id) || isLoadBranchNode(node)) return;
+    nodes.push(node);
+  });
+  const nodeIds = new Set(nodes.map(node => node.id));
+  const edges = (generated.edges || []).map((edge) => {
+    if (isLoadBranchEdge(edge)) return edge;
+    const custom = customEdges.get(edge.id);
+    if (!custom || isLoadBranchEdge(custom)) return edge;
+    return {
+      ...edge,
+      ...custom,
+      id: edge.id,
+      source: custom.source || edge.source,
+      target: custom.target || edge.target,
+      type: custom.type || edge.type,
+      direction: custom.direction || edge.direction,
+      voltageV: custom.voltageV === undefined ? edge.voltageV : custom.voltageV,
+      route: custom.route || edge.route
+    };
+  });
+  customEdges.forEach((edge, id) => {
+    if (!id || generatedEdgeIds.has(id) || isLoadBranchEdge(edge)) return;
+    if (nodeIds.has(edge.source) && nodeIds.has(edge.target)) edges.push(edge);
+  });
+  return {
+    selectedTopologyId: 'CUSTOM',
+    sourceTopologyId,
+    baseTopologyId: generated.baseTopologyId || sourceTopologyId,
+    nodes,
+    edges
+  };
 }
 
 function normalizePowerTopology(rawTopology = {}, selectedTopologyId = 'C5', loads = {}, options = {}) {
   const input = rawTopology && typeof rawTopology === 'object' ? rawTopology : {};
   const hasCustomGraph = selectedTopologyId === 'CUSTOM' && Array.isArray(input.nodes) && input.nodes.length;
-  const base = hasCustomGraph ? input : buildStandardTopologyGraph(selectedTopologyId, loads, {
+  const base = hasCustomGraph ? mergeCustomTopologyWithGeneratedLoads(input, loads, options) : buildStandardTopologyGraph(selectedTopologyId, loads, {
     architectureId: options.architectureId,
     standardTopologyLibrary: options.standardTopologyLibrary
   });
@@ -1033,7 +1209,13 @@ function normalizePowerTopology(rawTopology = {}, selectedTopologyId = 'C5', loa
   const edges = (Array.isArray(base.edges) ? base.edges : [])
     .map((edge, index) => normalizePowerEdge(edge, index))
     .filter(edge => edge.id && nodeIds.has(edge.source) && nodeIds.has(edge.target));
-  return { selectedTopologyId, nodes, edges };
+  return {
+    selectedTopologyId,
+    sourceTopologyId: base.sourceTopologyId || selectedTopologyId,
+    baseTopologyId: base.baseTopologyId || selectedTopologyId,
+    nodes,
+    edges
+  };
 }
 
 function normalizeEpcDesignProject(raw = {}, options = {}) {
@@ -1077,7 +1259,7 @@ function normalizeEpcDesignProject(raw = {}, options = {}) {
   const normalizedCalculationAssumptions = {
     ...defaults,
     ...(raw.calculationAssumptions && typeof raw.calculationAssumptions === 'object' ? raw.calculationAssumptions : {}),
-    standardTopologyLibrary: defaults.standardTopologyLibrary
+    standardTopologyLibrary: normalizeStandardTopologyLibrary(defaults.standardTopologyLibrary || {})
   };
   const selectedArchitectureId = normalizeArchitectureId(electrical.selectedArchitectureId || raw.selectedArchitectureId);
   const selectedTopologyId = normalizeSelectedTopologyId(raw.selectedTopologyId || raw.topology?.selectedTopologyId, {
@@ -1085,7 +1267,7 @@ function normalizeEpcDesignProject(raw = {}, options = {}) {
   });
   const topology = normalizePowerTopology(raw.topology || {}, selectedTopologyId, { loadCount, loadSplits }, {
     architectureId: selectedArchitectureId,
-    standardTopologyLibrary: defaults.standardTopologyLibrary
+    standardTopologyLibrary: normalizedCalculationAssumptions.standardTopologyLibrary
   });
 
   return {
@@ -1900,17 +2082,47 @@ function buildEmsStateMachine(project) {
   };
 }
 
-function standardTopologies() {
-  return STANDARD_TOPOLOGY_META.map(meta => {
-    const graph = normalizePowerTopology(buildStandardTopologyGraph(meta.id), meta.id);
+function standardTopologies(options = {}) {
+  const library = normalizeStandardTopologyLibrary(options.standardTopologyLibrary || {});
+  const loads = options.loads || {};
+  const architectureId = normalizeArchitectureId(options.architectureId);
+  const standard = STANDARD_TOPOLOGY_META.map(meta => {
+    const graph = normalizePowerTopology(buildStandardTopologyGraph(meta.id, loads, {
+      architectureId,
+      standardTopologyLibrary: library
+    }), meta.id, loads, {
+      architectureId,
+      standardTopologyLibrary: library
+    });
     return {
       ...meta,
+      baseTopologyId: graph.baseTopologyId || meta.id,
       nodeCount: graph.nodes.length,
       edgeCount: graph.edges.length,
       nodes: graph.nodes,
       edges: graph.edges
     };
   });
+  const custom = Object.values(library.customTemplates || {}).map(template => {
+    const graph = normalizePowerTopology({}, template.id, loads, {
+      architectureId,
+      standardTopologyLibrary: library
+    });
+    return {
+      id: template.id,
+      name: template.name,
+      category: 'custom',
+      class: template.class,
+      description: `${template.class} saved custom topology`,
+      baseTopologyId: graph.baseTopologyId || template.baseTopologyId,
+      sourceTopologyId: template.id,
+      nodeCount: graph.nodes.length,
+      edgeCount: graph.edges.length,
+      nodes: graph.nodes,
+      edges: graph.edges
+    };
+  });
+  return [...standard, ...custom];
 }
 
 function topologyHasMvDistribution(topology = {}) {
@@ -1931,11 +2143,15 @@ function buildTopologySelection(project = {}, electricalArchitecture = {}) {
   const recommendedMvPass = recommended.status === 'PASS' && isMvArchitecture(recommended);
   const passRequiresMv = passArchitectures.length > 0 && passArchitectures.every(candidate => isMvArchitecture(candidate));
   const requiresMvTopology = Boolean(recommendedMvPass || passRequiresMv);
-  const allTopologies = standardTopologies();
+  const allTopologies = standardTopologies({
+    standardTopologyLibrary: project.calculationAssumptions?.standardTopologyLibrary,
+    loads: project.loads,
+    architectureId: electricalArchitecture.recommendedId
+  });
   const architectureTopologyId = topologyIdForArchitecture(electricalArchitecture.recommendedId);
   const architectureLocked = Boolean(electricalArchitecture.selectedArchitectureId && electricalArchitecture.selectedArchitectureValid && architectureTopologyId);
   const selectableTopologies = allTopologies.filter(topology => architectureLocked
-    ? topology.id === architectureTopologyId
+    ? topology.id === architectureTopologyId || topology.baseTopologyId === architectureTopologyId
     : !requiresMvTopology || topologyHasMvDistribution(topology));
   const blockedTopologies = allTopologies
     .filter(topology => !selectableTopologies.some(item => item.id === topology.id))
@@ -2603,7 +2819,11 @@ function calculateEpcDesignProject(rawProject = {}, options = {}) {
     solar: project.solarResource,
     schemes,
     recommendedSchemeId: recommended.id,
-    standardTopologies: standardTopologies(),
+    standardTopologies: standardTopologies({
+      standardTopologyLibrary: project.calculationAssumptions?.standardTopologyLibrary,
+      loads: project.loads,
+      architectureId: electricalArchitecture.recommendedId
+    }),
     topologyValidation,
     topologyFlow,
     topologySelection,
@@ -2744,6 +2964,7 @@ function normalizeEpcDesignProjectList(value = [], options = {}) {
     .map(item => normalizeEpcDesignProject(item, options))
     .filter(item => item.id);
 }
+
 
 if (root.document?.documentElement) {
   root.document.documentElement.dataset.epcDesignEngine = EPC_DESIGN_VERSION;

@@ -891,7 +891,7 @@ test('EPC Electrical workspace exposes PASS architecture choose controls', () =>
   }
 });
 
-test('EPC SLD workspace exposes move route replace and reset controls', () => {
+test('EPC SLD workspace exposes move route save and reset controls', () => {
   for (const snippet of [
     'Electrical SLD Workspace',
     'renderEpcSldWorkspaceToolbar',
@@ -899,20 +899,27 @@ test('EPC SLD workspace exposes move route replace and reset controls', () => {
     'epc-sld-mode',
     'Move',
     'Route',
-    'Replace',
-    'Reset Factory',
+    'Reset Saved',
+    'Save Topology',
+    'openEpcTopologySaveModal',
+    'confirmSaveEpcTopologyTemplate',
+    'epcSldTemplateDraft',
+    'stageEpcSldTemplateNodePosition',
+    'stageEpcSldTemplateEdgeRoute',
+    'resetEpcSldTemplateDraft',
     'saveEpcStandardTopologyNodePosition',
     'saveEpcStandardTopologyEdgeRoute',
-    'replaceEpcStandardTopologyComponent',
-    'resetEpcStandardTopologyFactory',
+    'resetEpcStandardTopologySaved',
     'standardTopologyLibrary',
-    'componentCatalog',
     'data-epc-sld-node',
     'data-epc-sld-edge',
     'canEditEpcEngineering()'
   ]) {
     assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing SLD workspace snippet: ${snippet}`);
   }
+  assert.doesNotMatch(html, /data-epc-sld-mode="replace"/);
+  assert.doesNotMatch(html, />Replace<\/button>/);
+  assert.doesNotMatch(html, /Apply Replacement/);
 });
 
 test('EPC SLD workspace renders validation cards below nodes and edges', () => {
@@ -945,6 +952,8 @@ test('EPC SLD workspace exposes route drag handles and zoom controls', () => {
     '100%',
     'setEpcSldViewportZoom',
     'fitEpcSldViewport',
+    'calculateEpcSldFitViewport',
+    'resetEpcSldViewportZoom',
     'saveEpcStandardTopologyViewport'
   ]) {
     assert.match(toolbar[0], new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing SLD zoom toolbar snippet: ${snippet}`);
@@ -984,6 +993,26 @@ test('EPC SLD workspace exposes route drag handles and zoom controls', () => {
     'window.endEpcSldRouteDrag'
   ]) {
     assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing SLD route drag implementation snippet: ${snippet}`);
+  }
+});
+
+test('EPC topology selector and save modal support custom templates', () => {
+  for (const snippet of [
+    'customTemplates',
+    'renderEpcCustomTemplateSelectorOptions',
+    'CUSTOM - Manual Graph',
+    'data-epc-topology-save',
+    'epc-topology-save-modal',
+    'epc-custom-template-name',
+    'epc-custom-template-class',
+    'epc-custom-template-generated-id',
+    'generateNextEpcCustomTemplateId',
+    'saveEpcSldCustomTemplate',
+    'overwriteEpcSldTemplateVariant',
+    'C&I',
+    'RESI'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing custom template save snippet: ${snippet}`);
   }
 });
 

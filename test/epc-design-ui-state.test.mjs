@@ -854,7 +854,7 @@ test('EPC Topology and Electrical panels render graph validation LV MV and cable
   for (const snippet of [
     'function renderEpcTopologyWorkspace(result, project = getActiveEpcDesignProject())',
     'function renderEpcTopologySld(topology = {})',
-    'function updateEpcSelectedTopology(value)',
+    'function updateEpcSelectedTopology(value, options = {})',
     'id="epc-topology-selector"',
     'Standard Topology Library',
     'LV_BUS',
@@ -956,7 +956,8 @@ test('EPC SLD workspace exposes route drag handles and zoom controls', () => {
     'fitEpcSldViewport',
     'calculateEpcSldFitViewport',
     'resetEpcSldViewportZoom',
-    'saveEpcStandardTopologyViewport'
+    'saveEpcStandardTopologyViewport',
+    'applyEpcSldViewportPreview'
   ]) {
     assert.match(toolbar[0], new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing SLD zoom toolbar snippet: ${snippet}`);
   }
@@ -993,6 +994,7 @@ test('EPC SLD workspace exposes route drag handles and zoom controls', () => {
     'snapTarget',
     'window.moveEpcSldRouteDrag',
     'window.endEpcSldRouteDrag',
+    'applyEpcSldViewportPreview(epcSldDrag.next, epcSldDrag.canvas)',
     'saveEpcCustomTopologyDraftMutation',
     "project.selectedTopologyId !== 'CUSTOM'",
     'CUSTOM topology connection endpoint staged',
@@ -1024,6 +1026,26 @@ test('EPC topology selector and save modal support custom templates', () => {
   }
 });
 
+test('EPC Topology selector is editable while EMS Flow remains electrical locked', () => {
+  const topologyWorkspace = html.match(/function renderEpcTopologyWorkspace\(result, project = getActiveEpcDesignProject\(\)\)[\s\S]*?function renderEpcElectricalWorkspace/);
+  const flowSelector = html.match(/function renderEpcFlowTopologySelector\(result = \{\}\)[\s\S]*?function renderEpcTopologyWorkspace/);
+  assert.ok(topologyWorkspace, 'Topology workspace renderer should exist');
+  assert.ok(flowSelector, 'EMS Flow topology selector renderer should exist');
+
+  for (const snippet of [
+    'function getEpcTopologyWorkspaceResult(result = {}, project = getActiveEpcDesignProject())',
+    'const workspaceResult = getEpcTopologyWorkspaceResult(result, project)',
+    'renderEpcTopologySelectorOptions(workspaceResult, { enforceElectricalLock: false',
+    "updateEpcSelectedTopology(this.value, { enforceElectricalLock: false })",
+    'renderEpcFlowTopologySelectorOptions(result)',
+    "updateEpcSelectedTopology(this.value, { enforceElectricalLock: true })"
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing split selector snippet: ${snippet}`);
+  }
+  assert.doesNotMatch(topologyWorkspace[0], /locked by Electrical/);
+  assert.match(flowSelector[0], /locked by Electrical|requiresMvTopology|MV PASS only/);
+});
+
 test('EPC EMS Flow renders topology-aware standard components and validation state', () => {
   const flowRenderer = html.match(/function renderEpcFlowDiagram\(result, row\)[\s\S]*?function renderEpcSocBadge/);
   assert.ok(flowRenderer, 'EMS Flow renderer should be found');
@@ -1047,6 +1069,7 @@ test('EPC EMS Flow renders topology-aware standard components and validation sta
     assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing topology-aware flow snippet: ${snippet}`);
   }
   assert.doesNotMatch(flowRenderer[0], /<path class="\$\{flowLineClass\(row\?\.pvOutputKw/, 'EMS Flow should not render fixed legacy paths directly');
+  assert.doesNotMatch(flowRenderer[0], /Customize Connections|openEpcTopologyConnectionModal/, 'EMS Flow should not expose topology editing controls');
 });
 
 test('EPC EMS Flow splits simultaneous battery charge discharge and exposes topology selector', () => {
@@ -1083,7 +1106,7 @@ test('EPC EMS Flow splits simultaneous battery charge discharge and exposes topo
     'markerWidth="4"',
     "renderEpcFlowLabel(edge.value, edge.route.labelX, edge.route.labelY, '')",
     "role === 'control' ? Math.max(90, laneY + 110)",
-    'updateEpcSelectedTopology(this.value)'
+    "updateEpcSelectedTopology(this.value, { enforceElectricalLock: true })"
   ]) {
     assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing split-flow selector snippet: ${snippet}`);
   }
@@ -1174,6 +1197,8 @@ test('EPC custom topology connection modal exposes add remove and standard copy 
     'renderEpcCustomConnectionPreview',
     'addEpcCustomTopologyConnection',
     'removeEpcCustomTopologyConnection',
+    'removedEdgeIds',
+    'clearEpcRemovedEdgeTombstone',
     'validateEpcCustomTopologyConnectionDraft',
     'Customize Connections',
     'Edit Connection',

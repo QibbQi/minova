@@ -10349,10 +10349,17 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return {
                 nodes: Array.isArray(input.nodes) ? input.nodes : [],
                 edges: Array.isArray(input.edges) ? input.edges : [],
+                removedEdgeIds: normalizeEpcRemovedEdgeIds(input.removedEdgeIds || []),
                 routes: input.routes && typeof input.routes === 'object' ? input.routes : {},
                 viewport: normalizeEpcSldViewport(input.viewport || {}),
                 canvas: normalizeEpcSldCanvas(input.canvas || {})
             };
+        }
+
+        function normalizeEpcRemovedEdgeIds(value = []) {
+            return Array.from(new Set((Array.isArray(value) ? value : [])
+                .map(item => String(item || '').trim())
+                .filter(Boolean)));
         }
 
         function normalizeEpcStandardTopologyLibrary(value = {}) {
@@ -10372,6 +10379,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     if (!variant || typeof variant !== 'object') return;
                     variant.nodes = Array.isArray(variant.nodes) ? variant.nodes : [];
                     variant.edges = Array.isArray(variant.edges) ? variant.edges : [];
+                    variant.removedEdgeIds = normalizeEpcRemovedEdgeIds(variant.removedEdgeIds || []);
                     variant.routes = variant.routes && typeof variant.routes === 'object' ? variant.routes : {};
                     variant.viewport = normalizeEpcSldViewport(variant.viewport || {});
                     variant.canvas = normalizeEpcSldCanvas(variant.canvas || {});
@@ -11625,6 +11633,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     direction: edge.direction,
                     voltageV: edge.voltageV
                 })),
+                removedEdgeIds: normalizeEpcRemovedEdgeIds(topology.removedEdgeIds || currentVariant.removedEdgeIds || []),
                 routes,
                 viewport: currentVariant.viewport || {},
                 canvas: currentVariant.canvas || {}
@@ -11928,6 +11937,25 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
         window.resetEpcSldViewportZoom = resetEpcSldViewportZoom;
 
+        function applyEpcSldViewportPreview(viewport = {}, canvas = null) {
+            const svg = document.getElementById('epc-topology-sld-svg');
+            if (!svg) return;
+            const normalizedCanvas = normalizeEpcSldCanvas(canvas || {});
+            const normalizedViewport = normalizeEpcSldViewport(viewport || {});
+            const visibleW = normalizedCanvas.width / normalizedViewport.zoom;
+            const visibleH = normalizedCanvas.height / normalizedViewport.zoom;
+            const maxX = Math.max(0, normalizedCanvas.width - visibleW);
+            const maxY = Math.max(0, normalizedCanvas.height - visibleH);
+            const preview = {
+                x: Math.min(maxX, Math.max(0, normalizedViewport.x)),
+                y: Math.min(maxY, Math.max(0, normalizedViewport.y)),
+                zoom: normalizedViewport.zoom
+            };
+            svg.setAttribute('viewBox', `${Math.round(preview.x)} ${Math.round(preview.y)} ${Math.round(visibleW)} ${Math.round(visibleH)}`);
+            svg.dataset.epcSldViewport = JSON.stringify(preview);
+        }
+        window.applyEpcSldViewportPreview = applyEpcSldViewportPreview;
+
         function epcSldNodePosition(node = {}) {
             return {
                 x: Math.max(18, Number(node.position?.x) || 0),
@@ -12187,6 +12215,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 y: Math.max(0, Math.round(epcSldDrag.viewport.y - (point.y - epcSldDrag.start.y))),
                 zoom: epcSldDrag.viewport.zoom
             };
+            applyEpcSldViewportPreview(epcSldDrag.next, epcSldDrag.canvas);
             event.preventDefault?.();
         }
 
@@ -12208,7 +12237,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const selectedNode = (result.topology?.nodes || []).find(node => node.id === epcSldSelectedNodeId);
             const selectedEdge = (result.topology?.edges || []).find(edge => edge.id === epcSldSelectedEdgeId);
             return `
-                <div class="rounded-xl border border-slate-200 bg-white p-3" data-epc-sld-viewport-save="saveEpcStandardTopologyViewport">
+                <div class="rounded-xl border border-slate-200 bg-white p-3" data-epc-sld-viewport-save="saveEpcStandardTopologyViewport" data-epc-sld-live-pan="applyEpcSldViewportPreview">
                     <div class="flex flex-col lg:flex-row lg:items-center gap-3">
                         <div>
                             <div class="text-sm font-black text-slate-800">Electrical SLD Workspace</div>
@@ -12353,16 +12382,22 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             };
         }
 
-        function renderEpcTopologySelectorOptions(result = {}) {
+        function renderEpcTopologySelectorOptions(result = {}, options = {}) {
             const state = getEpcTopologySelectionState(result);
-            const selectedId = state.selectedTopologyId;
-            const options = state.selectableTopologies
+            const selectedId = String(options.selectedTopologyId || state.selectedTopologyId || '').trim().toUpperCase();
+            const enforceElectricalLock = options.enforceElectricalLock !== false;
+            const sourceTopologies = enforceElectricalLock
+                ? state.selectableTopologies
+                : (Array.isArray(result.standardTopologies) ? result.standardTopologies : state.selectableTopologies);
+            const optionMarkup = sourceTopologies
                 .filter(item => item.category !== 'custom')
                 .map(item => `<option value="${htmlSafe(item.id)}" ${item.id === selectedId ? 'selected' : ''}>${htmlSafe(item.id)} - ${htmlSafe(item.name)}</option>`);
-            const customOptions = renderEpcCustomTemplateSelectorOptions(result, state, selectedId);
-            const blockedOptions = state.blockedTopologies.map(item => `<option value="${htmlSafe(item.id)}" ${item.id === selectedId ? 'selected' : ''} disabled>${htmlSafe(item.id)} - ${htmlSafe(item.name)} locked by Electrical</option>`);
+            const customOptions = renderEpcCustomTemplateSelectorOptions(result, { ...state, selectableTopologies: sourceTopologies }, selectedId);
+            const blockedOptions = enforceElectricalLock
+                ? state.blockedTopologies.map(item => `<option value="${htmlSafe(item.id)}" ${item.id === selectedId ? 'selected' : ''} disabled>${htmlSafe(item.id)} - ${htmlSafe(item.name)} locked by Electrical</option>`)
+                : [];
             return [
-                ...options,
+                ...optionMarkup,
                 customOptions,
                 ...blockedOptions,
                 `<option value="CUSTOM" ${selectedId === 'CUSTOM' ? 'selected' : ''}>CUSTOM - Manual Graph</option>`
@@ -12376,6 +12411,43 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
         window.renderEpcCustomTemplateSelectorOptions = renderEpcCustomTemplateSelectorOptions;
 
+        function renderEpcFlowTopologySelectorOptions(result = {}) {
+            return renderEpcTopologySelectorOptions(result, { enforceElectricalLock: true });
+        }
+        window.renderEpcFlowTopologySelectorOptions = renderEpcFlowTopologySelectorOptions;
+
+        function getEpcTopologyWorkspaceResult(result = {}, project = getActiveEpcDesignProject()) {
+            const selectedTopologyId = String(project.selectedTopologyId || project.topology?.selectedTopologyId || result.topologySelection?.selectedTopologyId || result.selectedTopologyId || 'C5').trim().toUpperCase();
+            if (!selectedTopologyId || selectedTopologyId === 'CUSTOM') {
+                return {
+                    ...result,
+                    topologySelection: {
+                        ...(result.topologySelection || {}),
+                        selectedTopologyId: 'CUSTOM'
+                    }
+                };
+            }
+            const selectedTopology = (Array.isArray(result.standardTopologies) ? result.standardTopologies : []).find(item => item.id === selectedTopologyId);
+            if (!selectedTopology) return result;
+            return {
+                ...result,
+                selectedTopologyId,
+                topology: {
+                    selectedTopologyId,
+                    sourceTopologyId: selectedTopology.id,
+                    baseTopologyId: selectedTopology.baseTopologyId || selectedTopology.id,
+                    removedEdgeIds: normalizeEpcRemovedEdgeIds(selectedTopology.removedEdgeIds || []),
+                    nodes: Array.isArray(selectedTopology.nodes) ? selectedTopology.nodes : [],
+                    edges: Array.isArray(selectedTopology.edges) ? selectedTopology.edges : []
+                },
+                topologySelection: {
+                    ...(result.topologySelection || {}),
+                    selectedTopologyId
+                }
+            };
+        }
+        window.getEpcTopologyWorkspaceResult = getEpcTopologyWorkspaceResult;
+
         function renderEpcFlowTopologySelector(result = {}) {
             const state = getEpcTopologySelectionState(result);
             const topologySelection = result.topologySelection || {};
@@ -12383,8 +12455,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return `
                 <label class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5">
                     <span class="text-[10px] font-black uppercase text-slate-400">${htmlSafe(lockText)}</span>
-                    <select id="epc-flow-topology-selector" onchange="updateEpcSelectedTopology(this.value)" class="rounded-md border border-slate-200 bg-white px-2 py-1 text-[10px] font-black text-slate-700 outline-none focus:border-purple-500">
-                        ${renderEpcTopologySelectorOptions(result)}
+                    <select id="epc-flow-topology-selector" onchange="updateEpcSelectedTopology(this.value, { enforceElectricalLock: true })" class="rounded-md border border-slate-200 bg-white px-2 py-1 text-[10px] font-black text-slate-700 outline-none focus:border-purple-500">
+                        ${renderEpcFlowTopologySelectorOptions(result)}
                     </select>
                 </label>
                 ${topologySelection.requiresMvTopology ? `<span class="text-[10px] font-bold text-slate-400">${htmlSafe(topologySelection.message || '')}</span>` : ''}
@@ -12394,8 +12466,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         function renderEpcTopologyWorkspace(result, project = getActiveEpcDesignProject()) {
             const target = document.getElementById('epc-topology-workspace');
             if (!target) return;
-            const topology = result.topology || {};
-            const topologyValidation = result.topologyValidation || { errors: [], warnings: [], suggestedFixes: [] };
+            const workspaceResult = getEpcTopologyWorkspaceResult(result, project);
+            const topology = workspaceResult.topology || {};
+            const topologyValidation = workspaceResult.topologyValidation || { errors: [], warnings: [], suggestedFixes: [] };
             const errors = topologyValidation.errors || [];
             const warnings = topologyValidation.warnings || [];
             const validationCards = `
@@ -12423,19 +12496,19 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             target.innerHTML = `
                 <div class="space-y-3">
                     <section class="space-y-3">
-                        ${renderEpcSldWorkspaceToolbar(result)}
+                        ${renderEpcSldWorkspaceToolbar(workspaceResult)}
                         <div class="flex flex-col md:flex-row md:items-center gap-3">
                             <div>
                                 <div class="text-sm font-black text-slate-800">Electrical SLD Workspace</div>
                                 <div class="text-xs font-bold text-slate-400">Standard Topology Library / global editable templates. Select a budget-level off-grid topology; suggested fixes are advisory and require manual approval.</div>
                             </div>
                             <div class="md:ml-auto flex flex-wrap items-center gap-2">
-                                <select id="epc-topology-selector" onchange="updateEpcSelectedTopology(this.value)" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black outline-none focus:border-purple-500">${renderEpcTopologySelectorOptions(result)}</select>
+                                <select id="epc-topology-selector" onchange="updateEpcSelectedTopology(this.value, { enforceElectricalLock: false })" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black outline-none focus:border-purple-500">${renderEpcTopologySelectorOptions(workspaceResult, { enforceElectricalLock: false, selectedTopologyId: workspaceResult.topologySelection?.selectedTopologyId })}</select>
                                 <button type="button" onclick="openEpcTopologyConnectionModal()" class="rounded-xl border border-purple-200 bg-white px-3 py-2 text-xs font-black text-purple-700 hover:bg-purple-50">Customize Connections</button>
                                 <button type="button" data-epc-topology-save onclick="openEpcTopologySaveModal()" ${!canEditEpcEngineering() || !isEpcSldTemplateDirty() ? 'disabled' : ''} class="rounded-xl border border-green-200 bg-white px-3 py-2 text-xs font-black text-green-700 hover:bg-green-50 disabled:opacity-40">Save Topology</button>
                             </div>
                         </div>
-                        ${renderEpcTopologySld(topology, result)}
+                        ${renderEpcTopologySld(topology, workspaceResult)}
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
                             <div class="rounded-xl border border-slate-200 overflow-hidden">
                                 <div class="bg-slate-50 px-3 py-2 text-[10px] font-black uppercase text-slate-500">Nodes</div>
@@ -13171,7 +13244,6 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             ${renderEpcFlowTopologySelector(result)}
                             <span class="rounded-full px-3 py-1 text-[10px] font-black ${topologyFlow.validationBlocked ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}">${topologyFlow.validationBlocked ? `${errors.length} topology error(s)` : 'Topology valid'}</span>
                             ${warnings.length ? `<span class="rounded-full border border-yellow-200 bg-yellow-50 px-3 py-1 text-[10px] font-black text-yellow-700">${warnings.length} warning(s)</span>` : ''}
-                            <button type="button" onclick="openEpcTopologyConnectionModal()" class="rounded-lg border border-purple-200 bg-white px-3 py-2 text-[10px] font-black text-purple-700 hover:bg-purple-50">Customize Connections</button>
                         </div>
                     </div>
                     ${topologyFlow.validationBlocked ? `<div class="border-b border-red-100 bg-red-50 px-4 py-2 text-xs font-bold text-red-700">${htmlSafe(errors.map(item => `${item.code}: ${item.message}`).join(' | '))}</div>` : ''}
@@ -15653,12 +15725,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             }
             const project = getEpcTopologyEditProject();
             const currentResult = window.__lastEpcDesignResult || calculateEpcDesignProject(project, { defaults: epcDesignDefaults });
-            const sourceTopology = cloneEpcJson(currentResult.topology || project.topology || {});
+            const workspaceResult = getEpcTopologyWorkspaceResult(currentResult, project);
+            const sourceTopology = cloneEpcJson(workspaceResult.topology || currentResult.topology || project.topology || {});
             project.selectedTopologyId = 'CUSTOM';
             project.topology = {
                 ...sourceTopology,
                 selectedTopologyId: 'CUSTOM',
-                sourceTopologyId: currentResult.selectedTopologyId || project.selectedTopologyId || 'C5',
+                sourceTopologyId: workspaceResult.selectedTopologyId || currentResult.selectedTopologyId || project.selectedTopologyId || 'C5',
                 customEditedAt: new Date().toISOString()
             };
             updateEpcProject(project);
@@ -15686,6 +15759,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         function epcCustomTopologyEdges(project = getActiveEpcDesignProject()) {
             return Array.isArray(project.topology?.edges) ? project.topology.edges : [];
         }
+
+        function clearEpcRemovedEdgeTombstone(removedEdgeIds = [], edgeId = '') {
+            const id = String(edgeId || '').trim();
+            return normalizeEpcRemovedEdgeIds(removedEdgeIds).filter(item => item !== id);
+        }
+        window.clearEpcRemovedEdgeTombstone = clearEpcRemovedEdgeTombstone;
 
         function setEpcCustomConnectionDraft(edge = {}) {
             const setValue = (id, value) => {
@@ -15957,9 +16036,16 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (!validation.valid) return;
             const editingId = String(epcCustomConnectionEditId || '').trim();
             const edges = epcCustomTopologyEdges(project).filter(edge => edge.id !== editingId);
+            const removedEdgeIds = clearEpcRemovedEdgeTombstone(
+                editingId
+                    ? [...normalizeEpcRemovedEdgeIds(project.topology?.removedEdgeIds || []), editingId]
+                    : normalizeEpcRemovedEdgeIds(project.topology?.removedEdgeIds || []),
+                validation.edge.id
+            );
             project.topology = {
                 ...(project.topology || {}),
                 selectedTopologyId: 'CUSTOM',
+                removedEdgeIds,
                 edges: [...edges, validation.edge]
             };
             project.selectedTopologyId = 'CUSTOM';
@@ -15981,9 +16067,11 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const project = ensureEpcCustomTopologyForConnections();
             const id = String(edgeId || '').trim();
             if (epcCustomConnectionEditId === id) epcCustomConnectionEditId = '';
+            const removedEdgeIds = normalizeEpcRemovedEdgeIds([...(project.topology?.removedEdgeIds || []), id]);
             project.topology = {
                 ...(project.topology || {}),
                 selectedTopologyId: 'CUSTOM',
+                removedEdgeIds,
                 edges: epcCustomTopologyEdges(project).filter(edge => edge.id !== id)
             };
             project.selectedTopologyId = 'CUSTOM';
@@ -16033,10 +16121,11 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
         window.chooseEpcElectricalArchitecture = chooseEpcElectricalArchitecture;
 
-        function updateEpcSelectedTopology(value) {
+        function updateEpcSelectedTopology(value, options = {}) {
             const project = captureEpcDesignFromDom();
             const selectedTopologyId = String(value || 'C5').trim().toUpperCase();
-            if (selectedTopologyId !== 'CUSTOM') {
+            const enforceElectricalLock = options.enforceElectricalLock !== false;
+            if (enforceElectricalLock && selectedTopologyId !== 'CUSTOM') {
                 const currentResult = calculateEpcDesignProject(project, { defaults: epcDesignDefaults });
                 const blocked = currentResult.topologySelection?.blockedTopologies?.some(item => item.id === selectedTopologyId);
                 if (blocked) {

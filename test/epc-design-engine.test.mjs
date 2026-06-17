@@ -1087,6 +1087,35 @@ test('EPC custom topology regenerates load branches while preserving source-side
   assert.ok(result.topologyFlow.edges.some((edge) => edge.id === 'lv-load-bus-3-load-3' && edge.flowKeys.includes('loadSplit:load-3')));
 });
 
+test('EPC custom topology preserves removed generated connections across load regeneration', () => {
+  const result = calculateEpcDesignProject({
+    selectedTopologyId: 'CUSTOM',
+    topology: {
+      selectedTopologyId: 'CUSTOM',
+      sourceTopologyId: 'C5',
+      removedEdgeIds: ['load-tx-1-lv-load-bus-1']
+    },
+    site: { gridMode: 'island' },
+    loads: {
+      dailyLoadKwh: 9000,
+      operationHoursPerDay: 9,
+      loadCount: 3,
+      loadSplits: [
+        { id: 'load-1', label: 'Plant', ratioPct: 50 },
+        { id: 'load-2', label: 'Camp', ratioPct: 30 },
+        { id: 'load-3', label: 'Workshop', ratioPct: 20 }
+      ]
+    }
+  }, { now: '2026-06-17T00:00:00.000Z' });
+
+  const edgeIds = result.topology.edges.map(edge => edge.id);
+  assert.deepEqual(result.topology.removedEdgeIds, ['load-tx-1-lv-load-bus-1']);
+  assert.equal(edgeIds.includes('load-tx-1-lv-load-bus-1'), false);
+  assert.equal(edgeIds.includes('load-tx-2-lv-load-bus-2'), true);
+  assert.equal(edgeIds.includes('load-tx-3-lv-load-bus-3'), true);
+  assert.equal(result.topologyFlow.edges.some(edge => edge.id === 'load-tx-1-lv-load-bus-1'), false);
+});
+
 test('EPC saved custom topology templates use generated IDs and remain architecture driven', () => {
   const defaults = {
     ...EPC_DESIGN_DEFAULTS,
@@ -1100,6 +1129,7 @@ test('EPC saved custom topology templates use generated IDs and remain architect
           baseTopologyId: 'C5',
           architectureVariants: {
             mv_11_radial: {
+              removedEdgeIds: ['load-tx-1-lv-load-bus-1'],
               nodes: [
                 { id: 'lv-bus', position: { x: 700, y: 240 } },
                 { id: 'load-2', position: { x: 1530, y: 300 } }
@@ -1147,6 +1177,8 @@ test('EPC saved custom topology templates use generated IDs and remain architect
   assert.equal(radial.topology.sourceTopologyId, 'R4');
   assert.equal(radial.topology.baseTopologyId, 'C5');
   assert.equal(radial.topology.nodes.some((node) => node.id === 'ring-rmu'), false);
+  assert.deepEqual(radial.topology.removedEdgeIds, ['load-tx-1-lv-load-bus-1']);
+  assert.equal(radial.topology.edges.some((edge) => edge.id === 'load-tx-1-lv-load-bus-1'), false);
   assert.equal(radial.topology.nodes.find((node) => node.id === 'lv-bus')?.position.x, 700);
   assert.equal(radial.topology.nodes.find((node) => node.id === 'load-2')?.label, 'Camp');
   assert.deepEqual(radial.topology.edges.find((edge) => edge.id === 'lv-step-up')?.route?.waypoints, [{ x: 860, y: 245 }]);

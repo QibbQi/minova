@@ -715,10 +715,17 @@ function normalizeTopologyTemplateVariant(value = {}) {
   return {
     nodes: normalizeTemplateNodes(input.nodes || []),
     edges: normalizeTemplateEdges(input.edges || []),
+    removedEdgeIds: normalizeRemovedEdgeIds(input.removedEdgeIds || []),
     routes: normalizeRouteTemplate(input.routes || {}),
     viewport: normalizeTemplateViewport(input.viewport || {}),
     canvas: normalizeTemplateCanvas(input.canvas || {})
   };
+}
+
+function normalizeRemovedEdgeIds(value = []) {
+  return Array.from(new Set((Array.isArray(value) ? value : [])
+    .map(item => String(item || '').trim())
+    .filter(Boolean)));
 }
 
 function normalizeCustomTemplateId(value = '') {
@@ -810,6 +817,7 @@ function applyStandardTopologyTemplate(graph = {}, template = null, library = no
   const catalogById = new Map((library.componentCatalog || []).map(item => [item.id, item]));
   const nodeOverrides = new Map((template.nodes || []).map(item => [item.id, item]));
   const edgeOverrides = new Map((template.edges || []).map(item => [item.id, item]));
+  const removedEdgeIds = new Set(normalizeRemovedEdgeIds(template.removedEdgeIds || []));
   const nodes = (graph.nodes || []).map((node) => {
     const override = nodeOverrides.get(node.id);
     if (!override) return node;
@@ -834,7 +842,7 @@ function applyStandardTopologyTemplate(graph = {}, template = null, library = no
     }
     return next;
   });
-  const edges = (graph.edges || []).map((edge) => {
+  const edges = (graph.edges || []).filter(edge => !removedEdgeIds.has(edge.id)).map((edge) => {
     const override = edgeOverrides.get(edge.id);
     const route = template.routes?.[edge.id];
     const next = override ? {
@@ -851,7 +859,7 @@ function applyStandardTopologyTemplate(graph = {}, template = null, library = no
   const nodeIds = new Set(nodes.map(node => node.id));
   const edgeIds = new Set(edges.map(edge => edge.id));
   (template.edges || []).forEach((edge) => {
-    if (edgeIds.has(edge.id) || !nodeIds.has(edge.source) || !nodeIds.has(edge.target)) return;
+    if (removedEdgeIds.has(edge.id) || edgeIds.has(edge.id) || !nodeIds.has(edge.source) || !nodeIds.has(edge.target)) return;
     edges.push({
       id: edge.id,
       source: edge.source,
@@ -862,7 +870,7 @@ function applyStandardTopologyTemplate(graph = {}, template = null, library = no
       route: template.routes?.[edge.id]
     });
   });
-  return { nodes, edges };
+  return { nodes, edges, removedEdgeIds: Array.from(removedEdgeIds) };
 }
 
 function appendLoadBranchTopology(nodes, edges, node, edge, splits = [], options = {}) {
@@ -1143,6 +1151,7 @@ function mergeCustomTopologyWithGeneratedLoads(input = {}, loads = {}, options =
   const generated = buildStandardTopologyGraph(sourceTopologyId, loads, options);
   const customNodes = new Map((Array.isArray(input.nodes) ? input.nodes : []).map(node => [String(node.id || ''), node]));
   const customEdges = new Map((Array.isArray(input.edges) ? input.edges : []).map(edge => [String(edge.id || ''), edge]));
+  const removedEdgeIds = new Set(normalizeRemovedEdgeIds(input.removedEdgeIds || generated.removedEdgeIds || []));
   const generatedNodeIds = new Set((generated.nodes || []).map(node => node.id));
   const generatedEdgeIds = new Set((generated.edges || []).map(edge => edge.id));
   const nodes = (generated.nodes || []).map((node) => {
@@ -1164,7 +1173,7 @@ function mergeCustomTopologyWithGeneratedLoads(input = {}, loads = {}, options =
     nodes.push(node);
   });
   const nodeIds = new Set(nodes.map(node => node.id));
-  const edges = (generated.edges || []).map((edge) => {
+  const edges = (generated.edges || []).filter(edge => !removedEdgeIds.has(edge.id)).map((edge) => {
     if (isLoadBranchEdge(edge)) return edge;
     const custom = customEdges.get(edge.id);
     if (!custom || isLoadBranchEdge(custom)) return edge;
@@ -1181,13 +1190,14 @@ function mergeCustomTopologyWithGeneratedLoads(input = {}, loads = {}, options =
     };
   });
   customEdges.forEach((edge, id) => {
-    if (!id || generatedEdgeIds.has(id) || isLoadBranchEdge(edge)) return;
+    if (!id || generatedEdgeIds.has(id) || removedEdgeIds.has(id) || isLoadBranchEdge(edge)) return;
     if (nodeIds.has(edge.source) && nodeIds.has(edge.target)) edges.push(edge);
   });
   return {
     selectedTopologyId: 'CUSTOM',
     sourceTopologyId,
     baseTopologyId: generated.baseTopologyId || sourceTopologyId,
+    removedEdgeIds: Array.from(removedEdgeIds),
     nodes,
     edges
   };
@@ -1195,7 +1205,10 @@ function mergeCustomTopologyWithGeneratedLoads(input = {}, loads = {}, options =
 
 function normalizePowerTopology(rawTopology = {}, selectedTopologyId = 'C5', loads = {}, options = {}) {
   const input = rawTopology && typeof rawTopology === 'object' ? rawTopology : {};
-  const hasCustomGraph = selectedTopologyId === 'CUSTOM' && Array.isArray(input.nodes) && input.nodes.length;
+  const hasCustomGraph = selectedTopologyId === 'CUSTOM'
+    && ((Array.isArray(input.nodes) && input.nodes.length)
+      || (Array.isArray(input.edges) && input.edges.length)
+      || (Array.isArray(input.removedEdgeIds) && input.removedEdgeIds.length));
   const base = hasCustomGraph ? mergeCustomTopologyWithGeneratedLoads(input, loads, options) : buildStandardTopologyGraph(selectedTopologyId, loads, {
     architectureId: options.architectureId,
     standardTopologyLibrary: options.standardTopologyLibrary
@@ -1211,6 +1224,7 @@ function normalizePowerTopology(rawTopology = {}, selectedTopologyId = 'C5', loa
     selectedTopologyId,
     sourceTopologyId: base.sourceTopologyId || selectedTopologyId,
     baseTopologyId: base.baseTopologyId || selectedTopologyId,
+    removedEdgeIds: normalizeRemovedEdgeIds(base.removedEdgeIds || input.removedEdgeIds || []),
     nodes,
     edges
   };

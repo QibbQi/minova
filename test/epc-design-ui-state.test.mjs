@@ -915,6 +915,23 @@ test('EPC SLD workspace exposes move route replace and reset controls', () => {
   }
 });
 
+test('EPC SLD workspace renders validation cards below nodes and edges', () => {
+  const renderer = html.match(/function renderEpcTopologyWorkspace\(result, project = getActiveEpcDesignProject\(\)\)[\s\S]*?function renderEpcElectricalWorkspace/);
+  assert.ok(renderer, 'topology workspace renderer should exist');
+  const body = renderer[0];
+  assert.match(body, /data-epc-topology-validation-grid/);
+  assert.match(body, /Nodes[\s\S]*Edges[\s\S]*data-epc-topology-validation-grid/);
+  assert.doesNotMatch(body, /<aside class="space-y-3">/);
+  for (const snippet of [
+    'Topology valid for concept screen',
+    'Errors',
+    'Warnings',
+    'Apply suggested fix manually'
+  ]) {
+    assert.match(body, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing moved validation snippet: ${snippet}`);
+  }
+});
+
 test('EPC SLD workspace exposes route drag handles and zoom controls', () => {
   const toolbar = html.match(/function renderEpcSldWorkspaceToolbar\(result = \{\}\)[\s\S]*?function renderEpcTopologySld/);
   const renderer = html.match(/function renderEpcTopologySld\(topology = \{\}\)[\s\S]*?function getEpcTopologySelectionState/);
@@ -936,6 +953,14 @@ test('EPC SLD workspace exposes route drag handles and zoom controls', () => {
   for (const snippet of [
     'data-epc-sld-waypoint',
     'data-epc-sld-segment',
+    'data-epc-sld-edge-hit',
+    'data-epc-sld-route-preview',
+    'data-epc-sld-node-port',
+    'handleEpcSldEdgePointerDown',
+    'startEpcSldRouteEndpointDrag',
+    'findEpcSldSnapTarget',
+    'saveEpcStandardTopologyEdgeEndpoint',
+    'updateEpcSldRoutePreview',
     'startEpcSldRouteWaypointDrag',
     'startEpcSldRouteSegmentDrag',
     'startEpcSldPanDrag',
@@ -948,7 +973,18 @@ test('EPC SLD workspace exposes route drag handles and zoom controls', () => {
 
   assert.doesNotMatch(renderer[0], /Math\.min\(1010/);
   assert.doesNotMatch(renderer[0], /Math\.min\(330/);
+  assert.doesNotMatch(renderer[0], /onpointerdown="event\.stopPropagation\(\)"/);
+  assert.doesNotMatch(html, /handleEpcSldEdgePointerDown[\s\S]{0,500}saveEpcStandardTopologySelectedEdgeRoute/);
   assert.match(renderer[0], /viewBox="\$\{htmlSafe\(viewBox\)\}"/);
+  for (const snippet of [
+    'generatedFromDirect',
+    'epc-sld-route-preview-active',
+    'snapTarget',
+    'window.moveEpcSldRouteDrag',
+    'window.endEpcSldRouteDrag'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing SLD route drag implementation snippet: ${snippet}`);
+  }
 });
 
 test('EPC EMS Flow renders topology-aware standard components and validation state', () => {
@@ -1094,12 +1130,24 @@ test('EPC custom topology connection modal exposes add remove and standard copy 
     'openEpcTopologyConnectionModal',
     'closeEpcTopologyConnectionModal',
     'copyEpcStandardTopologyToCustom',
+    'epcCustomConnectionEditId',
+    'selectEpcCustomTopologyConnection',
+    'clearEpcCustomConnectionEdit',
+    'saveEpcCustomTopologyConnection',
+    'renderEpcCustomConnectionPreview',
     'addEpcCustomTopologyConnection',
     'removeEpcCustomTopologyConnection',
     'validateEpcCustomTopologyConnectionDraft',
     'Customize Connections',
+    'Edit Connection',
+    'Save Connection',
+    'Cancel Edit',
     'Copy standard topology to Custom',
+    'epc-custom-connection-editor-title',
+    'epc-custom-connection-save-label',
+    'epc-custom-connection-preview',
     'data-epc-custom-connection-row',
+    'data-epc-custom-connection-selected',
     'epc-custom-edge-source',
     'epc-custom-edge-target',
     'epc-custom-edge-type',

@@ -10349,11 +10349,18 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return {
                 nodes: Array.isArray(input.nodes) ? input.nodes : [],
                 edges: Array.isArray(input.edges) ? input.edges : [],
+                removedNodeIds: normalizeEpcRemovedNodeIds(input.removedNodeIds || []),
                 removedEdgeIds: normalizeEpcRemovedEdgeIds(input.removedEdgeIds || []),
                 routes: input.routes && typeof input.routes === 'object' ? input.routes : {},
                 viewport: normalizeEpcSldViewport(input.viewport || {}),
                 canvas: normalizeEpcSldCanvas(input.canvas || {})
             };
+        }
+
+        function normalizeEpcRemovedNodeIds(value = []) {
+            return Array.from(new Set((Array.isArray(value) ? value : [])
+                .map(item => String(item || '').trim())
+                .filter(Boolean)));
         }
 
         function normalizeEpcRemovedEdgeIds(value = []) {
@@ -10379,6 +10386,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     if (!variant || typeof variant !== 'object') return;
                     variant.nodes = Array.isArray(variant.nodes) ? variant.nodes : [];
                     variant.edges = Array.isArray(variant.edges) ? variant.edges : [];
+                    variant.removedNodeIds = normalizeEpcRemovedNodeIds(variant.removedNodeIds || []);
                     variant.removedEdgeIds = normalizeEpcRemovedEdgeIds(variant.removedEdgeIds || []);
                     variant.routes = variant.routes && typeof variant.routes === 'object' ? variant.routes : {};
                     variant.viewport = normalizeEpcSldViewport(variant.viewport || {});
@@ -11351,6 +11359,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return { topologyId, architectureId };
         }
 
+        function getEpcSldWorkspaceResultForEditing(project = getEpcTopologyEditProject()) {
+            const baseResult = window.__lastEpcDesignResult || calculateEpcDesignProject(project, { defaults: epcDesignDefaults });
+            return getEpcTopologyWorkspaceResult(baseResult, project);
+        }
+        window.getEpcSldWorkspaceResultForEditing = getEpcSldWorkspaceResultForEditing;
+
         function isEpcSavedCustomTopologyId(topologyId = '') {
             const id = normalizeEpcCustomTemplateId(topologyId);
             return Boolean(id && epcDesignDefaults.standardTopologyLibrary?.customTemplates?.[id]);
@@ -11399,6 +11413,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const variant = variantOwner.architectureVariants[architectureId];
             variant.nodes = Array.isArray(variant.nodes) ? variant.nodes : [];
             variant.edges = Array.isArray(variant.edges) ? variant.edges : [];
+            variant.removedNodeIds = normalizeEpcRemovedNodeIds(variant.removedNodeIds || []);
+            variant.removedEdgeIds = normalizeEpcRemovedEdgeIds(variant.removedEdgeIds || []);
             variant.routes = variant.routes && typeof variant.routes === 'object' ? variant.routes : {};
             variant.viewport = normalizeEpcSldViewport(variant.viewport || {});
             variant.canvas = normalizeEpcSldCanvas(variant.canvas || {});
@@ -11417,7 +11433,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         function saveEpcCustomTopologyDraftMutation(mutator, message = 'CUSTOM topology staged') {
             const project = getEpcTopologyEditProject();
             if (project.selectedTopologyId !== 'CUSTOM' || project.topology?.selectedTopologyId !== 'CUSTOM') return false;
-            const result = window.__lastEpcDesignResult || calculateEpcDesignProject(project, { defaults: epcDesignDefaults });
+            const result = getEpcSldWorkspaceResultForEditing(project);
             const topology = cloneEpcJson(result.topology || project.topology || {});
             topology.selectedTopologyId = 'CUSTOM';
             topology.sourceTopologyId = topology.sourceTopologyId || project.topology?.sourceTopologyId || result.topology?.sourceTopologyId || result.topology?.baseTopologyId || 'C5';
@@ -11450,12 +11466,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
         function saveEpcStandardTopologyNodePosition(nodeId, x, y) {
             if (!canEditEpcEngineering()) return alert('No engineering edit permission.');
+            const result = getEpcSldWorkspaceResultForEditing();
             if (saveEpcCustomTopologyDraftMutation((topology) => {
                 const node = (topology.nodes || []).find(item => item.id === nodeId);
                 if (!node) return false;
                 node.position = { x: Math.max(0, Math.round(Number(x) || 0)), y: Math.max(0, Math.round(Number(y) || 0)) };
             }, 'CUSTOM topology layout staged')) return;
-            const { variant } = ensureEpcStandardTopologyVariant();
+            const { variant } = ensureEpcStandardTopologyVariant(result);
             upsertEpcTemplateNodeOverride(variant, nodeId, {
                 position: { x: Math.max(0, Math.round(Number(x) || 0)), y: Math.max(0, Math.round(Number(y) || 0)) }
             });
@@ -11471,6 +11488,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
         function saveEpcStandardTopologyEdgeRoute(edgeId, waypoints = []) {
             if (!canEditEpcEngineering()) return alert('No engineering edit permission.');
+            const result = getEpcSldWorkspaceResultForEditing();
             if (saveEpcCustomTopologyDraftMutation((topology) => {
                 const id = String(edgeId || '').trim();
                 const edge = (topology.edges || []).find(item => item.id === id);
@@ -11484,7 +11502,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     }))
                 };
             }, 'CUSTOM topology route staged')) return;
-            const { variant } = ensureEpcStandardTopologyVariant();
+            const { variant } = ensureEpcStandardTopologyVariant(result);
             const id = String(edgeId || '').trim();
             if (!id) return;
             variant.routes[id] = {
@@ -11510,7 +11528,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const id = String(edgeId || '').trim();
             const nextNodeId = String(nodeId || '').trim();
             if (!id || !nextNodeId) return;
-            const result = window.__lastEpcDesignResult || calculateEpcDesignProject(getActiveEpcDesignProject(), { defaults: epcDesignDefaults });
+            const result = getEpcSldWorkspaceResultForEditing();
             const edge = (result.topology?.edges || []).find(item => item.id === id);
             if (!edge) return;
             if (saveEpcCustomTopologyDraftMutation((topology) => {
@@ -11545,7 +11563,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
         function saveEpcStandardTopologyViewport(viewport = {}, canvas = null) {
             if (!canEditEpcEngineering()) return alert('No engineering edit permission.');
-            const { variant } = ensureEpcStandardTopologyVariant();
+            const result = getEpcSldWorkspaceResultForEditing();
+            const { variant } = ensureEpcStandardTopologyVariant(result);
             const normalizedCanvas = normalizeEpcSldCanvas(canvas || variant.canvas || {});
             const normalizedViewport = normalizeEpcSldViewport(viewport || variant.viewport || {});
             const maxX = Math.max(0, normalizedCanvas.width - normalizedCanvas.width / normalizedViewport.zoom);
@@ -11563,7 +11582,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
         function replaceEpcStandardTopologyComponent(nodeId, componentId) {
             if (!canEditEpcEngineering()) return alert('No engineering edit permission.');
-            const result = window.__lastEpcDesignResult || calculateEpcDesignProject(getActiveEpcDesignProject(), { defaults: epcDesignDefaults });
+            const result = getEpcSldWorkspaceResultForEditing();
             const node = (result.topology?.nodes || []).find(item => item.id === nodeId);
             const catalog = normalizeEpcStandardTopologyLibrary(epcDesignDefaults.standardTopologyLibrary || {}).componentCatalog;
             const component = catalog.find(item => item.id === componentId);
@@ -11586,7 +11605,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         window.resetEpcStandardTopologySaved = resetEpcStandardTopologySaved;
         window.resetEpcStandardTopologyFactory = resetEpcStandardTopologySaved;
 
-        function currentEpcSldTopologyContext(result = window.__lastEpcDesignResult) {
+        function currentEpcSldTopologyContext(result = getEpcSldWorkspaceResultForEditing()) {
             const context = getEpcSldTemplateContext(result);
             return {
                 ...context,
@@ -11607,7 +11626,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
         window.overwriteEpcSldTemplateVariant = overwriteEpcSldTemplateVariant;
 
-        function variantFromCurrentEpcSldResult(result = window.__lastEpcDesignResult || {}) {
+        function variantFromCurrentEpcSldResult(result = getEpcSldWorkspaceResultForEditing() || {}) {
             const currentVariant = getEpcStandardTopologyVariant(result) || {};
             const topology = result.topology || {};
             const routes = { ...(currentVariant.routes || {}) };
@@ -11633,6 +11652,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     direction: edge.direction,
                     voltageV: edge.voltageV
                 })),
+                removedNodeIds: normalizeEpcRemovedNodeIds(topology.removedNodeIds || currentVariant.removedNodeIds || []),
                 removedEdgeIds: normalizeEpcRemovedEdgeIds(topology.removedEdgeIds || currentVariant.removedEdgeIds || []),
                 routes,
                 viewport: currentVariant.viewport || {},
@@ -11651,7 +11671,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         function openEpcTopologySaveModal() {
             if (!canEditEpcEngineering()) return alert('No engineering edit permission.');
             if (!isEpcSldTemplateDirty()) return;
-            const result = window.__lastEpcDesignResult || calculateEpcDesignProject(getActiveEpcDesignProject(), { defaults: epcDesignDefaults });
+            const result = getEpcSldWorkspaceResultForEditing();
             const context = currentEpcSldTopologyContext(result);
             if (!context.isUnsavedCustom) {
                 const label = context.isSavedCustom ? context.topologyId : `${context.topologyId} standard topology`;
@@ -11679,7 +11699,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
         function saveEpcSldCustomTemplate() {
             if (!canEditEpcEngineering()) return alert('No engineering edit permission.');
-            const result = window.__lastEpcDesignResult || calculateEpcDesignProject(getActiveEpcDesignProject(), { defaults: epcDesignDefaults });
+            const result = getEpcSldWorkspaceResultForEditing();
             const context = currentEpcSldTopologyContext(result);
             const cls = String(document.getElementById('epc-custom-template-class')?.value || 'RESI').trim().toUpperCase() === 'C&I' ? 'C&I' : 'RESI';
             const id = generateNextEpcCustomTemplateId(cls, epcDesignDefaults.standardTopologyLibrary || {});
@@ -11707,7 +11727,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         window.saveEpcSldCustomTemplate = saveEpcSldCustomTemplate;
 
         function confirmSaveEpcTopologyTemplate() {
-            const result = window.__lastEpcDesignResult || calculateEpcDesignProject(getActiveEpcDesignProject(), { defaults: epcDesignDefaults });
+            const result = getEpcSldWorkspaceResultForEditing();
             const context = currentEpcSldTopologyContext(result);
             if (context.isUnsavedCustom) return saveEpcSldCustomTemplate();
             if (!confirm(`Save changes to current topology template (${context.topologyId})?`)) return;
@@ -11715,9 +11735,186 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
         window.confirmSaveEpcTopologyTemplate = confirmSaveEpcTopologyTemplate;
 
-        function setEpcSldWorkspaceMode(mode) {
-            epcSldWorkspaceMode = ['view', 'move', 'route'].includes(mode) ? mode : 'view';
+        function epcSldNodeTypeOptions() {
+            return ['PV_ARRAY', 'PV_INVERTER', 'BATTERY', 'PCS', 'GENSET', 'LV_BUS', 'LV_SWITCHBOARD', 'TRANSFORMER', 'MV_SWITCHBOARD', 'MV_BUS', 'LOAD', 'EMS', 'SCADA', 'METER', 'ATS', 'CURTAILMENT'];
+        }
+
+        function epcSldTypeSlug(type = '') {
+            return String(type || 'node').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'node';
+        }
+
+        function generateEpcSldCustomNodeId(topology = {}, type = 'LV_BUS') {
+            const slug = epcSldTypeSlug(type);
+            const used = new Set((Array.isArray(topology.nodes) ? topology.nodes : []).map(node => String(node.id || '')));
+            let index = 1;
+            while (used.has(`custom-${slug}-${index}`)) index += 1;
+            return `custom-${slug}-${index}`;
+        }
+        window.generateEpcSldCustomNodeId = generateEpcSldCustomNodeId;
+
+        function getEpcSldAddNodeTemplates(result = getEpcSldWorkspaceResultForEditing()) {
+            const topology = result.topology || {};
+            const fromNodes = (Array.isArray(topology.nodes) ? topology.nodes : []).map(node => ({
+                key: `node:${node.id}`,
+                label: `${node.label || node.id} (${node.type})`,
+                type: node.type || 'LV_BUS',
+                voltageV: node.electrical?.voltageV || 0,
+                busOrientation: node.busOrientation || '',
+                source: 'Current Nodes'
+            }));
+            const library = normalizeEpcStandardTopologyLibrary(epcDesignDefaults.standardTopologyLibrary || {});
+            const fromCatalog = (library.componentCatalog || []).map(component => ({
+                key: `component:${component.id}`,
+                label: `${component.label || component.type} (${component.type})`,
+                type: component.type || 'LV_BUS',
+                componentId: component.id,
+                componentRole: component.role,
+                voltageV: component.type === 'MV_BUS' || component.type === 'MV_SWITCHBOARD' ? 11000 : component.type === 'BATTERY' ? 800 : component.type === 'EMS' ? 0 : 415,
+                busOrientation: component.type === 'LV_BUS' || component.type === 'MV_BUS' ? 'horizontal' : '',
+                source: 'Component Catalog'
+            }));
+            const seen = new Set();
+            return [...fromNodes, ...fromCatalog].filter(item => {
+                if (!item.key || seen.has(item.key)) return false;
+                seen.add(item.key);
+                return true;
+            });
+        }
+
+        function findEpcSldNodeTemplateByKey(key = '', result = getEpcSldWorkspaceResultForEditing()) {
+            return getEpcSldAddNodeTemplates(result).find(item => item.key === key) || getEpcSldAddNodeTemplates(result)[0] || { type: 'LV_BUS', label: 'Custom Node', voltageV: 415 };
+        }
+
+        function syncEpcSldAddNodeDraft() {
+            const result = getEpcSldWorkspaceResultForEditing();
+            const template = findEpcSldNodeTemplateByKey(document.getElementById('epc-sld-node-template')?.value || '', result);
+            const label = document.getElementById('epc-sld-node-label');
+            const type = document.getElementById('epc-sld-node-type');
+            const voltage = document.getElementById('epc-sld-node-voltage');
+            const orientation = document.getElementById('epc-sld-node-bus-orientation');
+            if (label && !label.value) label.value = template.label?.replace(/\s*\([^)]*\)\s*$/, '') || 'Custom Node';
+            if (type) type.value = template.type || 'LV_BUS';
+            if (voltage) voltage.value = template.voltageV == null ? 415 : template.voltageV;
+            if (orientation) orientation.value = template.busOrientation || 'horizontal';
+        }
+        window.syncEpcSldAddNodeDraft = syncEpcSldAddNodeDraft;
+
+        function renderEpcSldAddNodePalette() {
+            const result = getEpcSldWorkspaceResultForEditing();
+            const select = document.getElementById('epc-sld-node-template');
+            if (!select) return;
+            const templates = getEpcSldAddNodeTemplates(result);
+            select.innerHTML = templates.map(item => `<option value="${htmlSafe(item.key)}">${htmlSafe(item.source)} | ${htmlSafe(item.label)}</option>`).join('');
+            syncEpcSldAddNodeDraft();
+        }
+        window.renderEpcSldAddNodePalette = renderEpcSldAddNodePalette;
+
+        function openEpcSldAddNodeModal() {
+            if (!canEditEpcEngineering()) return alert('No engineering edit permission.');
+            const modal = document.getElementById('epc-sld-add-node-modal');
+            if (!modal) return;
+            const label = document.getElementById('epc-sld-node-label');
+            if (label) label.value = '';
+            renderEpcSldAddNodePalette();
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+        window.openEpcSldAddNodeModal = openEpcSldAddNodeModal;
+
+        function closeEpcSldAddNodeModal() {
+            const modal = document.getElementById('epc-sld-add-node-modal');
+            if (!modal) return;
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+        window.closeEpcSldAddNodeModal = closeEpcSldAddNodeModal;
+
+        function saveEpcSldAddedNode() {
+            if (!canEditEpcEngineering()) return alert('No engineering edit permission.');
+            const result = getEpcSldWorkspaceResultForEditing();
+            const topology = result.topology || {};
+            const metrics = getEpcSldCanvasMetrics(topology, result);
+            const template = findEpcSldNodeTemplateByKey(document.getElementById('epc-sld-node-template')?.value || '', result);
+            const type = String(document.getElementById('epc-sld-node-type')?.value || template.type || 'LV_BUS').trim().toUpperCase();
+            const label = String(document.getElementById('epc-sld-node-label')?.value || template.label || type.replaceAll('_', ' ')).trim();
+            const voltageV = Math.max(0, Number(document.getElementById('epc-sld-node-voltage')?.value) || 0);
+            const busOrientation = String(document.getElementById('epc-sld-node-bus-orientation')?.value || template.busOrientation || '').trim();
+            const id = generateEpcSldCustomNodeId(topology, type);
+            const node = {
+                id,
+                type,
+                label,
+                componentId: template.componentId,
+                componentRole: template.componentRole || epcSldComponentRoleForNode({ type }),
+                position: {
+                    x: Math.max(18, Math.round(metrics.viewport.x + metrics.canvas.width / metrics.viewport.zoom / 2 - metrics.nodeW / 2 + 18)),
+                    y: Math.max(18, Math.round(metrics.viewport.y + metrics.canvas.height / metrics.viewport.zoom / 2 - metrics.nodeH / 2 + 18))
+                },
+                electrical: { voltageV },
+                busOrientation
+            };
+            if (saveEpcCustomTopologyDraftMutation((draftTopology) => {
+                draftTopology.nodes = Array.isArray(draftTopology.nodes) ? draftTopology.nodes : [];
+                draftTopology.nodes.push(node);
+                draftTopology.removedNodeIds = clearEpcRemovedNodeTombstone(draftTopology.removedNodeIds || [], node.id);
+            }, 'CUSTOM topology node staged')) {
+                epcSldSelectedNodeId = id;
+                closeEpcSldAddNodeModal();
+                return;
+            }
+            const { variant } = ensureEpcStandardTopologyVariant(result);
+            variant.nodes = (variant.nodes || []).filter(item => item.id !== id);
+            variant.nodes.push(node);
+            variant.removedNodeIds = clearEpcRemovedNodeTombstone(variant.removedNodeIds || [], node.id);
+            markEpcSldTemplateDirty('Topology node staged');
+            epcSldSelectedNodeId = id;
+            closeEpcSldAddNodeModal();
             renderEpcDesignWorkspace();
+        }
+        window.saveEpcSldAddedNode = saveEpcSldAddedNode;
+
+        function deleteEpcSldTopologyNode(nodeId = '') {
+            if (!canEditEpcEngineering()) return alert('No engineering edit permission.');
+            const id = String(nodeId || '').trim();
+            if (!id) return;
+            const result = getEpcSldWorkspaceResultForEditing();
+            const topology = result.topology || {};
+            const node = (topology.nodes || []).find(item => item.id === id);
+            if (!node) return;
+            if (!confirm(`Delete node ${node.label || id}? Connected edges will also be removed.`)) return;
+            const connectedEdgeIds = (topology.edges || []).filter(edge => edge.source === id || edge.target === id).map(edge => edge.id);
+            const removeConnected = (draft) => {
+                draft.nodes = (Array.isArray(draft.nodes) ? draft.nodes : []).filter(item => item.id !== id);
+                draft.edges = (Array.isArray(draft.edges) ? draft.edges : []).filter(edge => edge.source !== id && edge.target !== id);
+                draft.removedEdgeIds = normalizeEpcRemovedEdgeIds([...(draft.removedEdgeIds || []), ...connectedEdgeIds]);
+                draft.routes = draft.routes && typeof draft.routes === 'object' ? draft.routes : {};
+                connectedEdgeIds.forEach(edgeId => delete draft.routes[edgeId]);
+            };
+            if (saveEpcCustomTopologyDraftMutation((draftTopology) => {
+                if (id.startsWith('custom-')) {
+                    removeConnected(draftTopology);
+                } else {
+                    draftTopology.removedNodeIds = normalizeEpcRemovedNodeIds([...(draftTopology.removedNodeIds || []), id]);
+                    removeConnected(draftTopology);
+                }
+            }, 'CUSTOM topology node deletion staged')) return;
+            const { variant } = ensureEpcStandardTopologyVariant(result);
+            if (id.startsWith('custom-')) {
+                removeConnected(variant);
+            } else {
+                variant.removedNodeIds = normalizeEpcRemovedNodeIds([...(variant.removedNodeIds || []), id]);
+                removeConnected(variant);
+            }
+            if (epcSldSelectedNodeId === id) epcSldSelectedNodeId = '';
+            markEpcSldTemplateDirty('Topology node deletion staged');
+            renderEpcDesignWorkspace();
+        }
+        window.deleteEpcSldTopologyNode = deleteEpcSldTopologyNode;
+
+        function setEpcSldWorkspaceMode(mode) {
+            epcSldWorkspaceMode = ['view', 'move', 'route', 'add', 'delete'].includes(mode) ? mode : 'view';
+            renderEpcDesignWorkspace();
+            if (epcSldWorkspaceMode === 'add') setTimeout(() => openEpcSldAddNodeModal(), 0);
         }
         window.setEpcSldWorkspaceMode = setEpcSldWorkspaceMode;
 
@@ -11751,9 +11948,15 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
         window.handleEpcSldEdgeClick = handleEpcSldEdgeClick;
 
+        function handleEpcSldDeleteMarkerPointerDown(event) {
+            event?.preventDefault?.();
+            event?.stopPropagation?.();
+        }
+        window.handleEpcSldDeleteMarkerPointerDown = handleEpcSldDeleteMarkerPointerDown;
+
         function moveEpcSldSelectedNodeByStep(dx = 0, dy = 0) {
             if (!canEditEpcEngineering()) return alert('No engineering edit permission.');
-            const result = window.__lastEpcDesignResult || calculateEpcDesignProject(getActiveEpcDesignProject(), { defaults: epcDesignDefaults });
+            const result = getEpcSldWorkspaceResultForEditing();
             const node = (result.topology?.nodes || []).find(item => item.id === epcSldSelectedNodeId);
             if (!node) return alert('Select a SLD node first.');
             const x = (Number(node.position?.x) || 0) + Number(dx || 0);
@@ -11782,7 +11985,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 selectEpcSldNode(id);
                 return;
             }
-            const result = window.__lastEpcDesignResult || calculateEpcDesignProject(getActiveEpcDesignProject(), { defaults: epcDesignDefaults });
+            const result = getEpcSldWorkspaceResultForEditing();
             const node = (result.topology?.nodes || []).find(item => item.id === id);
             if (!node) return;
             epcSldSelectedNodeId = id;
@@ -11830,7 +12033,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         function saveEpcStandardTopologySelectedEdgeRoute(edgeId = epcSldSelectedEdgeId) {
             if (!canEditEpcEngineering()) return alert('No engineering edit permission.');
             const id = String(edgeId || '').trim();
-            const result = window.__lastEpcDesignResult || calculateEpcDesignProject(getActiveEpcDesignProject(), { defaults: epcDesignDefaults });
+            const result = getEpcSldWorkspaceResultForEditing();
             const edge = (result.topology?.edges || []).find(item => item.id === id);
             const nodes = new Map((result.topology?.nodes || []).map(node => [node.id, node]));
             const source = nodes.get(edge?.source);
@@ -11875,7 +12078,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
         function setEpcSldViewportZoom(multiplier = 1) {
             if (!canEditEpcEngineering()) return alert('No engineering edit permission.');
-            const result = window.__lastEpcDesignResult || calculateEpcDesignProject(getActiveEpcDesignProject(), { defaults: epcDesignDefaults });
+            const result = getEpcSldWorkspaceResultForEditing();
             const metrics = getEpcSldCanvasMetrics(result.topology || {}, result);
             const nextZoom = Math.min(2.5, Math.max(0.35, metrics.viewport.zoom * (Number(multiplier) || 1)));
             const oldW = metrics.canvas.width / metrics.viewport.zoom;
@@ -11923,7 +12126,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
         function fitEpcSldViewport() {
             if (!canEditEpcEngineering()) return alert('No engineering edit permission.');
-            const result = window.__lastEpcDesignResult || calculateEpcDesignProject(getActiveEpcDesignProject(), { defaults: epcDesignDefaults });
+            const result = getEpcSldWorkspaceResultForEditing();
             const metrics = getEpcSldCanvasMetrics(result.topology || {}, result);
             saveEpcStandardTopologyViewport(calculateEpcSldFitViewport(result.topology || {}, result), metrics.canvas);
         }
@@ -11931,7 +12134,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
         function resetEpcSldViewportZoom() {
             if (!canEditEpcEngineering()) return alert('No engineering edit permission.');
-            const result = window.__lastEpcDesignResult || calculateEpcDesignProject(getActiveEpcDesignProject(), { defaults: epcDesignDefaults });
+            const result = getEpcSldWorkspaceResultForEditing();
             const metrics = getEpcSldCanvasMetrics(result.topology || {}, result);
             saveEpcStandardTopologyViewport({ x: 0, y: 0, zoom: 1 }, metrics.canvas);
         }
@@ -11980,7 +12183,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
 
         function findEpcSldSnapTarget(point = {}, options = {}) {
-            const result = window.__lastEpcDesignResult || calculateEpcDesignProject(getActiveEpcDesignProject(), { defaults: epcDesignDefaults });
+            const result = getEpcSldWorkspaceResultForEditing();
             const metrics = getEpcSldCanvasMetrics(result.topology || {}, result);
             const excludeNodeId = String(options.excludeNodeId || '').trim();
             const radius = Math.max(10, Number(options.radius) || 34);
@@ -12043,7 +12246,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
         function epcSldEditableRoute(edgeId = epcSldSelectedEdgeId) {
             const id = String(edgeId || '').trim();
-            const result = window.__lastEpcDesignResult || calculateEpcDesignProject(getActiveEpcDesignProject(), { defaults: epcDesignDefaults });
+            const result = getEpcSldWorkspaceResultForEditing();
             const edge = (result.topology?.edges || []).find(item => item.id === id);
             const nodeMap = new Map((result.topology?.nodes || []).map(node => [node.id, node]));
             const source = nodeMap.get(edge?.source);
@@ -12191,7 +12394,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         function startEpcSldPanDrag(event) {
             if (!canEditEpcEngineering()) return;
             if (event?.target && event.target !== event.currentTarget) return;
-            const result = window.__lastEpcDesignResult || calculateEpcDesignProject(getActiveEpcDesignProject(), { defaults: epcDesignDefaults });
+            const result = getEpcSldWorkspaceResultForEditing();
             const metrics = getEpcSldCanvasMetrics(result.topology || {}, result);
             epcSldDrag = {
                 type: 'pan',
@@ -12232,7 +12435,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const modes = [
                 ['view', 'View'],
                 ['move', 'Move'],
-                ['route', 'Route']
+                ['route', 'Route'],
+                ['add', 'Add'],
+                ['delete', 'Delete']
             ];
             const selectedNode = (result.topology?.nodes || []).find(node => node.id === epcSldSelectedNodeId);
             const selectedEdge = (result.topology?.edges || []).find(edge => edge.id === epcSldSelectedEdgeId);
@@ -12244,7 +12449,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             <div class="text-xs font-bold text-slate-400">Standard Topology Library drives EMS Flow component placement.</div>
                         </div>
                         <div class="lg:ml-auto flex flex-wrap items-center gap-2">
-                            ${modes.map(([id, label]) => `<button type="button" data-epc-sld-mode="${id}" onclick="setEpcSldWorkspaceMode('${id}')" ${!canEdit && id !== 'view' ? 'disabled' : ''} class="rounded-lg border px-3 py-2 text-[10px] font-black ${epcSldWorkspaceMode === id ? 'border-purple-700 bg-purple-700 text-white' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'} ${!canEdit && id !== 'view' ? 'opacity-50' : ''}">${label}</button>`).join('')}
+                            ${modes.map(([id, label]) => {
+                                const action = id === 'add' ? "setEpcSldWorkspaceMode('add'); openEpcSldAddNodeModal()" : `setEpcSldWorkspaceMode('${id}')`;
+                                return `<button type="button" data-epc-sld-mode="${id}" onclick="${action}" ${!canEdit && id !== 'view' ? 'disabled' : ''} class="rounded-lg border px-3 py-2 text-[10px] font-black ${epcSldWorkspaceMode === id ? 'border-purple-700 bg-purple-700 text-white' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'} ${!canEdit && id !== 'view' ? 'opacity-50' : ''}">${label}</button>`;
+                            }).join('')}
                             <button type="button" onclick="setEpcSldViewportZoom(0.8)" ${!canEdit ? 'disabled' : ''} class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[10px] font-black text-slate-600 hover:bg-slate-50 disabled:opacity-50">Zoom -</button>
                             <button type="button" onclick="setEpcSldViewportZoom(1.25)" ${!canEdit ? 'disabled' : ''} class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[10px] font-black text-slate-600 hover:bg-slate-50 disabled:opacity-50">Zoom +</button>
                             <button type="button" data-epc-sld-fit="calculateEpcSldFitViewport" onclick="fitEpcSldViewport()" ${!canEdit ? 'disabled' : ''} class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[10px] font-black text-slate-600 hover:bg-slate-50 disabled:opacity-50">Fit</button>
@@ -12267,6 +12475,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             <span class="rounded-lg bg-slate-50 px-2 py-1">Selected connection: ${htmlSafe(selectedEdge?.id || epcSldSelectedEdgeId || 'none')}</span>
                             <button type="button" onclick="saveEpcStandardTopologySelectedEdgeRoute(epcSldSelectedEdgeId)" ${!canEdit || !selectedEdge ? 'disabled' : ''} class="rounded-lg border border-purple-200 bg-purple-50 px-2 py-1 text-purple-700 disabled:opacity-40">Save Waypoint Route</button>
                             <span>Click a connection, then drag waypoint dots or thick segment handles; Route mode changes line geometry only.</span>
+                        </div>
+                    ` : ''}
+                    ${epcSldWorkspaceMode === 'delete' ? `
+                        <div class="mt-3 flex flex-wrap items-center gap-2 text-[11px] font-bold text-red-600">
+                            <span class="rounded-lg bg-red-50 px-2 py-1">Delete mode</span>
+                            <span>Click the small delete marker on a node to remove it and its connected edges from this topology template.</span>
                         </div>
                     ` : ''}
                 </div>
@@ -12305,6 +12519,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <rect x="0" y="0" width="${nodeW}" height="${nodeH}" rx="8" fill="#ffffff" stroke="${selected ? '#f59e0b' : color}" stroke-width="${selected ? 3 : 2}"/>
                         <text x="${nodeW / 2}" y="22" text-anchor="middle" class="text-[10px] font-black fill-slate-700">${htmlSafe(node.label).slice(0, 24)}</text>
                         <text x="${nodeW / 2}" y="40" text-anchor="middle" class="text-[9px] font-bold fill-slate-400">${htmlSafe(`${node.type}${componentText}`).slice(0, 28)}</text>
+                        ${epcSldWorkspaceMode === 'delete' ? `
+                            <g data-epc-sld-delete-marker="${htmlSafe(node.id)}" onclick="event.stopPropagation(); deleteEpcSldTopologyNode('${htmlSafe(node.id)}')" onpointerdown="handleEpcSldDeleteMarkerPointerDown(event)" class="cursor-pointer">
+                                <circle cx="${nodeW - 8}" cy="8" r="10" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+                                <text x="${nodeW - 8}" y="12" text-anchor="middle" class="text-[12px] font-black fill-red-700">x</text>
+                            </g>
+                        ` : ''}
                     </g>
                 `;
             }).join('');
@@ -12436,6 +12656,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     selectedTopologyId,
                     sourceTopologyId: selectedTopology.id,
                     baseTopologyId: selectedTopology.baseTopologyId || selectedTopology.id,
+                    removedNodeIds: normalizeEpcRemovedNodeIds(selectedTopology.removedNodeIds || []),
                     removedEdgeIds: normalizeEpcRemovedEdgeIds(selectedTopology.removedEdgeIds || []),
                     nodes: Array.isArray(selectedTopology.nodes) ? selectedTopology.nodes : [],
                     edges: Array.isArray(selectedTopology.edges) ? selectedTopology.edges : []
@@ -15765,6 +15986,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return normalizeEpcRemovedEdgeIds(removedEdgeIds).filter(item => item !== id);
         }
         window.clearEpcRemovedEdgeTombstone = clearEpcRemovedEdgeTombstone;
+
+        function clearEpcRemovedNodeTombstone(removedNodeIds = [], nodeId = '') {
+            const id = String(nodeId || '').trim();
+            return normalizeEpcRemovedNodeIds(removedNodeIds).filter(item => item !== id);
+        }
+        window.clearEpcRemovedNodeTombstone = clearEpcRemovedNodeTombstone;
 
         function setEpcCustomConnectionDraft(edge = {}) {
             const setValue = (id, value) => {
@@ -27665,6 +27892,67 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             <div class="flex justify-end gap-3">
                 <button id="so-custom-modal-cancel" onclick="closeRoofCustomModuleModal()" class="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg">Cancel</button>
                 <button id="so-custom-modal-add" onclick="confirmAddRoofCustomModule()" class="px-4 py-2 text-sm font-bold text-white bg-purple-700 hover:bg-purple-800 rounded-lg">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="epc-sld-add-node-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-[415] p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl border border-slate-100 overflow-hidden">
+            <div class="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
+                <div>
+                    <h3 class="text-lg font-black text-slate-800">Add SLD Node</h3>
+                    <p class="mt-1 text-xs font-bold text-slate-400">Add an unconnected component to the current topology template. Use Customize Connections to wire it.</p>
+                </div>
+                <button type="button" onclick="closeEpcSldAddNodeModal()" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-500 hover:bg-slate-50">Close</button>
+            </div>
+            <div class="space-y-4 p-5 text-xs">
+                <label class="block">
+                    <span class="mb-1 block font-black text-slate-500">Template / Component</span>
+                    <select id="epc-sld-node-template" onchange="syncEpcSldAddNodeDraft()" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 font-bold outline-none focus:border-purple-500"></select>
+                </label>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <label class="block">
+                        <span class="mb-1 block font-black text-slate-500">Label</span>
+                        <input id="epc-sld-node-label" type="text" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 font-bold outline-none focus:border-purple-500" placeholder="Custom LV Bus">
+                    </label>
+                    <label class="block">
+                        <span class="mb-1 block font-black text-slate-500">Type</span>
+                        <select id="epc-sld-node-type" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 font-bold outline-none focus:border-purple-500">
+                            <option value="PV_ARRAY">PV_ARRAY</option>
+                            <option value="PV_INVERTER">PV_INVERTER</option>
+                            <option value="BATTERY">BATTERY</option>
+                            <option value="PCS">PCS</option>
+                            <option value="GENSET">GENSET</option>
+                            <option value="LV_BUS">LV_BUS</option>
+                            <option value="LV_SWITCHBOARD">LV_SWITCHBOARD</option>
+                            <option value="TRANSFORMER">TRANSFORMER</option>
+                            <option value="MV_SWITCHBOARD">MV_SWITCHBOARD</option>
+                            <option value="MV_BUS">MV_BUS</option>
+                            <option value="LOAD">LOAD</option>
+                            <option value="EMS">EMS</option>
+                            <option value="SCADA">SCADA</option>
+                            <option value="METER">METER</option>
+                            <option value="ATS">ATS</option>
+                            <option value="CURTAILMENT">CURTAILMENT</option>
+                        </select>
+                    </label>
+                    <label class="block">
+                        <span class="mb-1 block font-black text-slate-500">Voltage</span>
+                        <input id="epc-sld-node-voltage" type="number" value="415" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 font-bold outline-none focus:border-purple-500">
+                    </label>
+                    <label class="block">
+                        <span class="mb-1 block font-black text-slate-500">Bus Orientation</span>
+                        <select id="epc-sld-node-bus-orientation" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 font-bold outline-none focus:border-purple-500">
+                            <option value="">Default</option>
+                            <option value="horizontal">Horizontal</option>
+                            <option value="vertical">Vertical</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="flex justify-end gap-3">
+                    <button type="button" onclick="closeEpcSldAddNodeModal()" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-500 hover:bg-slate-50">Cancel</button>
+                    <button type="button" onclick="saveEpcSldAddedNode()" class="rounded-lg bg-purple-700 px-4 py-2 text-xs font-black text-white hover:bg-purple-800">Add Node</button>
+                </div>
             </div>
         </div>
     </div>

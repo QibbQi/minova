@@ -961,6 +961,15 @@ test('EPC SLD workspace exposes route drag handles and zoom controls', () => {
   ]) {
     assert.match(toolbar[0], new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing SLD zoom toolbar snippet: ${snippet}`);
   }
+  for (const snippet of [
+    "['add', 'Add']",
+    "['delete', 'Delete']",
+    'openEpcSldAddNodeModal',
+    'data-epc-sld-delete-marker',
+    'deleteEpcSldTopologyNode'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing SLD add/delete snippet: ${snippet}`);
+  }
 
   for (const snippet of [
     'data-epc-sld-waypoint',
@@ -999,11 +1008,38 @@ test('EPC SLD workspace exposes route drag handles and zoom controls', () => {
     "project.selectedTopologyId !== 'CUSTOM'",
     'CUSTOM topology connection endpoint staged',
     'CUSTOM topology route staged',
-    'CUSTOM topology layout staged'
+    'CUSTOM topology layout staged',
+    'getEpcSldWorkspaceResultForEditing',
+    'getEpcSldTemplateContext(result)'
   ]) {
     assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing SLD route drag implementation snippet: ${snippet}`);
   }
   assert.match(endpointSaver[0], /saveEpcCustomTopologyDraftMutation/, 'endpoint drops should persist into CUSTOM topology draft');
+});
+
+test('EPC SLD workspace can add and delete topology nodes', () => {
+  for (const snippet of [
+    'id="epc-sld-add-node-modal"',
+    'openEpcSldAddNodeModal',
+    'closeEpcSldAddNodeModal',
+    'renderEpcSldAddNodePalette',
+    'saveEpcSldAddedNode',
+    'generateEpcSldCustomNodeId',
+    'epc-sld-node-template',
+    'epc-sld-node-label',
+    'epc-sld-node-type',
+    'epc-sld-node-voltage',
+    'epc-sld-node-bus-orientation',
+    'removedNodeIds',
+    'deleteEpcSldTopologyNode',
+    'clearEpcRemovedNodeTombstone',
+    'data-epc-sld-delete-marker'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing SLD add/delete node snippet: ${snippet}`);
+  }
+  assert.match(html, /setEpcSldWorkspaceMode\('add'\)[\s\S]*openEpcSldAddNodeModal/, 'Add mode should open the add-node modal');
+  assert.doesNotMatch(html, /data-epc-sld-mode="add"[\s\S]{0,180}locked by Electrical/, 'Add mode must not be locked by Electrical architecture');
+  assert.doesNotMatch(html, /data-epc-sld-mode="delete"[\s\S]{0,180}locked by Electrical/, 'Delete mode must not be locked by Electrical architecture');
 });
 
 test('EPC topology selector and save modal support custom templates', () => {

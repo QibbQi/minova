@@ -1116,6 +1116,94 @@ test('EPC custom topology preserves removed generated connections across load re
   assert.equal(result.topologyFlow.edges.some(edge => edge.id === 'load-tx-1-lv-load-bus-1'), false);
 });
 
+test('EPC topology templates can add nodes and permanently remove generated nodes', () => {
+  const defaults = {
+    ...EPC_DESIGN_DEFAULTS,
+    standardTopologyLibrary: {
+      version: 2,
+      templates: {
+        C5: {
+          architectureVariants: {
+            mv_11_radial: {
+              removedNodeIds: ['lv-bus'],
+              nodes: [
+                {
+                  id: 'custom-lv-bus-1',
+                  type: 'LV_BUS',
+                  label: 'Custom Workshop LV Bus',
+                  position: { x: 510, y: 360 },
+                  electrical: { voltageV: 415 },
+                  busOrientation: 'horizontal'
+                }
+              ],
+              edges: [
+                {
+                  id: 'custom-lv-bus-1-ems',
+                  source: 'ems',
+                  target: 'custom-lv-bus-1',
+                  type: 'COMMUNICATION',
+                  direction: 'BIDIRECTIONAL',
+                  voltageV: 0
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  };
+  const result = calculateEpcDesignProject({
+    selectedTopologyId: 'C5',
+    site: { gridMode: 'island', distanceToInterconnectionM: 700 },
+    electrical: { selectedArchitectureId: 'mv_11_radial', selectedArchitectureSource: 'user', newMvSystem: true },
+    loads: { dieselTotalLiters: 6000, dieselPeriodDays: 1, operationHoursPerDay: 8 }
+  }, { now: '2026-06-17T00:00:00.000Z', defaults });
+
+  assert.deepEqual(result.topology.removedNodeIds, ['lv-bus']);
+  assert.equal(result.topology.nodes.some(node => node.id === 'lv-bus'), false);
+  assert.equal(result.topology.edges.some(edge => edge.source === 'lv-bus' || edge.target === 'lv-bus'), false);
+  assert.equal(result.topology.nodes.find(node => node.id === 'custom-lv-bus-1')?.label, 'Custom Workshop LV Bus');
+  assert.equal(result.topology.edges.some(edge => edge.id === 'custom-lv-bus-1-ems'), true);
+  assert.equal(result.topologyFlow.nodes.some(node => node.id === 'custom-lv-bus-1'), true);
+});
+
+test('EPC custom topology preserves removed generated nodes across load regeneration', () => {
+  const result = calculateEpcDesignProject({
+    selectedTopologyId: 'CUSTOM',
+    topology: {
+      selectedTopologyId: 'CUSTOM',
+      sourceTopologyId: 'C5',
+      removedNodeIds: ['load-1'],
+      nodes: [
+        {
+          id: 'custom-lv-bus-1',
+          type: 'LV_BUS',
+          label: 'Custom LV Bus',
+          position: { x: 1600, y: 460 },
+          electrical: { voltageV: 415 }
+        }
+      ]
+    },
+    site: { gridMode: 'island' },
+    loads: {
+      dailyLoadKwh: 9000,
+      operationHoursPerDay: 9,
+      loadCount: 3,
+      loadSplits: [
+        { id: 'load-1', label: 'Plant', ratioPct: 50 },
+        { id: 'load-2', label: 'Camp', ratioPct: 30 },
+        { id: 'load-3', label: 'Workshop', ratioPct: 20 }
+      ]
+    }
+  }, { now: '2026-06-17T00:00:00.000Z' });
+
+  assert.deepEqual(result.topology.removedNodeIds, ['load-1']);
+  assert.equal(result.topology.nodes.some(node => node.id === 'load-1'), false);
+  assert.equal(result.topology.edges.some(edge => edge.source === 'load-1' || edge.target === 'load-1'), false);
+  assert.equal(result.topology.nodes.find(node => node.id === 'load-2')?.label, 'Camp');
+  assert.equal(result.topology.nodes.find(node => node.id === 'custom-lv-bus-1')?.position.x, 1600);
+});
+
 test('EPC saved custom topology templates use generated IDs and remain architecture driven', () => {
   const defaults = {
     ...EPC_DESIGN_DEFAULTS,
@@ -1129,9 +1217,11 @@ test('EPC saved custom topology templates use generated IDs and remain architect
           baseTopologyId: 'C5',
           architectureVariants: {
             mv_11_radial: {
+              removedNodeIds: ['load-1'],
               removedEdgeIds: ['load-tx-1-lv-load-bus-1'],
               nodes: [
                 { id: 'lv-bus', position: { x: 700, y: 240 } },
+                { id: 'custom-lv-bus-1', type: 'LV_BUS', label: 'Saved Custom Bus', position: { x: 1620, y: 420 }, electrical: { voltageV: 415 } },
                 { id: 'load-2', position: { x: 1530, y: 300 } }
               ],
               routes: {
@@ -1177,9 +1267,12 @@ test('EPC saved custom topology templates use generated IDs and remain architect
   assert.equal(radial.topology.sourceTopologyId, 'R4');
   assert.equal(radial.topology.baseTopologyId, 'C5');
   assert.equal(radial.topology.nodes.some((node) => node.id === 'ring-rmu'), false);
+  assert.deepEqual(radial.topology.removedNodeIds, ['load-1']);
+  assert.equal(radial.topology.nodes.some((node) => node.id === 'load-1'), false);
   assert.deepEqual(radial.topology.removedEdgeIds, ['load-tx-1-lv-load-bus-1']);
   assert.equal(radial.topology.edges.some((edge) => edge.id === 'load-tx-1-lv-load-bus-1'), false);
   assert.equal(radial.topology.nodes.find((node) => node.id === 'lv-bus')?.position.x, 700);
+  assert.equal(radial.topology.nodes.find((node) => node.id === 'custom-lv-bus-1')?.label, 'Saved Custom Bus');
   assert.equal(radial.topology.nodes.find((node) => node.id === 'load-2')?.label, 'Camp');
   assert.deepEqual(radial.topology.edges.find((edge) => edge.id === 'lv-step-up')?.route?.waypoints, [{ x: 860, y: 245 }]);
   assert.equal(ring.topology.nodes.find((node) => node.id === 'ring-rmu')?.position.x, 1110);

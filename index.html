@@ -10303,6 +10303,24 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return String(node.componentRole || type).toUpperCase();
         }
 
+        function normalizeEpcSldViewport(value = {}) {
+            const input = value && typeof value === 'object' ? value : {};
+            const zoom = Math.min(2.5, Math.max(0.35, Number(input.zoom) || 1));
+            return {
+                x: Math.max(0, Math.round(Number(input.x) || 0)),
+                y: Math.max(0, Math.round(Number(input.y) || 0)),
+                zoom
+            };
+        }
+
+        function normalizeEpcSldCanvas(value = {}) {
+            const input = value && typeof value === 'object' ? value : {};
+            return {
+                width: Math.max(1180, Math.round(Number(input.width) || 1180)),
+                height: Math.max(420, Math.round(Number(input.height) || 420))
+            };
+        }
+
         function normalizeEpcStandardTopologyLibrary(value = {}) {
             const input = value && typeof value === 'object' ? value : {};
             const componentCatalog = [...EPC_SLD_COMPONENT_CATALOG, ...(Array.isArray(input.componentCatalog) ? input.componentCatalog : [])]
@@ -10314,6 +10332,17 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     label: String(item.label || item.type)
                 }));
             const templates = input.templates && typeof input.templates === 'object' ? JSON.parse(JSON.stringify(input.templates)) : {};
+            Object.values(templates).forEach(template => {
+                const variants = template?.architectureVariants && typeof template.architectureVariants === 'object' ? template.architectureVariants : {};
+                Object.values(variants).forEach(variant => {
+                    if (!variant || typeof variant !== 'object') return;
+                    variant.nodes = Array.isArray(variant.nodes) ? variant.nodes : [];
+                    variant.edges = Array.isArray(variant.edges) ? variant.edges : [];
+                    variant.routes = variant.routes && typeof variant.routes === 'object' ? variant.routes : {};
+                    variant.viewport = normalizeEpcSldViewport(variant.viewport || {});
+                    variant.canvas = normalizeEpcSldCanvas(variant.canvas || {});
+                });
+            });
             return {
                 version: Math.max(2, Number(input.version) || 2),
                 componentCatalog,
@@ -11267,7 +11296,15 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             variant.nodes = Array.isArray(variant.nodes) ? variant.nodes : [];
             variant.edges = Array.isArray(variant.edges) ? variant.edges : [];
             variant.routes = variant.routes && typeof variant.routes === 'object' ? variant.routes : {};
+            variant.viewport = normalizeEpcSldViewport(variant.viewport || {});
+            variant.canvas = normalizeEpcSldCanvas(variant.canvas || {});
             return { library, topologyId, architectureId, variant };
+        }
+
+        function getEpcStandardTopologyVariant(result = window.__lastEpcDesignResult) {
+            const { topologyId, architectureId } = getEpcSldTemplateContext(result);
+            const library = normalizeEpcStandardTopologyLibrary(epcDesignDefaults.standardTopologyLibrary || {});
+            return library.templates?.[topologyId]?.architectureVariants?.[architectureId] || null;
         }
 
         function upsertEpcTemplateNodeOverride(variant, nodeId, patch) {
@@ -11307,6 +11344,24 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             renderEpcDesignWorkspace();
         }
         window.saveEpcStandardTopologyEdgeRoute = saveEpcStandardTopologyEdgeRoute;
+
+        function saveEpcStandardTopologyViewport(viewport = {}, canvas = null) {
+            if (!canEditEpcEngineering()) return alert('No engineering edit permission.');
+            const { variant } = ensureEpcStandardTopologyVariant();
+            const normalizedCanvas = normalizeEpcSldCanvas(canvas || variant.canvas || {});
+            const normalizedViewport = normalizeEpcSldViewport(viewport || variant.viewport || {});
+            const maxX = Math.max(0, normalizedCanvas.width - normalizedCanvas.width / normalizedViewport.zoom);
+            const maxY = Math.max(0, normalizedCanvas.height - normalizedCanvas.height / normalizedViewport.zoom);
+            variant.canvas = normalizedCanvas;
+            variant.viewport = {
+                x: Math.min(maxX, normalizedViewport.x),
+                y: Math.min(maxY, normalizedViewport.y),
+                zoom: normalizedViewport.zoom
+            };
+            persistEpcDesignDefaults('SLD template viewport saved');
+            renderEpcDesignWorkspace();
+        }
+        window.saveEpcStandardTopologyViewport = saveEpcStandardTopologyViewport;
 
         function replaceEpcStandardTopologyComponent(nodeId, componentId) {
             if (!canEditEpcEngineering()) return alert('No engineering edit permission.');
@@ -11459,6 +11514,226 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
         window.saveEpcStandardTopologySelectedEdgeRoute = saveEpcStandardTopologySelectedEdgeRoute;
 
+        function getEpcSldCanvasMetrics(topology = {}, result = window.__lastEpcDesignResult || {}) {
+            const nodeW = 124;
+            const nodeH = 58;
+            const nodes = Array.isArray(topology.nodes) ? topology.nodes : [];
+            const variant = getEpcStandardTopologyVariant(result);
+            const maxNodeX = Math.max(1180, ...nodes.map(node => (Number(node.position?.x) || 0) + nodeW + 160));
+            const maxNodeY = Math.max(420, ...nodes.map(node => (Number(node.position?.y) || 0) + nodeH + 120));
+            const variantCanvas = normalizeEpcSldCanvas(variant?.canvas || {});
+            const canvas = normalizeEpcSldCanvas({
+                width: Math.max(variantCanvas.width, Math.ceil(maxNodeX)),
+                height: Math.max(variantCanvas.height, Math.ceil(maxNodeY))
+            });
+            const viewport = normalizeEpcSldViewport(variant?.viewport || { x: 0, y: 0, zoom: 1 });
+            const visibleW = canvas.width / viewport.zoom;
+            const visibleH = canvas.height / viewport.zoom;
+            const x = Math.min(Math.max(0, viewport.x), Math.max(0, canvas.width - visibleW));
+            const y = Math.min(Math.max(0, viewport.y), Math.max(0, canvas.height - visibleH));
+            return {
+                nodeW,
+                nodeH,
+                canvas,
+                variant,
+                viewport: { ...viewport, x, y },
+                viewBox: `${Math.round(x)} ${Math.round(y)} ${Math.round(visibleW)} ${Math.round(visibleH)}`
+            };
+        }
+
+        function setEpcSldViewportZoom(multiplier = 1) {
+            if (!canEditEpcEngineering()) return alert('No engineering edit permission.');
+            const result = window.__lastEpcDesignResult || calculateEpcDesignProject(getActiveEpcDesignProject(), { defaults: epcDesignDefaults });
+            const metrics = getEpcSldCanvasMetrics(result.topology || {}, result);
+            const nextZoom = Math.min(2.5, Math.max(0.35, metrics.viewport.zoom * (Number(multiplier) || 1)));
+            const oldW = metrics.canvas.width / metrics.viewport.zoom;
+            const oldH = metrics.canvas.height / metrics.viewport.zoom;
+            const newW = metrics.canvas.width / nextZoom;
+            const newH = metrics.canvas.height / nextZoom;
+            saveEpcStandardTopologyViewport({
+                x: metrics.viewport.x + (oldW - newW) / 2,
+                y: metrics.viewport.y + (oldH - newH) / 2,
+                zoom: nextZoom
+            }, metrics.canvas);
+        }
+        window.setEpcSldViewportZoom = setEpcSldViewportZoom;
+
+        function fitEpcSldViewport() {
+            if (!canEditEpcEngineering()) return alert('No engineering edit permission.');
+            const result = window.__lastEpcDesignResult || calculateEpcDesignProject(getActiveEpcDesignProject(), { defaults: epcDesignDefaults });
+            const metrics = getEpcSldCanvasMetrics(result.topology || {}, result);
+            saveEpcStandardTopologyViewport({ x: 0, y: 0, zoom: 1 }, metrics.canvas);
+        }
+        window.fitEpcSldViewport = fitEpcSldViewport;
+
+        function resetEpcSldViewportZoom() {
+            if (!canEditEpcEngineering()) return alert('No engineering edit permission.');
+            const result = window.__lastEpcDesignResult || calculateEpcDesignProject(getActiveEpcDesignProject(), { defaults: epcDesignDefaults });
+            const metrics = getEpcSldCanvasMetrics(result.topology || {}, result);
+            saveEpcStandardTopologyViewport({ x: metrics.viewport.x, y: metrics.viewport.y, zoom: 1 }, metrics.canvas);
+        }
+        window.resetEpcSldViewportZoom = resetEpcSldViewportZoom;
+
+        function epcSldNodePosition(node = {}) {
+            return {
+                x: Math.max(18, Number(node.position?.x) || 0),
+                y: Math.max(18, Number(node.position?.y) || 80)
+            };
+        }
+
+        function epcSldPort(node = {}, side = 'right', nodeW = 124, nodeH = 58) {
+            const { x, y } = epcSldNodePosition(node);
+            if (side === 'left') return { x, y: y + nodeH / 2 };
+            if (side === 'top') return { x: x + nodeW / 2, y };
+            if (side === 'bottom') return { x: x + nodeW / 2, y: y + nodeH };
+            return { x: x + nodeW, y: y + nodeH / 2 };
+        }
+
+        function epcSldRoutePoints(source = {}, target = {}, edge = {}, nodeW = 124, nodeH = 58) {
+            const sourceBeforeTarget = (Number(source.position?.x) || 0) <= (Number(target.position?.x) || 0);
+            const start = epcSldPort(source, sourceBeforeTarget ? 'right' : 'left', nodeW, nodeH);
+            const end = epcSldPort(target, sourceBeforeTarget ? 'left' : 'right', nodeW, nodeH);
+            if (edge.route?.manualRoute && Array.isArray(edge.route?.waypoints) && edge.route.waypoints.length) {
+                return [start, ...edge.route.waypoints.map(point => ({ x: Number(point.x) || 0, y: Number(point.y) || 0 })), end];
+            }
+            const midX = Math.round((start.x + end.x) / 2);
+            if (Math.abs(start.y - end.y) < 8) return [start, end];
+            return [start, { x: midX, y: start.y }, { x: midX, y: end.y }, end];
+        }
+
+        function epcSldRouteDFromPoints(points = []) {
+            return points
+                .map((point, index) => `${index ? 'L' : 'M'}${Math.round(Number(point.x) || 0)} ${Math.round(Number(point.y) || 0)}`)
+                .join(' ');
+        }
+
+        function epcSldEditableRoute(edgeId = epcSldSelectedEdgeId) {
+            const id = String(edgeId || '').trim();
+            const result = window.__lastEpcDesignResult || calculateEpcDesignProject(getActiveEpcDesignProject(), { defaults: epcDesignDefaults });
+            const edge = (result.topology?.edges || []).find(item => item.id === id);
+            const nodeMap = new Map((result.topology?.nodes || []).map(node => [node.id, node]));
+            const source = nodeMap.get(edge?.source);
+            const target = nodeMap.get(edge?.target);
+            if (!edge || !source || !target) return null;
+            const metrics = getEpcSldCanvasMetrics(result.topology || {}, result);
+            const points = epcSldRoutePoints(source, target, edge, metrics.nodeW, metrics.nodeH);
+            return { result, edge, source, target, metrics, points, waypoints: points.slice(1, -1) };
+        }
+
+        function startEpcSldRouteWaypointDrag(event, edgeId, waypointIndex) {
+            if (epcSldWorkspaceMode !== 'route' || !canEditEpcEngineering()) return;
+            const editable = epcSldEditableRoute(edgeId);
+            if (!editable) return;
+            epcSldSelectedEdgeId = editable.edge.id;
+            epcSldSelectedNodeId = '';
+            epcSldDrag = {
+                type: 'route-waypoint',
+                edgeId: editable.edge.id,
+                waypointIndex: Math.max(0, Number(waypointIndex) || 0),
+                start: getEpcSldSvgPoint(event),
+                waypoints: editable.waypoints.map(point => ({ ...point })),
+                next: editable.waypoints.map(point => ({ ...point }))
+            };
+            document.addEventListener('pointermove', moveEpcSldRouteDrag);
+            document.addEventListener('pointerup', endEpcSldRouteDrag, { once: true });
+            event.preventDefault?.();
+            event.stopPropagation?.();
+        }
+        window.startEpcSldRouteWaypointDrag = startEpcSldRouteWaypointDrag;
+
+        function startEpcSldRouteSegmentDrag(event, edgeId, segmentIndex) {
+            if (epcSldWorkspaceMode !== 'route' || !canEditEpcEngineering()) return;
+            const editable = epcSldEditableRoute(edgeId);
+            if (!editable) return;
+            const index = Math.max(0, Number(segmentIndex) || 0);
+            const a = editable.points[index] || {};
+            const b = editable.points[index + 1] || {};
+            epcSldSelectedEdgeId = editable.edge.id;
+            epcSldSelectedNodeId = '';
+            epcSldDrag = {
+                type: 'route-segment',
+                edgeId: editable.edge.id,
+                segmentIndex: index,
+                axis: Math.abs((a.x || 0) - (b.x || 0)) < Math.abs((a.y || 0) - (b.y || 0)) ? 'x' : 'y',
+                start: getEpcSldSvgPoint(event),
+                points: editable.points.map(point => ({ ...point })),
+                waypoints: editable.waypoints.map(point => ({ ...point })),
+                next: editable.waypoints.map(point => ({ ...point }))
+            };
+            document.addEventListener('pointermove', moveEpcSldRouteDrag);
+            document.addEventListener('pointerup', endEpcSldRouteDrag, { once: true });
+            event.preventDefault?.();
+            event.stopPropagation?.();
+        }
+        window.startEpcSldRouteSegmentDrag = startEpcSldRouteSegmentDrag;
+
+        function moveEpcSldRouteDrag(event) {
+            if (!epcSldDrag || !String(epcSldDrag.type || '').startsWith('route-')) return;
+            const point = getEpcSldSvgPoint(event);
+            const dx = point.x - epcSldDrag.start.x;
+            const dy = point.y - epcSldDrag.start.y;
+            const next = epcSldDrag.waypoints.map(point => ({ ...point }));
+            if (epcSldDrag.type === 'route-waypoint') {
+                const idx = epcSldDrag.waypointIndex;
+                if (next[idx]) next[idx] = { x: Math.max(0, Math.round(next[idx].x + dx)), y: Math.max(0, Math.round(next[idx].y + dy)) };
+            } else {
+                const seg = epcSldDrag.segmentIndex;
+                [seg - 1, seg].forEach(idx => {
+                    if (!next[idx]) return;
+                    if (epcSldDrag.axis === 'x') next[idx].x = Math.max(0, Math.round(next[idx].x + dx));
+                    else next[idx].y = Math.max(0, Math.round(next[idx].y + dy));
+                });
+            }
+            epcSldDrag.next = next;
+            event.preventDefault?.();
+        }
+
+        function endEpcSldRouteDrag() {
+            if (!epcSldDrag || !String(epcSldDrag.type || '').startsWith('route-')) return;
+            const drag = epcSldDrag;
+            epcSldDrag = null;
+            document.removeEventListener('pointermove', moveEpcSldRouteDrag);
+            saveEpcStandardTopologyEdgeRoute(drag.edgeId, drag.next || drag.waypoints || []);
+        }
+
+        function startEpcSldPanDrag(event) {
+            if (!canEditEpcEngineering()) return;
+            if (event?.target && event.target !== event.currentTarget) return;
+            const result = window.__lastEpcDesignResult || calculateEpcDesignProject(getActiveEpcDesignProject(), { defaults: epcDesignDefaults });
+            const metrics = getEpcSldCanvasMetrics(result.topology || {}, result);
+            epcSldDrag = {
+                type: 'pan',
+                start: getEpcSldSvgPoint(event),
+                viewport: { ...metrics.viewport },
+                canvas: metrics.canvas,
+                next: { ...metrics.viewport }
+            };
+            document.addEventListener('pointermove', moveEpcSldPanDrag);
+            document.addEventListener('pointerup', endEpcSldPanDrag, { once: true });
+            event.preventDefault?.();
+            event.stopPropagation?.();
+        }
+        window.startEpcSldPanDrag = startEpcSldPanDrag;
+
+        function moveEpcSldPanDrag(event) {
+            if (!epcSldDrag || epcSldDrag.type !== 'pan') return;
+            const point = getEpcSldSvgPoint(event);
+            epcSldDrag.next = {
+                x: Math.max(0, Math.round(epcSldDrag.viewport.x - (point.x - epcSldDrag.start.x))),
+                y: Math.max(0, Math.round(epcSldDrag.viewport.y - (point.y - epcSldDrag.start.y))),
+                zoom: epcSldDrag.viewport.zoom
+            };
+            event.preventDefault?.();
+        }
+
+        function endEpcSldPanDrag() {
+            if (!epcSldDrag || epcSldDrag.type !== 'pan') return;
+            const drag = epcSldDrag;
+            epcSldDrag = null;
+            document.removeEventListener('pointermove', moveEpcSldPanDrag);
+            saveEpcStandardTopologyViewport(drag.next || drag.viewport, drag.canvas);
+        }
+
         function renderEpcSldWorkspaceToolbar(result = {}) {
             const canEdit = canEditEpcEngineering();
             const modes = [
@@ -11472,7 +11747,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const catalog = normalizeEpcStandardTopologyLibrary(epcDesignDefaults.standardTopologyLibrary || {}).componentCatalog;
             const compatible = selectedNode ? catalog.filter(item => item.role === epcSldComponentRoleForNode(selectedNode)) : [];
             return `
-                <div class="rounded-xl border border-slate-200 bg-white p-3">
+                <div class="rounded-xl border border-slate-200 bg-white p-3" data-epc-sld-viewport-save="saveEpcStandardTopologyViewport">
                     <div class="flex flex-col lg:flex-row lg:items-center gap-3">
                         <div>
                             <div class="text-sm font-black text-slate-800">Electrical SLD Workspace</div>
@@ -11480,6 +11755,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         </div>
                         <div class="lg:ml-auto flex flex-wrap items-center gap-2">
                             ${modes.map(([id, label]) => `<button type="button" data-epc-sld-mode="${id}" onclick="setEpcSldWorkspaceMode('${id}')" ${!canEdit && id !== 'view' ? 'disabled' : ''} class="rounded-lg border px-3 py-2 text-[10px] font-black ${epcSldWorkspaceMode === id ? 'border-purple-700 bg-purple-700 text-white' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'} ${!canEdit && id !== 'view' ? 'opacity-50' : ''}">${label}</button>`).join('')}
+                            <button type="button" onclick="setEpcSldViewportZoom(0.8)" ${!canEdit ? 'disabled' : ''} class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[10px] font-black text-slate-600 hover:bg-slate-50 disabled:opacity-50">Zoom -</button>
+                            <button type="button" onclick="setEpcSldViewportZoom(1.25)" ${!canEdit ? 'disabled' : ''} class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[10px] font-black text-slate-600 hover:bg-slate-50 disabled:opacity-50">Zoom +</button>
+                            <button type="button" onclick="fitEpcSldViewport()" ${!canEdit ? 'disabled' : ''} class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[10px] font-black text-slate-600 hover:bg-slate-50 disabled:opacity-50">Fit</button>
+                            <button type="button" onclick="resetEpcSldViewportZoom()" ${!canEdit ? 'disabled' : ''} class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[10px] font-black text-slate-600 hover:bg-slate-50 disabled:opacity-50">100%</button>
                             <button type="button" onclick="resetEpcStandardTopologyFactory()" ${!canEdit ? 'disabled' : ''} class="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-[10px] font-black text-red-700 hover:bg-red-100 ${!canEdit ? 'opacity-50' : ''}">Reset Factory</button>
                         </div>
                     </div>
@@ -11505,7 +11784,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <div class="mt-3 flex flex-wrap items-center gap-2 text-[11px] font-bold text-slate-500">
                             <span class="rounded-lg bg-slate-50 px-2 py-1">Selected connection: ${htmlSafe(selectedEdge?.id || epcSldSelectedEdgeId || 'none')}</span>
                             <button type="button" onclick="saveEpcStandardTopologySelectedEdgeRoute(epcSldSelectedEdgeId)" ${!canEdit || !selectedEdge ? 'disabled' : ''} class="rounded-lg border border-purple-200 bg-purple-50 px-2 py-1 text-purple-700 disabled:opacity-40">Save Waypoint Route</button>
-                            <span>Click a connection to create a simple editable waypoint route; Route mode changes line geometry only.</span>
+                            <span>Click a connection, then drag waypoint dots or thick segment handles; Route mode changes line geometry only.</span>
                         </div>
                     ` : ''}
                 </div>
@@ -11517,32 +11796,19 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const nodes = Array.isArray(topology.nodes) ? topology.nodes : [];
             const edges = Array.isArray(topology.edges) ? topology.edges : [];
             const nodeMap = new Map(nodes.map(node => [node.id, node]));
-            const nodeW = 124;
-            const nodeH = 58;
-            const sldPort = (node, side = 'right') => {
-                const x = Math.max(18, Math.min(1010, Number(node.position?.x) || 0));
-                const y = Math.max(18, Math.min(330, Number(node.position?.y) || 80));
-                if (side === 'left') return { x, y: y + nodeH / 2 };
-                if (side === 'top') return { x: x + nodeW / 2, y };
-                if (side === 'bottom') return { x: x + nodeW / 2, y: y + nodeH };
-                return { x: x + nodeW, y: y + nodeH / 2 };
-            };
+            const metrics = getEpcSldCanvasMetrics(topology, result);
+            const { nodeW, nodeH } = metrics;
+            const variant = metrics.variant || {};
+            const savedViewport = variant.viewport || metrics.viewport;
+            const savedCanvas = variant.canvas || metrics.canvas;
+            const viewBox = metrics.viewBox;
             const routeD = (source, target, edge) => {
-                const sourceBeforeTarget = (Number(source.position?.x) || 0) <= (Number(target.position?.x) || 0);
-                const start = sldPort(source, sourceBeforeTarget ? 'right' : 'left');
-                const end = sldPort(target, sourceBeforeTarget ? 'left' : 'right');
-                if (edge.route?.manualRoute && Array.isArray(edge.route?.waypoints) && edge.route.waypoints.length) {
-                    return [start, ...edge.route.waypoints, end]
-                        .map((point, index) => `${index ? 'L' : 'M'}${Math.round(Number(point.x) || 0)} ${Math.round(Number(point.y) || 0)}`)
-                        .join(' ');
-                }
-                const midX = Math.round((start.x + end.x) / 2);
-                if (Math.abs(start.y - end.y) < 8) return `M${start.x} ${start.y} H${end.x}`;
-                return `M${start.x} ${start.y} H${midX} V${end.y} H${end.x}`;
+                return epcSldRouteDFromPoints(epcSldRoutePoints(source, target, edge, nodeW, nodeH));
             };
             const nodeMarkup = nodes.map((node, index) => {
-                const x = Math.max(18, Math.min(1010, Number(node.position?.x) || (index * 145 + 32)));
-                const y = Math.max(18, Math.min(330, Number(node.position?.y) || 80));
+                const fallback = { x: index * 145 + 32, y: 80 };
+                const x = Math.max(18, Number(node.position?.x) || fallback.x);
+                const y = Math.max(18, Number(node.position?.y) || fallback.y);
                 const color = node.type === 'MV_BUS' || node.type === 'MV_SWITCHBOARD' ? '#1d4ed8'
                     : node.type === 'LV_BUS' || node.type === 'LV_SWITCHBOARD' ? '#0ea5e9'
                     : node.type === 'BATTERY' || node.type === 'PCS' ? '#f97316'
@@ -11570,12 +11836,30 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     : '#94a3b8';
                 const dash = edge.type === 'COMMUNICATION' || edge.type === 'CONTROL' ? ' stroke-dasharray="6 6"' : '';
                 const selected = edge.id === epcSldSelectedEdgeId;
-                return `<path data-epc-sld-edge="${htmlSafe(edge.id)}" onclick="handleEpcSldEdgeClick('${htmlSafe(edge.id)}')" d="${routeD(source, target, edge)}" fill="none" stroke="${selected ? '#f59e0b' : color}" stroke-width="${selected ? 3.4 : 2.4}" stroke-linecap="round" stroke-linejoin="round"${dash}/>`;
+                return `<path data-epc-sld-edge="${htmlSafe(edge.id)}" onclick="handleEpcSldEdgeClick('${htmlSafe(edge.id)}')" onpointerdown="event.stopPropagation()" d="${routeD(source, target, edge)}" fill="none" stroke="${selected ? '#f59e0b' : color}" stroke-width="${selected ? 3.4 : 2.4}" stroke-linecap="round" stroke-linejoin="round"${dash}/>`;
             }).join('');
+            const selectedEdge = edges.find(edge => edge.id === epcSldSelectedEdgeId);
+            const selectedSource = selectedEdge ? nodeMap.get(selectedEdge.source) : null;
+            const selectedTarget = selectedEdge ? nodeMap.get(selectedEdge.target) : null;
+            const selectedPoints = selectedEdge && selectedSource && selectedTarget
+                ? epcSldRoutePoints(selectedSource, selectedTarget, selectedEdge, nodeW, nodeH)
+                : [];
+            const routeEditorMarkup = epcSldWorkspaceMode === 'route' && selectedEdge && selectedPoints.length > 1 ? `
+                <g class="epc-sld-route-editor">
+                    ${selectedPoints.slice(0, -1).map((point, index) => {
+                        const next = selectedPoints[index + 1];
+                        if (!next) return '';
+                        return `<path data-epc-sld-segment="${htmlSafe(selectedEdge.id)}:${index}" onpointerdown="startEpcSldRouteSegmentDrag(event, '${htmlSafe(selectedEdge.id)}', ${index})" d="M${Math.round(point.x)} ${Math.round(point.y)} L${Math.round(next.x)} ${Math.round(next.y)}" fill="none" stroke="#f59e0b" stroke-width="14" stroke-linecap="round" stroke-opacity="0.14" class="cursor-move"/>`;
+                    }).join('')}
+                    ${selectedPoints.slice(1, -1).map((point, index) => `<circle data-epc-sld-waypoint="${htmlSafe(selectedEdge.id)}:${index}" onpointerdown="startEpcSldRouteWaypointDrag(event, '${htmlSafe(selectedEdge.id)}', ${index})" cx="${Math.round(point.x)}" cy="${Math.round(point.y)}" r="7" fill="#ffffff" stroke="#f59e0b" stroke-width="3" class="cursor-move"/>`).join('')}
+                </g>
+            ` : '';
             return `
                 <div class="rounded-xl border border-slate-200 bg-slate-50 p-3 overflow-x-auto">
-                    <svg id="epc-topology-sld-svg" viewBox="0 0 1180 420" class="min-w-[880px] w-full h-auto">
+                    <svg id="epc-topology-sld-svg" viewBox="${htmlSafe(viewBox)}" data-epc-sld-viewport="${htmlSafe(JSON.stringify(savedViewport))}" data-epc-sld-template-canvas="${htmlSafe(JSON.stringify(savedCanvas))}" data-epc-sld-canvas="${htmlSafe(JSON.stringify(metrics.canvas))}" class="min-w-[880px] w-full h-auto cursor-${canEditEpcEngineering() ? 'grab' : 'default'}" onpointerdown="startEpcSldPanDrag(event)">
+                        <rect x="0" y="0" width="${metrics.canvas.width}" height="${metrics.canvas.height}" fill="transparent" onpointerdown="startEpcSldPanDrag(event)"/>
                         ${edgeMarkup}
+                        ${routeEditorMarkup}
                         ${nodeMarkup}
                     </svg>
                 </div>

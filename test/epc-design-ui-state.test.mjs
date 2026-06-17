@@ -915,6 +915,42 @@ test('EPC SLD workspace exposes move route replace and reset controls', () => {
   }
 });
 
+test('EPC SLD workspace exposes route drag handles and zoom controls', () => {
+  const toolbar = html.match(/function renderEpcSldWorkspaceToolbar\(result = \{\}\)[\s\S]*?function renderEpcTopologySld/);
+  const renderer = html.match(/function renderEpcTopologySld\(topology = \{\}\)[\s\S]*?function getEpcTopologySelectionState/);
+  assert.ok(toolbar, 'SLD toolbar renderer should exist');
+  assert.ok(renderer, 'SLD topology renderer should exist');
+
+  for (const snippet of [
+    'Zoom -',
+    'Zoom +',
+    'Fit',
+    '100%',
+    'setEpcSldViewportZoom',
+    'fitEpcSldViewport',
+    'saveEpcStandardTopologyViewport'
+  ]) {
+    assert.match(toolbar[0], new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing SLD zoom toolbar snippet: ${snippet}`);
+  }
+
+  for (const snippet of [
+    'data-epc-sld-waypoint',
+    'data-epc-sld-segment',
+    'startEpcSldRouteWaypointDrag',
+    'startEpcSldRouteSegmentDrag',
+    'startEpcSldPanDrag',
+    'getEpcSldCanvasMetrics',
+    'variant.viewport',
+    'variant.canvas'
+  ]) {
+    assert.match(renderer[0], new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing SLD route/viewport snippet: ${snippet}`);
+  }
+
+  assert.doesNotMatch(renderer[0], /Math\.min\(1010/);
+  assert.doesNotMatch(renderer[0], /Math\.min\(330/);
+  assert.match(renderer[0], /viewBox="\$\{htmlSafe\(viewBox\)\}"/);
+});
+
 test('EPC EMS Flow renders topology-aware standard components and validation state', () => {
   const flowRenderer = html.match(/function renderEpcFlowDiagram\(result, row\)[\s\S]*?function renderEpcSocBadge/);
   assert.ok(flowRenderer, 'EMS Flow renderer should be found');

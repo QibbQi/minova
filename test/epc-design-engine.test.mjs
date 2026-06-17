@@ -1288,6 +1288,45 @@ test('EPC global topology template layout replacement and routes feed topology f
   assert.equal(route?.manualRoute, true);
 });
 
+test('EPC global topology template preserves SLD viewport and canvas settings', () => {
+  const project = normalizeEpcDesignProject({
+    selectedTopologyId: 'C5',
+    site: { gridMode: 'island', distanceToInterconnectionM: 500 },
+    electrical: {
+      selectedArchitectureId: 'mv_11_radial',
+      selectedArchitectureSource: 'user',
+      selectedArchitectureChosenAt: '2026-06-17T00:00:00.000Z'
+    },
+    loads: { dieselTotalLiters: 6000, dieselPeriodDays: 1, operationHoursPerDay: 8 }
+  }, {
+    now: '2026-06-17T00:00:00.000Z',
+    defaults: {
+      ...EPC_DESIGN_DEFAULTS,
+      standardTopologyLibrary: {
+        version: 2,
+        templates: {
+          C5: {
+            architectureVariants: {
+              mv_11_radial: {
+                viewport: { x: 120, y: 30, zoom: 1.35 },
+                canvas: { width: 1860, height: 620 },
+                routes: {
+                  'lv-step-up': { manualRoute: true, locked: true, waypoints: [{ x: 740, y: 210 }] }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+  const variant = project.calculationAssumptions.standardTopologyLibrary.templates.C5.architectureVariants.mv_11_radial;
+
+  assert.deepEqual(variant.viewport, { x: 120, y: 30, zoom: 1.35 });
+  assert.deepEqual(variant.canvas, { width: 1860, height: 620 });
+  assert.deepEqual(variant.routes['lv-step-up'].waypoints, [{ x: 740, y: 210 }]);
+});
+
 test('EPC global topology template is not shadowed by stale project assumptions', () => {
   const result = calculateEpcDesignProject({
     selectedTopologyId: 'C5',

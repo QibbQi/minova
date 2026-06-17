@@ -693,12 +693,31 @@ function normalizeRouteTemplate(value = {}) {
   }));
 }
 
+function normalizeTemplateViewport(value = {}) {
+  const input = value && typeof value === 'object' ? value : {};
+  return {
+    x: Math.max(0, asNumber(input.x, 0)),
+    y: Math.max(0, asNumber(input.y, 0)),
+    zoom: clamp(asNumber(input.zoom, 1), 0.35, 2.5, 1)
+  };
+}
+
+function normalizeTemplateCanvas(value = {}) {
+  const input = value && typeof value === 'object' ? value : {};
+  return {
+    width: Math.max(1180, Math.round(asNumber(input.width, 1180))),
+    height: Math.max(420, Math.round(asNumber(input.height, 420)))
+  };
+}
+
 function normalizeTopologyTemplateVariant(value = {}) {
   const input = value && typeof value === 'object' ? value : {};
   return {
     nodes: normalizeTemplateNodes(input.nodes || []),
     edges: normalizeTemplateEdges(input.edges || []),
-    routes: normalizeRouteTemplate(input.routes || {})
+    routes: normalizeRouteTemplate(input.routes || {}),
+    viewport: normalizeTemplateViewport(input.viewport || {}),
+    canvas: normalizeTemplateCanvas(input.canvas || {})
   };
 }
 

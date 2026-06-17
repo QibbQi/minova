@@ -1017,6 +1017,73 @@ test('EPC SLD workspace exposes route drag handles and zoom controls', () => {
   assert.match(endpointSaver[0], /saveEpcCustomTopologyDraftMutation/, 'endpoint drops should persist into CUSTOM topology draft');
 });
 
+test('EPC SLD workspace exposes select connect history and move snap controls', () => {
+  const toolbar = html.match(/function renderEpcSldWorkspaceToolbar\(result = \{\}\)[\s\S]*?function renderEpcTopologySld/);
+  const renderer = html.match(/function renderEpcTopologySld\(topology = \{\}\)[\s\S]*?function getEpcTopologySelectionState/);
+  assert.ok(toolbar, 'SLD toolbar renderer should exist');
+  assert.ok(renderer, 'SLD topology renderer should exist');
+
+  for (const snippet of [
+    "['select', 'Select']",
+    "['connect', 'Connect']",
+    'Undo',
+    'Redo',
+    'History',
+    'undoEpcSldHistory',
+    'redoEpcSldHistory',
+    'openEpcSldHistoryModal',
+    'epcSldHistory',
+    'pushEpcSldHistorySnapshot',
+    'restoreEpcSldHistorySnapshot',
+    'clearEpcSldHistory'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing SLD history/control snippet: ${snippet}`);
+  }
+
+  for (const snippet of [
+    'epcSldSelectedNodeIds',
+    'startEpcSldSelectMarquee',
+    'moveEpcSldSelectMarquee',
+    'endEpcSldSelectMarquee',
+    'data-epc-sld-select-marquee',
+    'data-epc-sld-selected-node',
+    'getEpcSldNodeRect',
+    'rectsIntersect'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing SLD select snippet: ${snippet}`);
+  }
+
+  for (const snippet of [
+    'epcSldConnectDraft',
+    'startEpcSldConnectFromPort',
+    'moveEpcSldConnectDrag',
+    'endEpcSldConnectDrag',
+    'completeEpcSldConnectToPort',
+    'inferEpcSldConnectionEdge',
+    'stageEpcSldInferredConnection',
+    'openEpcSldConnectManualEditor',
+    'data-epc-sld-connect-preview',
+    'data-epc-sld-connect-port',
+    'epc-sld-connect-preview-active'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing SLD connect snippet: ${snippet}`);
+  }
+
+  for (const snippet of [
+    'findEpcSldNodeAlignmentSnap',
+    'applyEpcSldNodeDragPreview',
+    'data-epc-sld-snap-guide',
+    'epcSldDrag.groupNodeIds',
+    'epcSldDrag.groupInitial',
+    'saveEpcStandardTopologyNodePositions'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing SLD move snap snippet: ${snippet}`);
+  }
+
+  assert.match(renderer[0], /epcSldWorkspaceMode === 'route' \|\| epcSldWorkspaceMode === 'connect'/, 'ports should render in route and connect modes');
+  assert.doesNotMatch(toolbar[0], /locked by Electrical/, 'SLD edit modes must not be locked by Electrical architecture');
+});
+
 test('EPC SLD workspace can add and delete topology nodes', () => {
   for (const snippet of [
     'id="epc-sld-add-node-modal"',

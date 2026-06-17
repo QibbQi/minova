@@ -11406,6 +11406,31 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return library.templates?.[topologyId]?.architectureVariants?.[architectureId] || null;
         }
 
+        function saveEpcCustomTopologyDraftMutation(mutator, message = 'CUSTOM topology staged') {
+            const project = getEpcTopologyEditProject();
+            if (project.selectedTopologyId !== 'CUSTOM' || project.topology?.selectedTopologyId !== 'CUSTOM') return false;
+            const result = window.__lastEpcDesignResult || calculateEpcDesignProject(project, { defaults: epcDesignDefaults });
+            const topology = cloneEpcJson(result.topology || project.topology || {});
+            topology.selectedTopologyId = 'CUSTOM';
+            topology.sourceTopologyId = topology.sourceTopologyId || project.topology?.sourceTopologyId || result.topology?.sourceTopologyId || result.topology?.baseTopologyId || 'C5';
+            topology.baseTopologyId = topology.baseTopologyId || project.topology?.baseTopologyId || result.topology?.baseTopologyId || topology.sourceTopologyId;
+            const changed = typeof mutator === 'function' ? mutator(topology, result, project) : false;
+            if (changed === false) {
+                renderEpcDesignWorkspace();
+                return true;
+            }
+            project.selectedTopologyId = 'CUSTOM';
+            project.topology = {
+                ...topology,
+                customEditedAt: new Date().toISOString()
+            };
+            updateEpcProject(project);
+            markEpcSldTemplateDirty(message);
+            renderEpcDesignWorkspace();
+            return true;
+        }
+        window.saveEpcCustomTopologyDraftMutation = saveEpcCustomTopologyDraftMutation;
+
         function upsertEpcTemplateNodeOverride(variant, nodeId, patch) {
             const id = String(nodeId || '').trim();
             if (!id) return;
@@ -11417,6 +11442,11 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
         function saveEpcStandardTopologyNodePosition(nodeId, x, y) {
             if (!canEditEpcEngineering()) return alert('No engineering edit permission.');
+            if (saveEpcCustomTopologyDraftMutation((topology) => {
+                const node = (topology.nodes || []).find(item => item.id === nodeId);
+                if (!node) return false;
+                node.position = { x: Math.max(0, Math.round(Number(x) || 0)), y: Math.max(0, Math.round(Number(y) || 0)) };
+            }, 'CUSTOM topology layout staged')) return;
             const { variant } = ensureEpcStandardTopologyVariant();
             upsertEpcTemplateNodeOverride(variant, nodeId, {
                 position: { x: Math.max(0, Math.round(Number(x) || 0)), y: Math.max(0, Math.round(Number(y) || 0)) }
@@ -11433,6 +11463,19 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
         function saveEpcStandardTopologyEdgeRoute(edgeId, waypoints = []) {
             if (!canEditEpcEngineering()) return alert('No engineering edit permission.');
+            if (saveEpcCustomTopologyDraftMutation((topology) => {
+                const id = String(edgeId || '').trim();
+                const edge = (topology.edges || []).find(item => item.id === id);
+                if (!edge) return false;
+                edge.route = {
+                    manualRoute: true,
+                    locked: true,
+                    waypoints: (Array.isArray(waypoints) ? waypoints : []).map(point => ({
+                        x: Math.max(0, Math.round(Number(point.x) || 0)),
+                        y: Math.max(0, Math.round(Number(point.y) || 0))
+                    }))
+                };
+            }, 'CUSTOM topology route staged')) return;
             const { variant } = ensureEpcStandardTopologyVariant();
             const id = String(edgeId || '').trim();
             if (!id) return;
@@ -11462,6 +11505,17 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const result = window.__lastEpcDesignResult || calculateEpcDesignProject(getActiveEpcDesignProject(), { defaults: epcDesignDefaults });
             const edge = (result.topology?.edges || []).find(item => item.id === id);
             if (!edge) return;
+            if (saveEpcCustomTopologyDraftMutation((topology) => {
+                const nodeIds = new Set((topology.nodes || []).map(node => node.id));
+                const draftEdge = (topology.edges || []).find(item => item.id === id);
+                if (!draftEdge || !nodeIds.has(nextNodeId)) return false;
+                const nextSource = endpoint === 'source' ? nextNodeId : draftEdge.source;
+                const nextTarget = endpoint === 'source' ? draftEdge.target : nextNodeId;
+                if (nextSource === nextTarget) return false;
+                draftEdge.source = nextSource;
+                draftEdge.target = nextTarget;
+                if (draftEdge.route) delete draftEdge.route;
+            }, 'CUSTOM topology connection endpoint staged')) return;
             const { variant } = ensureEpcStandardTopologyVariant(result);
             const index = variant.edges.findIndex(item => item.id === id);
             const override = {

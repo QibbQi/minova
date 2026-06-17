@@ -942,8 +942,10 @@ test('EPC SLD workspace renders validation cards below nodes and edges', () => {
 test('EPC SLD workspace exposes route drag handles and zoom controls', () => {
   const toolbar = html.match(/function renderEpcSldWorkspaceToolbar\(result = \{\}\)[\s\S]*?function renderEpcTopologySld/);
   const renderer = html.match(/function renderEpcTopologySld\(topology = \{\}\)[\s\S]*?function getEpcTopologySelectionState/);
+  const endpointSaver = html.match(/function saveEpcStandardTopologyEdgeEndpoint\(edgeId, endpoint = 'target', nodeId = ''\)[\s\S]*?window\.saveEpcStandardTopologyEdgeEndpoint/);
   assert.ok(toolbar, 'SLD toolbar renderer should exist');
   assert.ok(renderer, 'SLD topology renderer should exist');
+  assert.ok(endpointSaver, 'SLD endpoint saver should exist');
 
   for (const snippet of [
     'Zoom -',
@@ -990,10 +992,16 @@ test('EPC SLD workspace exposes route drag handles and zoom controls', () => {
     'epc-sld-route-preview-active',
     'snapTarget',
     'window.moveEpcSldRouteDrag',
-    'window.endEpcSldRouteDrag'
+    'window.endEpcSldRouteDrag',
+    'saveEpcCustomTopologyDraftMutation',
+    "project.selectedTopologyId !== 'CUSTOM'",
+    'CUSTOM topology connection endpoint staged',
+    'CUSTOM topology route staged',
+    'CUSTOM topology layout staged'
   ]) {
     assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing SLD route drag implementation snippet: ${snippet}`);
   }
+  assert.match(endpointSaver[0], /saveEpcCustomTopologyDraftMutation/, 'endpoint drops should persist into CUSTOM topology draft');
 });
 
 test('EPC topology selector and save modal support custom templates', () => {

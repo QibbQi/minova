@@ -6535,10 +6535,34 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         let epcDesignActiveProjectId = '';
         let epcDesignMode = 'quick';
         let epcDesignPanelTab = 'inputs';
+        let epcSldWorkspaceMode = 'view';
+        let epcSldSelectedNodeId = '';
+        let epcSldSelectedEdgeId = '';
+        let epcSldDrag = null;
         let epcSelectedFlowHour = 13;
         let epcDesignMap = null;
         let epcDesignMarker = null;
         let epcGoogleMapsPromise = null;
+        const EPC_ARCHITECTURE_TOPOLOGY_MAP = {
+            lv_415_centralized: { topologyId: 'C3', voltageV: 415 },
+            lv_415_distributed: { topologyId: 'C3', voltageV: 415 },
+            mv_6_6_radial: { topologyId: 'C5', voltageV: 6600 },
+            mv_11_radial: { topologyId: 'C5', voltageV: 11000 },
+            mv_11_ring: { topologyId: 'C7', voltageV: 11000 }
+        };
+        const EPC_SLD_COMPONENT_CATALOG = [
+            { id: 'lv-bus-default', role: 'LV_BUS', type: 'LV_BUS', label: 'Source LV BUS' },
+            { id: 'lv-switchboard-card', role: 'LV_BUS', type: 'LV_SWITCHBOARD', label: 'Source LV Switchboard' },
+            { id: 'mv-switchboard-default', role: 'MV_SWITCHBOARD', type: 'MV_SWITCHBOARD', label: 'MV Switchboard' },
+            { id: 'mv-bus-default', role: 'MV_BUS', type: 'MV_BUS', label: 'MV BUS' },
+            { id: 'ring-rmu-card', role: 'MV_BUS', type: 'MV_BUS', label: 'Ring RMU' },
+            { id: 'step-up-tx-default', role: 'TRANSFORMER', type: 'TRANSFORMER', label: 'Step-up TX' },
+            { id: 'pcs-default', role: 'PCS', type: 'PCS', label: 'PCS' },
+            { id: 'pv-inverter-default', role: 'PV_INVERTER', type: 'PV_INVERTER', label: 'PV Inverter' },
+            { id: 'genset-default', role: 'GENSET', type: 'GENSET', label: 'Genset' },
+            { id: 'battery-default', role: 'BATTERY', type: 'BATTERY', label: 'Battery' },
+            { id: 'ems-default', role: 'EMS', type: 'EMS', label: 'EMS Controller' }
+        ];
         function safeJsonParseLoose(raw, fallback) {
             try { return raw ? JSON.parse(raw) : fallback; } catch { return fallback; }
         }
@@ -10267,7 +10291,42 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 defaults.minSocPct = EPC_DESIGN_DEFAULTS.minSocPct;
                 defaults.bessDod = EPC_DESIGN_DEFAULTS.bessDod;
             }
+            defaults.standardTopologyLibrary = normalizeEpcStandardTopologyLibrary(defaults.standardTopologyLibrary || {});
             return defaults;
+        }
+
+        function epcSldComponentRoleForNode(node = {}) {
+            const type = String(node.type || '').toUpperCase();
+            if (type === 'LV_BUS' || type === 'LV_SWITCHBOARD') return 'LV_BUS';
+            if (type === 'MV_BUS') return 'MV_BUS';
+            if (type === 'MV_SWITCHBOARD') return 'MV_SWITCHBOARD';
+            return String(node.componentRole || type).toUpperCase();
+        }
+
+        function normalizeEpcStandardTopologyLibrary(value = {}) {
+            const input = value && typeof value === 'object' ? value : {};
+            const componentCatalog = [...EPC_SLD_COMPONENT_CATALOG, ...(Array.isArray(input.componentCatalog) ? input.componentCatalog : [])]
+                .filter(item => item && item.id && item.role && item.type)
+                .map(item => ({
+                    id: String(item.id),
+                    role: String(item.role).toUpperCase(),
+                    type: String(item.type).toUpperCase(),
+                    label: String(item.label || item.type)
+                }));
+            const templates = input.templates && typeof input.templates === 'object' ? JSON.parse(JSON.stringify(input.templates)) : {};
+            return {
+                version: Math.max(2, Number(input.version) || 2),
+                componentCatalog,
+                templates
+            };
+        }
+
+        function persistEpcDesignDefaults(reason = 'EPC defaults update') {
+            epcDesignDefaults = normalizeEpcDesignDefaults(epcDesignDefaults);
+            try { localStorage.setItem('minova_epc_design_defaults_v1', JSON.stringify(epcDesignDefaults)); } catch (e) {}
+            persistSettingsToD1({ epc_design_defaults: epcDesignDefaults });
+            const status = document.getElementById('epc-design-save-status');
+            if (status) status.textContent = reason;
         }
 
         function getEpcDefaultProject() {
@@ -11191,10 +11250,296 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             `;
         }
 
+        function getEpcSldTemplateContext(result = window.__lastEpcDesignResult || calculateEpcDesignProject(getActiveEpcDesignProject(), { defaults: epcDesignDefaults })) {
+            const architectureId = String(result?.electricalArchitecture?.recommendedId || result?.topologySelection?.recommendedArchitectureId || '').trim();
+            const topologyId = String(result?.selectedTopologyId || result?.topology?.selectedTopologyId || 'C5').trim().toUpperCase();
+            return { topologyId, architectureId };
+        }
+
+        function ensureEpcStandardTopologyVariant(result = window.__lastEpcDesignResult) {
+            epcDesignDefaults.standardTopologyLibrary = normalizeEpcStandardTopologyLibrary(epcDesignDefaults.standardTopologyLibrary || {});
+            const { topologyId, architectureId } = getEpcSldTemplateContext(result);
+            const library = epcDesignDefaults.standardTopologyLibrary;
+            library.templates[topologyId] = library.templates[topologyId] || { architectureVariants: {} };
+            library.templates[topologyId].architectureVariants = library.templates[topologyId].architectureVariants || {};
+            library.templates[topologyId].architectureVariants[architectureId] = library.templates[topologyId].architectureVariants[architectureId] || { nodes: [], edges: [], routes: {} };
+            const variant = library.templates[topologyId].architectureVariants[architectureId];
+            variant.nodes = Array.isArray(variant.nodes) ? variant.nodes : [];
+            variant.edges = Array.isArray(variant.edges) ? variant.edges : [];
+            variant.routes = variant.routes && typeof variant.routes === 'object' ? variant.routes : {};
+            return { library, topologyId, architectureId, variant };
+        }
+
+        function upsertEpcTemplateNodeOverride(variant, nodeId, patch) {
+            const id = String(nodeId || '').trim();
+            if (!id) return;
+            const index = variant.nodes.findIndex(node => node.id === id);
+            const next = { ...(index >= 0 ? variant.nodes[index] : { id }), ...patch, id };
+            if (index >= 0) variant.nodes[index] = next;
+            else variant.nodes.push(next);
+        }
+
+        function saveEpcStandardTopologyNodePosition(nodeId, x, y) {
+            if (!canEditEpcEngineering()) return alert('No engineering edit permission.');
+            const { variant } = ensureEpcStandardTopologyVariant();
+            upsertEpcTemplateNodeOverride(variant, nodeId, {
+                position: { x: Math.max(0, Math.round(Number(x) || 0)), y: Math.max(0, Math.round(Number(y) || 0)) }
+            });
+            persistEpcDesignDefaults('SLD template node position saved');
+            renderEpcDesignWorkspace();
+        }
+        window.saveEpcStandardTopologyNodePosition = saveEpcStandardTopologyNodePosition;
+
+        function saveEpcStandardTopologyEdgeRoute(edgeId, waypoints = []) {
+            if (!canEditEpcEngineering()) return alert('No engineering edit permission.');
+            const { variant } = ensureEpcStandardTopologyVariant();
+            const id = String(edgeId || '').trim();
+            if (!id) return;
+            variant.routes[id] = {
+                manualRoute: true,
+                locked: true,
+                waypoints: (Array.isArray(waypoints) ? waypoints : []).map(point => ({
+                    x: Math.max(0, Math.round(Number(point.x) || 0)),
+                    y: Math.max(0, Math.round(Number(point.y) || 0))
+                }))
+            };
+            persistEpcDesignDefaults('SLD template route saved');
+            renderEpcDesignWorkspace();
+        }
+        window.saveEpcStandardTopologyEdgeRoute = saveEpcStandardTopologyEdgeRoute;
+
+        function replaceEpcStandardTopologyComponent(nodeId, componentId) {
+            if (!canEditEpcEngineering()) return alert('No engineering edit permission.');
+            const result = window.__lastEpcDesignResult || calculateEpcDesignProject(getActiveEpcDesignProject(), { defaults: epcDesignDefaults });
+            const node = (result.topology?.nodes || []).find(item => item.id === nodeId);
+            const catalog = normalizeEpcStandardTopologyLibrary(epcDesignDefaults.standardTopologyLibrary || {}).componentCatalog;
+            const component = catalog.find(item => item.id === componentId);
+            if (!node || !component || component.role !== epcSldComponentRoleForNode(node)) return alert('Component replacement must use the same electrical role.');
+            const { variant } = ensureEpcStandardTopologyVariant(result);
+            upsertEpcTemplateNodeOverride(variant, nodeId, { componentId: component.id });
+            persistEpcDesignDefaults('SLD template component replaced');
+            renderEpcDesignWorkspace();
+        }
+        window.replaceEpcStandardTopologyComponent = replaceEpcStandardTopologyComponent;
+
+        function resetEpcStandardTopologyFactory() {
+            if (!canEditEpcEngineering()) return alert('No engineering edit permission.');
+            const { library, topologyId, architectureId } = ensureEpcStandardTopologyVariant();
+            if (library.templates[topologyId]?.architectureVariants) delete library.templates[topologyId].architectureVariants[architectureId];
+            persistEpcDesignDefaults('SLD template reset to factory');
+            renderEpcDesignWorkspace();
+        }
+        window.resetEpcStandardTopologyFactory = resetEpcStandardTopologyFactory;
+
+        function setEpcSldWorkspaceMode(mode) {
+            epcSldWorkspaceMode = ['view', 'move', 'route', 'replace'].includes(mode) ? mode : 'view';
+            renderEpcDesignWorkspace();
+        }
+        window.setEpcSldWorkspaceMode = setEpcSldWorkspaceMode;
+
+        function selectEpcSldNode(nodeId) {
+            epcSldSelectedNodeId = String(nodeId || '').trim();
+            epcSldSelectedEdgeId = '';
+            renderEpcDesignWorkspace();
+        }
+        window.selectEpcSldNode = selectEpcSldNode;
+
+        function selectEpcSldEdge(edgeId) {
+            epcSldSelectedEdgeId = String(edgeId || '').trim();
+            epcSldSelectedNodeId = '';
+            renderEpcDesignWorkspace();
+        }
+        window.selectEpcSldEdge = selectEpcSldEdge;
+
+        function handleEpcSldEdgeClick(edgeId) {
+            const id = String(edgeId || '').trim();
+            if (!id) return;
+            epcSldSelectedEdgeId = id;
+            epcSldSelectedNodeId = '';
+            if (epcSldWorkspaceMode === 'route' && canEditEpcEngineering()) {
+                saveEpcStandardTopologySelectedEdgeRoute(id);
+                return;
+            }
+            renderEpcDesignWorkspace();
+        }
+        window.handleEpcSldEdgeClick = handleEpcSldEdgeClick;
+
+        function moveEpcSldSelectedNodeByStep(dx = 0, dy = 0) {
+            if (!canEditEpcEngineering()) return alert('No engineering edit permission.');
+            const result = window.__lastEpcDesignResult || calculateEpcDesignProject(getActiveEpcDesignProject(), { defaults: epcDesignDefaults });
+            const node = (result.topology?.nodes || []).find(item => item.id === epcSldSelectedNodeId);
+            if (!node) return alert('Select a SLD node first.');
+            const x = (Number(node.position?.x) || 0) + Number(dx || 0);
+            const y = (Number(node.position?.y) || 0) + Number(dy || 0);
+            saveEpcStandardTopologyNodePosition(node.id, x, y);
+        }
+        window.moveEpcSldSelectedNodeByStep = moveEpcSldSelectedNodeByStep;
+
+        function getEpcSldSvgPoint(event) {
+            const svg = event?.target?.ownerSVGElement || document.getElementById('epc-topology-sld-svg');
+            if (!svg?.createSVGPoint || !svg.getScreenCTM) return { x: Number(event?.clientX) || 0, y: Number(event?.clientY) || 0 };
+            const point = svg.createSVGPoint();
+            point.x = Number(event.clientX) || 0;
+            point.y = Number(event.clientY) || 0;
+            try {
+                return point.matrixTransform(svg.getScreenCTM().inverse());
+            } catch (error) {
+                return { x: point.x, y: point.y };
+            }
+        }
+
+        function startEpcSldNodeDrag(event, nodeId) {
+            const id = String(nodeId || '').trim();
+            if (!id) return;
+            if (epcSldWorkspaceMode !== 'move' || !canEditEpcEngineering()) {
+                selectEpcSldNode(id);
+                return;
+            }
+            const result = window.__lastEpcDesignResult || calculateEpcDesignProject(getActiveEpcDesignProject(), { defaults: epcDesignDefaults });
+            const node = (result.topology?.nodes || []).find(item => item.id === id);
+            if (!node) return;
+            epcSldSelectedNodeId = id;
+            epcSldSelectedEdgeId = '';
+            const start = getEpcSldSvgPoint(event);
+            epcSldDrag = {
+                nodeId: id,
+                start,
+                initial: {
+                    x: Number(node.position?.x) || 0,
+                    y: Number(node.position?.y) || 0
+                },
+                element: event?.currentTarget || null,
+                next: null
+            };
+            document.addEventListener('pointermove', moveEpcSldNodeDrag);
+            document.addEventListener('pointerup', endEpcSldNodeDrag, { once: true });
+            try { event.currentTarget?.setPointerCapture?.(event.pointerId); } catch (e) {}
+            event.preventDefault?.();
+            event.stopPropagation?.();
+        }
+        window.startEpcSldNodeDrag = startEpcSldNodeDrag;
+
+        function moveEpcSldNodeDrag(event) {
+            if (!epcSldDrag) return;
+            const point = getEpcSldSvgPoint(event);
+            const next = {
+                x: Math.max(0, Math.round(epcSldDrag.initial.x + point.x - epcSldDrag.start.x)),
+                y: Math.max(0, Math.round(epcSldDrag.initial.y + point.y - epcSldDrag.start.y))
+            };
+            epcSldDrag.next = next;
+            if (epcSldDrag.element) epcSldDrag.element.setAttribute('transform', `translate(${next.x} ${next.y})`);
+            event.preventDefault?.();
+        }
+
+        function endEpcSldNodeDrag() {
+            if (!epcSldDrag) return;
+            const drag = epcSldDrag;
+            epcSldDrag = null;
+            document.removeEventListener('pointermove', moveEpcSldNodeDrag);
+            const next = drag.next || drag.initial;
+            saveEpcStandardTopologyNodePosition(drag.nodeId, next.x, next.y);
+        }
+
+        function saveEpcStandardTopologySelectedEdgeRoute(edgeId = epcSldSelectedEdgeId) {
+            if (!canEditEpcEngineering()) return alert('No engineering edit permission.');
+            const id = String(edgeId || '').trim();
+            const result = window.__lastEpcDesignResult || calculateEpcDesignProject(getActiveEpcDesignProject(), { defaults: epcDesignDefaults });
+            const edge = (result.topology?.edges || []).find(item => item.id === id);
+            const nodes = new Map((result.topology?.nodes || []).map(node => [node.id, node]));
+            const source = nodes.get(edge?.source);
+            const target = nodes.get(edge?.target);
+            if (!edge || !source || !target) return alert('Select a SLD connection first.');
+            const sx = (Number(source.position?.x) || 0) + 124;
+            const sy = (Number(source.position?.y) || 0) + 29;
+            const tx = Number(target.position?.x) || 0;
+            const ty = (Number(target.position?.y) || 0) + 29;
+            const midX = Math.round((sx + tx) / 2);
+            const midY = Math.round(Math.min(sy, ty) - 42);
+            saveEpcStandardTopologyEdgeRoute(id, [{ x: midX, y: Math.max(10, midY) }]);
+        }
+        window.saveEpcStandardTopologySelectedEdgeRoute = saveEpcStandardTopologySelectedEdgeRoute;
+
+        function renderEpcSldWorkspaceToolbar(result = {}) {
+            const canEdit = canEditEpcEngineering();
+            const modes = [
+                ['view', 'View'],
+                ['move', 'Move'],
+                ['route', 'Route'],
+                ['replace', 'Replace']
+            ];
+            const selectedNode = (result.topology?.nodes || []).find(node => node.id === epcSldSelectedNodeId);
+            const selectedEdge = (result.topology?.edges || []).find(edge => edge.id === epcSldSelectedEdgeId);
+            const catalog = normalizeEpcStandardTopologyLibrary(epcDesignDefaults.standardTopologyLibrary || {}).componentCatalog;
+            const compatible = selectedNode ? catalog.filter(item => item.role === epcSldComponentRoleForNode(selectedNode)) : [];
+            return `
+                <div class="rounded-xl border border-slate-200 bg-white p-3">
+                    <div class="flex flex-col lg:flex-row lg:items-center gap-3">
+                        <div>
+                            <div class="text-sm font-black text-slate-800">Electrical SLD Workspace</div>
+                            <div class="text-xs font-bold text-slate-400">Standard Topology Library drives EMS Flow component placement.</div>
+                        </div>
+                        <div class="lg:ml-auto flex flex-wrap items-center gap-2">
+                            ${modes.map(([id, label]) => `<button type="button" data-epc-sld-mode="${id}" onclick="setEpcSldWorkspaceMode('${id}')" ${!canEdit && id !== 'view' ? 'disabled' : ''} class="rounded-lg border px-3 py-2 text-[10px] font-black ${epcSldWorkspaceMode === id ? 'border-purple-700 bg-purple-700 text-white' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'} ${!canEdit && id !== 'view' ? 'opacity-50' : ''}">${label}</button>`).join('')}
+                            <button type="button" onclick="resetEpcStandardTopologyFactory()" ${!canEdit ? 'disabled' : ''} class="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-[10px] font-black text-red-700 hover:bg-red-100 ${!canEdit ? 'opacity-50' : ''}">Reset Factory</button>
+                        </div>
+                    </div>
+                    ${epcSldWorkspaceMode === 'move' ? `
+                        <div class="mt-3 flex flex-wrap items-center gap-2 text-[11px] font-bold text-slate-500">
+                            <span class="rounded-lg bg-slate-50 px-2 py-1">Selected node: ${htmlSafe(selectedNode?.label || epcSldSelectedNodeId || 'none')}</span>
+                            <button type="button" onclick="moveEpcSldSelectedNodeByStep(-24, 0)" ${!canEdit || !selectedNode ? 'disabled' : ''} class="rounded-lg border border-slate-200 px-2 py-1 disabled:opacity-40">Left</button>
+                            <button type="button" onclick="moveEpcSldSelectedNodeByStep(24, 0)" ${!canEdit || !selectedNode ? 'disabled' : ''} class="rounded-lg border border-slate-200 px-2 py-1 disabled:opacity-40">Right</button>
+                            <button type="button" onclick="moveEpcSldSelectedNodeByStep(0, -24)" ${!canEdit || !selectedNode ? 'disabled' : ''} class="rounded-lg border border-slate-200 px-2 py-1 disabled:opacity-40">Up</button>
+                            <button type="button" onclick="moveEpcSldSelectedNodeByStep(0, 24)" ${!canEdit || !selectedNode ? 'disabled' : ''} class="rounded-lg border border-slate-200 px-2 py-1 disabled:opacity-40">Down</button>
+                            <span>Drag a node to save a global template position.</span>
+                        </div>
+                    ` : ''}
+                    ${epcSldWorkspaceMode === 'replace' ? `
+                        <div class="mt-3 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2">
+                            <select id="epc-sld-component-replacement" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold outline-none focus:border-purple-500">
+                                ${compatible.map(item => `<option value="${htmlSafe(item.id)}">${htmlSafe(item.label)} | ${htmlSafe(item.type)}</option>`).join('') || '<option value="">Select a node first</option>'}
+                            </select>
+                            <button type="button" onclick="replaceEpcStandardTopologyComponent(epcSldSelectedNodeId, document.getElementById('epc-sld-component-replacement')?.value)" ${!canEdit || !selectedNode ? 'disabled' : ''} class="rounded-lg bg-purple-700 px-3 py-2 text-xs font-black text-white hover:bg-purple-800 disabled:opacity-50">Apply Replacement</button>
+                        </div>
+                    ` : ''}
+                    ${epcSldWorkspaceMode === 'route' ? `
+                        <div class="mt-3 flex flex-wrap items-center gap-2 text-[11px] font-bold text-slate-500">
+                            <span class="rounded-lg bg-slate-50 px-2 py-1">Selected connection: ${htmlSafe(selectedEdge?.id || epcSldSelectedEdgeId || 'none')}</span>
+                            <button type="button" onclick="saveEpcStandardTopologySelectedEdgeRoute(epcSldSelectedEdgeId)" ${!canEdit || !selectedEdge ? 'disabled' : ''} class="rounded-lg border border-purple-200 bg-purple-50 px-2 py-1 text-purple-700 disabled:opacity-40">Save Waypoint Route</button>
+                            <span>Click a connection to create a simple editable waypoint route; Route mode changes line geometry only.</span>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
         function renderEpcTopologySld(topology = {}) {
+            const result = arguments[1] || window.__lastEpcDesignResult || {};
             const nodes = Array.isArray(topology.nodes) ? topology.nodes : [];
             const edges = Array.isArray(topology.edges) ? topology.edges : [];
             const nodeMap = new Map(nodes.map(node => [node.id, node]));
+            const nodeW = 124;
+            const nodeH = 58;
+            const sldPort = (node, side = 'right') => {
+                const x = Math.max(18, Math.min(1010, Number(node.position?.x) || 0));
+                const y = Math.max(18, Math.min(330, Number(node.position?.y) || 80));
+                if (side === 'left') return { x, y: y + nodeH / 2 };
+                if (side === 'top') return { x: x + nodeW / 2, y };
+                if (side === 'bottom') return { x: x + nodeW / 2, y: y + nodeH };
+                return { x: x + nodeW, y: y + nodeH / 2 };
+            };
+            const routeD = (source, target, edge) => {
+                const sourceBeforeTarget = (Number(source.position?.x) || 0) <= (Number(target.position?.x) || 0);
+                const start = sldPort(source, sourceBeforeTarget ? 'right' : 'left');
+                const end = sldPort(target, sourceBeforeTarget ? 'left' : 'right');
+                if (edge.route?.manualRoute && Array.isArray(edge.route?.waypoints) && edge.route.waypoints.length) {
+                    return [start, ...edge.route.waypoints, end]
+                        .map((point, index) => `${index ? 'L' : 'M'}${Math.round(Number(point.x) || 0)} ${Math.round(Number(point.y) || 0)}`)
+                        .join(' ');
+                }
+                const midX = Math.round((start.x + end.x) / 2);
+                if (Math.abs(start.y - end.y) < 8) return `M${start.x} ${start.y} H${end.x}`;
+                return `M${start.x} ${start.y} H${midX} V${end.y} H${end.x}`;
+            };
             const nodeMarkup = nodes.map((node, index) => {
                 const x = Math.max(18, Math.min(1010, Number(node.position?.x) || (index * 145 + 32)));
                 const y = Math.max(18, Math.min(330, Number(node.position?.y) || 80));
@@ -11205,11 +11550,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     : node.type === 'EMS' || node.type === 'SCADA' ? '#64748b'
                     : node.type === 'PV_ARRAY' || node.type === 'PV_INVERTER' ? '#16a34a'
                     : '#582C83';
+                const selected = node.id === epcSldSelectedNodeId;
+                const componentText = node.componentId ? ` | ${node.componentId}` : '';
                 return `
-                    <g>
-                        <rect x="${x}" y="${y}" width="124" height="58" rx="8" fill="#ffffff" stroke="${color}" stroke-width="2"/>
-                        <text x="${x + 62}" y="${y + 22}" text-anchor="middle" class="text-[10px] font-black fill-slate-700">${htmlSafe(node.label).slice(0, 24)}</text>
-                        <text x="${x + 62}" y="${y + 40}" text-anchor="middle" class="text-[9px] font-bold fill-slate-400">${htmlSafe(node.type)}</text>
+                    <g data-epc-sld-node="${htmlSafe(node.id)}" class="cursor-${epcSldWorkspaceMode === 'move' ? 'move' : 'pointer'}" transform="translate(${x} ${y})" onpointerdown="startEpcSldNodeDrag(event, '${htmlSafe(node.id)}')">
+                        <rect x="0" y="0" width="${nodeW}" height="${nodeH}" rx="8" fill="#ffffff" stroke="${selected ? '#f59e0b' : color}" stroke-width="${selected ? 3 : 2}"/>
+                        <text x="${nodeW / 2}" y="22" text-anchor="middle" class="text-[10px] font-black fill-slate-700">${htmlSafe(node.label).slice(0, 24)}</text>
+                        <text x="${nodeW / 2}" y="40" text-anchor="middle" class="text-[9px] font-bold fill-slate-400">${htmlSafe(`${node.type}${componentText}`).slice(0, 28)}</text>
                     </g>
                 `;
             }).join('');
@@ -11217,20 +11564,17 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 const source = nodeMap.get(edge.source);
                 const target = nodeMap.get(edge.target);
                 if (!source || !target) return '';
-                const x1 = Math.max(80, Math.min(1080, (Number(source.position?.x) || 0) + 124));
-                const y1 = Math.max(45, Math.min(370, (Number(source.position?.y) || 0) + 29));
-                const x2 = Math.max(18, Math.min(1010, Number(target.position?.x) || 0));
-                const y2 = Math.max(45, Math.min(370, (Number(target.position?.y) || 0) + 29));
                 const color = edge.type === 'AC_MV_POWER' ? '#1d4ed8'
                     : edge.type === 'AC_LV_POWER' ? '#0ea5e9'
                     : edge.type === 'DC_POWER' ? '#16a34a'
                     : '#94a3b8';
                 const dash = edge.type === 'COMMUNICATION' || edge.type === 'CONTROL' ? ' stroke-dasharray="6 6"' : '';
-                return `<path d="M${x1} ${y1} C${x1 + 36} ${y1}, ${x2 - 36} ${y2}, ${x2} ${y2}" fill="none" stroke="${color}" stroke-width="2.4"${dash}/>`;
+                const selected = edge.id === epcSldSelectedEdgeId;
+                return `<path data-epc-sld-edge="${htmlSafe(edge.id)}" onclick="handleEpcSldEdgeClick('${htmlSafe(edge.id)}')" d="${routeD(source, target, edge)}" fill="none" stroke="${selected ? '#f59e0b' : color}" stroke-width="${selected ? 3.4 : 2.4}" stroke-linecap="round" stroke-linejoin="round"${dash}/>`;
             }).join('');
             return `
                 <div class="rounded-xl border border-slate-200 bg-slate-50 p-3 overflow-x-auto">
-                    <svg viewBox="0 0 1180 420" class="min-w-[880px] w-full h-auto">
+                    <svg id="epc-topology-sld-svg" viewBox="0 0 1180 420" class="min-w-[880px] w-full h-auto">
                         ${edgeMarkup}
                         ${nodeMarkup}
                     </svg>
@@ -11290,17 +11634,18 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             target.innerHTML = `
                 <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
                     <section class="xl:col-span-2 space-y-3">
+                        ${renderEpcSldWorkspaceToolbar(result)}
                         <div class="flex flex-col md:flex-row md:items-center gap-3">
                             <div>
-                                <div class="text-sm font-black text-slate-800">Standard Topology Library</div>
-                                <div class="text-xs font-bold text-slate-400">Select a budget-level off-grid topology. Suggested fixes are advisory and require manual approval.</div>
+                                <div class="text-sm font-black text-slate-800">Electrical SLD Workspace</div>
+                                <div class="text-xs font-bold text-slate-400">Standard Topology Library / global editable templates. Select a budget-level off-grid topology; suggested fixes are advisory and require manual approval.</div>
                             </div>
                             <div class="md:ml-auto flex flex-wrap items-center gap-2">
                                 <select id="epc-topology-selector" onchange="updateEpcSelectedTopology(this.value)" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black outline-none focus:border-purple-500">${renderEpcTopologySelectorOptions(result)}</select>
                                 <button type="button" onclick="openEpcTopologyConnectionModal()" class="rounded-xl border border-purple-200 bg-white px-3 py-2 text-xs font-black text-purple-700 hover:bg-purple-50">Customize Connections</button>
                             </div>
                         </div>
-                        ${renderEpcTopologySld(topology)}
+                        ${renderEpcTopologySld(topology, result)}
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
                             <div class="rounded-xl border border-slate-200 overflow-hidden">
                                 <div class="bg-slate-50 px-3 py-2 text-[10px] font-black uppercase text-slate-500">Nodes</div>
@@ -11364,6 +11709,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const candidates = electricalArchitecture.candidates || [];
             const cableCandidates = cableScreening.candidates || [];
             const protectionFunctions = protectionMatrix.functions || [];
+            const selectedArchitectureId = String(electricalArchitecture.selectedArchitectureId || result.electrical?.selectedArchitectureId || '').trim();
+            const selectedArchitectureWarning = electricalArchitecture.selectedArchitectureWarning || result.electrical?.selectedArchitectureWarning || '';
             target.innerHTML = `
                 <div class="space-y-4">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -11371,6 +11718,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             <div class="text-[10px] font-black uppercase text-slate-400">Recommended Architecture</div>
                             <div class="text-lg font-black text-slate-800">${htmlSafe(result.electrical?.architecture || '--')}</div>
                             <div class="mt-1 text-xs font-bold text-slate-500">${htmlSafe(electricalArchitecture.recommendation || result.electrical?.recommendation || '')}</div>
+                            ${selectedArchitectureId ? `<div class="mt-2 text-[11px] font-black text-purple-700">Selected: ${htmlSafe(selectedArchitectureId)}</div>` : ''}
+                            ${selectedArchitectureWarning ? `<div class="mt-2 rounded-lg border border-yellow-200 bg-yellow-50 px-2 py-1 text-[11px] font-bold text-yellow-700">${htmlSafe(selectedArchitectureWarning)}</div>` : ''}
                         </div>
                         <div class="rounded-xl border border-slate-200 p-3">
                             <div class="text-[10px] font-black uppercase text-slate-400">Transformer Sizing</div>
@@ -11387,15 +11736,20 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <div class="bg-slate-50 px-3 py-2 text-[10px] font-black uppercase text-slate-500">Architecture Comparison</div>
                         <div class="overflow-x-auto">
                             <table class="w-full text-xs">
-                                <thead class="text-left text-slate-400 uppercase"><tr><th class="px-3 py-2">Architecture</th><th class="px-3 py-2 text-right">Voltage</th><th class="px-3 py-2 text-right">Current A</th><th class="px-3 py-2 text-right">Drop %</th><th class="px-3 py-2">Status</th><th class="px-3 py-2">Reasons</th></tr></thead>
+                                <thead class="text-left text-slate-400 uppercase"><tr><th class="px-3 py-2">Architecture</th><th class="px-3 py-2 text-right">Voltage</th><th class="px-3 py-2 text-right">Current A</th><th class="px-3 py-2 text-right">Drop %</th><th class="px-3 py-2">Status</th><th class="px-3 py-2">Choose</th><th class="px-3 py-2">Reasons</th></tr></thead>
                                 <tbody class="divide-y divide-slate-100">
                                     ${candidates.map(candidate => `
-                                        <tr class="${candidate.id === electricalArchitecture.recommendedId ? 'bg-yellow-50' : ''}">
+                                        <tr class="${candidate.id === electricalArchitecture.recommendedId ? 'bg-yellow-50' : ''} ${candidate.id === selectedArchitectureId ? 'ring-1 ring-purple-200' : ''}">
                                             <td class="px-3 py-2 font-black text-slate-700">${htmlSafe(candidate.name)}</td>
                                             <td class="px-3 py-2 text-right">${formatEpcNumber(candidate.voltageKv, 3, 'kV')}</td>
                                             <td class="px-3 py-2 text-right">${formatEpcNumber(candidate.currentA, 0)}</td>
                                             <td class="px-3 py-2 text-right">${formatEpcNumber(candidate.voltageDropPct, 2)}</td>
-                                            <td class="px-3 py-2 font-black">${htmlSafe(candidate.status)}</td>
+                                            <td class="px-3 py-2 font-black">${htmlSafe(candidate.status)}${candidate.id === selectedArchitectureId ? ' · SELECTED' : ''}</td>
+                                            <td class="px-3 py-2">
+                                                ${candidate.status === 'PASS'
+                                                    ? `<button type="button" data-epc-architecture-choose="${htmlSafe(candidate.id)}" onclick="chooseEpcElectricalArchitecture('${htmlSafe(candidate.id)}')" ${!canEditEpcEngineering() ? 'disabled' : ''} class="rounded-lg border border-purple-200 bg-white px-3 py-1.5 text-[10px] font-black text-purple-700 hover:bg-purple-50 disabled:opacity-40">${candidate.id === selectedArchitectureId ? 'Chosen' : 'Choose'}</button>`
+                                                    : '<span class="text-[10px] font-bold text-slate-300">--</span>'}
+                                            </td>
                                             <td class="px-3 py-2 text-slate-500">${htmlSafe((candidate.reasons || []).join('; ') || '--')}</td>
                                         </tr>
                                     `).join('')}
@@ -11838,6 +12192,29 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             };
         }
 
+        function epcTopologyFlowManualRoute(source = {}, target = {}, edge = {}) {
+            if (!edge.route?.manualRoute || !Array.isArray(edge.route?.waypoints) || !edge.route?.waypoints.length) return null;
+            const start = epcTopologyFlowPort(source, (Number(source.x) || 0) <= (Number(target.x) || 0) ? 'right' : 'left');
+            const end = epcTopologyFlowPort(target, (Number(source.x) || 0) <= (Number(target.x) || 0) ? 'left' : 'right');
+            const offsetX = (Number(source.x) || 0) - (Number(source.position?.x) || 0);
+            const offsetY = (Number(source.y) || 0) - (Number(source.position?.y) || 0);
+            const points = [
+                start,
+                ...edge.route.waypoints.map(point => ({
+                    x: (Number(point.x) || 0) + offsetX,
+                    y: (Number(point.y) || 0) + offsetY
+                })),
+                end
+            ];
+            const mid = points[Math.floor(points.length / 2)] || start;
+            return {
+                d: points.map((point, index) => `${index ? 'L' : 'M'}${point.x} ${point.y}`).join(' '),
+                labelX: mid.x,
+                labelY: mid.y - 10,
+                manualRoute: true
+            };
+        }
+
         function epcTopologyFlowRoute(source = {}, target = {}, index = 0, edge = {}) {
             const pairRoute = epcTopologyFlowPairLaneRoute(source, target, edge);
             if (pairRoute) return pairRoute;
@@ -11930,7 +12307,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 const source = nodeMap.get(edge.source);
                 const target = nodeMap.get(edge.target);
                 const route = source && target
-                    ? edge.role === 'control' ? epcTopologyFlowControlRoute(source, target, index, edge) : epcTopologyFlowRoute(source, target, index, edge)
+                    ? edge.route?.manualRoute && edge.route?.waypoints
+                        ? epcTopologyFlowManualRoute(source, target, edge) || epcTopologyFlowRoute(source, target, index, edge)
+                        : edge.role === 'control' ? epcTopologyFlowControlRoute(source, target, index, edge) : epcTopologyFlowRoute(source, target, index, edge)
                     : { d: '', labelX: 0, labelY: 0 };
                 const value = epcTopologyFlowValue(edge, row);
                 return {
@@ -14743,6 +15122,44 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (modal && !modal.classList.contains('hidden')) renderEpcTopologyConnectionModal(getActiveEpcDesignProject());
         }
         window.removeEpcCustomTopologyConnection = removeEpcCustomTopologyConnection;
+
+        function epcTopologyIdForArchitecture(architectureId, result = {}) {
+            const id = String(architectureId || '').trim();
+            if (id === 'lv_415_centralized') {
+                const scheme = getRecommendedEpcScheme(result);
+                const hasBess = (Number(scheme?.bessRecommendedMwh) || 0) > 0 || (Number(scheme?.pcsRecommendedMw) || 0) > 0;
+                return hasBess ? 'C3' : 'C2';
+            }
+            return EPC_ARCHITECTURE_TOPOLOGY_MAP[id]?.topologyId || 'C5';
+        }
+
+        function chooseEpcElectricalArchitecture(architectureId) {
+            if (!canEditEpcEngineering()) return alert('No engineering edit permission.');
+            const id = String(architectureId || '').trim();
+            const project = captureEpcDesignFromDom();
+            const result = calculateEpcDesignProject(project, { defaults: epcDesignDefaults });
+            const candidate = (result.electricalArchitecture?.candidates || []).find(item => item.id === id);
+            if (!candidate || candidate.status !== 'PASS') {
+                alert('Only PASS architecture candidates can be chosen.');
+                renderEpcDesignWorkspace();
+                return;
+            }
+            const topologyId = epcTopologyIdForArchitecture(candidate.id, result);
+            project.electrical = {
+                ...(project.electrical || {}),
+                selectedArchitectureId: candidate.id,
+                selectedArchitectureChosenAt: new Date().toISOString(),
+                selectedArchitectureSource: 'user',
+                voltageKv: candidate.voltageKv
+            };
+            project.selectedTopologyId = topologyId;
+            project.topology = { selectedTopologyId: topologyId };
+            updateEpcProject(project);
+            renderEpcDesignWorkspace();
+            const status = document.getElementById('epc-design-save-status');
+            if (status) status.textContent = `Architecture chosen: ${candidate.name}`;
+        }
+        window.chooseEpcElectricalArchitecture = chooseEpcElectricalArchitecture;
 
         function updateEpcSelectedTopology(value) {
             const project = captureEpcDesignFromDom();

@@ -1195,6 +1195,137 @@ test('EPC topology recommendations exclude common 415V bus topologies for MV pas
   assert.equal(selectableIds.includes('C3'), false);
 });
 
+test('EPC chosen PASS architecture overrides recommendation and drives topology variant', () => {
+  const radial66 = calculateEpcDesignProject({
+    selectedTopologyId: 'C7',
+    site: { gridMode: 'island', distanceToInterconnectionM: 650 },
+    electrical: {
+      selectedArchitectureId: 'mv_6_6_radial',
+      selectedArchitectureSource: 'user',
+      selectedArchitectureChosenAt: '2026-06-17T00:00:00.000Z',
+      existingMvVoltageKv: 6.6,
+      newMvSystem: true
+    },
+    loads: { dieselTotalLiters: 6000, dieselPeriodDays: 1, operationHoursPerDay: 8 }
+  }, { now: '2026-06-17T00:00:00.000Z' });
+
+  assert.equal(radial66.electricalArchitecture.recommendedId, 'mv_6_6_radial');
+  assert.equal(radial66.electrical.selectedArchitectureId, 'mv_6_6_radial');
+  assert.equal(radial66.topologySelection.architectureTopologyId, 'C5');
+  assert.equal(radial66.selectedTopologyId, 'C5');
+  assert.equal(radial66.topology.nodes.some((node) => node.id === 'ring-rmu'), false);
+  assert.equal(radial66.topology.nodes.find((node) => node.id === 'mv-switchboard')?.electrical.voltageV, 6600);
+
+  const ring11 = calculateEpcDesignProject({
+    selectedTopologyId: 'C5',
+    site: { gridMode: 'island', distanceToInterconnectionM: 650 },
+    electrical: {
+      selectedArchitectureId: 'mv_11_ring',
+      selectedArchitectureSource: 'user',
+      selectedArchitectureChosenAt: '2026-06-17T00:00:00.000Z',
+      newMvSystem: true
+    },
+    loads: { dieselTotalLiters: 6000, dieselPeriodDays: 1, operationHoursPerDay: 8 }
+  }, { now: '2026-06-17T00:00:00.000Z' });
+
+  assert.equal(ring11.electricalArchitecture.recommendedId, 'mv_11_ring');
+  assert.equal(ring11.topologySelection.architectureTopologyId, 'C7');
+  assert.equal(ring11.selectedTopologyId, 'C7');
+  assert.ok(ring11.topology.nodes.some((node) => node.id === 'ring-rmu'));
+});
+
+test('EPC global topology template layout replacement and routes feed topology flow', () => {
+  const result = calculateEpcDesignProject({
+    selectedTopologyId: 'C5',
+    site: { gridMode: 'island', distanceToInterconnectionM: 500 },
+    electrical: {
+      selectedArchitectureId: 'mv_11_radial',
+      selectedArchitectureSource: 'user',
+      selectedArchitectureChosenAt: '2026-06-17T00:00:00.000Z',
+      newMvSystem: true
+    },
+    loads: { dieselTotalLiters: 6000, dieselPeriodDays: 1, operationHoursPerDay: 8 }
+  }, {
+    now: '2026-06-17T00:00:00.000Z',
+    defaults: {
+      ...EPC_DESIGN_DEFAULTS,
+      standardTopologyLibrary: {
+        version: 2,
+        componentCatalog: [
+          { id: 'lv-switchboard-card', role: 'LV_BUS', type: 'LV_SWITCHBOARD', label: 'Source LV Switchboard' },
+          { id: 'mv-rmu-card', role: 'MV_BUS', type: 'MV_BUS', label: 'MV RMU' }
+        ],
+        templates: {
+          C5: {
+            architectureVariants: {
+              mv_11_radial: {
+                nodes: [
+                  { id: 'lv-bus', position: { x: 777, y: 222 }, componentId: 'lv-switchboard-card' },
+                  { id: 'pcs', componentId: 'mv-rmu-card' }
+                ],
+                routes: {
+                  'lv-step-up': { manualRoute: true, locked: true, waypoints: [{ x: 910, y: 260 }, { x: 960, y: 260 }] }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+
+  const lvBus = result.topology.nodes.find((node) => node.id === 'lv-bus');
+  const pcs = result.topology.nodes.find((node) => node.id === 'pcs');
+  const flowLvBus = result.topologyFlow.nodes.find((node) => node.id === 'lv-bus');
+  const route = result.topologyFlow.edges.find((edge) => edge.id === 'lv-step-up')?.route;
+
+  assert.equal(lvBus?.position.x, 777);
+  assert.equal(lvBus?.type, 'LV_SWITCHBOARD');
+  assert.equal(lvBus?.label, 'Source LV Switchboard');
+  assert.equal(pcs?.type, 'PCS', 'cross-role replacement should be ignored');
+  assert.equal(flowLvBus?.position.x, 777);
+  assert.deepEqual(route?.waypoints, [{ x: 910, y: 260 }, { x: 960, y: 260 }]);
+  assert.equal(route?.manualRoute, true);
+});
+
+test('EPC global topology template is not shadowed by stale project assumptions', () => {
+  const result = calculateEpcDesignProject({
+    selectedTopologyId: 'C5',
+    site: { gridMode: 'island', distanceToInterconnectionM: 500 },
+    electrical: {
+      selectedArchitectureId: 'mv_11_radial',
+      selectedArchitectureSource: 'user',
+      selectedArchitectureChosenAt: '2026-06-17T00:00:00.000Z',
+      newMvSystem: true
+    },
+    assumptions: { standardTopologyLibrary: null },
+    calculationAssumptions: { standardTopologyLibrary: null },
+    loads: { dieselTotalLiters: 6000, dieselPeriodDays: 1, operationHoursPerDay: 8 }
+  }, {
+    now: '2026-06-17T00:00:00.000Z',
+    defaults: {
+      ...EPC_DESIGN_DEFAULTS,
+      standardTopologyLibrary: {
+        version: 2,
+        templates: {
+          C5: {
+            architectureVariants: {
+              mv_11_radial: {
+                nodes: [
+                  { id: 'lv-bus', position: { x: 888, y: 240 } }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+
+  assert.equal(result.topology.nodes.find((node) => node.id === 'lv-bus')?.position.x, 888);
+  assert.equal(result.topologyFlow.nodes.find((node) => node.id === 'lv-bus')?.position.x, 888);
+});
+
 test('EPC MV architecture displays an MV-capable topology when an old LV-only topology is selected', () => {
   const project = buildEpcDesignProjectFromQuickInputs({
     ...quarryInputs,

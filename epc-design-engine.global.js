@@ -34,7 +34,8 @@ const EPC_DESIGN_DEFAULTS = Object.freeze({
   modulesPerString: 26,
   combinerInputs: 16,
   inverterArchitecture: 'central',
-  totalStringInputs: 0
+  totalStringInputs: 0,
+  standardTopologyLibrary: null
 });
 
 const SCHEME_TARGETS = [
@@ -76,6 +77,34 @@ const STANDARD_TOPOLOGY_META = [
     category: 'off-grid',
     description: 'PV, BESS and DG stations collect into an MV switchboard and ring RMU for long-distance multi-load sites.'
   }
+];
+
+const STANDARD_TOPOLOGY_LIBRARY_VERSION = 2;
+
+const ARCHITECTURE_TOPOLOGY_MAP = {
+  lv_415_centralized: { topologyId: 'C3', voltageV: 415, variantId: 'lv_415_centralized' },
+  lv_415_distributed: { topologyId: 'C3', voltageV: 415, variantId: 'lv_415_distributed' },
+  mv_6_6_radial: { topologyId: 'C5', voltageV: 6600, variantId: 'mv_6_6_radial' },
+  mv_11_radial: { topologyId: 'C5', voltageV: 11000, variantId: 'mv_11_radial' },
+  mv_11_ring: { topologyId: 'C7', voltageV: 11000, variantId: 'mv_11_ring' }
+};
+
+const STANDARD_COMPONENT_CATALOG = [
+  { id: 'pv-array-default', role: 'PV_ARRAY', type: 'PV_ARRAY', label: 'PV Array' },
+  { id: 'pv-inverter-default', role: 'PV_INVERTER', type: 'PV_INVERTER', label: 'PV Inverter' },
+  { id: 'battery-default', role: 'BATTERY', type: 'BATTERY', label: 'Battery' },
+  { id: 'pcs-default', role: 'PCS', type: 'PCS', label: 'PCS' },
+  { id: 'genset-default', role: 'GENSET', type: 'GENSET', label: 'Genset' },
+  { id: 'lv-bus-default', role: 'LV_BUS', type: 'LV_BUS', label: 'Source LV BUS' },
+  { id: 'lv-switchboard-card', role: 'LV_BUS', type: 'LV_SWITCHBOARD', label: 'Source LV Switchboard' },
+  { id: 'step-up-tx-default', role: 'TRANSFORMER', type: 'TRANSFORMER', label: 'Step-up TX' },
+  { id: 'mv-switchboard-default', role: 'MV_SWITCHBOARD', type: 'MV_SWITCHBOARD', label: 'MV Switchboard' },
+  { id: 'mv-bus-default', role: 'MV_BUS', type: 'MV_BUS', label: 'MV BUS' },
+  { id: 'ring-rmu-card', role: 'MV_BUS', type: 'MV_BUS', label: 'Ring RMU' },
+  { id: 'load-tx-default', role: 'TRANSFORMER', type: 'TRANSFORMER', label: 'Load TX' },
+  { id: 'load-default', role: 'LOAD', type: 'LOAD', label: 'Load' },
+  { id: 'ems-default', role: 'EMS', type: 'EMS', label: 'EMS Controller' },
+  { id: 'curtailment-default', role: 'CURTAILMENT', type: 'CURTAILMENT', label: 'Curtailment' }
 ];
 
 const STANDARD_TRANSFORMER_KVA = [100, 160, 250, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000, 10000, 12500];
@@ -474,6 +503,9 @@ function normalizePowerNode(node = {}, index = 0) {
     },
     equipmentRef: String(node.equipmentRef || ''),
     siteAssetRef: String(node.siteAssetRef || ''),
+    componentId: String(node.componentId || ''),
+    componentRole: String(node.componentRole || componentRoleForNode({ type })).trim(),
+    componentIcon: String(node.componentIcon || ''),
     busOrientation: String(node.busOrientation || '').trim(),
     loadSplitId: String(node.loadSplitId || '').trim(),
     locked: Boolean(node.locked),
@@ -495,7 +527,16 @@ function normalizePowerEdge(edge = {}, index = 0) {
     routeLengthM: asNumber(edge.routeLengthM, 0),
     cableDesignRef: String(edge.cableDesignRef || ''),
     protectionRef: String(edge.protectionRef || ''),
-    loadSplitId: String(edge.loadSplitId || '').trim()
+    loadSplitId: String(edge.loadSplitId || '').trim(),
+    route: edge.route && typeof edge.route === 'object'
+      ? {
+        manualRoute: Boolean(edge.route.manualRoute),
+        locked: Boolean(edge.route.locked),
+        waypoints: Array.isArray(edge.route.waypoints)
+          ? edge.route.waypoints.map(point => ({ x: asNumber(point?.x, 0), y: asNumber(point?.y, 0) }))
+          : []
+      }
+      : undefined
   };
 }
 
@@ -554,11 +595,193 @@ function splitLoadKw(loadKw = 0, loadSplits = []) {
   });
 }
 
+function normalizeArchitectureId(value) {
+  const id = String(value || '').trim();
+  return ARCHITECTURE_TOPOLOGY_MAP[id] ? id : '';
+}
+
+function topologyIdForArchitecture(architectureId, recommended = {}) {
+  const id = normalizeArchitectureId(architectureId);
+  if (id === 'lv_415_centralized' && !(asNumber(recommended?.pcsRecommendedMw, 0) > 0 || asNumber(recommended?.bessRecommendedMwh, 0) > 0)) {
+    return 'C2';
+  }
+  return ARCHITECTURE_TOPOLOGY_MAP[id]?.topologyId || '';
+}
+
+function voltageForArchitecture(architectureId, fallback = 11000) {
+  return ARCHITECTURE_TOPOLOGY_MAP[normalizeArchitectureId(architectureId)]?.voltageV || fallback;
+}
+
+function componentRoleForNode(node = {}) {
+  if (node.componentRole) return String(node.componentRole).trim().toUpperCase();
+  const type = String(node.type || '').trim().toUpperCase();
+  if (type === 'LV_BUS' || type === 'LV_SWITCHBOARD') return 'LV_BUS';
+  if (type === 'MV_BUS') return 'MV_BUS';
+  if (type === 'MV_SWITCHBOARD') return 'MV_SWITCHBOARD';
+  return type;
+}
+
+function normalizeComponentCatalog(value = []) {
+  const merged = new Map();
+  [...STANDARD_COMPONENT_CATALOG, ...(Array.isArray(value) ? value : [])].forEach((item) => {
+    if (!item || typeof item !== 'object') return;
+    const id = String(item.id || '').trim();
+    const role = String(item.role || '').trim().toUpperCase();
+    const type = String(item.type || '').trim().toUpperCase();
+    if (!id || !role || !POWER_NODE_TYPES.includes(type)) return;
+    merged.set(id, {
+      id,
+      role,
+      type,
+      label: String(item.label || type.replaceAll('_', ' ')).trim(),
+      icon: String(item.icon || '').trim()
+    });
+  });
+  return [...merged.values()];
+}
+
+function normalizeTemplateNodes(value = []) {
+  return (Array.isArray(value) ? value : [])
+    .map((node) => {
+      if (!node || typeof node !== 'object') return null;
+      const id = String(node.id || '').trim();
+      if (!id) return null;
+      return {
+        id,
+        label: node.label === undefined ? undefined : String(node.label || '').trim(),
+        type: node.type === undefined ? undefined : String(node.type || '').trim().toUpperCase(),
+        componentId: node.componentId === undefined ? undefined : String(node.componentId || '').trim(),
+        position: node.position && typeof node.position === 'object'
+          ? { x: asNumber(node.position.x, 0), y: asNumber(node.position.y, 0) }
+          : undefined,
+        electrical: node.electrical && typeof node.electrical === 'object' ? { ...node.electrical } : undefined,
+        busOrientation: node.busOrientation === undefined ? undefined : String(node.busOrientation || '').trim(),
+        componentRole: node.componentRole === undefined ? undefined : String(node.componentRole || '').trim().toUpperCase()
+      };
+    })
+    .filter(Boolean);
+}
+
+function normalizeTemplateEdges(value = []) {
+  return (Array.isArray(value) ? value : [])
+    .map((edge) => {
+      if (!edge || typeof edge !== 'object') return null;
+      const id = String(edge.id || '').trim();
+      if (!id) return null;
+      return {
+        id,
+        source: edge.source === undefined ? undefined : String(edge.source || '').trim(),
+        target: edge.target === undefined ? undefined : String(edge.target || '').trim(),
+        type: edge.type === undefined ? undefined : String(edge.type || '').trim().toUpperCase(),
+        direction: edge.direction === undefined ? undefined : String(edge.direction || '').trim().toUpperCase(),
+        voltageV: edge.voltageV === undefined ? undefined : asNumber(edge.voltageV, 0)
+      };
+    })
+    .filter(Boolean);
+}
+
+function normalizeRouteTemplate(value = {}) {
+  if (!value || typeof value !== 'object') return {};
+  return Object.fromEntries(Object.entries(value).map(([edgeId, route]) => {
+    const cleanRoute = route && typeof route === 'object' ? route : {};
+    const waypoints = Array.isArray(cleanRoute.waypoints)
+      ? cleanRoute.waypoints.map(point => ({ x: asNumber(point?.x, 0), y: asNumber(point?.y, 0) }))
+      : [];
+    return [String(edgeId), {
+      manualRoute: Boolean(cleanRoute.manualRoute || waypoints.length),
+      locked: Boolean(cleanRoute.locked),
+      waypoints
+    }];
+  }));
+}
+
+function normalizeTopologyTemplateVariant(value = {}) {
+  const input = value && typeof value === 'object' ? value : {};
+  return {
+    nodes: normalizeTemplateNodes(input.nodes || []),
+    edges: normalizeTemplateEdges(input.edges || []),
+    routes: normalizeRouteTemplate(input.routes || {})
+  };
+}
+
+function normalizeStandardTopologyLibrary(value = {}) {
+  const input = value && typeof value === 'object' ? value : {};
+  const templates = {};
+  Object.entries(input.templates || {}).forEach(([topologyId, template]) => {
+    const id = String(topologyId || '').trim().toUpperCase();
+    if (!STANDARD_TOPOLOGY_META.some(item => item.id === id)) return;
+    const variants = {};
+    Object.entries(template?.architectureVariants || {}).forEach(([architectureId, variant]) => {
+      const archId = normalizeArchitectureId(architectureId);
+      if (archId) variants[archId] = normalizeTopologyTemplateVariant(variant);
+    });
+    templates[id] = { architectureVariants: variants };
+  });
+  return {
+    version: Math.max(STANDARD_TOPOLOGY_LIBRARY_VERSION, Math.round(asNumber(input.version, STANDARD_TOPOLOGY_LIBRARY_VERSION))),
+    templates,
+    componentCatalog: normalizeComponentCatalog(input.componentCatalog || [])
+  };
+}
+
+function getStandardTopologyTemplate(library = {}, topologyId = 'C5', architectureId = '') {
+  const normalizedTopologyId = String(topologyId || 'C5').trim().toUpperCase();
+  const normalizedArchitectureId = normalizeArchitectureId(architectureId);
+  return library.templates?.[normalizedTopologyId]?.architectureVariants?.[normalizedArchitectureId] || null;
+}
+
+function applyStandardTopologyTemplate(graph = {}, template = null, library = normalizeStandardTopologyLibrary()) {
+  if (!template) return graph;
+  const catalogById = new Map((library.componentCatalog || []).map(item => [item.id, item]));
+  const nodeOverrides = new Map((template.nodes || []).map(item => [item.id, item]));
+  const edgeOverrides = new Map((template.edges || []).map(item => [item.id, item]));
+  const nodes = (graph.nodes || []).map((node) => {
+    const override = nodeOverrides.get(node.id);
+    if (!override) return node;
+    let next = { ...node };
+    if (override.position) next.position = { ...override.position };
+    if (override.label !== undefined && override.label) next.label = override.label;
+    if (override.busOrientation !== undefined) next.busOrientation = override.busOrientation;
+    if (override.electrical) next.electrical = { ...(next.electrical || {}), ...override.electrical };
+    const requestedComponent = catalogById.get(override.componentId);
+    const currentRole = componentRoleForNode(next);
+    if (requestedComponent && requestedComponent.role === currentRole) {
+      next = {
+        ...next,
+        type: requestedComponent.type,
+        label: requestedComponent.label || next.label,
+        componentId: requestedComponent.id,
+        componentRole: requestedComponent.role,
+        componentIcon: requestedComponent.icon || ''
+      };
+    } else if (override.type && POWER_NODE_TYPES.includes(override.type) && componentRoleForNode({ type: override.type, componentRole: override.componentRole }) === currentRole) {
+      next = { ...next, type: override.type, componentRole: currentRole };
+    }
+    return next;
+  });
+  const edges = (graph.edges || []).map((edge) => {
+    const override = edgeOverrides.get(edge.id);
+    const route = template.routes?.[edge.id];
+    const next = override ? {
+      ...edge,
+      source: override.source || edge.source,
+      target: override.target || edge.target,
+      type: override.type && POWER_EDGE_TYPES.includes(override.type) ? override.type : edge.type,
+      direction: override.direction === 'BIDIRECTIONAL' ? 'BIDIRECTIONAL' : override.direction === 'ONE_WAY' ? 'ONE_WAY' : edge.direction,
+      voltageV: override.voltageV === undefined ? edge.voltageV : override.voltageV
+    } : { ...edge };
+    if (route) next.route = route;
+    return next;
+  });
+  return { nodes, edges };
+}
+
 function appendLoadBranchTopology(nodes, edges, node, edge, splits = [], options = {}) {
   const sourceId = options.sourceId || 'ring-rmu';
   const startX = asNumber(options.startX, 1160);
   const startY = asNumber(options.startY, 80);
   const gapY = asNumber(options.gapY, 150);
+  const mvVoltageV = asNumber(options.voltageV, 11000);
   splits.forEach((split, index) => {
     const branch = index + 1;
     const y = startY + index * gapY;
@@ -568,14 +791,14 @@ function appendLoadBranchTopology(nodes, edges, node, edge, splits = [], options
     const lvBusId = `lv-load-bus-${branch}`;
     const loadId = `load-${branch}`;
     nodes.push(
-      node(rmuId, 'MV_BUS', `RMU Station ${branch}`, startX, y, 11000, { loadSplitId }),
+      node(rmuId, 'MV_BUS', `RMU Station ${branch}`, startX, y, mvVoltageV, { loadSplitId }),
       node(txId, 'TRANSFORMER', `Load TX ${branch}`, startX + 170, y, 415, { loadSplitId }),
       node(lvBusId, 'LV_BUS', `LV BUS ${branch}`, startX + 340, y, 415, { loadSplitId }),
       node(loadId, 'LOAD', split.label || `Load ${branch}`, startX + 510, y, 415, { loadSplitId })
     );
     edges.push(
-      edge(`${sourceId}-load-${branch}`, sourceId, rmuId, 'AC_MV_POWER', 'ONE_WAY', 11000, { loadSplitId }),
-      edge(`${rmuId}-${txId}`, rmuId, txId, 'AC_MV_POWER', 'ONE_WAY', 11000, { loadSplitId }),
+      edge(`${sourceId}-load-${branch}`, sourceId, rmuId, 'AC_MV_POWER', 'ONE_WAY', mvVoltageV, { loadSplitId }),
+      edge(`${rmuId}-${txId}`, rmuId, txId, 'AC_MV_POWER', 'ONE_WAY', mvVoltageV, { loadSplitId }),
       edge(`${txId}-${lvBusId}`, txId, lvBusId, 'AC_LV_POWER', 'ONE_WAY', 415, { loadSplitId }),
       edge(`${lvBusId}-${loadId}`, lvBusId, loadId, 'AC_LV_POWER', 'ONE_WAY', 415, { loadSplitId })
     );
@@ -604,8 +827,15 @@ function appendLvLoadBranchTopology(nodes, edges, node, edge, splits = [], optio
   });
 }
 
-function buildStandardTopologyGraph(id = 'C5', loads = {}) {
+function buildStandardTopologyGraph(id = 'C5', loads = {}, options = {}) {
   const topologyId = STANDARD_TOPOLOGY_META.some(item => item.id === id) ? id : 'C5';
+  const architectureId = normalizeArchitectureId(options.architectureId);
+  const topologyLibrary = normalizeStandardTopologyLibrary(options.standardTopologyLibrary || {});
+  const finalize = (graph) => applyStandardTopologyTemplate(
+    graph,
+    getStandardTopologyTemplate(topologyLibrary, topologyId, architectureId),
+    topologyLibrary
+  );
   const loadSplits = defaultLoadSplitsForTopology(loads);
   const node = (nodeId, type, label, x, y, voltageV = 0, extra = {}) => ({
     id: nodeId,
@@ -644,10 +874,10 @@ function buildStandardTopologyGraph(id = 'C5', loads = {}) {
       edge('ems-genset', 'ems', 'genset', 'CONTROL', 'BIDIRECTIONAL', 0)
     ];
     appendLvLoadBranchTopology(nodes, edges, node, edge, loadSplits, { sourceId: 'lv-bus', startX: 650, startY: 80, gapY: 130 });
-    return {
+    return finalize({
       nodes,
       edges
-    };
+    });
   }
   if (topologyId === 'C3') {
     const nodes = [
@@ -672,10 +902,10 @@ function buildStandardTopologyGraph(id = 'C5', loads = {}) {
       edge('ems-pcs', 'ems', 'pcs', 'COMMUNICATION', 'BIDIRECTIONAL', 0)
     ];
     appendLvLoadBranchTopology(nodes, edges, node, edge, loadSplits, { sourceId: 'lv-bus', startX: 670, startY: 90, gapY: 130 });
-    return {
+    return finalize({
       nodes,
       edges
-    };
+    });
   }
   if (topologyId === 'C7') {
     const nodes = [
@@ -706,11 +936,46 @@ function buildStandardTopologyGraph(id = 'C5', loads = {}) {
       edge('ems-mv-switchboard', 'ems', 'mv-bus', 'COMMUNICATION', 'BIDIRECTIONAL', 0),
       edge('ems-pcs', 'ems', 'pcs', 'COMMUNICATION', 'BIDIRECTIONAL', 0)
     ];
-    appendLoadBranchTopology(nodes, edges, node, edge, loadSplits, { sourceId: 'ring-rmu', startX: 1220, startY: 70, gapY: 150 });
-    return {
+    appendLoadBranchTopology(nodes, edges, node, edge, loadSplits, { sourceId: 'ring-rmu', startX: 1220, startY: 70, gapY: 150, voltageV: 11000 });
+    return finalize({
       nodes,
       edges
-    };
+    });
+  }
+  if (topologyId === 'C5' && ['mv_6_6_radial', 'mv_11_radial'].includes(architectureId)) {
+    const mvVoltageV = voltageForArchitecture(architectureId, 11000);
+    const mvLabel = mvVoltageV === 6600 ? '6.6kV' : '11kV';
+    const nodes = [
+      node('pv-array', 'PV_ARRAY', 'PV Array', 40, 40, 1000),
+      node('pv-inverter', 'PV_INVERTER', 'PV Inverter', 220, 40, 415),
+      node('curtailment', 'CURTAILMENT', 'Curtailment', 450, 20, 415),
+      node('battery', 'BATTERY', 'Battery', 40, 180, 800),
+      node('pcs', 'PCS', 'Grid-forming PCS', 220, 180, 415),
+      node('genset', 'GENSET', 'Genset', 220, 320, 415),
+      node('lv-bus', 'LV_BUS', 'Microgrid 415V Bus', 450, 180, 415, { busOrientation: 'vertical' }),
+      node('step-up-tx', 'TRANSFORMER', 'Step-up TX', 620, 180, mvVoltageV),
+      node('mv-switchboard', 'MV_SWITCHBOARD', `${mvLabel} MV Switchboard`, 800, 180, mvVoltageV),
+      commonEms
+    ];
+    const edges = [
+      edge('pv-dc', 'pv-array', 'pv-inverter', 'DC_POWER', 'ONE_WAY', 1000),
+      edge('pv-curtailment', 'pv-inverter', 'curtailment', 'AC_LV_POWER', 'ONE_WAY', 415),
+      edge('pv-lv', 'pv-inverter', 'lv-bus', 'AC_LV_POWER', 'ONE_WAY', 415),
+      edge('lv-pcs-charge', 'lv-bus', 'pcs', 'AC_LV_POWER', 'ONE_WAY', 415),
+      edge('pcs-battery-charge', 'pcs', 'battery', 'DC_POWER', 'ONE_WAY', 800),
+      edge('battery-pcs-discharge', 'battery', 'pcs', 'DC_POWER', 'ONE_WAY', 800),
+      edge('pcs-lv-discharge', 'pcs', 'lv-bus', 'AC_LV_POWER', 'ONE_WAY', 415),
+      edge('genset-lv', 'genset', 'lv-bus', 'AC_LV_POWER', 'ONE_WAY', 415),
+      edge('lv-step-up', 'lv-bus', 'step-up-tx', 'AC_LV_POWER', 'BIDIRECTIONAL', 415),
+      edge('step-up-mv', 'step-up-tx', 'mv-switchboard', 'AC_MV_POWER', 'BIDIRECTIONAL', mvVoltageV),
+      edge('ems-pcs', 'ems', 'pcs', 'COMMUNICATION', 'BIDIRECTIONAL', 0),
+      edge('ems-mv-switchboard', 'ems', 'mv-switchboard', 'COMMUNICATION', 'BIDIRECTIONAL', 0)
+    ];
+    appendLoadBranchTopology(nodes, edges, node, edge, loadSplits, { sourceId: 'mv-switchboard', startX: 980, startY: 50, gapY: 150, voltageV: mvVoltageV });
+    return finalize({
+      nodes,
+      edges
+    });
   }
   const nodes = [
       node('pv-array', 'PV_ARRAY', 'PV Array', 40, 40, 1000),
@@ -740,11 +1005,11 @@ function buildStandardTopologyGraph(id = 'C5', loads = {}) {
       edge('ems-pcs', 'ems', 'pcs', 'COMMUNICATION', 'BIDIRECTIONAL', 0),
       edge('ems-mv-switchboard', 'ems', 'mv-switchboard', 'COMMUNICATION', 'BIDIRECTIONAL', 0)
     ];
-  appendLoadBranchTopology(nodes, edges, node, edge, loadSplits, { sourceId: 'ring-rmu', startX: 1160, startY: 50, gapY: 150 });
-  return {
+  appendLoadBranchTopology(nodes, edges, node, edge, loadSplits, { sourceId: 'ring-rmu', startX: 1160, startY: 50, gapY: 150, voltageV: 11000 });
+  return finalize({
     nodes,
     edges
-  };
+  });
 }
 
 function normalizeSelectedTopologyId(value, site = {}) {
@@ -754,10 +1019,13 @@ function normalizeSelectedTopologyId(value, site = {}) {
   return gridMode.includes('island') || gridMode.includes('off') ? 'C5' : 'C3';
 }
 
-function normalizePowerTopology(rawTopology = {}, selectedTopologyId = 'C5', loads = {}) {
+function normalizePowerTopology(rawTopology = {}, selectedTopologyId = 'C5', loads = {}, options = {}) {
   const input = rawTopology && typeof rawTopology === 'object' ? rawTopology : {};
   const hasCustomGraph = selectedTopologyId === 'CUSTOM' && Array.isArray(input.nodes) && input.nodes.length;
-  const base = hasCustomGraph ? input : buildStandardTopologyGraph(selectedTopologyId, loads);
+  const base = hasCustomGraph ? input : buildStandardTopologyGraph(selectedTopologyId, loads, {
+    architectureId: options.architectureId,
+    standardTopologyLibrary: options.standardTopologyLibrary
+  });
   const nodes = (Array.isArray(base.nodes) ? base.nodes : [])
     .map((node, index) => normalizePowerNode(node, index))
     .filter(node => node.id);
@@ -805,10 +1073,20 @@ function normalizeEpcDesignProject(raw = {}, options = {}) {
   normalizedAssumptions.pvDcAcRatio = Number.isFinite(rawPvDcAcRatio) && rawPvDcAcRatio >= 1
     ? rawPvDcAcRatio
     : 1.2;
+  delete normalizedAssumptions.standardTopologyLibrary;
+  const normalizedCalculationAssumptions = {
+    ...defaults,
+    ...(raw.calculationAssumptions && typeof raw.calculationAssumptions === 'object' ? raw.calculationAssumptions : {}),
+    standardTopologyLibrary: defaults.standardTopologyLibrary
+  };
+  const selectedArchitectureId = normalizeArchitectureId(electrical.selectedArchitectureId || raw.selectedArchitectureId);
   const selectedTopologyId = normalizeSelectedTopologyId(raw.selectedTopologyId || raw.topology?.selectedTopologyId, {
     gridMode: site.gridMode || raw.gridMode || 'hybrid'
   });
-  const topology = normalizePowerTopology(raw.topology || {}, selectedTopologyId, { loadCount, loadSplits });
+  const topology = normalizePowerTopology(raw.topology || {}, selectedTopologyId, { loadCount, loadSplits }, {
+    architectureId: selectedArchitectureId,
+    standardTopologyLibrary: defaults.standardTopologyLibrary
+  });
 
   return {
     id,
@@ -875,13 +1153,13 @@ function normalizeEpcDesignProject(raw = {}, options = {}) {
       powerFactor: clamp(electrical.powerFactor, 0.1, 1, defaults.powerFactor),
       distanceToInterconnectionM: asNumber(electrical.distanceToInterconnectionM ?? site.distanceToInterconnectionM, 0),
       existingMvVoltageKv: asNumber(electrical.existingMvVoltageKv, 0),
-      newMvSystem: Boolean(electrical.newMvSystem)
+      newMvSystem: Boolean(electrical.newMvSystem),
+      selectedArchitectureId,
+      selectedArchitectureChosenAt: String(electrical.selectedArchitectureChosenAt || raw.selectedArchitectureChosenAt || ''),
+      selectedArchitectureSource: selectedArchitectureId ? String(electrical.selectedArchitectureSource || raw.selectedArchitectureSource || 'user') : ''
     },
     assumptions: normalizedAssumptions,
-    calculationAssumptions: {
-      ...defaults,
-      ...(raw.calculationAssumptions || {})
-    },
+    calculationAssumptions: normalizedCalculationAssumptions,
     documents: raw.documents && typeof raw.documents === 'object' ? raw.documents : {},
     emsFlowDisplaySettings: normalizeEmsFlowDisplaySettings(raw.emsFlowDisplaySettings || {}),
     createdAt: String(raw.createdAt || now),
@@ -1559,11 +1837,22 @@ function buildElectricalArchitecture(project, designKw, pf, distance, lvCurrentA
     };
   });
   const eligible = candidates.filter(candidate => candidate.status !== 'FAIL');
-  const recommended = (eligible.length ? eligible : candidates)
+  const calculatedRecommended = (eligible.length ? eligible : candidates)
     .reduce((best, candidate) => candidate.score > best.score ? candidate : best, candidates[0]);
+  const selectedArchitectureId = normalizeArchitectureId(project.electrical.selectedArchitectureId);
+  const selectedCandidate = candidates.find(candidate => candidate.id === selectedArchitectureId);
+  const selectedArchitectureValid = Boolean(selectedCandidate && selectedCandidate.status === 'PASS');
+  const recommended = selectedArchitectureValid ? selectedCandidate : calculatedRecommended;
+  const selectedArchitectureWarning = selectedArchitectureId && !selectedArchitectureValid
+    ? `${selectedCandidate?.name || selectedArchitectureId} is no longer PASS; falling back to ${calculatedRecommended.name}.`
+    : '';
   return {
     candidates,
     recommendedId: recommended.id,
+    calculatedRecommendedId: calculatedRecommended.id,
+    selectedArchitectureId,
+    selectedArchitectureValid,
+    selectedArchitectureWarning,
     recommendation: `${recommended.name} is preferred for concept screening; compare CAPEX, cable count, protection complexity and local O&M before final design.`,
     disclaimer: 'Experience-rule architecture screening only; not a statutory requirement or final engineering design.'
   };
@@ -1643,17 +1932,26 @@ function buildTopologySelection(project = {}, electricalArchitecture = {}) {
   const passRequiresMv = passArchitectures.length > 0 && passArchitectures.every(candidate => isMvArchitecture(candidate));
   const requiresMvTopology = Boolean(recommendedMvPass || passRequiresMv);
   const allTopologies = standardTopologies();
-  const selectableTopologies = allTopologies.filter(topology => !requiresMvTopology || topologyHasMvDistribution(topology));
+  const architectureTopologyId = topologyIdForArchitecture(electricalArchitecture.recommendedId);
+  const architectureLocked = Boolean(electricalArchitecture.selectedArchitectureId && electricalArchitecture.selectedArchitectureValid && architectureTopologyId);
+  const selectableTopologies = allTopologies.filter(topology => architectureLocked
+    ? topology.id === architectureTopologyId
+    : !requiresMvTopology || topologyHasMvDistribution(topology));
   const blockedTopologies = allTopologies
     .filter(topology => !selectableTopologies.some(item => item.id === topology.id))
     .map(topology => ({
       ...topology,
-      blockedReason: 'Electrical recommended architecture is MV PASS; common 415V bus-only topologies are locked.'
+      blockedReason: architectureLocked
+        ? `Chosen Electrical architecture uses ${architectureTopologyId}; other standard topologies are locked.`
+        : 'Electrical recommended architecture is MV PASS; common 415V bus-only topologies are locked.'
     }));
   const selectedTopologyId = String(project.selectedTopologyId || project.topology?.selectedTopologyId || 'C5').toUpperCase();
   return {
     requiresMvTopology,
     recommendedArchitectureId: electricalArchitecture.recommendedId || '',
+    selectedArchitectureId: electricalArchitecture.selectedArchitectureId || '',
+    architectureTopologyId,
+    architectureLocked,
     passArchitectureIds: passArchitectures.map(candidate => candidate.id),
     selectableTopologies,
     blockedTopologies,
@@ -1823,6 +2121,9 @@ function buildTopologyFlowAdapter(topology = {}, validation = validatePowerTopol
     },
     voltageV: asNumber(node.electrical?.voltageV, 0),
     ratedPowerKw: asNumber(node.electrical?.ratedPowerKw, 0),
+    componentId: String(node.componentId || '').trim(),
+    componentRole: String(node.componentRole || componentRoleForNode(node)).trim(),
+    componentIcon: String(node.componentIcon || '').trim(),
     busOrientation: String(node.busOrientation || '').trim(),
     loadSplitId: String(node.loadSplitId || '').trim()
   }));
@@ -1846,7 +2147,16 @@ function buildTopologyFlowAdapter(topology = {}, validation = validatePowerTopol
       blocked,
       warning,
       flowKeys,
-      flowKeyMode
+      flowKeyMode,
+      route: edge.route && typeof edge.route === 'object'
+        ? {
+          manualRoute: Boolean(edge.route.manualRoute),
+          locked: Boolean(edge.route.locked),
+          waypoints: Array.isArray(edge.route.waypoints)
+            ? edge.route.waypoints.map(point => ({ x: asNumber(point?.x, 0), y: asNumber(point?.y, 0) }))
+            : []
+        }
+        : undefined
     };
   });
   return {
@@ -1892,6 +2202,8 @@ function calculateElectrical(project, recommended) {
   const transformerSizing = buildTransformerSizing(designKw, pf, 0.85);
   const electricalArchitecture = buildElectricalArchitecture(project, designKw, pf, distance, lvCurrentA, mvRecommended);
   const cableScreening = buildCableScreening(project, designKw, pf);
+  const effectiveArchitecture = electricalArchitecture.candidates.find(candidate => candidate.id === electricalArchitecture.recommendedId);
+  const displayArchitecture = project.electrical.selectedArchitectureId && effectiveArchitecture ? effectiveArchitecture.name : architecture;
   return {
     designKw,
     roundedPvMwp,
@@ -1899,9 +2211,13 @@ function calculateElectrical(project, recommended) {
     voltageOptions,
     flags,
     mvRecommended,
-    architecture,
+    architecture: displayArchitecture,
     architectureCandidates: electricalArchitecture.candidates,
     architectureRecommendedId: electricalArchitecture.recommendedId,
+    architectureCalculatedRecommendedId: electricalArchitecture.calculatedRecommendedId,
+    selectedArchitectureId: electricalArchitecture.selectedArchitectureId,
+    selectedArchitectureValid: electricalArchitecture.selectedArchitectureValid,
+    selectedArchitectureWarning: electricalArchitecture.selectedArchitectureWarning,
     transformerSizing,
     cableScreening,
     recommendation: mvRecommended
@@ -2178,6 +2494,10 @@ function calculateEpcDesignProject(rawProject = {}, options = {}) {
   const electricalArchitecture = {
     candidates: electrical.architectureCandidates || [],
     recommendedId: electrical.architectureRecommendedId || '',
+    calculatedRecommendedId: electrical.architectureCalculatedRecommendedId || '',
+    selectedArchitectureId: electrical.selectedArchitectureId || '',
+    selectedArchitectureValid: Boolean(electrical.selectedArchitectureValid),
+    selectedArchitectureWarning: electrical.selectedArchitectureWarning || '',
     recommendation: (electrical.architectureCandidates || []).some(candidate => candidate.id === electrical.architectureRecommendedId)
       ? `${(electrical.architectureCandidates || []).find(candidate => candidate.id === electrical.architectureRecommendedId).name} is preferred for this concept screen.`
       : electrical.recommendation,
@@ -2185,13 +2505,22 @@ function calculateEpcDesignProject(rawProject = {}, options = {}) {
   };
   const cableScreening = electrical.cableScreening || { candidates: [] };
   let topologySelection = buildTopologySelection(project, electricalArchitecture);
-  let topologyProject = project;
+  const topologyBuildOptions = {
+    architectureId: electricalArchitecture.recommendedId,
+    standardTopologyLibrary: project.calculationAssumptions?.standardTopologyLibrary
+  };
+  let topologyProject = project.selectedTopologyId === 'CUSTOM'
+    ? project
+    : {
+      ...project,
+      topology: normalizePowerTopology({ selectedTopologyId: project.selectedTopologyId }, project.selectedTopologyId, project.loads, topologyBuildOptions)
+    };
   if (project.selectedTopologyId !== 'CUSTOM' && !topologySelection.selectedTopologyAllowed && topologySelection.selectableTopologies.length) {
     const autoSelectedTopologyId = topologySelection.selectableTopologies[0].id;
     topologyProject = {
       ...project,
       selectedTopologyId: autoSelectedTopologyId,
-      topology: normalizePowerTopology({ selectedTopologyId: autoSelectedTopologyId }, autoSelectedTopologyId, project.loads)
+      topology: normalizePowerTopology({ selectedTopologyId: autoSelectedTopologyId }, autoSelectedTopologyId, project.loads, topologyBuildOptions)
     };
     topologySelection = {
       ...topologySelection,
@@ -2416,12 +2745,12 @@ function normalizeEpcDesignProjectList(value = [], options = {}) {
     .filter(item => item.id);
 }
 
-
 if (root.document?.documentElement) {
   root.document.documentElement.dataset.epcDesignEngine = EPC_DESIGN_VERSION;
 }
 root.MinovaEpcDesignEngine = {
   EPC_DESIGN_VERSION,
+  GLOBAL_SOLAR_ATLAS_API_BASE,
   EPC_DESIGN_DEFAULTS,
   normalizeEpcDesignProject,
   buildEpcDesignProjectFromQuickInputs,

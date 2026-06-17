@@ -877,6 +877,44 @@ test('EPC Topology and Electrical panels render graph validation LV MV and cable
   }
 });
 
+test('EPC Electrical workspace exposes PASS architecture choose controls', () => {
+  const electricalRenderer = html.match(/function renderEpcElectricalWorkspace\(result\)[\s\S]*?function flowLineClass/);
+  assert.ok(electricalRenderer, 'electrical workspace renderer should exist');
+  for (const snippet of [
+    'chooseEpcElectricalArchitecture',
+    'data-epc-architecture-choose',
+    "candidate.status === 'PASS'",
+    'selectedArchitectureId',
+    'selectedArchitectureWarning'
+  ]) {
+    assert.match(electricalRenderer[0], new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing electrical choose snippet: ${snippet}`);
+  }
+});
+
+test('EPC SLD workspace exposes move route replace and reset controls', () => {
+  for (const snippet of [
+    'Electrical SLD Workspace',
+    'renderEpcSldWorkspaceToolbar',
+    'setEpcSldWorkspaceMode',
+    'epc-sld-mode',
+    'Move',
+    'Route',
+    'Replace',
+    'Reset Factory',
+    'saveEpcStandardTopologyNodePosition',
+    'saveEpcStandardTopologyEdgeRoute',
+    'replaceEpcStandardTopologyComponent',
+    'resetEpcStandardTopologyFactory',
+    'standardTopologyLibrary',
+    'componentCatalog',
+    'data-epc-sld-node',
+    'data-epc-sld-edge',
+    'canEditEpcEngineering()'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing SLD workspace snippet: ${snippet}`);
+  }
+});
+
 test('EPC EMS Flow renders topology-aware standard components and validation state', () => {
   const flowRenderer = html.match(/function renderEpcFlowDiagram\(result, row\)[\s\S]*?function renderEpcSocBadge/);
   assert.ok(flowRenderer, 'EMS Flow renderer should be found');
@@ -962,6 +1000,19 @@ test('EPC topology-aware flow routes through visible LV bus card and balanced ba
   assert.doesNotMatch(pairRoute[0], /V\$\{laneY\}/, 'battery PCS lanes should be straight balanced lines, not dogleg routes');
   assert.match(lvRoute[0], /epcTopologyFlowPort\(target, 'left'\)/);
   assert.match(lvRoute[0], /epcTopologyFlowPort\(source, 'right'\)/);
+});
+
+test('EPC topology-aware flow can render manual SLD routes from standard templates', () => {
+  const renderModel = html.match(/function buildEpcTopologyFlowRenderModel\(result, row\)[\s\S]*?function renderEpcTopologyFlowEdge/);
+  assert.ok(renderModel, 'topology flow render model should exist');
+  for (const snippet of [
+    'epcTopologyFlowManualRoute',
+    'edge.route?.manualRoute',
+    'edge.route?.waypoints',
+    'manualRoute'
+  ]) {
+    assert.match(renderModel[0], new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing manual route snippet: ${snippet}`);
+  }
 });
 
 test('EPC inputs expose split load count and ratio controls for EMS Flow', () => {

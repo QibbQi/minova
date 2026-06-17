@@ -947,20 +947,27 @@ test('EPC SLD workspace exposes route drag handles and zoom controls', () => {
   assert.ok(renderer, 'SLD topology renderer should exist');
   assert.ok(endpointSaver, 'SLD endpoint saver should exist');
 
-  for (const snippet of [
-    'Zoom -',
-    'Zoom +',
-    'Fit',
-    '100%',
-    'setEpcSldViewportZoom',
-    'fitEpcSldViewport',
-    'calculateEpcSldFitViewport',
-    'resetEpcSldViewportZoom',
-    'saveEpcStandardTopologyViewport',
-    'applyEpcSldViewportPreview'
-  ]) {
-    assert.match(toolbar[0], new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing SLD zoom toolbar snippet: ${snippet}`);
-  }
+	for (const snippet of [
+		'Zoom -',
+		'Zoom +',
+		'Fit',
+		'setEpcSldViewportZoom',
+		'fitEpcSldViewport',
+		'calculateEpcSldFitViewport',
+		'saveEpcStandardTopologyViewport',
+		'applyEpcSldViewportPreview',
+		'iconButton',
+		'iconSvg',
+		'title="${label}"',
+		'aria-label="${label}"',
+		'inline-flex h-9 w-9',
+		'zoomOut',
+		'zoomIn'
+	]) {
+		assert.match(toolbar[0], new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing SLD zoom toolbar snippet: ${snippet}`);
+	}
+	assert.doesNotMatch(toolbar[0], /100%/, 'SLD toolbar should not expose the reset-to-100-percent button');
+	assert.doesNotMatch(toolbar[0], /resetEpcSldViewportZoom/, 'SLD toolbar should not call the removed 100 percent zoom action');
   for (const snippet of [
     "['add', 'Add']",
     "['delete', 'Delete']",

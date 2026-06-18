@@ -62,6 +62,28 @@ test('EPC formula trace shows formula data instead of a raw inputs column', () =
   assert.doesNotMatch(html, /JSON\.stringify\(item\.inputs\)/);
 });
 
+test('EPC BOQ exposes dual professional views with manual and Product List controls', () => {
+  for (const snippet of [
+    'Customer Summary',
+    'Engineering Detail',
+    'BOQ readiness',
+    'Equipment / 设备名称',
+    'Spec / 规格参数',
+    'Protection / 防护防腐',
+    'Product Binding',
+    'Add Manual Item',
+    'Select Product',
+    'openEpcBoqProductPicker',
+    'addEpcBoqManualItem',
+    'data-epc-boq-view="customer"',
+    'data-epc-boq-view="engineering"',
+    'data-epc-boq-field="quantity"',
+    'epc-boq-product-picker-modal'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing BOQ UI snippet: ${snippet}`);
+  }
+});
+
 test('EPC detailed engineering inputs are permission-gated separately from quick design', () => {
   assert.match(html, /id="epc-advanced-inputs"[^>]*data-epc-advanced-section="true"/);
   assert.match(html, /id="epc-detailed-fields"[^>]*data-epc-engineering-section="true"/);

@@ -6541,6 +6541,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         let epcDesignActiveProjectId = '';
         let epcDesignMode = 'quick';
         let epcDesignPanelTab = 'inputs';
+        let epcBoqViewMode = 'customer';
+        let epcBoqProductPickerLineId = '';
         let epcSldWorkspaceMode = 'view';
         let epcSldSelectedNodeId = '';
         let epcSldSelectedNodeIds = [];
@@ -11334,18 +11336,354 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             `;
         }
 
+        function getEpcBoqPackageOrder(packageName = '') {
+            const order = ['PV System', 'BESS', 'EMS & Monitoring', 'Electrical Distribution', 'Auxiliary', 'Documents & Certification', 'Manual'];
+            const idx = order.indexOf(packageName);
+            return idx === -1 ? order.length : idx;
+        }
+
+        function groupEpcBoqRows(rows = []) {
+            const groups = new Map();
+            rows.forEach(row => {
+                const key = row.package || 'General';
+                if (!groups.has(key)) groups.set(key, []);
+                groups.get(key).push(row);
+            });
+            return [...groups.entries()].sort(([a], [b]) => getEpcBoqPackageOrder(a) - getEpcBoqPackageOrder(b) || a.localeCompare(b));
+        }
+
+        function formatEpcBoqQuantity(row = {}) {
+            const n = Number(row.quantity);
+            const digits = Number.isFinite(n) && Math.abs(n % 1) > 0.0001 ? 2 : 0;
+            return `${formatEpcNumber(row.quantity, digits)} ${htmlSafe(row.unit || '')}`.trim();
+        }
+
+        function renderEpcBoqSourceBadge(row = {}) {
+            const tones = {
+                calculated: 'bg-slate-100 text-slate-600 border-slate-200',
+                topology: 'bg-purple-50 text-purple-700 border-purple-200',
+                'ems-flow': 'bg-cyan-50 text-cyan-700 border-cyan-200',
+                manual: 'bg-yellow-50 text-yellow-800 border-yellow-200',
+                'product-bound': 'bg-green-50 text-green-700 border-green-200'
+            };
+            const source = row.source || 'calculated';
+            return `<span class="inline-flex rounded-full border px-2 py-1 text-[10px] font-black uppercase ${tones[source] || tones.calculated}">${htmlSafe(source)}</span>`;
+        }
+
+        function renderEpcBoqProductBinding(row = {}) {
+            if (row.productId) {
+                return `
+                    <div class="min-w-0">
+                        <div class="font-black text-green-700 truncate">${htmlSafe(row.productId)}</div>
+                        <div class="text-[10px] text-slate-500 truncate" title="${htmlSafe(row.productName || '')}">${htmlSafe(row.productName || '-')}</div>
+                        <div class="text-[10px] text-slate-400 truncate">${htmlSafe(row.supplierName || '-')}</div>
+                    </div>
+                `;
+            }
+            return '<span class="text-[10px] font-black uppercase text-slate-300">Open</span>';
+        }
+
+        function renderEpcBoqField(row = {}, field = '', value = '', options = {}) {
+            const editable = row.manual || ['quantity', 'unit', 'spec', 'protection', 'remark'].includes(field);
+            if (!editable) return htmlSafe(value || '-');
+            const type = options.type || 'text';
+            const inputClass = options.compact
+                ? 'w-20 rounded-lg border border-slate-200 bg-white px-2 py-1 text-right text-[11px] font-bold outline-none focus:border-purple-500'
+                : 'w-full min-w-[12rem] rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold outline-none focus:border-purple-500';
+            return `<input data-epc-boq-field="${htmlSafe(field)}" type="${htmlSafe(type)}" value="${htmlSafe(value ?? '')}" onchange='updateEpcBoqLineField(${JSON.stringify(String(row.id || ''))}, ${JSON.stringify(field)}, this.value)' class="${inputClass}">`;
+        }
+
+        function renderEpcBoqCustomerRows(rows = []) {
+            return groupEpcBoqRows(rows).map(([packageName, packageRows]) => `
+                <tbody class="divide-y divide-slate-100">
+                    <tr class="bg-slate-50">
+                        <td colspan="8" class="px-3 py-2 text-[10px] font-black uppercase text-purple-700">${htmlSafe(packageName)}</td>
+                    </tr>
+                    ${packageRows.map(row => `
+                        <tr class="align-top hover:bg-slate-50">
+                            <td class="px-3 py-3 font-black text-slate-800">${htmlSafe(row.item || '-')}</td>
+                            <td class="px-3 py-3 text-slate-600 min-w-[18rem]">${htmlSafe(row.spec || '-')}</td>
+                            <td class="px-3 py-3 text-right font-black text-slate-800 whitespace-nowrap">${formatEpcBoqQuantity(row)}</td>
+                            <td class="px-3 py-3 text-slate-600">${htmlSafe(row.protection || '-')}</td>
+                            <td class="px-3 py-3">${renderEpcBoqProductBinding(row)}</td>
+                            <td class="px-3 py-3">${renderEpcBoqSourceBadge(row)}</td>
+                            <td class="px-3 py-3 text-slate-500 min-w-[14rem]">${htmlSafe(row.remark || '-')}</td>
+                            <td class="px-3 py-3 text-right">
+                                <button type="button" onclick='openEpcBoqProductPicker(${JSON.stringify(String(row.id || ''))})' class="rounded-lg border border-purple-200 px-2 py-1 text-[10px] font-black text-purple-700 hover:bg-purple-50">Select Product</button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            `).join('');
+        }
+
+        function renderEpcBoqEngineeringRows(rows = []) {
+            return rows.map(row => `
+                <tr class="align-top hover:bg-slate-50">
+                    <td class="px-3 py-3">
+                        <div class="text-[10px] font-black uppercase text-slate-400">${htmlSafe(row.package || '-')}</div>
+                        <div class="mt-1">${renderEpcBoqField(row, 'item', row.item || '')}</div>
+                    </td>
+                    <td class="px-3 py-3">${renderEpcBoqField(row, 'spec', row.spec || '')}</td>
+                    <td class="px-3 py-3 text-right">${renderEpcBoqField(row, 'quantity', row.quantity ?? '', { type: 'number', compact: true })}</td>
+                    <td class="px-3 py-3">${renderEpcBoqField(row, 'unit', row.unit || '', { compact: true })}</td>
+                    <td class="px-3 py-3">${renderEpcBoqField(row, 'protection', row.protection || '')}</td>
+                    <td class="px-3 py-3">${renderEpcBoqProductBinding(row)}</td>
+                    <td class="px-3 py-3">${renderEpcBoqSourceBadge(row)}${row.manual ? '<div class="mt-1 text-[10px] font-black text-yellow-700">Manual</div>' : ''}</td>
+                    <td class="px-3 py-3">${renderEpcBoqField(row, 'remark', row.remark || '')}</td>
+                    <td class="px-3 py-3 text-right">
+                        <div class="flex flex-col items-end gap-1">
+                            <button type="button" onclick='openEpcBoqProductPicker(${JSON.stringify(String(row.id || ''))})' class="rounded-lg border border-purple-200 px-2 py-1 text-[10px] font-black text-purple-700 hover:bg-purple-50">Select Product</button>
+                            ${row.productId ? `<button type="button" onclick='clearEpcBoqProductBinding(${JSON.stringify(String(row.id || ''))})' class="text-[10px] font-black text-slate-400 hover:text-red-600">Clear Product</button>` : ''}
+                            ${row.manual ? `<button type="button" onclick='deleteEpcBoqManualItem(${JSON.stringify(String(row.id || ''))})' class="text-[10px] font-black text-red-600 hover:underline">Delete</button>` : ''}
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function getEpcBoqCandidateCategories(row = {}) {
+            const text = `${row.package || ''} ${row.item || ''} ${row.nodeType || ''}`.toLowerCase();
+            if (text.includes('module')) return ['PV Module'];
+            if (text.includes('inverter') || text.includes('pcs')) return ['Inverter', 'C&I Storage'];
+            if (text.includes('bess') || text.includes('battery') || text.includes('bms')) return ['Battery', 'C&I Storage'];
+            if (text.includes('cable') || text.includes('combiner') || text.includes('mounting') || text.includes('auxiliary')) return ['Accessory'];
+            if (text.includes('transformer') || text.includes('switchboard') || text.includes('rmu') || text.includes('bus') || text.includes('feeder')) return ['Accessory'];
+            return [];
+        }
+
+        function mutateEpcBoqProject(mutator) {
+            const project = JSON.parse(JSON.stringify(getActiveEpcDesignProject()));
+            project.boq = project.boq || { manualItems: [], lineSelections: {} };
+            project.boq.manualItems = Array.isArray(project.boq.manualItems) ? project.boq.manualItems : [];
+            project.boq.lineSelections = project.boq.lineSelections && typeof project.boq.lineSelections === 'object' ? project.boq.lineSelections : {};
+            mutator(project.boq, project);
+            updateEpcProject(project);
+            const status = document.getElementById('epc-design-save-status');
+            if (status) status.textContent = 'BOQ draft changed locally';
+            renderEpcDesignWorkspace();
+        }
+
+        window.setEpcBoqView = (view = 'customer') => {
+            epcBoqViewMode = view === 'engineering' ? 'engineering' : 'customer';
+            renderEpcBoq(window.__lastEpcDesignResult || calculateEpcDesignProject(getActiveEpcDesignProject(), { defaults: epcDesignDefaults }));
+        };
+
+        window.addEpcBoqManualItem = () => {
+            mutateEpcBoqProject((boq) => {
+                const id = `manual-${Date.now()}`;
+                boq.manualItems.push({
+                    id,
+                    package: 'Manual',
+                    item: 'Manual BOQ item',
+                    spec: '',
+                    quantity: 1,
+                    unit: 'lot',
+                    protection: '',
+                    remark: ''
+                });
+                epcBoqViewMode = 'engineering';
+            });
+        };
+
+        window.deleteEpcBoqManualItem = (lineId = '') => {
+            mutateEpcBoqProject((boq) => {
+                boq.manualItems = boq.manualItems.filter(item => String(item.id || '') !== String(lineId || ''));
+            });
+        };
+
+        window.updateEpcBoqLineField = (lineId = '', field = '', value = '') => {
+            mutateEpcBoqProject((boq) => {
+                const manual = boq.manualItems.find(item => String(item.id || '') === String(lineId || ''));
+                if (manual) {
+                    if (field === 'quantity') manual.quantity = Math.max(0, Number(value) || 0);
+                    else if (['item', 'spec', 'unit', 'protection', 'remark', 'package'].includes(field)) manual[field] = String(value || '').trim();
+                    return;
+                }
+                const selection = boq.lineSelections[lineId] || {};
+                if (field === 'quantity') selection.quantityOverride = Math.max(0, Number(value) || 0);
+                if (field === 'unit') selection.unitOverride = String(value || '').trim();
+                if (field === 'spec') selection.specOverride = String(value || '').trim();
+                if (field === 'protection') selection.protectionOverride = String(value || '').trim();
+                if (field === 'remark') selection.remark = String(value || '').trim();
+                boq.lineSelections[lineId] = selection;
+            });
+        };
+
+        window.openEpcBoqProductPicker = (lineId = '') => {
+            epcBoqProductPickerLineId = String(lineId || '');
+            const modal = document.getElementById('epc-boq-product-picker-modal');
+            const search = document.getElementById('epc-boq-product-picker-search');
+            if (search) search.value = '';
+            window.renderEpcBoqProductPickerList('');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+        };
+
+        window.closeEpcBoqProductPicker = () => {
+            epcBoqProductPickerLineId = '';
+            const modal = document.getElementById('epc-boq-product-picker-modal');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        };
+
+        window.renderEpcBoqProductPickerList = (query = '') => {
+            const box = document.getElementById('epc-boq-product-picker-list');
+            const result = window.__lastEpcDesignResult || calculateEpcDesignProject(getActiveEpcDesignProject(), { defaults: epcDesignDefaults });
+            const row = (result.boq || []).find(item => String(item.id || '') === String(epcBoqProductPickerLineId || '')) || {};
+            const suggested = getEpcBoqCandidateCategories(row).map(normalizeProductCategory);
+            const q = String(query || '').trim().toLowerCase();
+            let rows = (Array.isArray(products) ? products : []).filter(product => {
+                const category = normalizeProductCategory(product.category || '');
+                const supplier = getProductSupplierDisplay(product);
+                const spec = typeof getProductDisplaySpec === 'function' ? getProductDisplaySpec(product) : (product.spec || '');
+                const hay = [product.id, product.name, product.category, product.scenario, supplier, spec].join(' ').toLowerCase();
+                return (!suggested.length || suggested.includes(category)) && (!q || hay.includes(q));
+            });
+            if (!rows.length && suggested.length) {
+                rows = (Array.isArray(products) ? products : []).filter(product => {
+                    const supplier = getProductSupplierDisplay(product);
+                    const spec = typeof getProductDisplaySpec === 'function' ? getProductDisplaySpec(product) : (product.spec || '');
+                    const hay = [product.id, product.name, product.category, product.scenario, supplier, spec].join(' ').toLowerCase();
+                    return !q || hay.includes(q);
+                });
+            }
+            if (!box) return;
+            box.innerHTML = rows.map(product => {
+                const supplier = getProductSupplierDisplay(product);
+                const spec = typeof getProductDisplaySpec === 'function' ? getProductDisplaySpec(product) : (product.spec || '');
+                const delivery = typeof getProductDeliveryTime === 'function' ? getProductDeliveryTime(product) : '';
+                return `
+                    <div class="flex items-center justify-between gap-3 border-b border-slate-100 p-3 last:border-b-0 hover:bg-slate-50">
+                        <div class="min-w-0">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="font-black text-slate-800">${htmlSafe(product.id || '-')}</span>
+                                <span class="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black text-slate-500">${htmlSafe(normalizeProductCategory(product.category || '-'))}</span>
+                            </div>
+                            <div class="mt-1 text-sm font-bold text-slate-700 truncate" title="${htmlSafe(product.name || '')}">${htmlSafe(product.name || '-')}</div>
+                            <div class="text-[11px] text-slate-400 truncate">${htmlSafe(supplier || '-')} · ${htmlSafe(spec || '-')} ${delivery ? `· ${htmlSafe(delivery)}` : ''}</div>
+                        </div>
+                        <button type="button" onclick='selectEpcBoqProduct(${JSON.stringify(String(epcBoqProductPickerLineId || ''))}, ${JSON.stringify(String(product.id || ''))})' class="rounded-xl bg-purple-700 px-4 py-2 text-xs font-black text-white hover:bg-purple-800">Select Product</button>
+                    </div>
+                `;
+            }).join('') || '<div class="p-8 text-center text-xs text-slate-400">No Product List matches. Keep this BOQ line manual.</div>';
+        };
+
+        window.selectEpcBoqProduct = (lineId = '', productId = '') => {
+            const product = (Array.isArray(products) ? products : []).find(item => String(item.id || '') === String(productId || ''));
+            if (!product) return;
+            const spec = typeof getProductDisplaySpec === 'function' ? getProductDisplaySpec(product) : (product.spec || '');
+            mutateEpcBoqProject((boq) => {
+                const selection = boq.lineSelections[lineId] || {};
+                selection.productId = String(product.id || '');
+                selection.productName = String(product.name || '');
+                selection.supplierName = String(getProductSupplierDisplay(product) || product.vendor || '');
+                if (spec) selection.specOverride = spec;
+                boq.lineSelections[lineId] = selection;
+            });
+            window.closeEpcBoqProductPicker();
+        };
+
+        window.clearEpcBoqProductBinding = (lineId = '') => {
+            mutateEpcBoqProject((boq) => {
+                const selection = boq.lineSelections[lineId] || {};
+                delete selection.productId;
+                delete selection.productName;
+                delete selection.supplierName;
+                boq.lineSelections[lineId] = selection;
+            });
+        };
+
         function renderEpcBoq(result) {
             const target = document.getElementById('epc-design-boq');
             if (!target) return;
+            const rows = Array.isArray(result.boq) ? result.boq : [];
+            const recommended = getRecommendedEpcScheme(result);
+            const productBound = rows.filter(row => row.productId).length;
+            const manual = rows.filter(row => row.manual).length;
+            const topologyRows = rows.filter(row => row.source === 'topology' || row.source === 'ems-flow').length;
+            const activeView = epcBoqViewMode === 'engineering' ? 'engineering' : 'customer';
+            const viewBody = activeView === 'engineering'
+                ? `
+                    <div class="overflow-x-auto">
+                        <table class="w-full min-w-[1180px] text-left text-xs">
+                            <thead class="bg-slate-50 text-slate-500 uppercase">
+                                <tr>
+                                    <th class="px-3 py-2">Equipment / 设备名称</th>
+                                    <th class="px-3 py-2">Spec / 规格参数</th>
+                                    <th data-epc-boq-field="quantity" class="px-3 py-2 text-right">Qty</th>
+                                    <th class="px-3 py-2">Unit</th>
+                                    <th class="px-3 py-2">Protection / 防护防腐</th>
+                                    <th class="px-3 py-2">Product Binding</th>
+                                    <th class="px-3 py-2">Source</th>
+                                    <th class="px-3 py-2">Remark</th>
+                                    <th class="px-3 py-2 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">${renderEpcBoqEngineeringRows(rows)}</tbody>
+                        </table>
+                    </div>
+                `
+                : `
+                    <div class="overflow-x-auto">
+                        <table class="w-full min-w-[1080px] text-left text-xs">
+                            <thead class="bg-slate-50 text-slate-500 uppercase">
+                                <tr>
+                                    <th class="px-3 py-2">Equipment / 设备名称</th>
+                                    <th class="px-3 py-2">Spec / 规格参数</th>
+                                    <th class="px-3 py-2 text-right">Quantity</th>
+                                    <th class="px-3 py-2">Protection / 防护防腐</th>
+                                    <th class="px-3 py-2">Product Binding</th>
+                                    <th class="px-3 py-2">Source</th>
+                                    <th class="px-3 py-2">Remark</th>
+                                    <th class="px-3 py-2 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            ${renderEpcBoqCustomerRows(rows)}
+                        </table>
+                    </div>
+                `;
             target.innerHTML = `
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    ${result.boq.map(item => `
-                        <div class="rounded-xl border border-slate-200 p-3">
-                            <div class="text-[10px] font-black text-purple-700 uppercase">${htmlSafe(item.package)}</div>
-                            <div class="text-sm font-black text-slate-800">${htmlSafe(item.item)}</div>
-                            <div class="text-xs text-slate-500 mt-1">${formatEpcNumber(item.quantity, 2, item.unit)} ${item.mandatory ? '| Mandatory' : '| Optional'}</div>
+                <div class="space-y-3">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <div class="text-sm font-black text-slate-800">Topology-aware EPC BOQ</div>
+                            <div class="text-[11px] font-bold text-slate-400">BOQ readiness: ${productBound}/${rows.length} product-bound · ${topologyRows} topology/EMS-derived · ${manual} manual</div>
                         </div>
-                    `).join('')}
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button type="button" data-epc-boq-view="customer" onclick="setEpcBoqView('customer')" class="${activeView === 'customer' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'} rounded-xl px-3 py-2 text-xs font-black">Customer Summary</button>
+                            <button type="button" data-epc-boq-view="engineering" onclick="setEpcBoqView('engineering')" class="${activeView === 'engineering' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'} rounded-xl px-3 py-2 text-xs font-black">Engineering Detail</button>
+                            <button type="button" onclick="addEpcBoqManualItem()" class="rounded-xl border border-purple-200 bg-purple-50 px-3 py-2 text-xs font-black text-purple-700 hover:bg-purple-100">Add Manual Item</button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 lg:grid-cols-6 gap-2 text-xs">
+                        <div class="rounded-xl border border-slate-200 bg-slate-50 p-3"><div class="text-[10px] font-black uppercase text-slate-400">PV</div><div class="font-black text-slate-800">${formatEpcNumber(recommended.pvRecommendedMwp, 2, 'MWp')}</div></div>
+                        <div class="rounded-xl border border-slate-200 bg-slate-50 p-3"><div class="text-[10px] font-black uppercase text-slate-400">BESS</div><div class="font-black text-slate-800">${formatEpcNumber(recommended.bessRecommendedMwh, 2, 'MWh')}</div></div>
+                        <div class="rounded-xl border border-slate-200 bg-slate-50 p-3"><div class="text-[10px] font-black uppercase text-slate-400">PCS</div><div class="font-black text-slate-800">${formatEpcNumber(recommended.pcsRecommendedMw, 2, 'MW')}</div></div>
+                        <div class="rounded-xl border border-slate-200 bg-slate-50 p-3"><div class="text-[10px] font-black uppercase text-slate-400">Architecture</div><div class="font-black text-slate-800 truncate">${htmlSafe(result.electricalArchitecture?.recommendedId || result.electrical?.architecture || '-')}</div></div>
+                        <div class="rounded-xl border border-slate-200 bg-slate-50 p-3"><div class="text-[10px] font-black uppercase text-slate-400">Topology</div><div class="font-black text-slate-800">${htmlSafe(result.topologyFlow?.topologyId || result.selectedTopologyId || '-')}</div></div>
+                        <div class="rounded-xl border border-slate-200 bg-slate-50 p-3"><div class="text-[10px] font-black uppercase text-slate-400">Load branches</div><div class="font-black text-slate-800">${formatEpcNumber(result.loads?.loadCount || 1, 0)}</div></div>
+                    </div>
+                    ${viewBody}
+                </div>
+                <div id="epc-boq-product-picker-modal" class="hidden fixed inset-0 z-[90] items-center justify-center bg-slate-900/35 p-4">
+                    <div class="w-full max-w-3xl rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden">
+                        <div class="flex items-center justify-between gap-3 border-b border-slate-100 p-4">
+                            <div>
+                                <div class="text-sm font-black text-slate-800">Select Product from Product List</div>
+                                <div class="text-[11px] font-bold text-slate-400">Binding enriches brand, model, supplier and spec only. BOQ pricing stays in Quotation.</div>
+                            </div>
+                            <button type="button" onclick="closeEpcBoqProductPicker()" class="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-500 hover:bg-slate-50">Close</button>
+                        </div>
+                        <div class="p-4">
+                            <input id="epc-boq-product-picker-search" oninput="renderEpcBoqProductPickerList(this.value)" placeholder="Search product, supplier, category, spec" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        </div>
+                        <div id="epc-boq-product-picker-list" class="max-h-[26rem] overflow-y-auto border-t border-slate-100"></div>
+                    </div>
                 </div>
             `;
         }

@@ -815,10 +815,106 @@ test('EPC capacity overrides preserve calculated recommendation and drive effect
   assert.equal(recommended.calculatedBessRecommendedMwh.toFixed(2), baseRecommended.bessRecommendedMwh.toFixed(2));
   assert.equal(result.energyFlow.summary.socMaxPct, 95);
   assert.ok(result.energyFlow.rows.every((row) => row.pcsLimitKw === 2000));
-  assert.equal(result.boq.find((item) => item.item === 'PV modules and mounting').quantity, 6.5);
+  assert.equal(result.boq.find((item) => item.id === 'pv-array-capacity').quantity, 6.5);
   assert.equal(result.pvStringDesign.targetPvMwp, 6.5);
   assert.ok(result.formulaTrace.some((item) => item.key === 'capacityOverride.pvMwp' && item.result === 6.5));
   assert.ok(result.risks.some((risk) => /Manual capacity override/i.test(risk.issue)));
+});
+
+test('EPC BOQ derives MV ring quantities from final topology and architecture', () => {
+  const result = calculateEpcDesignProject({
+    selectedTopologyId: 'C7',
+    site: { gridMode: 'island' },
+    electrical: { selectedArchitectureId: 'mv_11_ring', newMvSystem: true },
+    loads: {
+      dailyLoadKwh: 12000,
+      operationHoursPerDay: 8,
+      loadCount: 2,
+      loadSplits: [
+        { id: 'load-1', label: 'Crusher Load', ratioPct: 60 },
+        { id: 'load-2', label: 'Camp Load', ratioPct: 40 }
+      ]
+    },
+    designTargets: { replacementPct: 80 }
+  }, { now: '2026-06-16T00:00:00.000Z' });
+  const row = (id) => result.boq.find((item) => item.id === id);
+
+  assert.equal(result.topologyFlow.validationBlocked, false);
+  assert.equal(row('mv-step-up-transformer')?.quantity, 1);
+  assert.equal(row('mv-switchboard')?.quantity, 1);
+  assert.equal(row('ring-rmu')?.quantity, 1);
+  assert.equal(row('mv-load-branch-rmu')?.quantity, 2);
+  assert.equal(row('load-transformer')?.quantity, 2);
+  assert.equal(row('load-feeder')?.quantity, 2);
+  assert.equal(row('ems-controller')?.source, 'ems-flow');
+});
+
+test('EPC BOQ omits MV packages for LV-only architecture', () => {
+  const result = calculateEpcDesignProject({
+    selectedTopologyId: 'C2',
+    site: { gridMode: 'island' },
+    electrical: { selectedArchitectureId: 'lv_415_centralized' },
+    loads: {
+      dailyLoadKwh: 1800,
+      operationHoursPerDay: 8,
+      loadCount: 1,
+      loadSplits: [{ id: 'load-1', label: 'LV Load', ratioPct: 100 }]
+    },
+    designTargets: { replacementPct: 80 }
+  }, { now: '2026-06-16T00:00:00.000Z' });
+  const ids = new Set(result.boq.map((item) => item.id));
+
+  assert.equal(result.electricalArchitecture.recommendedId, 'lv_415_centralized');
+  assert.equal(ids.has('mv-step-up-transformer'), false);
+  assert.equal(ids.has('mv-switchboard'), false);
+  assert.equal(ids.has('ring-rmu'), false);
+  assert.ok(ids.has('lv-bus'));
+});
+
+test('EPC BOQ normalizes manual items and Product List selections without changing calculated sizing', () => {
+  const project = normalizeEpcDesignProject({
+    selectedTopologyId: 'C2',
+    loads: { dailyLoadKwh: 1800, operationHoursPerDay: 8 },
+    designTargets: { replacementPct: 80, capacityOverrides: { pvMwp: 4 } },
+    boq: {
+      manualItems: [
+        {
+          id: 'manual-weather-station',
+          package: 'Auxiliary',
+          item: 'Weather station',
+          spec: 'Irradiance, wind and ambient temperature sensors',
+          quantity: '2',
+          unit: 'set',
+          protection: 'IP65',
+          remark: 'Client requested'
+        }
+      ],
+      lineSelections: {
+        'pv-module-count': {
+          productId: 'GFZJ001',
+          productName: '610W N-type module',
+          supplierName: 'LESSO',
+          quantityOverride: '7000',
+          remark: 'Selected from Product List'
+        }
+      }
+    }
+  }, { now: '2026-06-16T00:00:00.000Z' });
+  const result = calculateEpcDesignProject(project, { now: '2026-06-16T00:00:00.000Z' });
+  const pvModules = result.boq.find((item) => item.id === 'pv-module-count');
+  const manual = result.boq.find((item) => item.id === 'manual-weather-station');
+
+  assert.equal(project.boq.manualItems.length, 1);
+  assert.equal(project.boq.lineSelections['pv-module-count'].productId, 'GFZJ001');
+  assert.equal(pvModules.quantity, 7000);
+  assert.equal(pvModules.calculatedQuantity, result.pvStringDesign.modules);
+  assert.equal(pvModules.productId, 'GFZJ001');
+  assert.equal(pvModules.productName, '610W N-type module');
+  assert.equal(pvModules.source, 'product-bound');
+  assert.equal(result.pvStringDesign.targetPvMwp, 4);
+  assert.equal(manual.quantity, 2);
+  assert.equal(manual.manual, true);
+  assert.equal(manual.source, 'manual');
 });
 
 test('EPC design engine makes PF and distance affect LV MV architecture output', () => {

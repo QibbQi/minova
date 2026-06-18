@@ -11336,8 +11336,20 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             `;
         }
 
+        const EPC_BOQ_PACKAGES = ['PV System', 'BESS', 'Electrical Distribution', 'EMS & Monitoring', 'Auxiliary', 'Documents & Certification'];
+
+        function normalizeEpcBoqPackageName(packageName = '', fallback = 'Auxiliary') {
+            const value = String(packageName || '').trim();
+            return EPC_BOQ_PACKAGES.includes(value) ? value : fallback;
+        }
+
+        function renderEpcBoqPackageOptions(selected = 'PV System') {
+            const value = normalizeEpcBoqPackageName(selected, 'PV System');
+            return EPC_BOQ_PACKAGES.map(packageName => `<option value="${htmlSafe(packageName)}"${packageName === value ? ' selected' : ''}>${htmlSafe(packageName)}</option>`).join('');
+        }
+
         function getEpcBoqPackageOrder(packageName = '') {
-            const order = ['PV System', 'BESS', 'EMS & Monitoring', 'Electrical Distribution', 'Auxiliary', 'Documents & Certification', 'Manual'];
+            const order = [...EPC_BOQ_PACKAGES, 'Manual'];
             const idx = order.indexOf(packageName);
             return idx === -1 ? order.length : idx;
         }
@@ -11436,6 +11448,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             <button type="button" onclick='openEpcBoqProductPicker(${JSON.stringify(String(row.id || ''))})' class="rounded-lg border border-purple-200 px-2 py-1 text-[10px] font-black text-purple-700 hover:bg-purple-50">Select Product</button>
                             ${row.productId ? `<button type="button" onclick='clearEpcBoqProductBinding(${JSON.stringify(String(row.id || ''))})' class="text-[10px] font-black text-slate-400 hover:text-red-600">Clear Product</button>` : ''}
                             ${row.manual ? `<button type="button" onclick='deleteEpcBoqManualItem(${JSON.stringify(String(row.id || ''))})' class="text-[10px] font-black text-red-600 hover:underline">Delete</button>` : ''}
+                            ${!row.manual && EPC_BOQ_PACKAGES.includes(row.package) ? `<button type="button" onclick='deleteEpcBoqPackage(${JSON.stringify(String(row.package || ''))})' class="text-[10px] font-black text-red-600 hover:underline">Delete Package</button>` : ''}
                         </div>
                     </td>
                 </tr>
@@ -11457,6 +11470,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             project.boq = project.boq || { manualItems: [], lineSelections: {} };
             project.boq.manualItems = Array.isArray(project.boq.manualItems) ? project.boq.manualItems : [];
             project.boq.lineSelections = project.boq.lineSelections && typeof project.boq.lineSelections === 'object' ? project.boq.lineSelections : {};
+            project.boq.hiddenPackages = Array.isArray(project.boq.hiddenPackages) ? project.boq.hiddenPackages : [];
             mutator(project.boq, project);
             updateEpcProject(project);
             const status = document.getElementById('epc-design-save-status');
@@ -11470,11 +11484,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         };
 
         window.addEpcBoqManualItem = () => {
+            const selectedPackage = normalizeEpcBoqPackageName(document.getElementById('epc-boq-manual-package-select')?.value, 'PV System');
             mutateEpcBoqProject((boq) => {
                 const id = `manual-${Date.now()}`;
                 boq.manualItems.push({
                     id,
-                    package: 'Manual',
+                    package: selectedPackage,
                     item: 'Manual BOQ item',
                     spec: '',
                     quantity: 1,
@@ -11482,6 +11497,26 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     protection: '',
                     remark: ''
                 });
+                epcBoqViewMode = 'engineering';
+            });
+        };
+
+        window.deleteEpcBoqPackage = (packageName = '') => {
+            const normalized = normalizeEpcBoqPackageName(packageName, '');
+            if (!normalized) return;
+            mutateEpcBoqProject((boq) => {
+                const hidden = new Set(Array.isArray(boq.hiddenPackages) ? boq.hiddenPackages : []);
+                hidden.add(normalized);
+                boq.hiddenPackages = Array.from(hidden).filter(item => EPC_BOQ_PACKAGES.includes(item));
+                epcBoqViewMode = 'engineering';
+            });
+        };
+
+        window.restoreEpcBoqPackage = (packageName = '') => {
+            const normalized = normalizeEpcBoqPackageName(packageName, '');
+            if (!normalized) return;
+            mutateEpcBoqProject((boq) => {
+                boq.hiddenPackages = (Array.isArray(boq.hiddenPackages) ? boq.hiddenPackages : []).filter(item => item !== normalized);
                 epcBoqViewMode = 'engineering';
             });
         };
@@ -11598,10 +11633,25 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             });
         };
 
+        function renderEpcBoqHiddenPackageRestore(project = getActiveEpcDesignProject()) {
+            const hiddenPackages = (Array.isArray(project.boq?.hiddenPackages) ? project.boq.hiddenPackages : [])
+                .filter(packageName => EPC_BOQ_PACKAGES.includes(packageName));
+            if (!hiddenPackages.length) return '';
+            return `
+                <div class="flex flex-wrap items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs">
+                    <span class="font-black text-amber-800">Hidden BOQ packages:</span>
+                    ${hiddenPackages.map(packageName => `
+                        <button type="button" onclick='restoreEpcBoqPackage(${JSON.stringify(packageName)})' class="rounded-lg border border-amber-300 bg-white px-2 py-1 text-[10px] font-black text-amber-800 hover:bg-amber-100">Restore hidden package · ${htmlSafe(packageName)}</button>
+                    `).join('')}
+                </div>
+            `;
+        }
+
         function renderEpcBoq(result) {
             const target = document.getElementById('epc-design-boq');
             if (!target) return;
             const rows = Array.isArray(result.boq) ? result.boq : [];
+            const project = getActiveEpcDesignProject();
             const recommended = getRecommendedEpcScheme(result);
             const productBound = rows.filter(row => row.productId).length;
             const manual = rows.filter(row => row.manual).length;
@@ -11613,11 +11663,11 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <table class="w-full min-w-[1180px] text-left text-xs">
                             <thead class="bg-slate-50 text-slate-500 uppercase">
                                 <tr>
-                                    <th class="px-3 py-2">Equipment / 设备名称</th>
-                                    <th class="px-3 py-2">Spec / 规格参数</th>
-                                    <th data-epc-boq-field="quantity" class="px-3 py-2 text-right">Qty</th>
+                                    <th class="px-3 py-2">Equipment</th>
+                                    <th class="px-3 py-2">Spec</th>
+                                    <th data-epc-boq-field="quantity" class="px-3 py-2 text-right">Quantity</th>
                                     <th class="px-3 py-2">Unit</th>
-                                    <th class="px-3 py-2">Protection / 防护防腐</th>
+                                    <th class="px-3 py-2">Protection</th>
                                     <th class="px-3 py-2">Product Binding</th>
                                     <th class="px-3 py-2">Source</th>
                                     <th class="px-3 py-2">Remark</th>
@@ -11633,10 +11683,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <table class="w-full min-w-[1080px] text-left text-xs">
                             <thead class="bg-slate-50 text-slate-500 uppercase">
                                 <tr>
-                                    <th class="px-3 py-2">Equipment / 设备名称</th>
-                                    <th class="px-3 py-2">Spec / 规格参数</th>
+                                    <th class="px-3 py-2">Equipment</th>
+                                    <th class="px-3 py-2">Spec</th>
                                     <th class="px-3 py-2 text-right">Quantity</th>
-                                    <th class="px-3 py-2">Protection / 防护防腐</th>
+                                    <th class="px-3 py-2">Protection</th>
                                     <th class="px-3 py-2">Product Binding</th>
                                     <th class="px-3 py-2">Source</th>
                                     <th class="px-3 py-2">Remark</th>
@@ -11657,9 +11707,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <div class="flex flex-wrap items-center gap-2">
                             <button type="button" data-epc-boq-view="customer" onclick="setEpcBoqView('customer')" class="${activeView === 'customer' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'} rounded-xl px-3 py-2 text-xs font-black">Customer Summary</button>
                             <button type="button" data-epc-boq-view="engineering" onclick="setEpcBoqView('engineering')" class="${activeView === 'engineering' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'} rounded-xl px-3 py-2 text-xs font-black">Engineering Detail</button>
+                            <select id="epc-boq-manual-package-select" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600 outline-none focus:border-purple-500" aria-label="Manual BOQ package">
+                                ${renderEpcBoqPackageOptions('PV System')}
+                            </select>
                             <button type="button" onclick="addEpcBoqManualItem()" class="rounded-xl border border-purple-200 bg-purple-50 px-3 py-2 text-xs font-black text-purple-700 hover:bg-purple-100">Add Manual Item</button>
                         </div>
                     </div>
+                    ${renderEpcBoqHiddenPackageRestore(project)}
                     <div class="grid grid-cols-2 lg:grid-cols-6 gap-2 text-xs">
                         <div class="rounded-xl border border-slate-200 bg-slate-50 p-3"><div class="text-[10px] font-black uppercase text-slate-400">PV</div><div class="font-black text-slate-800">${formatEpcNumber(recommended.pvRecommendedMwp, 2, 'MWp')}</div></div>
                         <div class="rounded-xl border border-slate-200 bg-slate-50 p-3"><div class="text-[10px] font-black uppercase text-slate-400">BESS</div><div class="font-black text-slate-800">${formatEpcNumber(recommended.bessRecommendedMwh, 2, 'MWh')}</div></div>
@@ -11688,17 +11742,98 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             `;
         }
 
+        function hasBlockingEpcReportRisks(result = window.__lastEpcDesignResult) {
+            return Boolean(result?.reportGate?.blocked || (Array.isArray(result?.risks) && result.risks.some(risk => risk.level === 'High' && risk.blocking !== false)));
+        }
+
+        function getEpcRiskTone(risk = {}) {
+            if (risk.status === 'auto-cleared' || risk.status === 'manual-acknowledged') return 'border-green-200 bg-green-50 text-green-700';
+            if (risk.level === 'High') return 'border-red-200 bg-red-50 text-red-700';
+            return 'border-yellow-200 bg-yellow-50 text-yellow-800';
+        }
+
+        function renderEpcRiskAcknowledgementPanel(risk = {}) {
+            const riskId = String(risk.id || '');
+            if (risk.status === 'auto-cleared') {
+                return `<div class="mt-2 rounded-lg border border-green-200 bg-white/70 px-3 py-2 text-[11px] font-bold text-green-700">${htmlSafe(risk.clearedBy || 'Automatically cleared by current design selection.')}</div>`;
+            }
+            const ack = risk.acknowledgement || {};
+            const showPanel = risk.status === 'manual-acknowledged';
+            return `
+                <div id="epc-risk-ack-${htmlSafe(riskId)}" class="${showPanel ? '' : 'hidden'} mt-3 grid grid-cols-1 md:grid-cols-[1fr_12rem_auto] gap-2 rounded-lg border border-slate-200 bg-white/80 p-2">
+                    <input data-epc-risk-reason="${htmlSafe(riskId)}" value="${htmlSafe(ack.reason || '')}" placeholder="Risk mitigation reason" class="rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-bold text-slate-700 outline-none focus:border-purple-500">
+                    <input data-epc-risk-signer="${htmlSafe(riskId)}" value="${htmlSafe(ack.signer || '')}" placeholder="Typed signature" class="rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-bold text-slate-700 outline-none focus:border-purple-500">
+                    <button type="button" onclick='saveEpcRiskAcknowledgement(${JSON.stringify(riskId)})' class="rounded-lg bg-slate-900 px-3 py-1 text-[11px] font-black text-white hover:bg-slate-700">Confirm</button>
+                    ${ack.signedAt ? `<div class="md:col-span-3 text-[10px] font-bold text-green-700">Signed by ${htmlSafe(ack.signer || '-')} at ${htmlSafe(ack.signedAt)}</div>` : ''}
+                </div>
+            `;
+        }
+
+        function renderEpcRiskCard(risk = {}) {
+            const riskId = String(risk.id || '');
+            const checked = risk.status === 'auto-cleared' || risk.status === 'manual-acknowledged';
+            const disabled = risk.status === 'auto-cleared';
+            return `
+                <div data-epc-risk-status="${htmlSafe(risk.status || 'open')}" class="rounded-xl border ${getEpcRiskTone(risk)} p-3 text-xs">
+                    <div class="flex items-start gap-3">
+                        <input type="checkbox" data-epc-risk-checkbox="${htmlSafe(riskId)}" ${checked ? 'checked' : ''} ${disabled ? 'disabled' : ''} onchange='toggleEpcRiskAcknowledgement(${JSON.stringify(riskId)}, this.checked)' class="mt-0.5 h-4 w-4 rounded border-slate-300 text-green-600 focus:ring-green-500">
+                        <div class="min-w-0 flex-1">
+                            <div>
+                                <span class="font-black">${htmlSafe(risk.level)} | ${htmlSafe(risk.area)}:</span>
+                                <span>${htmlSafe(risk.issue)}</span>
+                            </div>
+                            ${risk.blocking ? '<div class="mt-1 text-[10px] font-black uppercase text-red-600">Open High risk blocks Reports PDF download</div>' : ''}
+                            ${renderEpcRiskAcknowledgementPanel(risk)}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        window.toggleEpcRiskAcknowledgement = (riskId = '', checked = false) => {
+            const id = String(riskId || '').trim();
+            if (!id) return;
+            if (!checked) {
+                const project = JSON.parse(JSON.stringify(getActiveEpcDesignProject()));
+                project.riskAcknowledgements = project.riskAcknowledgements && typeof project.riskAcknowledgements === 'object' ? project.riskAcknowledgements : {};
+                delete project.riskAcknowledgements[id];
+                updateEpcProject(project);
+                renderEpcDesignWorkspace();
+                return;
+            }
+            document.getElementById(`epc-risk-ack-${id}`)?.classList.remove('hidden');
+        };
+
+        window.saveEpcRiskAcknowledgement = (riskId = '') => {
+            const id = String(riskId || '').trim();
+            const reason = document.querySelector(`[data-epc-risk-reason="${CSS.escape(id)}"]`)?.value?.trim() || '';
+            const signer = document.querySelector(`[data-epc-risk-signer="${CSS.escape(id)}"]`)?.value?.trim() || '';
+            if (!reason || !signer) {
+                alert('Manual risk acknowledgement requires a mitigation reason and typed signature.');
+                return;
+            }
+            const project = JSON.parse(JSON.stringify(getActiveEpcDesignProject()));
+            project.riskAcknowledgements = project.riskAcknowledgements && typeof project.riskAcknowledgements === 'object' ? project.riskAcknowledgements : {};
+            project.riskAcknowledgements[id] = {
+                reason,
+                signer,
+                signedAt: new Date().toISOString(),
+                mode: 'manual'
+            };
+            updateEpcProject(project);
+            const status = document.getElementById('epc-design-save-status');
+            if (status) status.textContent = 'Risk acknowledgement saved locally';
+            renderEpcDesignWorkspace();
+        };
+
         function renderEpcRisks(result) {
             const target = document.getElementById('epc-design-risks');
             if (!target) return;
+            const blocked = hasBlockingEpcReportRisks(result);
             target.innerHTML = `
                 <div class="space-y-2">
-                    ${result.risks.map(risk => `
-                        <div class="rounded-xl border ${risk.level === 'High' ? 'border-red-200 bg-red-50 text-red-700' : 'border-yellow-200 bg-yellow-50 text-yellow-800'} p-3 text-xs">
-                            <span class="font-black">${htmlSafe(risk.level)} | ${htmlSafe(risk.area)}:</span>
-                            <span>${htmlSafe(risk.issue)}</span>
-                        </div>
-                    `).join('') || '<div class="text-sm text-slate-400">No major concept risks detected yet.</div>'}
+                    ${blocked ? '<div class="rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-black text-red-700">Reports PDF download is blocked until every open High risk is auto-cleared or manually acknowledged.</div>' : ''}
+                    ${result.risks.map(risk => renderEpcRiskCard(risk)).join('') || '<div class="text-sm text-slate-400">No major concept risks detected yet.</div>'}
                 </div>
             `;
         }
@@ -16952,20 +17087,22 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         function renderEpcReports(result) {
             const target = document.getElementById('epc-design-reports');
             if (!target) return;
+            const blocked = hasBlockingEpcReportRisks(result);
+            const cards = [
+                ['customer', 'Customer EPC Report PDF', 'Executive summary, topology-aware BOQ, risk status, EMS Flow and Device Work diagrams.'],
+                ['sales', 'BOQ & Procurement PDF', 'Detailed BOQ, manual package exclusions, Product List bindings and procurement notes.'],
+                ['engineering', 'Engineering Handoff PDF', 'Formula trace, topology/electrical evidence, EMS Flow, Device Work and signed risk acknowledgements.']
+            ];
             target.innerHTML = `
+                ${blocked ? '<div class="mb-3 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-black text-red-700">Resolve or acknowledge all open High risks before downloading reports.</div>' : ''}
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <button type="button" onclick="downloadEpcDesignReport('customer')" data-epc-download="customer" class="rounded-xl border border-slate-200 p-4 text-left hover:bg-slate-50">
-                        <div class="text-sm font-black text-slate-800">Customer Summary</div>
-                        <div class="text-xs text-slate-400 mt-1">Scheme, savings, key assumptions and disclaimer.</div>
-                    </button>
-                    <button type="button" onclick="downloadEpcDesignReport('sales')" data-epc-download="sales" class="rounded-xl border border-slate-200 p-4 text-left hover:bg-slate-50">
-                        <div class="text-sm font-black text-slate-800">Sales Quote Input</div>
-                        <div class="text-xs text-slate-400 mt-1">BOQ quantities for quotation preparation.</div>
-                    </button>
-                    <button type="button" onclick="downloadEpcDesignReport('engineering')" data-epc-download="engineering" class="rounded-xl border border-slate-200 p-4 text-left hover:bg-slate-50">
-                        <div class="text-sm font-black text-slate-800">Engineering Calculation</div>
-                        <div class="text-xs text-slate-400 mt-1">Full JSON handoff with formula trace.</div>
-                    </button>
+                    ${cards.map(([kind, title, description]) => `
+                        <button type="button" onclick="downloadEpcDesignReport('${kind}')" data-epc-download="${kind}" data-epc-risk-blocked="${blocked ? 'true' : 'false'}" class="rounded-xl border border-slate-200 p-4 text-left hover:bg-slate-50 ${blocked ? 'opacity-50 cursor-not-allowed' : ''}">
+                            <div class="text-sm font-black text-slate-800">${htmlSafe(title)}</div>
+                            <div class="text-xs text-slate-400 mt-1">${htmlSafe(description)}</div>
+                            <div class="mt-3 inline-flex rounded-full border border-purple-200 bg-purple-50 px-2 py-1 text-[10px] font-black uppercase text-purple-700">PDF download</div>
+                        </button>
+                    `).join('')}
                 </div>
             `;
             applyEpcDesignPermissions();
@@ -17805,49 +17942,215 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return window.__minovaAuth?.canPerformAction?.(resource, 'download') ?? true;
         }
 
-        function makeEpcReportHtml(result, kind) {
+        function getEpcReportMeta(kind = 'customer') {
+            const map = {
+                customer: { title: 'Customer EPC Report PDF', suffix: 'customer-epc-report' },
+                sales: { title: 'BOQ & Procurement PDF', suffix: 'boq-procurement' },
+                engineering: { title: 'Engineering Handoff PDF', suffix: 'engineering-handoff' }
+            };
+            return map[kind] || map.customer;
+        }
+
+        function renderEpcReportKpis(result = {}) {
             const recommended = getRecommendedEpcScheme(result);
-            return `<!doctype html><html><head><meta charset="utf-8"><title>${htmlSafe(result.project.name)} - ${htmlSafe(kind)}</title><style>body{font-family:Arial,sans-serif;color:#1f2937;margin:32px}h1{color:#582C83}table{border-collapse:collapse;width:100%;margin:16px 0}td,th{border:1px solid #e5e7eb;padding:8px;text-align:left}.note{color:#64748b;font-size:12px}</style></head><body>
-                <h1>${htmlSafe(result.project.name)} - ${htmlSafe(kind)}</h1>
-                <p class="note">${htmlSafe(result.disclaimer)}</p>
-                <table><tbody>
-                    <tr><th>Recommended Scheme</th><td>${htmlSafe(recommended.label)}</td></tr>
-                    <tr><th>PV</th><td>${formatEpcNumber(recommended.pvRecommendedMwp, 2, 'MWp')}</td></tr>
-                    <tr><th>BESS</th><td>${formatEpcNumber(recommended.bessRecommendedMwh, 2, 'MWh')}</td></tr>
-                    <tr><th>PCS</th><td>${formatEpcNumber(recommended.pcsRecommendedMw, 2, 'MW')}</td></tr>
-                    <tr><th>Monthly Savings</th><td>RM ${formatEpcNumber(recommended.monthlySavings, 0)}</td></tr>
-                    <tr><th>Solar Source</th><td>${htmlSafe(result.solar.dataSource)}</td></tr>
-                    <tr><th>Electrical</th><td>${htmlSafe(result.electrical.recommendation)}</td></tr>
-                </tbody></table>
-                <h2>Risks</h2><ul>${result.risks.map(r => `<li><b>${htmlSafe(r.level)} ${htmlSafe(r.area)}:</b> ${htmlSafe(r.issue)}</li>`).join('')}</ul>
-                <h2>Next Verification</h2><ul>${result.nextVerification.map(item => `<li>${htmlSafe(item)}</li>`).join('')}</ul>
-            </body></html>`;
+            return `
+                <div class="grid grid-cols-3 gap-2">
+                    ${[
+                        ['Recommended Scheme', recommended.label || '-'],
+                        ['PV', formatEpcNumber(recommended.pvRecommendedMwp, 2, 'MWp')],
+                        ['BESS', formatEpcNumber(recommended.bessRecommendedMwh, 2, 'MWh')],
+                        ['PCS', formatEpcNumber(recommended.pcsRecommendedMw, 2, 'MW')],
+                        ['Architecture', result.electricalArchitecture?.recommendedId || result.electrical?.architecture || '-'],
+                        ['Topology', result.topologyFlow?.topologyId || result.selectedTopologyId || '-'],
+                        ['Monthly Savings', `RM ${formatEpcNumber(recommended.monthlySavings, 0)}`],
+                        ['Solar Source', result.solar?.dataSource || '-'],
+                        ['Load Branches', formatEpcNumber(result.loads?.loadCount || 1, 0)]
+                    ].map(([label, value]) => `
+                        <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                            <div class="text-[10px] font-black uppercase text-slate-400">${htmlSafe(label)}</div>
+                            <div class="mt-1 text-sm font-black text-slate-900">${htmlSafe(value)}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
         }
 
-        function downloadBlob(filename, type, content) {
-            const blob = new Blob([content], { type });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = filename;
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        function renderEpcReportBoqTable(result = {}, limit = 80) {
+            const rows = (Array.isArray(result.boq) ? result.boq : []).slice(0, limit);
+            return `
+                <table class="w-full border-collapse text-left text-[10px]">
+                    <thead class="bg-slate-100 text-slate-500 uppercase">
+                        <tr>
+                            <th class="border border-slate-200 px-2 py-1.5">Package</th>
+                            <th class="border border-slate-200 px-2 py-1.5">Equipment</th>
+                            <th class="border border-slate-200 px-2 py-1.5">Spec</th>
+                            <th class="border border-slate-200 px-2 py-1.5 text-right">Quantity</th>
+                            <th class="border border-slate-200 px-2 py-1.5">Protection</th>
+                            <th class="border border-slate-200 px-2 py-1.5">Product Binding</th>
+                            <th class="border border-slate-200 px-2 py-1.5">Source</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows.map(row => `
+                            <tr>
+                                <td class="border border-slate-200 px-2 py-1.5 font-black">${htmlSafe(row.package || '-')}</td>
+                                <td class="border border-slate-200 px-2 py-1.5">${htmlSafe(row.item || '-')}</td>
+                                <td class="border border-slate-200 px-2 py-1.5">${htmlSafe(row.spec || '-')}</td>
+                                <td class="border border-slate-200 px-2 py-1.5 text-right font-black">${formatEpcBoqQuantity(row)}</td>
+                                <td class="border border-slate-200 px-2 py-1.5">${htmlSafe(row.protection || '-')}</td>
+                                <td class="border border-slate-200 px-2 py-1.5">${htmlSafe(row.productId || row.productName || 'Open')}</td>
+                                <td class="border border-slate-200 px-2 py-1.5">${htmlSafe(row.source || '-')}</td>
+                            </tr>
+                        `).join('') || '<tr><td colspan="7" class="border border-slate-200 px-2 py-4 text-center text-slate-400">No BOQ rows.</td></tr>'}
+                    </tbody>
+                </table>
+            `;
         }
 
-        window.downloadEpcDesignReport = (kind = 'customer') => {
+        function renderEpcReportRisks(result = {}) {
+            return `
+                <div class="grid grid-cols-1 gap-2">
+                    ${(result.risks || []).map(risk => {
+                        const cleared = risk.status === 'auto-cleared' || risk.status === 'manual-acknowledged';
+                        const tone = cleared ? 'border-green-200 bg-green-50 text-green-700' : risk.level === 'High' ? 'border-red-200 bg-red-50 text-red-700' : 'border-yellow-200 bg-yellow-50 text-yellow-800';
+                        const ack = risk.acknowledgement || {};
+                        return `
+                            <div class="rounded-lg border ${tone} p-2 text-[10px]">
+                                <div class="font-black">${cleared ? '[checked]' : '[ ]'} ${htmlSafe(risk.level)} | ${htmlSafe(risk.area)}: ${htmlSafe(risk.issue)}</div>
+                                ${risk.clearedBy ? `<div class="mt-1 font-bold">${htmlSafe(risk.clearedBy)}</div>` : ''}
+                                ${ack.reason ? `<div class="mt-1 font-bold">Manual acknowledgement: ${htmlSafe(ack.reason)} · ${htmlSafe(ack.signer || '-')} · ${htmlSafe(ack.signedAt || '-')}</div>` : ''}
+                            </div>
+                        `;
+                    }).join('') || '<div class="text-xs text-slate-400">No major concept risks detected.</div>'}
+                </div>
+            `;
+        }
+
+        function renderEpcReportFormulaTrace(result = {}, limit = 20) {
+            const rows = (Array.isArray(result.formulaTrace) ? result.formulaTrace : []).slice(0, limit);
+            return `
+                <table class="w-full border-collapse text-left text-[10px]">
+                    <thead class="bg-slate-100 text-slate-500 uppercase">
+                        <tr><th class="border border-slate-200 px-2 py-1.5">Output</th><th class="border border-slate-200 px-2 py-1.5">Formula</th><th class="border border-slate-200 px-2 py-1.5 text-right">Result</th><th class="border border-slate-200 px-2 py-1.5">Source</th></tr>
+                    </thead>
+                    <tbody>
+                        ${rows.map(item => `
+                            <tr>
+                                <td class="border border-slate-200 px-2 py-1.5 font-black">${htmlSafe(item.label || item.key || '-')}</td>
+                                <td class="border border-slate-200 px-2 py-1.5">${htmlSafe(item.formula || '-')}</td>
+                                <td class="border border-slate-200 px-2 py-1.5 text-right">${formatEpcNumber(item.result, 3, item.unit || '')}</td>
+                                <td class="border border-slate-200 px-2 py-1.5">${htmlSafe(item.assumptionSource || '-')}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function renderEpcReportDiagrams(result = {}) {
+            const rows = getEpcEnergyFlowDisplayRows(result);
+            const rowKey = row => String(row.flowKey || row.hour);
+            const selectedRow = rows.find(row => rowKey(row) === String(epcSelectedFlowHour)) || rows[0] || {};
+            const emsFlow = renderEpcTopologyFlowDiagram(result, selectedRow);
+            const deviceWork = renderEpcDeviceWorkChart(result).replace('id="epc-device-work-chart"', 'id="epc-report-device-work-chart"');
+            return `
+                <section class="epc-report-section">
+                    <h2>EMS Flow Diagram</h2>
+                    ${emsFlow}
+                </section>
+                <section class="epc-report-section">
+                    <h2>Device Work Diagram</h2>
+                    ${deviceWork}
+                </section>
+            `;
+        }
+
+        function buildEpcReportPdfElement(result = {}, kind = 'customer') {
+            const meta = getEpcReportMeta(kind);
+            const element = document.createElement('div');
+            element.className = 'epc-report-print-surface bg-white text-slate-800';
+            element.style.width = '1120px';
+            element.style.padding = '24px';
+            element.style.fontFamily = 'Arial, sans-serif';
+            element.innerHTML = `
+                <style>
+                    .epc-report-print-surface h1{font-size:24px;line-height:1.2;margin:0;color:#582C83}
+                    .epc-report-print-surface h2{font-size:14px;line-height:1.2;margin:0 0 10px;color:#1f2937}
+                    .epc-report-print-surface .epc-report-section{margin-top:18px;break-inside:avoid}
+                    .epc-report-print-surface .epc-flow-diagram,.epc-report-print-surface .epc-device-work-chart{max-height:560px;overflow:hidden}
+                    .epc-report-print-surface svg{max-width:100%}
+                </style>
+                <header class="mb-4 flex items-start justify-between gap-6 border-b border-slate-200 pb-4">
+                    <div>
+                        <h1>${htmlSafe(meta.title)}</h1>
+                        <div class="mt-1 text-sm font-black text-slate-900">${htmlSafe(result.project?.name || 'EPC Design')}</div>
+                        <div class="mt-1 text-xs text-slate-500">${htmlSafe(result.project?.customer || '')} · ${new Date().toLocaleString()}</div>
+                    </div>
+                    <div class="${hasBlockingEpcReportRisks(result) ? 'bg-red-50 text-red-700 border-red-200' : 'bg-green-50 text-green-700 border-green-200'} rounded-lg border px-3 py-2 text-right text-xs font-black">
+                        ${hasBlockingEpcReportRisks(result) ? 'Open High Risk' : 'Report Ready'}
+                    </div>
+                </header>
+                <section class="epc-report-section">
+                    <h2>Project Summary</h2>
+                    ${renderEpcReportKpis(result)}
+                </section>
+                <section class="epc-report-section">
+                    <h2>Risk Status</h2>
+                    ${renderEpcReportRisks(result)}
+                </section>
+                ${renderEpcReportDiagrams(result)}
+                <section class="epc-report-section">
+                    <h2>${kind === 'customer' ? 'Customer BOQ Summary' : 'Engineering BOQ Detail'}</h2>
+                    ${renderEpcReportBoqTable(result, kind === 'customer' ? 40 : 120)}
+                </section>
+                ${kind === 'engineering' ? `<section class="epc-report-section"><h2>Formula Trace</h2>${renderEpcReportFormulaTrace(result, 40)}</section>` : ''}
+                <section class="epc-report-section">
+                    <h2>Next Verification</h2>
+                    <ul class="m-0 pl-5 text-xs text-slate-600">${(result.nextVerification || []).map(item => `<li>${htmlSafe(item)}</li>`).join('')}</ul>
+                    <div class="mt-3 text-[10px] font-bold text-slate-400">${htmlSafe(result.disclaimer || '')}</div>
+                </section>
+            `;
+            return element;
+        }
+
+        window.downloadEpcDesignReport = async (kind = 'customer') => {
             if (!canDownloadEpcReport(kind)) {
                 alert('You do not have permission to download this EPC design report.');
                 return;
             }
             const project = captureEpcDesignFromDom();
             const result = calculateEpcDesignProject(project, { defaults: epcDesignDefaults });
+            if (hasBlockingEpcReportRisks(result)) {
+                alert('Resolve or acknowledge all open High risks before downloading reports.');
+                setEpcPanelTab('risks');
+                renderEpcRisks(result);
+                renderEpcReports(result);
+                return;
+            }
+            if (typeof window.html2pdf !== 'function') {
+                alert('PDF engine is still loading. Please try again in a moment.');
+                return;
+            }
+            renderEpcDeviceWorkPage(result);
+            renderEpcEnergyFlow(result);
+            const meta = getEpcReportMeta(kind);
             const safeName = (result.project.name || 'epc-design').replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-|-$/g, '') || 'epc-design';
-            if (kind === 'engineering') {
-                downloadBlob(`${safeName}-engineering-calculation.json`, 'application/json', JSON.stringify(result, null, 2));
-            } else {
-                downloadBlob(`${safeName}-${kind}-summary.html`, 'text/html', makeEpcReportHtml(result, kind));
+            const element = buildEpcReportPdfElement(result, kind);
+            element.style.position = 'fixed';
+            element.style.left = '-10000px';
+            element.style.top = '0';
+            element.style.zIndex = '-1';
+            document.body.appendChild(element);
+            try {
+                await html2pdf().set({
+                    margin: [8, 8, 10, 8],
+                    filename: `${safeName}-${meta.suffix}.pdf`,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+                }).from(element).save();
+            } finally {
+                element.remove();
             }
         };
 
@@ -17855,9 +18158,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             document.querySelectorAll('[data-epc-download]').forEach(button => {
                 const kind = button.dataset.epcDownload || 'customer';
                 const allowed = canDownloadEpcReport(kind);
-                button.disabled = !allowed;
-                button.classList.toggle('opacity-50', !allowed);
-                button.title = allowed ? '' : 'Download permission required';
+                const riskBlocked = hasBlockingEpcReportRisks(window.__lastEpcDesignResult);
+                const disabled = !allowed || riskBlocked;
+                button.disabled = disabled;
+                button.dataset.epcRiskBlocked = riskBlocked ? 'true' : 'false';
+                button.classList.toggle('opacity-50', disabled);
+                button.classList.toggle('cursor-not-allowed', disabled);
+                button.title = !allowed ? 'Download permission required' : riskBlocked ? 'Resolve or acknowledge all open High risks before downloading reports.' : '';
             });
             const view = document.getElementById('view-epcdesign');
             if (!view) return;

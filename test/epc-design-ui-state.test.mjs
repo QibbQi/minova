@@ -67,9 +67,11 @@ test('EPC BOQ exposes dual professional views with manual and Product List contr
     'Customer Summary',
     'Engineering Detail',
     'BOQ readiness',
-    'Equipment / 设备名称',
-    'Spec / 规格参数',
-    'Protection / 防护防腐',
+    '>Equipment<',
+    '>Spec<',
+    '>Quantity<',
+    '>Unit<',
+    '>Protection<',
     'Product Binding',
     'Add Manual Item',
     'Select Product',
@@ -82,6 +84,59 @@ test('EPC BOQ exposes dual professional views with manual and Product List contr
   ]) {
     assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing BOQ UI snippet: ${snippet}`);
   }
+  assert.doesNotMatch(html, /Equipment \/ 设备名称|Spec \/ 规格参数|Protection \/ 防护防腐/);
+});
+
+test('EPC BOQ manual package selector and package exclusion controls are wired', () => {
+  for (const snippet of [
+    'id="epc-boq-manual-package-select"',
+    "'PV System'",
+    "'BESS'",
+    "'Electrical Distribution'",
+    "'EMS & Monitoring'",
+    "'Auxiliary'",
+    "'Documents & Certification'",
+    'renderEpcBoqPackageOptions',
+    'deleteEpcBoqPackage',
+    'restoreEpcBoqPackage',
+    'Delete Package',
+    'Restore hidden package'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing BOQ package control snippet: ${snippet}`);
+  }
+});
+
+test('EPC risks expose checkbox acknowledgement and report-gating status', () => {
+  for (const snippet of [
+    'toggleEpcRiskAcknowledgement',
+    'saveEpcRiskAcknowledgement',
+    'data-epc-risk-checkbox',
+    'data-epc-risk-reason',
+    'data-epc-risk-signer',
+    'manual-acknowledged',
+    'auto-cleared',
+    'hasBlockingEpcReportRisks'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing risk acknowledgement snippet: ${snippet}`);
+  }
+});
+
+test('EPC Reports are gated PDF downloads with EMS Flow and Device Work diagrams', () => {
+  for (const snippet of [
+    'Customer EPC Report PDF',
+    'BOQ & Procurement PDF',
+    'Engineering Handoff PDF',
+    'Resolve or acknowledge all open High risks before downloading reports.',
+    'buildEpcReportPdfElement',
+    'EMS Flow Diagram',
+    'Device Work Diagram',
+    'html2pdf().set',
+    'hasBlockingEpcReportRisks'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing report PDF snippet: ${snippet}`);
+  }
+  assert.doesNotMatch(html, /engineering-calculation\.json/);
+  assert.doesNotMatch(html, /-summary\.html/);
 });
 
 test('EPC detailed engineering inputs are permission-gated separately from quick design', () => {

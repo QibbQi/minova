@@ -917,6 +917,78 @@ test('EPC BOQ normalizes manual items and Product List selections without changi
   assert.equal(manual.source, 'manual');
 });
 
+test('EPC BOQ hidden packages exclude BOQ rows without changing engineering results', () => {
+  const project = normalizeEpcDesignProject({
+    selectedTopologyId: 'C7',
+    site: { gridMode: 'island' },
+    electrical: { selectedArchitectureId: 'mv_11_ring', newMvSystem: true },
+    loads: {
+      dailyLoadKwh: 12000,
+      operationHoursPerDay: 8,
+      loadCount: 2,
+      loadSplits: [
+        { id: 'load-1', label: 'Crusher Load', ratioPct: 60 },
+        { id: 'load-2', label: 'Camp Load', ratioPct: 40 }
+      ]
+    },
+    designTargets: { replacementPct: 80 },
+    boq: {
+      hiddenPackages: ['BESS', 'Electrical Distribution'],
+      manualItems: [
+        { id: 'manual-pv-weather', package: 'PV System', item: 'Weather station', quantity: 1, unit: 'set' }
+      ]
+    }
+  }, { now: '2026-06-16T00:00:00.000Z' });
+  const result = calculateEpcDesignProject(project, { now: '2026-06-16T00:00:00.000Z' });
+
+  assert.deepEqual(project.boq.hiddenPackages, ['BESS', 'Electrical Distribution']);
+  assert.equal(result.boq.some((item) => item.package === 'BESS'), false);
+  assert.equal(result.boq.some((item) => item.package === 'Electrical Distribution'), false);
+  assert.equal(result.boq.some((item) => item.id === 'manual-pv-weather'), true);
+  assert.equal(result.electricalArchitecture.recommendedId, 'mv_11_ring');
+  assert.equal(result.topologyFlow.validationBlocked, false);
+});
+
+test('EPC risks expose stable status and report gate from auto and manual acknowledgements', () => {
+  const open = calculateEpcDesignProject({
+    ...buildEpcDesignProjectFromQuickInputs(quarryInputs, { now: '2026-06-16T00:00:00.000Z' }),
+    electrical: { selectedArchitectureId: 'lv_415_centralized' }
+  }, { now: '2026-06-16T00:00:00.000Z' });
+  const openElectricalRisk = open.risks.find((risk) => risk.id === 'electrical-mv-current');
+
+  assert.equal(openElectricalRisk?.status, 'open');
+  assert.equal(openElectricalRisk?.blocking, true);
+  assert.equal(open.reportGate.blocked, true);
+
+  const ring = calculateEpcDesignProject({
+    ...buildEpcDesignProjectFromQuickInputs(quarryInputs, { now: '2026-06-16T00:00:00.000Z' }),
+    electrical: { selectedArchitectureId: 'mv_11_ring', newMvSystem: true }
+  }, { now: '2026-06-16T00:00:00.000Z' });
+  const clearedElectricalRisk = ring.risks.find((risk) => risk.id === 'electrical-mv-current');
+
+  assert.equal(clearedElectricalRisk?.status, 'auto-cleared');
+  assert.equal(clearedElectricalRisk?.blocking, false);
+  assert.match(clearedElectricalRisk?.clearedBy || '', /11kV Ring/i);
+
+  const acknowledged = calculateEpcDesignProject({
+    ...buildEpcDesignProjectFromQuickInputs(quarryInputs, { now: '2026-06-16T00:00:00.000Z' }),
+    electrical: { selectedArchitectureId: 'mv_11_ring', newMvSystem: true },
+    riskAcknowledgements: {
+      'load-measurement': {
+        reason: 'Temporary concept accepted until meter logging is complete.',
+        signer: 'JQZ',
+        signedAt: '2026-06-16T10:00:00.000Z'
+      }
+    }
+  }, { now: '2026-06-16T00:00:00.000Z' });
+  const loadRisk = acknowledged.risks.find((risk) => risk.id === 'load-measurement');
+
+  assert.equal(acknowledged.riskAcknowledgements['load-measurement'].signer, 'JQZ');
+  assert.equal(loadRisk?.status, 'manual-acknowledged');
+  assert.equal(loadRisk?.blocking, false);
+  assert.equal(acknowledged.reportGate.blocked, false);
+});
+
 test('EPC design engine makes PF and distance affect LV MV architecture output', () => {
   const project = buildEpcDesignProjectFromQuickInputs(quarryInputs, {
     defaults: EPC_DESIGN_DEFAULTS,

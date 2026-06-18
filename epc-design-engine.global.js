@@ -110,6 +110,15 @@ const STANDARD_COMPONENT_CATALOG = [
 const STANDARD_TRANSFORMER_KVA = [100, 160, 250, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000, 10000, 12500];
 
 const EMS_FLOW_DISPLAY_SERIES = ['pv', 'load', 'battery', 'genset', 'soc'];
+
+const EPC_BOQ_PACKAGES = Object.freeze([
+  'PV System',
+  'BESS',
+  'Electrical Distribution',
+  'EMS & Monitoring',
+  'Auxiliary',
+  'Documents & Certification'
+]);
 const EMS_FLOW_SERIES_DEFAULT_COLORS = {
   pv: '#f59e0b',
   load: '#2563eb',
@@ -1288,6 +1297,17 @@ function normalizeBoqLineId(value = '', fallback = '') {
     .replace(/^-+|-+$/g, '') || fallback;
 }
 
+function normalizeBoqPackage(value = '', fallback = 'Auxiliary') {
+  const raw = String(value || '').trim();
+  return EPC_BOQ_PACKAGES.includes(raw) ? raw : fallback;
+}
+
+function normalizeBoqHiddenPackages(value = []) {
+  return Array.from(new Set((Array.isArray(value) ? value : [])
+    .map(item => normalizeBoqPackage(item, ''))
+    .filter(Boolean)));
+}
+
 function normalizeBoqManualItems(value = []) {
   return (Array.isArray(value) ? value : [])
     .map((item, index) => {
@@ -1296,7 +1316,7 @@ function normalizeBoqManualItems(value = []) {
       const quantity = asNumber(source.quantity, 0);
       return {
         id,
-        package: String(source.package || 'Manual').trim() || 'Manual',
+        package: normalizeBoqPackage(source.package, 'Auxiliary'),
         item: String(source.item || source.name || '').trim(),
         spec: String(source.spec || source.description || '').trim(),
         quantity,
@@ -1341,8 +1361,28 @@ function normalizeEpcBoqState(value = {}) {
   const input = value && typeof value === 'object' ? value : {};
   return {
     manualItems: normalizeBoqManualItems(input.manualItems || []),
-    lineSelections: normalizeBoqLineSelections(input.lineSelections || {})
+    lineSelections: normalizeBoqLineSelections(input.lineSelections || {}),
+    hiddenPackages: normalizeBoqHiddenPackages(input.hiddenPackages || [])
   };
+}
+
+function normalizeRiskAcknowledgements(value = {}) {
+  const input = value && typeof value === 'object' ? value : {};
+  return Object.fromEntries(Object.entries(input)
+    .map(([key, raw]) => {
+      const item = raw && typeof raw === 'object' ? raw : {};
+      const id = normalizeBoqLineId(key);
+      const reason = String(item.reason || '').trim();
+      const signer = String(item.signer || item.signature || '').trim();
+      if (!id || !reason || !signer) return null;
+      return [id, {
+        reason,
+        signer,
+        signedAt: String(item.signedAt || item.acknowledgedAt || '').trim(),
+        mode: 'manual'
+      }];
+    })
+    .filter(Boolean));
 }
 
 function normalizeEpcDesignProject(raw = {}, options = {}) {
@@ -1470,6 +1510,7 @@ function normalizeEpcDesignProject(raw = {}, options = {}) {
     assumptions: normalizedAssumptions,
     calculationAssumptions: normalizedCalculationAssumptions,
     boq: normalizeEpcBoqState(raw.boq || {}),
+    riskAcknowledgements: normalizeRiskAcknowledgements(raw.riskAcknowledgements || {}),
     documents: raw.documents && typeof raw.documents === 'object' ? raw.documents : {},
     emsFlowDisplaySettings: normalizeEmsFlowDisplaySettings(raw.emsFlowDisplaySettings || {}),
     createdAt: String(raw.createdAt || now),
@@ -2831,32 +2872,79 @@ function buildBoq(project, recommended, context = {}) {
   add({ id: 'aux-ventilation-fire', package: 'Auxiliary', item: 'Auxiliary ventilation, fire and maintenance package', spec: 'Ventilation/HVAC, extinguishers, seals, tools and meters', quantity: 1, unit: 'lot', protection: 'Outdoor and corrosion-resistant accessories', remark: 'Scope refined by detailed layout and vendor manuals', source: 'calculated', mandatory: true });
   add({ id: 'documents-certification', package: 'Documents & Certification', item: 'Documentation and certification package', spec: 'IEC/UL/CE certificates, SLD, wiring drawings, manuals and commissioning records', quantity: 1, unit: 'lot', protection: 'N/A', remark: 'Customer handover document set', source: 'calculated', mandatory: true });
 
-  const selectedRows = applyBoqLineSelections(rows, project.boq?.lineSelections || {});
-  const manualRows = normalizeBoqManualItems(project.boq?.manualItems || []);
+  const hiddenPackages = new Set(normalizeBoqHiddenPackages(project.boq?.hiddenPackages || []));
+  const selectedRows = applyBoqLineSelections(rows, project.boq?.lineSelections || {})
+    .filter(row => !hiddenPackages.has(row.package));
+  const manualRows = normalizeBoqManualItems(project.boq?.manualItems || [])
+    .filter(row => !hiddenPackages.has(row.package));
   return [...selectedRows, ...manualRows];
 }
 
-function buildRisks(project, load, electrical, recommended) {
+function applyRiskStatuses(project, risks = [], context = {}) {
+  const acknowledgements = normalizeRiskAcknowledgements(project.riskAcknowledgements || {});
+  return risks.map((risk) => {
+    const id = normalizeBoqLineId(risk.id);
+    const acknowledgement = acknowledgements[id];
+    const selectedArchitectureId = String(context.electricalArchitecture?.selectedArchitectureId || project.electrical?.selectedArchitectureId || '');
+    const selectedArchitectureValid = Boolean(context.electricalArchitecture?.selectedArchitectureValid);
+    if (id === 'electrical-mv-current' && selectedArchitectureId === 'mv_11_ring' && selectedArchitectureValid) {
+      return {
+        ...risk,
+        id,
+        status: 'auto-cleared',
+        blocking: false,
+        clearedBy: 'Selected 11kV Ring architecture avoids the 415V high-current concept risk.'
+      };
+    }
+    if (acknowledgement) {
+      return {
+        ...risk,
+        id,
+        status: 'manual-acknowledged',
+        blocking: false,
+        acknowledgement
+      };
+    }
+    return {
+      ...risk,
+      id,
+      status: 'open',
+      blocking: risk.level === 'High'
+    };
+  });
+}
+
+function buildReportGate(risks = []) {
+  const blockingRisks = risks.filter(risk => risk.level === 'High' && risk.blocking !== false);
+  return {
+    blocked: blockingRisks.length > 0,
+    blockingHighRiskCount: blockingRisks.length,
+    blockingRiskIds: blockingRisks.map(risk => risk.id)
+  };
+}
+
+function buildRisks(project, load, electrical, recommended, context = {}) {
   const risks = [];
+  const addRisk = (id, level, area, issue) => risks.push({ id, level, area, issue });
   if (project.loads.measurementMethod !== 'energy_meter') {
-    risks.push({ level: 'High', area: 'Load', issue: 'Sizing is not based on measured meter data; measured load curve is required before guarantee.' });
+    addRisk('load-measurement', 'High', 'Load', 'Sizing is not based on measured meter data; measured load curve is required before guarantee.');
   }
   if (project.solarResource.dataSource === 'Malaysia Default') {
-    risks.push({ level: 'Medium', area: 'Solar', issue: 'Solar resource uses Malaysia default yield; import Global Solar Atlas or PVsyst data for precise design.' });
+    addRisk('solar-resource-default', 'Medium', 'Solar', 'Solar resource uses Malaysia default yield; import Global Solar Atlas or PVsyst data for precise design.');
   }
   if (electrical.mvRecommended) {
-    risks.push({ level: 'High', area: 'Electrical', issue: '415V current exceeds concept threshold; 11kV MV architecture should be checked.' });
+    addRisk('electrical-mv-current', 'High', 'Electrical', '415V current exceeds concept threshold; 11kV MV architecture should be checked.');
   }
   if (project.site.availableAreaM2 > 0 && recommended.requiredAreaM2 > project.site.availableAreaM2) {
-    risks.push({ level: 'High', area: 'Civil', issue: 'Required PV area exceeds available area; phase or reduce PV capacity.' });
+    addRisk('civil-pv-area', 'High', 'Civil', 'Required PV area exceeds available area; phase or reduce PV capacity.');
   }
   if (recommended.hasCapacityOverride) {
-    risks.push({ level: 'Medium', area: 'Sizing', issue: 'Manual capacity override is active; calculated recommendation should remain auditable before final quote.' });
+    addRisk('capacity-override', 'Medium', 'Sizing', 'Manual capacity override is active; calculated recommendation should remain auditable before final quote.');
   }
   if (recommended.bessRecommendedMwh > 0) {
-    risks.push({ level: 'Medium', area: 'BESS', issue: 'BESS duty, DoD, C-rate, thermal/fire separation and EMS sequence require vendor validation.' });
+    addRisk('bess-vendor-validation', 'Medium', 'BESS', 'BESS duty, DoD, C-rate, thermal/fire separation and EMS sequence require vendor validation.');
   }
-  return risks;
+  return applyRiskStatuses(project, risks, context);
 }
 
 function defaultHourlyLoadProfile(project, load) {
@@ -3146,7 +3234,8 @@ function calculateEpcDesignProject(rawProject = {}, options = {}) {
     electricalArchitecture,
     pvStringDesign
   });
-  const risks = buildRisks(project, load, electrical, recommended);
+  const risks = buildRisks(project, load, electrical, recommended, { electricalArchitecture });
+  const reportGate = buildReportGate(risks);
   const energyFlow = calculateEnergyFlow(project, load, recommended);
   const formulaTrace = [
     ...load.trace,
@@ -3223,6 +3312,7 @@ function calculateEpcDesignProject(rawProject = {}, options = {}) {
     pvStringDesign,
     boq,
     risks,
+    reportGate,
     dataQualityScore: dataQualityScore(project),
     formulaTrace,
     nextVerification: [

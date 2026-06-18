@@ -342,6 +342,13 @@
             font-weight: 900;
             fill: #334155;
         }
+        .epc-flow-label-move-enabled {
+            pointer-events: auto;
+        }
+        .epc-flow-label-move-enabled rect {
+            stroke: #7c3aed;
+            stroke-width: 1.4;
+        }
         .epc-flow-hour-active {
             background: #fffbeb;
             outline: 2px solid #FFC107;
@@ -13512,7 +13519,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const moveAttrs = edgeId
                 ? `data-epc-topology-flow-label="${htmlSafe(edgeId)}" data-epc-flow-label-base-x="${htmlSafe(x)}" data-epc-flow-label-base-y="${htmlSafe(y)}" onpointerdown="startEpcTopologyFlowLabelDrag(event, '${htmlSafe(edgeId)}')"`
                 : '';
-            const moveClass = edgeId && epcTopologyFlowLabelMoveMode ? ' cursor-move' : '';
+            const moveClass = edgeId && epcTopologyFlowLabelMoveMode ? ' epc-flow-label-move-enabled cursor-move' : '';
             return `
                 <g class="epc-flow-label epc-flow-label-badge${moveClass}" ${moveAttrs} transform="translate(${labelX} ${labelY})">
                     <rect x="${-width / 2}" y="-13" width="${width}" height="22" rx="7"/>
@@ -13539,24 +13546,89 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             }
         }
 
+        const EPC_TOPOLOGY_FLOW_LABEL_MAX_DISTANCE = 52;
+        const EPC_TOPOLOGY_FLOW_LABEL_SNAP_DISTANCE = 14;
+
+        function getEpcTopologyFlowEdgePath(edgeId = '') {
+            const id = String(edgeId || '').trim();
+            if (!id) return null;
+            return Array.from(document.querySelectorAll('[data-epc-topology-flow-edge]'))
+                .find(path => path.getAttribute('data-epc-topology-flow-edge') === id) || null;
+        }
+
+        function getEpcTopologyFlowLabelRoutePoint(edgeId = '', x = 0, y = 0) {
+            const path = getEpcTopologyFlowEdgePath(edgeId);
+            if (!path?.getTotalLength || !path.getPointAtLength) return null;
+            let length = 0;
+            try { length = path.getTotalLength(); } catch (error) { return null; }
+            if (!(length > 0)) return null;
+            const target = { x: Number(x) || 0, y: Number(y) || 0 };
+            const sampleCount = Math.max(16, Math.min(90, Math.ceil(length / 12)));
+            let best = null;
+            for (let index = 0; index <= sampleCount; index += 1) {
+                const point = path.getPointAtLength(length * index / sampleCount);
+                const dx = target.x - point.x;
+                const dy = target.y - point.y;
+                const distanceSq = dx * dx + dy * dy;
+                if (!best || distanceSq < best.distanceSq) best = { x: point.x, y: point.y, distanceSq };
+            }
+            return best ? { x: best.x, y: best.y, distance: Math.sqrt(best.distanceSq) } : null;
+        }
+
+        function constrainEpcTopologyFlowLabelOffset(edgeId = '', offset = {}, baseX = 0, baseY = 0) {
+            const raw = {
+                dx: Number(offset.dx) || 0,
+                dy: Number(offset.dy) || 0
+            };
+            const absolute = {
+                x: (Number(baseX) || 0) + raw.dx,
+                y: (Number(baseY) || 0) + raw.dy
+            };
+            const routePoint = getEpcTopologyFlowLabelRoutePoint(edgeId, absolute.x, absolute.y);
+            if (!routePoint) {
+                return {
+                    dx: Math.max(-EPC_TOPOLOGY_FLOW_LABEL_MAX_DISTANCE, Math.min(EPC_TOPOLOGY_FLOW_LABEL_MAX_DISTANCE, raw.dx)),
+                    dy: Math.max(-EPC_TOPOLOGY_FLOW_LABEL_MAX_DISTANCE, Math.min(EPC_TOPOLOGY_FLOW_LABEL_MAX_DISTANCE, raw.dy))
+                };
+            }
+            let vectorX = absolute.x - routePoint.x;
+            let vectorY = absolute.y - routePoint.y;
+            const distance = Math.sqrt(vectorX * vectorX + vectorY * vectorY);
+            if (distance <= EPC_TOPOLOGY_FLOW_LABEL_SNAP_DISTANCE) {
+                vectorX = 0;
+                vectorY = 0;
+            } else if (distance > EPC_TOPOLOGY_FLOW_LABEL_MAX_DISTANCE) {
+                const scale = EPC_TOPOLOGY_FLOW_LABEL_MAX_DISTANCE / distance;
+                vectorX *= scale;
+                vectorY *= scale;
+            }
+            return {
+                dx: Math.round((routePoint.x + vectorX - (Number(baseX) || 0)) * 10) / 10,
+                dy: Math.round((routePoint.y + vectorY - (Number(baseY) || 0)) * 10) / 10
+            };
+        }
+
         function toggleEpcTopologyFlowLabelMoveMode() {
             epcTopologyFlowLabelMoveMode = !epcTopologyFlowLabelMoveMode;
             renderEpcDesignWorkspace();
         }
         window.toggleEpcTopologyFlowLabelMoveMode = toggleEpcTopologyFlowLabelMoveMode;
 
-        function saveEpcTopologyFlowLabelOffset(edgeId = '', offset = {}) {
+        function saveEpcTopologyFlowLabelOffset(edgeId = '', offset = {}, base = {}) {
             const id = String(edgeId || '').trim();
             if (!id) return;
             const project = getActiveEpcDesignProject();
             const current = getEpcTopologyFlowLabelOffsets(project);
+            const constrained = Number.isFinite(Number(base.x)) || Number.isFinite(Number(base.y))
+                ? constrainEpcTopologyFlowLabelOffset(id, offset, Number(base.x) || 0, Number(base.y) || 0)
+                : offset;
             project.emsFlowDisplaySettings = {
                 ...(project.emsFlowDisplaySettings || {}),
                 topologyFlowLabelOffsets: {
                     ...current,
                     [id]: {
-                        dx: Math.max(-600, Math.min(600, Number(offset.dx) || 0)),
-                        dy: Math.max(-600, Math.min(600, Number(offset.dy) || 0))
+                        dx: Math.max(-600, Math.min(600, Number(constrained.dx) || 0)),
+                        dy: Math.max(-600, Math.min(600, Number(constrained.dy) || 0))
                     }
                 }
             };
@@ -13591,13 +13663,20 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         function moveEpcTopologyFlowLabelDrag(event) {
             if (!epcTopologyFlowLabelDrag) return;
             const point = getEpcFlowSvgPoint(event);
-            const next = {
+            const rawNext = {
                 dx: epcTopologyFlowLabelDrag.initial.dx + point.x - epcTopologyFlowLabelDrag.start.x,
                 dy: epcTopologyFlowLabelDrag.initial.dy + point.y - epcTopologyFlowLabelDrag.start.y
             };
+            const next = constrainEpcTopologyFlowLabelOffset(
+                epcTopologyFlowLabelDrag.edgeId,
+                rawNext,
+                epcTopologyFlowLabelDrag.baseX,
+                epcTopologyFlowLabelDrag.baseY
+            );
             epcTopologyFlowLabelDrag.next = next;
             if (epcTopologyFlowLabelDrag.element) {
                 epcTopologyFlowLabelDrag.element.setAttribute('transform', `translate(${Math.round(epcTopologyFlowLabelDrag.baseX + next.dx)} ${Math.round(epcTopologyFlowLabelDrag.baseY + next.dy)})`);
+                epcTopologyFlowLabelDrag.element.setAttribute('data-epc-flow-label-magnet', 'true');
             }
             event.preventDefault?.();
         }
@@ -13607,7 +13686,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const drag = epcTopologyFlowLabelDrag;
             epcTopologyFlowLabelDrag = null;
             document.removeEventListener('pointermove', moveEpcTopologyFlowLabelDrag);
-            saveEpcTopologyFlowLabelOffset(drag.edgeId, drag.next || drag.initial);
+            saveEpcTopologyFlowLabelOffset(drag.edgeId, drag.next || drag.initial, { x: drag.baseX, y: drag.baseY });
             renderEpcDesignWorkspace();
         }
 
@@ -15828,6 +15907,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return Math.max(0, Number(recommended.pvRecommendedMwp) || 0) * 1000;
         }
 
+        function shouldAutoPrepareEpcPvSimulatorProfile(project = {}) {
+            const solar = project.solarResource || {};
+            const hasProfile = Array.isArray(solar.hourlyPvProfile) && solar.hourlyPvProfile.length > 0;
+            if (solar.dataSource === 'PV Simulator' || solar.pvSimulator || hasProfile) return true;
+            return ['inputs', 'flow', 'devicework', 'batterycontrol', 'pvsimulator'].includes(epcDesignPanelTab);
+        }
+
         function getEpcPvSimulatorSettings(result = {}, project = getActiveEpcDesignProject()) {
             const sim = project.solarResource?.pvSimulator || result.solar?.pvSimulator || {};
             const stored = sim.settings || {};
@@ -16077,6 +16163,25 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 settings.eventImpact,
                 settings.seed
             ].map(value => String(Math.round((Number(value) || 0) * 1000) / 1000 || value)).join('|');
+        }
+
+        function ensureEpcPvSimulatorProfileForInputs(project, result) {
+            if (!shouldAutoPrepareEpcPvSimulatorProfile(project)) return project;
+            const settings = getEpcPvSimulatorSettings(result, project);
+            const currentKey = getEpcPvSimulatorSettingsKey(project.solarResource?.pvSimulator?.settings || {});
+            const nextKey = getEpcPvSimulatorSettingsKey(settings);
+            if (
+                currentKey === nextKey
+                && project.solarResource?.dataSource === 'PV Simulator'
+                && project.solarResource?.pvSimulator
+                && Array.isArray(project.solarResource?.hourlyPvProfile)
+                && project.solarResource.hourlyPvProfile.length
+            ) {
+                return project;
+            }
+            const profile = buildEpcPvSimulatorProfile(settings);
+            applyEpcPvSimulatorProfile(project, profile);
+            return updateEpcProject(project);
         }
 
         function refreshEpcPvSimulatorProfileForRecommendation(project, result) {
@@ -16542,6 +16647,11 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
         function renderEpcDesignResult(project = getActiveEpcDesignProject()) {
             let result = calculateEpcDesignProject(project, { defaults: epcDesignDefaults });
+            const preparedProject = ensureEpcPvSimulatorProfileForInputs(project, result);
+            if (preparedProject !== project) {
+                project = preparedProject;
+                result = calculateEpcDesignProject(project, { defaults: epcDesignDefaults });
+            }
             if (project.solarResource?.dataSource === 'PV Simulator' && project.solarResource?.pvSimulator) {
                 const refreshedProject = refreshEpcPvSimulatorProfileForRecommendation(project, result);
                 if (refreshedProject !== project) {

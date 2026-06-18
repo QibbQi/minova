@@ -6545,6 +6545,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         let epcCustomConnectionEditId = '';
         let epcSldTemplateDraft = null;
         let epcSelectedFlowHour = 13;
+        let epcTopologyFlowLabelMoveMode = false;
+        let epcTopologyFlowLabelDrag = null;
         let epcDesignMap = null;
         let epcDesignMarker = null;
         let epcGoogleMapsPromise = null;
@@ -13499,16 +13501,114 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return '<circle cx="38" cy="42" r="17" fill="#cffafe" stroke="#0891b2" stroke-width="3"/><path d="M38 30v24M26 42h24M68 30h24M68 42h24M68 54h16" stroke="#0891b2" stroke-width="3" stroke-linecap="round"/>';
         }
 
-        function renderEpcFlowLabel(value, x, y, label = '') {
+        function renderEpcFlowLabel(value, x, y, label = '', options = {}) {
             if (!(Number(value) > 0)) return '';
             const text = `${label ? `${label} ` : ''}${formatEpcNumber(value, 0, 'kW')}`;
             const width = Math.max(82, Math.min(150, text.length * 7.4 + 18));
+            const edgeId = String(options.edgeId || '').trim();
+            const offset = options.offset || {};
+            const labelX = Number(x) + (Number(offset.dx) || 0);
+            const labelY = Number(y) + (Number(offset.dy) || 0);
+            const moveAttrs = edgeId
+                ? `data-epc-topology-flow-label="${htmlSafe(edgeId)}" data-epc-flow-label-base-x="${htmlSafe(x)}" data-epc-flow-label-base-y="${htmlSafe(y)}" onpointerdown="startEpcTopologyFlowLabelDrag(event, '${htmlSafe(edgeId)}')"`
+                : '';
+            const moveClass = edgeId && epcTopologyFlowLabelMoveMode ? ' cursor-move' : '';
             return `
-                <g class="epc-flow-label epc-flow-label-badge" transform="translate(${x} ${y})">
+                <g class="epc-flow-label epc-flow-label-badge${moveClass}" ${moveAttrs} transform="translate(${labelX} ${labelY})">
                     <rect x="${-width / 2}" y="-13" width="${width}" height="22" rx="7"/>
                     <text x="0" y="2" text-anchor="middle">${htmlSafe(text)}</text>
                 </g>
             `;
+        }
+
+        function getEpcTopologyFlowLabelOffsets(project = getActiveEpcDesignProject()) {
+            const offsets = project.emsFlowDisplaySettings?.topologyFlowLabelOffsets;
+            return offsets && typeof offsets === 'object' ? offsets : {};
+        }
+
+        function getEpcFlowSvgPoint(event) {
+            const svg = event?.target?.ownerSVGElement || document.getElementById('epc-flow-svg');
+            if (!svg?.createSVGPoint || !svg.getScreenCTM) return { x: Number(event?.clientX) || 0, y: Number(event?.clientY) || 0 };
+            const point = svg.createSVGPoint();
+            point.x = Number(event.clientX) || 0;
+            point.y = Number(event.clientY) || 0;
+            try {
+                return point.matrixTransform(svg.getScreenCTM().inverse());
+            } catch (error) {
+                return { x: point.x, y: point.y };
+            }
+        }
+
+        function toggleEpcTopologyFlowLabelMoveMode() {
+            epcTopologyFlowLabelMoveMode = !epcTopologyFlowLabelMoveMode;
+            renderEpcDesignWorkspace();
+        }
+        window.toggleEpcTopologyFlowLabelMoveMode = toggleEpcTopologyFlowLabelMoveMode;
+
+        function saveEpcTopologyFlowLabelOffset(edgeId = '', offset = {}) {
+            const id = String(edgeId || '').trim();
+            if (!id) return;
+            const project = getActiveEpcDesignProject();
+            const current = getEpcTopologyFlowLabelOffsets(project);
+            project.emsFlowDisplaySettings = {
+                ...(project.emsFlowDisplaySettings || {}),
+                topologyFlowLabelOffsets: {
+                    ...current,
+                    [id]: {
+                        dx: Math.max(-600, Math.min(600, Number(offset.dx) || 0)),
+                        dy: Math.max(-600, Math.min(600, Number(offset.dy) || 0))
+                    }
+                }
+            };
+            updateEpcProject(project);
+            const status = document.getElementById('epc-design-save-status');
+            if (status) status.textContent = 'EMS Flow label position saved locally';
+        }
+        window.saveEpcTopologyFlowLabelOffset = saveEpcTopologyFlowLabelOffset;
+
+        function startEpcTopologyFlowLabelDrag(event, edgeId = '') {
+            const id = String(edgeId || '').trim();
+            if (!id || !epcTopologyFlowLabelMoveMode) return;
+            const label = event?.currentTarget;
+            const offsets = getEpcTopologyFlowLabelOffsets();
+            const initial = offsets[id] || { dx: 0, dy: 0 };
+            epcTopologyFlowLabelDrag = {
+                edgeId: id,
+                start: getEpcFlowSvgPoint(event),
+                initial: { dx: Number(initial.dx) || 0, dy: Number(initial.dy) || 0 },
+                baseX: Number(label?.dataset?.epcFlowLabelBaseX) || 0,
+                baseY: Number(label?.dataset?.epcFlowLabelBaseY) || 0,
+                element: label || null
+            };
+            document.addEventListener('pointermove', moveEpcTopologyFlowLabelDrag);
+            document.addEventListener('pointerup', endEpcTopologyFlowLabelDrag, { once: true });
+            try { label?.setPointerCapture?.(event.pointerId); } catch (e) {}
+            event.preventDefault?.();
+            event.stopPropagation?.();
+        }
+        window.startEpcTopologyFlowLabelDrag = startEpcTopologyFlowLabelDrag;
+
+        function moveEpcTopologyFlowLabelDrag(event) {
+            if (!epcTopologyFlowLabelDrag) return;
+            const point = getEpcFlowSvgPoint(event);
+            const next = {
+                dx: epcTopologyFlowLabelDrag.initial.dx + point.x - epcTopologyFlowLabelDrag.start.x,
+                dy: epcTopologyFlowLabelDrag.initial.dy + point.y - epcTopologyFlowLabelDrag.start.y
+            };
+            epcTopologyFlowLabelDrag.next = next;
+            if (epcTopologyFlowLabelDrag.element) {
+                epcTopologyFlowLabelDrag.element.setAttribute('transform', `translate(${Math.round(epcTopologyFlowLabelDrag.baseX + next.dx)} ${Math.round(epcTopologyFlowLabelDrag.baseY + next.dy)})`);
+            }
+            event.preventDefault?.();
+        }
+
+        function endEpcTopologyFlowLabelDrag() {
+            if (!epcTopologyFlowLabelDrag) return;
+            const drag = epcTopologyFlowLabelDrag;
+            epcTopologyFlowLabelDrag = null;
+            document.removeEventListener('pointermove', moveEpcTopologyFlowLabelDrag);
+            saveEpcTopologyFlowLabelOffset(drag.edgeId, drag.next || drag.initial);
+            renderEpcDesignWorkspace();
         }
 
         function renderEpcFlowNode({ className, x, y, stroke, fill, title, value, icon }) {
@@ -13646,7 +13746,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         const EPC_TOPOLOGY_FLOW_COMPONENT_HINTS = ['LV BUS', 'Step-up TX', 'MV Switchboard', 'Ring RMU', 'MV BUS', 'RMU Station', 'Load TX', 'Curtailment'];
         const EPC_TOPOLOGY_FLOW_SPLIT_EDGE_IDS = ['lv-pcs-charge', 'bess-tx-pcs-charge', 'pcs-battery-charge', 'battery-pcs-discharge', 'pcs-lv-discharge', 'pcs-tx-discharge'];
         const EPC_TOPOLOGY_FLOW_LOAD_BRANCH_EDGE_HINTS = ['ring-rmu-load-1', 'lv-load-bus-1-load-1'];
-        const EPC_TOPOLOGY_FLOW_LABEL_KEYS = ['pvOutputKw', 'pvToLoadKw', 'pvToBatteryKw', 'batteryToLoadKw', 'gensetToLoadKw', 'curtailmentKw'];
+        const EPC_TOPOLOGY_FLOW_LABEL_KEYS = ['pvOutputKw', 'pvToLoadKw', 'pvToBatteryKw', 'batteryToLoadKw', 'gensetToLoadKw', 'curtailmentKw', 'loadKw'];
         const EPC_TOPOLOGY_FLOW_NODE_W = 112;
         const EPC_TOPOLOGY_FLOW_NODE_H = 96;
         const EPC_TOPOLOGY_FLOW_NODE_STYLES = {
@@ -13990,6 +14090,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 topologyFlow,
                 nodes: flowNodes,
                 edges: flowEdges,
+                labelOffsets: result.emsFlowDisplaySettings?.topologyFlowLabelOffsets || {},
                 viewBox: `0 0 ${Math.ceil(maxX + 96)} ${Math.ceil(maxY + 48)}`,
                 componentHints: EPC_TOPOLOGY_FLOW_COMPONENT_HINTS.join(' | ')
             };
@@ -14009,11 +14110,14 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return `<path data-epc-topology-flow-edge="${htmlSafe(edge.id)}" class="${flowLineClass(edge.active ? edge.value : 0, lineType, lane)} ${extraClass}"${marker} d="${htmlSafe(edge.route.d)}"/>`;
         }
 
-        function renderEpcTopologyFlowEdgeLabel(edge = {}) {
+        function renderEpcTopologyFlowEdgeLabel(edge = {}, labelOffsets = {}) {
             if (!(Number(edge.value) > 0) || edge.blocked || edge.role === 'control') return '';
             const shouldLabel = Array.isArray(edge.flowKeys) && edge.flowKeys.some(key => EPC_TOPOLOGY_FLOW_LABEL_KEYS.includes(key) || key.startsWith('loadSplit:'));
             if (!shouldLabel) return '';
-            return renderEpcFlowLabel(edge.value, edge.route.labelX, edge.route.labelY, '');
+            return renderEpcFlowLabel(edge.value, edge.route.labelX, edge.route.labelY, '', {
+                edgeId: edge.id,
+                offset: labelOffsets[edge.id] || {}
+            });
         }
 
         function renderEpcTopologyFlowVerticalBusNode(node = {}) {
@@ -14065,6 +14169,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         </div>
                         <div class="flex flex-wrap items-center gap-2">
                             ${renderEpcFlowTopologySelector(result)}
+                            <button type="button" onclick="toggleEpcTopologyFlowLabelMoveMode()" title="Move kW labels" aria-label="Move kW labels" class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1 text-[10px] font-black ${epcTopologyFlowLabelMoveMode ? 'border-purple-700 bg-purple-700 text-white' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}">
+                                <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M3 12h18M12 3l-3 3m3-3 3 3M12 21l-3-3m3 3 3-3M3 12l3-3m-3 3 3 3M21 12l-3-3m3 3-3 3"/></svg>
+                                <span>Move</span>
+                            </button>
                             <span class="rounded-full px-3 py-1 text-[10px] font-black ${topologyFlow.validationBlocked ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}">${topologyFlow.validationBlocked ? `${errors.length} topology error(s)` : 'Topology valid'}</span>
                             ${warnings.length ? `<span class="rounded-full border border-yellow-200 bg-yellow-50 px-3 py-1 text-[10px] font-black text-yellow-700">${warnings.length} warning(s)</span>` : ''}
                         </div>
@@ -14075,7 +14183,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             <marker id="epc-arrow-load" markerWidth="4" markerHeight="4" refX="3.4" refY="2" orient="auto"><path d="M0,0 L4,2 L0,4 Z" fill="#64748b"/></marker>
                         </defs>
                         ${model.edges.map(edge => renderEpcTopologyFlowEdge(edge)).join('')}
-                        ${model.edges.map(edge => renderEpcTopologyFlowEdgeLabel(edge)).join('')}
+                        ${model.edges.map(edge => renderEpcTopologyFlowEdgeLabel(edge, model.labelOffsets)).join('')}
                         ${model.nodes.map(node => renderEpcTopologyFlowNode(node, row)).join('')}
                     </svg>
                     <div class="border-t border-slate-100 px-4 py-2 text-[11px] font-bold text-slate-400">${htmlSafe(topologyFlow.disclaimer || '')}</div>

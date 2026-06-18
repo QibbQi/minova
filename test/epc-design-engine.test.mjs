@@ -663,6 +663,11 @@ test('EPC design project preserves EMS Flow display settings', () => {
       selectedRange: { start: 2, end: 8 },
       peakBand: { visible: false, color: '#e0f2fe', startMinute: 15 * 60, endMinute: 21 * 60 },
       seriesColors: { pv: '#f59e0b', load: '#2563eb', battery: '#16a34a', genset: '#ef4444', soc: '#0ea5e9' },
+      topologyFlowLabelOffsets: {
+        'lv-step-up': { dx: 18.4, dy: -22.2 },
+        'ring-rmu-load-1': { dx: 'bad', dy: 14 },
+        '': { dx: 100, dy: 100 }
+      },
       deviceWorkModel: {
         applyToEmsFlow: false,
         loadNoisePct: 4,
@@ -706,6 +711,10 @@ test('EPC design project preserves EMS Flow display settings', () => {
   assert.deepEqual(project.emsFlowDisplaySettings.selectedRange, { start: 2, end: 8 });
   assert.deepEqual(project.emsFlowDisplaySettings.peakBand, { visible: false, color: '#e0f2fe', startMinute: 900, endMinute: 1260 });
   assert.equal(project.emsFlowDisplaySettings.seriesColors.genset, '#ef4444');
+  assert.deepEqual(project.emsFlowDisplaySettings.topologyFlowLabelOffsets, {
+    'lv-step-up': { dx: 18.4, dy: -22.2 },
+    'ring-rmu-load-1': { dx: 0, dy: 14 }
+  });
   assert.deepEqual(project.emsFlowDisplaySettings.deviceWorkModel, {
     applyToEmsFlow: false,
     loadNoisePct: 4,
@@ -1085,6 +1094,47 @@ test('EPC custom topology regenerates load branches while preserving source-side
   assert.ok(result.topology.edges.some((edge) => edge.id === 'ems-pv-custom'));
   assert.equal(result.topology.edges.some((edge) => edge.id === 'ring-rmu-load-4'), false);
   assert.ok(result.topologyFlow.edges.some((edge) => edge.id === 'lv-load-bus-3-load-3' && edge.flowKeys.includes('loadSplit:load-3')));
+});
+
+test('EPC custom topology preserves moved load branch node positions across regeneration', () => {
+  const base = calculateEpcDesignProject({
+    selectedTopologyId: 'C5',
+    topology: { selectedTopologyId: 'C5' },
+    site: { gridMode: 'island' },
+    loads: {
+      dailyLoadKwh: 12000,
+      operationHoursPerDay: 8,
+      loadCount: 2
+    },
+    designTargets: { replacementPct: 80 }
+  }, { now: '2026-06-18T00:00:00.000Z' });
+  const result = calculateEpcDesignProject({
+    selectedTopologyId: 'CUSTOM',
+    topology: {
+      ...base.topology,
+      selectedTopologyId: 'CUSTOM',
+      sourceTopologyId: 'C5',
+      nodes: base.topology.nodes.map(node => {
+        if (node.id === 'rmu-load-1') return { ...node, position: { x: 1510, y: 96 } };
+        if (node.id === 'load-tx-1') return { ...node, position: { x: 1680, y: 96 } };
+        if (node.id === 'lv-load-bus-1') return { ...node, position: { x: 1850, y: 96 } };
+        if (node.id === 'load-1') return { ...node, position: { x: 2020, y: 96 } };
+        return node;
+      })
+    },
+    site: { gridMode: 'island' },
+    loads: {
+      dailyLoadKwh: 12000,
+      operationHoursPerDay: 8,
+      loadCount: 2
+    },
+    designTargets: { replacementPct: 80 }
+  }, { now: '2026-06-18T00:00:00.000Z' });
+
+  assert.equal(result.topology.nodes.find(node => node.id === 'rmu-load-1')?.position.x, 1510);
+  assert.equal(result.topology.nodes.find(node => node.id === 'load-tx-1')?.position.x, 1680);
+  assert.equal(result.topology.nodes.find(node => node.id === 'lv-load-bus-1')?.position.x, 1850);
+  assert.equal(result.topology.nodes.find(node => node.id === 'load-1')?.position.x, 2020);
 });
 
 test('EPC custom topology preserves removed generated connections across load regeneration', () => {

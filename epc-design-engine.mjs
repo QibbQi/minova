@@ -352,6 +352,19 @@ function normalizeEmsFlowDisplaySettings(value = {}) {
         };
       }).filter((item, index, array) => array.findIndex(other => other.id === item.id) === index)
     : [];
+  const rawTopologyFlowLabelOffsets = input.topologyFlowLabelOffsets && typeof input.topologyFlowLabelOffsets === 'object'
+    ? input.topologyFlowLabelOffsets
+    : {};
+  const topologyFlowLabelOffsets = Object.fromEntries(Object.entries(rawTopologyFlowLabelOffsets)
+    .map(([edgeId, offset]) => {
+      const id = String(edgeId || '').trim();
+      if (!id || !offset || typeof offset !== 'object') return null;
+      return [id, {
+        dx: clamp(offset.dx, -600, 600, 0),
+        dy: clamp(offset.dy, -600, 600, 0)
+      }];
+    })
+    .filter(Boolean));
   return {
     visibleSeries: visibleSeries.length ? visibleSeries : [...EMS_FLOW_DISPLAY_SERIES],
     mergeHourly: input.mergeHourly !== false,
@@ -364,6 +377,7 @@ function normalizeEmsFlowDisplaySettings(value = {}) {
       startMinute,
       endMinute: endMinute > startMinute ? endMinute : Math.min(24 * 60, startMinute + 60)
     },
+    topologyFlowLabelOffsets,
     seriesColors,
     deviceWorkModel: {
       applyToEmsFlow: deviceWorkModelInput.applyToEmsFlow === false ? false : true,
@@ -1184,8 +1198,10 @@ function mergeCustomTopologyWithGeneratedLoads(input = {}, loads = {}, options =
   const generatedNodeIds = new Set((generated.nodes || []).map(node => node.id));
   const generatedEdgeIds = new Set((generated.edges || []).map(edge => edge.id));
   const nodes = (generated.nodes || []).filter(node => !removedNodeIds.has(node.id)).map((node) => {
-    if (isLoadBranchNode(node)) return node;
     const custom = customNodes.get(node.id);
+    if (isLoadBranchNode(node)) {
+      return custom?.position ? { ...node, position: custom.position } : node;
+    }
     if (!custom || isLoadBranchNode(custom)) return node;
     return {
       ...node,
@@ -1203,8 +1219,8 @@ function mergeCustomTopologyWithGeneratedLoads(input = {}, loads = {}, options =
   });
   const nodeIds = new Set(nodes.map(node => node.id));
   const edges = (generated.edges || []).filter(edge => !removedEdgeIds.has(edge.id) && !removedNodeIds.has(edge.source) && !removedNodeIds.has(edge.target)).map((edge) => {
-    if (isLoadBranchEdge(edge)) return edge;
     const custom = customEdges.get(edge.id);
+    if (isLoadBranchEdge(edge)) return custom?.route ? { ...edge, route: custom.route } : edge;
     if (!custom || isLoadBranchEdge(custom)) return edge;
     return {
       ...edge,

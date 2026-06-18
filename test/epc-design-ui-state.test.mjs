@@ -1186,6 +1186,12 @@ test('EPC EMS Flow splits simultaneous battery charge discharge and exposes topo
   for (const snippet of [
     'id="epc-flow-topology-selector"',
     'renderEpcFlowTopologySelector(result)',
+    'toggleEpcTopologyFlowLabelMoveMode',
+    'epcTopologyFlowLabelMoveMode',
+    'startEpcTopologyFlowLabelDrag',
+    'saveEpcTopologyFlowLabelOffset',
+    'data-epc-topology-flow-label',
+    'topologyFlowLabelOffsets',
     'result.topologySelection',
     'requiresMvTopology',
     'lv-pcs-charge',
@@ -1211,10 +1217,13 @@ test('EPC EMS Flow splits simultaneous battery charge discharge and exposes topo
     'M${start.x} ${start.y} H${end.x}',
     "edge.id === 'pv-curtailment'",
     "CURTAILMENT: { stroke: '#f59e0b'",
+    "'loadKw'",
     'y="74"',
     'y="88"',
     'markerWidth="4"',
-    "renderEpcFlowLabel(edge.value, edge.route.labelX, edge.route.labelY, '')",
+    "renderEpcFlowLabel(edge.value, edge.route.labelX, edge.route.labelY, '', {",
+    'edgeId: edge.id',
+    'offset: labelOffsets[edge.id] || {}',
     "role === 'control' ? Math.max(90, laneY + 110)",
     "updateEpcSelectedTopology(this.value, { enforceElectricalLock: true })"
   ]) {
@@ -1223,7 +1232,7 @@ test('EPC EMS Flow splits simultaneous battery charge discharge and exposes topo
   const valueHelper = html.match(/function epcTopologyFlowValue\(edge = \{\}, row = \{\}\)[\s\S]*?function epcTopologyFlowLineType/);
   assert.ok(valueHelper, 'topology flow value helper should exist');
   assert.doesNotMatch(valueHelper[0], /reduce\(\(total, key\) => total \+ Math\.max/, 'edge labels should not sum charge and discharge keys on one line');
-  const edgeLabelHelper = html.match(/function renderEpcTopologyFlowEdgeLabel\(edge = \{\}\)[\s\S]*?function renderEpcTopologyFlowNode/);
+  const edgeLabelHelper = html.match(/function renderEpcTopologyFlowEdgeLabel\(edge = \{\}, labelOffsets = \{\}\)[\s\S]*?function renderEpcTopologyFlowNode/);
   assert.ok(edgeLabelHelper, 'topology edge label helper should exist');
   assert.doesNotMatch(edgeLabelHelper[0], /PV -> Battery|Battery -> Load/, 'line labels should only show transfer kW, not semantic route text');
 });

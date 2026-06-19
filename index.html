@@ -16095,7 +16095,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 if (!groups.has(hour)) groups.set(hour, []);
                 groups.get(hour).push(row);
             });
-            const weightedAverageKeys = ['baseLoadKw', 'loadNoiseKw', 'loadShockKw', 'loadKw', 'pvToLoadKw', 'batteryToLoadKw', 'gensetToLoadKw', 'unmetLoadKw'];
+            const weightedAverageKeys = ['baseLoadKw', 'loadNoiseKw', 'loadShockKw', 'loadKw', 'pvToLoadKw', 'pvToBatteryKw', 'batteryToLoadKw', 'gensetToLoadKw', 'unmetLoadKw'];
             const mergedRows = [...groups.entries()].sort(([a], [b]) => a - b).map(([hour, items]) => {
                 const totalDuration = items.reduce((total, item) => total + Math.max(0, Number(item.durationHours) || 0), 0) || 1;
                 const finalSoc = items.at(-1)?.socPct;
@@ -16112,7 +16112,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 });
                 return merged;
             });
-            return carryEpcZeroFlowSocRows(mergedRows);
+            return carryEpcZeroFlowSocRows(mergedRows, { wrapDay: true });
         }
 
         function setEpcDeviceWorkLoadTableInterval(minutes) {
@@ -16135,6 +16135,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     <td class="px-3 py-3 text-right font-black">${formatEpcNumber(summarizeEnergy('loadShockKw'), 1, 'kWh')}</td>
                     <td class="px-3 py-3 text-right font-black">${formatEpcNumber(summarizeEnergy('loadKw'), 1, 'kWh')}</td>
                     <td class="px-3 py-3 text-right font-black">${formatEpcNumber(summarizeEnergy('pvToLoadKw'), 1, 'kWh')}</td>
+                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(summarizeEnergy('pvToBatteryKw'), 1, 'kWh')}</td>
                     <td class="px-3 py-3 text-right font-black">${formatEpcNumber(summarizeEnergy('batteryToLoadKw'), 1, 'kWh')}</td>
                     <td class="px-3 py-3 text-right font-black">${formatEpcNumber(summarizeEnergy('gensetToLoadKw'), 1, 'kWh')}</td>
                     <td class="px-3 py-3 text-right font-black">${formatEpcNumber(summarizeEnergy('unmetLoadKw'), 1, 'kWh')}</td>
@@ -16183,6 +16184,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                                     <th class="px-3 py-2 text-right">Shock kW</th>
                                     <th class="px-3 py-2 text-right">Modeled load kW</th>
                                     <th class="px-3 py-2 text-right">PV load kW</th>
+                                    <th class="px-3 py-2 text-right">PV battery kW</th>
                                     <th class="px-3 py-2 text-right">Battery load kW</th>
                                     <th class="px-3 py-2 text-right">Genset load kW</th>
                                     <th class="px-3 py-2 text-right">Unmet kW</th>
@@ -16198,12 +16200,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                                         <td class="px-3 py-2 text-right font-black ${Number(row.loadShockKw) > 0 ? 'text-red-500' : 'text-slate-400'}">${Number(row.loadShockKw) > 0 ? '+' : ''}${formatEpcNumber(row.loadShockKw, 1)}</td>
                                         <td class="px-3 py-2 text-right font-black text-slate-800">${formatEpcNumber(row.loadKw, 1)}</td>
                                         <td class="px-3 py-2 text-right">${formatEpcNumber(row.pvToLoadKw, 1)}</td>
+                                        <td class="px-3 py-2 text-right">${formatEpcNumber(row.pvToBatteryKw, 1)}</td>
                                         <td class="px-3 py-2 text-right">${formatEpcNumber(row.batteryToLoadKw, 1)}</td>
                                         <td class="px-3 py-2 text-right">${formatEpcNumber(row.gensetToLoadKw, 1)}</td>
                                         <td class="px-3 py-2 text-right ${Number(row.unmetLoadKw) > 0 ? 'font-black text-red-600' : 'text-slate-400'}">${formatEpcNumber(row.unmetLoadKw, 1)}</td>
                                         <td class="px-3 py-2 text-right">${formatEpcNumber(row.socPct, 1, '%')}</td>
                                     </tr>
-                                `).join('') || '<tr><td colspan="10" class="px-3 py-6 text-center font-bold text-slate-400">No load profile rows in the selected period.</td></tr>'}
+                                `).join('') || '<tr><td colspan="11" class="px-3 py-6 text-center font-bold text-slate-400">No load profile rows in the selected period.</td></tr>'}
                             </tbody>
                             <tfoot class="sticky bottom-0 z-10 bg-slate-50">
                                 ${renderEpcDeviceWorkLoadSummaryRow(rows)}
@@ -16968,9 +16971,21 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return keys.some(key => Math.abs(Number(row[key]) || 0) > 0.05);
         }
 
-        function carryEpcZeroFlowSocRows(rows = []) {
-            let lastSoc = null;
-            return (Array.isArray(rows) ? rows : []).map(row => {
+        function carryEpcZeroFlowSocRows(rows = [], options = {}) {
+            const source = Array.isArray(rows) ? rows : [];
+            const firstMinute = Number(source[0]?.timelineMinute);
+            const lastMinute = Number(source.at(-1)?.timelineMinute);
+            const wrapDay = options.wrapDay === true
+                && source.length > 1
+                && Number.isFinite(firstMinute)
+                && Number.isFinite(lastMinute)
+                && firstMinute <= 0
+                && lastMinute >= 23 * 60;
+            let lastSoc = wrapDay && !hasEpcEnergyFlowMovement(source[0])
+                ? Number(source.at(-1)?.socPct)
+                : null;
+            if (!Number.isFinite(lastSoc)) lastSoc = null;
+            return source.map(row => {
                 const next = !hasEpcEnergyFlowMovement(row) && Number.isFinite(lastSoc)
                     ? { ...row, socPct: epcChartRound(lastSoc, 1) }
                     : row;
@@ -17046,7 +17061,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 });
                 return merged;
             });
-            return carryEpcZeroFlowSocRows(mergedRows);
+            return carryEpcZeroFlowSocRows(mergedRows, { wrapDay: true });
         }
 
         function getEpcEnergyFlowDisplayRows(result = {}) {

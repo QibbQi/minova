@@ -845,7 +845,7 @@ test('EPC Device Work exposes auditable load work rows at 5-minute and hourly re
   ]) {
     assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing Device Work load table snippet: ${snippet}`);
   }
-  assert.match(html, /const weightedAverageKeys = \['baseLoadKw', 'loadNoiseKw', 'loadShockKw', 'loadKw', 'pvToLoadKw', 'batteryToLoadKw', 'gensetToLoadKw', 'unmetLoadKw'\]/);
+  assert.match(html, /const weightedAverageKeys = \['baseLoadKw', 'loadNoiseKw', 'loadShockKw', 'loadKw', 'pvToLoadKw', 'pvToBatteryKw', 'batteryToLoadKw', 'gensetToLoadKw', 'unmetLoadKw'\]/);
   assert.match(html, /const finalSoc = items\.at\(-1\)\?\.socPct/);
   assert.match(html, /<tfoot class="sticky bottom-0 z-10/);
   assert.match(html, />Summary</);
@@ -969,6 +969,94 @@ test('EPC hourly EMS merge carries SOC across zero-flow hours', () => {
   const merged = mergeRows(rows);
 
   assert.equal(merged.find(row => row.hour === 1)?.socPct, 82.4);
+});
+
+test('EPC hourly EMS merge carries previous day SOC across midnight zero-flow rows', () => {
+  const source = [
+    extractFunction('epcMinutesToTime', 'epcAddHoursToTime'),
+    extractFunction('epcChartRound', 'normalizeEpcDeviceWorkPeakBandColor'),
+    extractFunction('getEpcEnergyFlowDurationHours', 'mergeEpcEnergyFlowLoadSplits'),
+    extractFunction('mergeEpcEnergyFlowLoadSplits', 'mergeEpcEnergyFlowRowsByHour'),
+    extractFunction('mergeEpcEnergyFlowRowsByHour', 'getEpcEnergyFlowDisplayRows'),
+    'return mergeEpcEnergyFlowRowsByHour;'
+  ].join('\n');
+  const mergeRows = Function(source)();
+  const zeroFlow = (minute, socPct) => ({
+    timelineMinute: minute,
+    intervalMinutes: 5,
+    durationHours: 5 / 60,
+    pvOutputKw: 0,
+    loadKw: 0,
+    pvToLoadKw: 0,
+    pvToBatteryKw: 0,
+    batteryToLoadKw: 0,
+    gensetToLoadKw: 0,
+    pcsLimitKw: 500,
+    curtailmentKw: 0,
+    socPct
+  });
+  const rows = [
+    zeroFlow(0, 86.1),
+    zeroFlow(5, 86.1),
+    zeroFlow(55, 86.1),
+    zeroFlow(1380, 82.4),
+    zeroFlow(1435, 82.4)
+  ];
+
+  const merged = mergeRows(rows);
+
+  assert.equal(merged.find(row => row.hour === 0)?.socPct, 82.4);
+});
+
+test('EPC Load Work Profile exposes PV battery charge and preserves charging SOC', () => {
+  const source = [
+    extractFunction('epcMinutesToTime', 'epcAddHoursToTime'),
+    extractFunction('epcChartRound', 'normalizeEpcDeviceWorkPeakBandColor'),
+    extractFunction('applyEpcDeviceWorkDurations', 'epcDeviceWorkDeterministicNoise'),
+    extractFunction('getEpcEnergyFlowDurationHours', 'mergeEpcEnergyFlowLoadSplits'),
+    extractFunction('getEpcDeviceWorkLoadTableRows', 'setEpcDeviceWorkLoadTableInterval'),
+    'return getEpcDeviceWorkLoadTableRows;'
+  ].join('\n');
+  const getRows = Function(source)();
+  const rows = getRows([
+    {
+      timelineMinute: 1020,
+      intervalMinutes: 5,
+      durationHours: 5 / 60,
+      baseLoadKw: 0,
+      loadNoiseKw: 0,
+      loadShockKw: 0,
+      loadKw: 0,
+      pvToLoadKw: 0,
+      pvToBatteryKw: 77,
+      batteryToLoadKw: 0,
+      gensetToLoadKw: 0,
+      unmetLoadKw: 0,
+      socPct: 76.3
+    },
+    {
+      timelineMinute: 1075,
+      intervalMinutes: 5,
+      durationHours: 5 / 60,
+      baseLoadKw: 0,
+      loadNoiseKw: 0,
+      loadShockKw: 0,
+      loadKw: 0,
+      pvToLoadKw: 0,
+      pvToBatteryKw: 77,
+      batteryToLoadKw: 0,
+      gensetToLoadKw: 0,
+      unmetLoadKw: 0,
+      socPct: 82.4
+    }
+  ], 60);
+  const chargingHour = rows.find(row => row.timelineMinute === 1020);
+
+  assert.equal(chargingHour?.pvToBatteryKw, 77);
+  assert.equal(chargingHour?.socPct, 82.4);
+  assert.match(html, /PV battery kW/);
+  assert.match(html, /summarizeEnergy\('pvToBatteryKw'\)/);
+  assert.match(html, /colspan="11"/);
 });
 
 test('EPC hourly EMS Flow preserves load split branch values after merging rows', () => {

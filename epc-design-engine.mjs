@@ -1306,6 +1306,12 @@ function normalizeBoqHiddenPackages(value = []) {
     .filter(Boolean)));
 }
 
+function normalizeBoqLineIdList(value = []) {
+  return Array.from(new Set((Array.isArray(value) ? value : [])
+    .map(item => normalizeBoqLineId(item))
+    .filter(Boolean)));
+}
+
 function normalizeBoqManualItems(value = []) {
   return (Array.isArray(value) ? value : [])
     .map((item, index) => {
@@ -1360,7 +1366,9 @@ function normalizeEpcBoqState(value = {}) {
   return {
     manualItems: normalizeBoqManualItems(input.manualItems || []),
     lineSelections: normalizeBoqLineSelections(input.lineSelections || {}),
-    hiddenPackages: normalizeBoqHiddenPackages(input.hiddenPackages || [])
+    hiddenPackages: normalizeBoqHiddenPackages(input.hiddenPackages || []),
+    hiddenLineIds: normalizeBoqLineIdList(input.hiddenLineIds || []),
+    lineOrder: normalizeBoqLineIdList(input.lineOrder || [])
   };
 }
 
@@ -2669,6 +2677,26 @@ function applyBoqLineSelections(rows = [], selections = {}) {
   });
 }
 
+function boqPackageOrder(packageName = '') {
+  const idx = EPC_BOQ_PACKAGES.indexOf(String(packageName || '').trim());
+  return idx === -1 ? EPC_BOQ_PACKAGES.length : idx;
+}
+
+function sortBoqRows(rows = [], lineOrder = []) {
+  const orderMap = new Map(normalizeBoqLineIdList(lineOrder).map((id, index) => [id, index]));
+  return rows
+    .map((row, index) => ({ row, index }))
+    .sort((a, b) => {
+      const packageDiff = boqPackageOrder(a.row.package) - boqPackageOrder(b.row.package);
+      if (packageDiff) return packageDiff;
+      const aOrder = orderMap.has(a.row.id) ? orderMap.get(a.row.id) : Number.POSITIVE_INFINITY;
+      const bOrder = orderMap.has(b.row.id) ? orderMap.get(b.row.id) : Number.POSITIVE_INFINITY;
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      return a.index - b.index;
+    })
+    .map(item => item.row);
+}
+
 function buildBoq(project, recommended, context = {}) {
   const topology = context.topology || project.topology || {};
   const topologyFlow = context.topologyFlow || {};
@@ -2871,11 +2899,12 @@ function buildBoq(project, recommended, context = {}) {
   add({ id: 'documents-certification', package: 'Documents & Certification', item: 'Documentation and certification package', spec: 'IEC/UL/CE certificates, SLD, wiring drawings, manuals and commissioning records', quantity: 1, unit: 'lot', protection: 'N/A', remark: 'Customer handover document set', source: 'calculated', mandatory: true });
 
   const hiddenPackages = new Set(normalizeBoqHiddenPackages(project.boq?.hiddenPackages || []));
+  const hiddenLineIds = new Set(normalizeBoqLineIdList(project.boq?.hiddenLineIds || []));
   const selectedRows = applyBoqLineSelections(rows, project.boq?.lineSelections || {})
-    .filter(row => !hiddenPackages.has(row.package));
+    .filter(row => !hiddenPackages.has(row.package) && !hiddenLineIds.has(row.id));
   const manualRows = normalizeBoqManualItems(project.boq?.manualItems || [])
-    .filter(row => !hiddenPackages.has(row.package));
-  return [...selectedRows, ...manualRows];
+    .filter(row => !hiddenPackages.has(row.package) && !hiddenLineIds.has(row.id));
+  return sortBoqRows([...selectedRows, ...manualRows], project.boq?.lineOrder || []);
 }
 
 function applyRiskStatuses(project, risks = [], context = {}) {

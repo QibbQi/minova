@@ -87,7 +87,7 @@ test('EPC BOQ exposes dual professional views with manual and Product List contr
   assert.doesNotMatch(html, /Equipment \/ 设备名称|Spec \/ 规格参数|Protection \/ 防护防腐/);
 });
 
-test('EPC BOQ manual package selector and package exclusion controls are wired', () => {
+test('EPC BOQ manual package selector row deletion drag ordering and unit choices are wired', () => {
   for (const snippet of [
     'id="epc-boq-manual-package-select"',
     "'PV System'",
@@ -97,13 +97,20 @@ test('EPC BOQ manual package selector and package exclusion controls are wired',
     "'Auxiliary'",
     "'Documents & Certification'",
     'renderEpcBoqPackageOptions',
-    'deleteEpcBoqPackage',
-    'restoreEpcBoqPackage',
-    'Delete Package',
-    'Restore hidden package'
+    'deleteEpcBoqEquipment',
+    'restoreEpcBoqEquipment',
+    'Delete Equipment',
+    'Restore hidden equipment',
+    'draggable="true"',
+    'onDragStart',
+    'dropEpcBoqRow',
+    'data-epc-boq-line-id',
+    'epc-boq-unit-options',
+    'list="epc-boq-unit-options"'
   ]) {
     assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing BOQ package control snippet: ${snippet}`);
   }
+  assert.doesNotMatch(html, /Delete Package|deleteEpcBoqPackage|restoreEpcBoqPackage|hiddenPackages/);
 });
 
 test('EPC risks expose checkbox acknowledgement and report-gating status', () => {
@@ -137,6 +144,8 @@ test('EPC Reports are gated PDF downloads with EMS Flow and Device Work diagrams
   }
   assert.doesNotMatch(html, /engineering-calculation\.json/);
   assert.doesNotMatch(html, /-summary\.html/);
+  assert.doesNotMatch(html, /left = '-10000px'|zIndex = '-1'/);
+  assert.match(html, /epc-report-rendering-overlay/);
 });
 
 test('EPC detailed engineering inputs are permission-gated separately from quick design', () => {

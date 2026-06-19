@@ -917,7 +917,7 @@ test('EPC BOQ normalizes manual items and Product List selections without changi
   assert.equal(manual.source, 'manual');
 });
 
-test('EPC BOQ hidden packages exclude BOQ rows without changing engineering results', () => {
+test('EPC BOQ hidden line ids exclude one equipment row without changing engineering results', () => {
   const project = normalizeEpcDesignProject({
     selectedTopologyId: 'C7',
     site: { gridMode: 'island' },
@@ -933,18 +933,24 @@ test('EPC BOQ hidden packages exclude BOQ rows without changing engineering resu
     },
     designTargets: { replacementPct: 80 },
     boq: {
-      hiddenPackages: ['BESS', 'Electrical Distribution'],
+      hiddenLineIds: ['ring-rmu'],
+      lineOrder: ['manual-pv-weather', 'pv-inverter', 'ring-rmu'],
       manualItems: [
         { id: 'manual-pv-weather', package: 'PV System', item: 'Weather station', quantity: 1, unit: 'set' }
       ]
     }
   }, { now: '2026-06-16T00:00:00.000Z' });
   const result = calculateEpcDesignProject(project, { now: '2026-06-16T00:00:00.000Z' });
+  const pvIds = result.boq.filter((item) => item.package === 'PV System').map((item) => item.id);
 
-  assert.deepEqual(project.boq.hiddenPackages, ['BESS', 'Electrical Distribution']);
-  assert.equal(result.boq.some((item) => item.package === 'BESS'), false);
-  assert.equal(result.boq.some((item) => item.package === 'Electrical Distribution'), false);
+  assert.deepEqual(project.boq.hiddenLineIds, ['ring-rmu']);
+  assert.deepEqual(project.boq.lineOrder.slice(0, 3), ['manual-pv-weather', 'pv-inverter', 'ring-rmu']);
+  assert.equal(result.boq.some((item) => item.id === 'ring-rmu'), false);
+  assert.equal(result.boq.some((item) => item.id === 'mv-switchboard'), true);
+  assert.equal(result.boq.some((item) => item.id === 'load-transformer'), true);
+  assert.equal(result.boq.some((item) => item.package === 'Electrical Distribution'), true);
   assert.equal(result.boq.some((item) => item.id === 'manual-pv-weather'), true);
+  assert.equal(pvIds[0], 'manual-pv-weather');
   assert.equal(result.electricalArchitecture.recommendedId, 'mv_11_ring');
   assert.equal(result.topologyFlow.validationBlocked, false);
 });

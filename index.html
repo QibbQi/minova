@@ -6543,6 +6543,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         let epcDesignPanelTab = 'inputs';
         let epcBoqViewMode = 'customer';
         let epcBoqProductPickerLineId = '';
+        let epcBoqDragLineId = '';
         let epcSldWorkspaceMode = 'view';
         let epcSldSelectedNodeId = '';
         let epcSldSelectedNodeIds = [];
@@ -11370,6 +11371,19 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return `${formatEpcNumber(row.quantity, digits)} ${htmlSafe(row.unit || '')}`.trim();
         }
 
+        function getEpcBoqUnitOptions(rows = []) {
+            const units = ['MWp', 'MWh', 'MW', 'kW', 'kWh', 'pcs', 'set', 'lot', 'string', 'way', 'm', 'kg'];
+            (Array.isArray(rows) ? rows : []).forEach(row => {
+                const unit = String(row.unit || '').trim();
+                if (unit && !units.includes(unit)) units.push(unit);
+            });
+            return units;
+        }
+
+        function renderEpcBoqUnitDatalist(rows = []) {
+            return `<datalist id="epc-boq-unit-options">${getEpcBoqUnitOptions(rows).map(unit => `<option value="${htmlSafe(unit)}"></option>`).join('')}</datalist>`;
+        }
+
         function renderEpcBoqSourceBadge(row = {}) {
             const tones = {
                 calculated: 'bg-slate-100 text-slate-600 border-slate-200',
@@ -11402,7 +11416,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const inputClass = options.compact
                 ? 'w-20 rounded-lg border border-slate-200 bg-white px-2 py-1 text-right text-[11px] font-bold outline-none focus:border-purple-500'
                 : 'w-full min-w-[12rem] rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold outline-none focus:border-purple-500';
-            return `<input data-epc-boq-field="${htmlSafe(field)}" type="${htmlSafe(type)}" value="${htmlSafe(value ?? '')}" onchange='updateEpcBoqLineField(${JSON.stringify(String(row.id || ''))}, ${JSON.stringify(field)}, this.value)' class="${inputClass}">`;
+            const listAttr = field === 'unit' ? ' list="epc-boq-unit-options"' : '';
+            return `<input data-epc-boq-field="${htmlSafe(field)}" type="${htmlSafe(type)}"${listAttr} value="${htmlSafe(value ?? '')}" onchange='updateEpcBoqLineField(${JSON.stringify(String(row.id || ''))}, ${JSON.stringify(field)}, this.value)' class="${inputClass}">`;
         }
 
         function renderEpcBoqCustomerRows(rows = []) {
@@ -11431,7 +11446,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
         function renderEpcBoqEngineeringRows(rows = []) {
             return rows.map(row => `
-                <tr class="align-top hover:bg-slate-50">
+                <tr data-epc-boq-line-id="${htmlSafe(row.id || '')}" draggable="true" onDragStart='startEpcBoqRowDrag(${JSON.stringify(String(row.id || ''))}, event)' ondragover="event.preventDefault(); this.classList.add('bg-purple-50')" ondragleave="this.classList.remove('bg-purple-50')" ondrop='dropEpcBoqRow(${JSON.stringify(String(row.id || ''))}, event)' class="align-top hover:bg-slate-50 cursor-move">
                     <td class="px-3 py-3">
                         <div class="text-[10px] font-black uppercase text-slate-400">${htmlSafe(row.package || '-')}</div>
                         <div class="mt-1">${renderEpcBoqField(row, 'item', row.item || '')}</div>
@@ -11447,8 +11462,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <div class="flex flex-col items-end gap-1">
                             <button type="button" onclick='openEpcBoqProductPicker(${JSON.stringify(String(row.id || ''))})' class="rounded-lg border border-purple-200 px-2 py-1 text-[10px] font-black text-purple-700 hover:bg-purple-50">Select Product</button>
                             ${row.productId ? `<button type="button" onclick='clearEpcBoqProductBinding(${JSON.stringify(String(row.id || ''))})' class="text-[10px] font-black text-slate-400 hover:text-red-600">Clear Product</button>` : ''}
-                            ${row.manual ? `<button type="button" onclick='deleteEpcBoqManualItem(${JSON.stringify(String(row.id || ''))})' class="text-[10px] font-black text-red-600 hover:underline">Delete</button>` : ''}
-                            ${!row.manual && EPC_BOQ_PACKAGES.includes(row.package) ? `<button type="button" onclick='deleteEpcBoqPackage(${JSON.stringify(String(row.package || ''))})' class="text-[10px] font-black text-red-600 hover:underline">Delete Package</button>` : ''}
+                            <button type="button" onclick='deleteEpcBoqEquipment(${JSON.stringify(String(row.id || ''))})' class="text-[10px] font-black text-red-600 hover:underline">Delete Equipment</button>
                         </div>
                     </td>
                 </tr>
@@ -11470,7 +11484,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             project.boq = project.boq || { manualItems: [], lineSelections: {} };
             project.boq.manualItems = Array.isArray(project.boq.manualItems) ? project.boq.manualItems : [];
             project.boq.lineSelections = project.boq.lineSelections && typeof project.boq.lineSelections === 'object' ? project.boq.lineSelections : {};
-            project.boq.hiddenPackages = Array.isArray(project.boq.hiddenPackages) ? project.boq.hiddenPackages : [];
+            project.boq.hiddenLineIds = Array.isArray(project.boq.hiddenLineIds) ? project.boq.hiddenLineIds : [];
+            project.boq.lineOrder = Array.isArray(project.boq.lineOrder) ? project.boq.lineOrder : [];
             mutator(project.boq, project);
             updateEpcProject(project);
             const status = document.getElementById('epc-design-save-status');
@@ -11501,22 +11516,28 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             });
         };
 
-        window.deleteEpcBoqPackage = (packageName = '') => {
-            const normalized = normalizeEpcBoqPackageName(packageName, '');
-            if (!normalized) return;
+        window.deleteEpcBoqEquipment = (lineId = '') => {
+            const id = String(lineId || '').trim();
+            if (!id) return;
             mutateEpcBoqProject((boq) => {
-                const hidden = new Set(Array.isArray(boq.hiddenPackages) ? boq.hiddenPackages : []);
-                hidden.add(normalized);
-                boq.hiddenPackages = Array.from(hidden).filter(item => EPC_BOQ_PACKAGES.includes(item));
+                const manualIndex = boq.manualItems.findIndex(item => String(item.id || '') === id);
+                if (manualIndex >= 0) {
+                    boq.manualItems.splice(manualIndex, 1);
+                } else {
+                    const hidden = new Set(Array.isArray(boq.hiddenLineIds) ? boq.hiddenLineIds : []);
+                    hidden.add(id);
+                    boq.hiddenLineIds = Array.from(hidden);
+                }
+                boq.lineOrder = (Array.isArray(boq.lineOrder) ? boq.lineOrder : []).filter(item => String(item || '') !== id);
                 epcBoqViewMode = 'engineering';
             });
         };
 
-        window.restoreEpcBoqPackage = (packageName = '') => {
-            const normalized = normalizeEpcBoqPackageName(packageName, '');
-            if (!normalized) return;
+        window.restoreEpcBoqEquipment = (lineId = '') => {
+            const id = String(lineId || '').trim();
+            if (!id) return;
             mutateEpcBoqProject((boq) => {
-                boq.hiddenPackages = (Array.isArray(boq.hiddenPackages) ? boq.hiddenPackages : []).filter(item => item !== normalized);
+                boq.hiddenLineIds = (Array.isArray(boq.hiddenLineIds) ? boq.hiddenLineIds : []).filter(item => String(item || '') !== id);
                 epcBoqViewMode = 'engineering';
             });
         };
@@ -11524,6 +11545,31 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         window.deleteEpcBoqManualItem = (lineId = '') => {
             mutateEpcBoqProject((boq) => {
                 boq.manualItems = boq.manualItems.filter(item => String(item.id || '') !== String(lineId || ''));
+            });
+        };
+
+        window.startEpcBoqRowDrag = (lineId = '', event = null) => {
+            epcBoqDragLineId = String(lineId || '');
+            if (event?.dataTransfer) {
+                event.dataTransfer.effectAllowed = 'move';
+                event.dataTransfer.setData('text/plain', epcBoqDragLineId);
+            }
+        };
+
+        window.dropEpcBoqRow = (targetLineId = '', event = null) => {
+            event?.preventDefault?.();
+            document.querySelectorAll('[data-epc-boq-line-id]').forEach(row => row.classList.remove('bg-purple-50'));
+            const sourceId = String(event?.dataTransfer?.getData('text/plain') || epcBoqDragLineId || '');
+            const targetId = String(targetLineId || '');
+            epcBoqDragLineId = '';
+            if (!sourceId || !targetId || sourceId === targetId) return;
+            const currentRows = Array.from(document.querySelectorAll('[data-epc-boq-line-id]')).map(row => row.dataset.epcBoqLineId).filter(Boolean);
+            const nextOrder = currentRows.filter(id => id !== sourceId);
+            const targetIndex = nextOrder.indexOf(targetId);
+            nextOrder.splice(targetIndex < 0 ? nextOrder.length : targetIndex, 0, sourceId);
+            mutateEpcBoqProject((boq) => {
+                boq.lineOrder = Array.from(new Set(nextOrder));
+                epcBoqViewMode = 'engineering';
             });
         };
 
@@ -11633,15 +11679,16 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             });
         };
 
-        function renderEpcBoqHiddenPackageRestore(project = getActiveEpcDesignProject()) {
-            const hiddenPackages = (Array.isArray(project.boq?.hiddenPackages) ? project.boq.hiddenPackages : [])
-                .filter(packageName => EPC_BOQ_PACKAGES.includes(packageName));
-            if (!hiddenPackages.length) return '';
+        function renderEpcBoqHiddenEquipmentRestore(project = getActiveEpcDesignProject()) {
+            const hiddenLineIds = (Array.isArray(project.boq?.hiddenLineIds) ? project.boq.hiddenLineIds : [])
+                .map(item => String(item || '').trim())
+                .filter(Boolean);
+            if (!hiddenLineIds.length) return '';
             return `
                 <div class="flex flex-wrap items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs">
-                    <span class="font-black text-amber-800">Hidden BOQ packages:</span>
-                    ${hiddenPackages.map(packageName => `
-                        <button type="button" onclick='restoreEpcBoqPackage(${JSON.stringify(packageName)})' class="rounded-lg border border-amber-300 bg-white px-2 py-1 text-[10px] font-black text-amber-800 hover:bg-amber-100">Restore hidden package · ${htmlSafe(packageName)}</button>
+                    <span class="font-black text-amber-800">Hidden BOQ equipment:</span>
+                    ${hiddenLineIds.map(lineId => `
+                        <button type="button" onclick='restoreEpcBoqEquipment(${JSON.stringify(lineId)})' class="rounded-lg border border-amber-300 bg-white px-2 py-1 text-[10px] font-black text-amber-800 hover:bg-amber-100">Restore hidden equipment · ${htmlSafe(lineId)}</button>
                     `).join('')}
                 </div>
             `;
@@ -11713,7 +11760,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             <button type="button" onclick="addEpcBoqManualItem()" class="rounded-xl border border-purple-200 bg-purple-50 px-3 py-2 text-xs font-black text-purple-700 hover:bg-purple-100">Add Manual Item</button>
                         </div>
                     </div>
-                    ${renderEpcBoqHiddenPackageRestore(project)}
+                    ${renderEpcBoqHiddenEquipmentRestore(project)}
                     <div class="grid grid-cols-2 lg:grid-cols-6 gap-2 text-xs">
                         <div class="rounded-xl border border-slate-200 bg-slate-50 p-3"><div class="text-[10px] font-black uppercase text-slate-400">PV</div><div class="font-black text-slate-800">${formatEpcNumber(recommended.pvRecommendedMwp, 2, 'MWp')}</div></div>
                         <div class="rounded-xl border border-slate-200 bg-slate-50 p-3"><div class="text-[10px] font-black uppercase text-slate-400">BESS</div><div class="font-black text-slate-800">${formatEpcNumber(recommended.bessRecommendedMwh, 2, 'MWh')}</div></div>
@@ -11723,6 +11770,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <div class="rounded-xl border border-slate-200 bg-slate-50 p-3"><div class="text-[10px] font-black uppercase text-slate-400">Load branches</div><div class="font-black text-slate-800">${formatEpcNumber(result.loads?.loadCount || 1, 0)}</div></div>
                     </div>
                     ${viewBody}
+                    ${renderEpcBoqUnitDatalist(rows)}
                 </div>
                 <div id="epc-boq-product-picker-modal" class="hidden fixed inset-0 z-[90] items-center justify-center bg-slate-900/35 p-4">
                     <div class="w-full max-w-3xl rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden">
@@ -18136,11 +18184,17 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const meta = getEpcReportMeta(kind);
             const safeName = (result.project.name || 'epc-design').replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-|-$/g, '') || 'epc-design';
             const element = buildEpcReportPdfElement(result, kind);
-            element.style.position = 'fixed';
-            element.style.left = '-10000px';
-            element.style.top = '0';
-            element.style.zIndex = '-1';
-            document.body.appendChild(element);
+            const overlay = document.createElement('div');
+            overlay.className = 'epc-report-rendering-overlay';
+            overlay.style.position = 'fixed';
+            overlay.style.inset = '0';
+            overlay.style.zIndex = '99999';
+            overlay.style.overflow = 'auto';
+            overlay.style.background = '#ffffff';
+            overlay.style.padding = '16px';
+            overlay.style.pointerEvents = 'none';
+            overlay.appendChild(element);
+            document.body.appendChild(overlay);
             try {
                 await html2pdf().set({
                     margin: [8, 8, 10, 8],
@@ -18150,7 +18204,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
                 }).from(element).save();
             } finally {
-                element.remove();
+                overlay.remove();
             }
         };
 

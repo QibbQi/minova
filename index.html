@@ -15928,9 +15928,36 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         x: epcChartRound(xForIndex(index), 2),
                         y: epcChartRound(yForValue(value), 2),
                         color,
+                        seriesId: series.id,
+                        label: series.label,
+                        time: row.hourLabel || epcMinutesToTime(row.timelineMinute || 0),
+                        value,
+                        unit,
                         display: `${row.hourLabel || epcMinutesToTime(row.timelineMinute || 0)} \u00b7 ${series.label} ${valueText} ${unit}`
                     };
                 });
+            });
+        }
+
+        function getEpcDeviceWorkHoverGroup(points = [], nearest = {}) {
+            const nearX = Number(nearest.x);
+            const nearY = Number(nearest.y);
+            if (!Number.isFinite(nearX) || !Number.isFinite(nearY)) return [];
+            return points
+                .filter(point => Math.abs((Number(point.x) || 0) - nearX) <= 0.75 && Math.abs((Number(point.y) || 0) - nearY) <= 6)
+                .sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
+        }
+
+        function renderEpcDeviceWorkHoverTooltipLines(tooltipText, lines = []) {
+            if (!tooltipText) return;
+            tooltipText.textContent = '';
+            const safeLines = lines.length ? lines : [''];
+            safeLines.forEach((line, index) => {
+                const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+                tspan.setAttribute('x', '11');
+                tspan.setAttribute('dy', index ? '15' : '0');
+                tspan.textContent = String(line || '');
+                tooltipText.appendChild(tspan);
             });
         }
 
@@ -15959,6 +15986,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 hideEpcDeviceWorkHoverSnap();
                 return;
             }
+            const nearestGroup = getEpcDeviceWorkHoverGroup(points, nearest);
+            const groupDisplays = nearestGroup.length ? nearestGroup.map(point => String(point.display || '')) : [String(nearest.display || '')];
             const layer = svg.querySelector('#epc-device-work-hover-layer');
             const guide = svg.querySelector('#epc-device-work-hover-guide');
             const marker = svg.querySelector('#epc-device-work-hover-marker');
@@ -15966,12 +15995,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const tooltipRect = svg.querySelector('#epc-device-work-hover-tooltip-rect');
             const tooltipText = svg.querySelector('#epc-device-work-hover-tooltip-text');
             if (!layer || !guide || !marker || !tooltip || !tooltipRect || !tooltipText) return;
-            const label = String(nearest.display || '');
-            const tooltipWidth = Math.max(136, Math.min(260, label.length * 7 + 22));
-            const tooltipHeight = 30;
+            const longestLabel = groupDisplays.reduce((longest, label) => label.length > longest.length ? label : longest, '');
+            const tooltipWidth = Math.max(136, Math.min(320, longestLabel.length * 7 + 22));
+            const tooltipHeight = 18 + groupDisplays.length * 15;
             const tooltipX = Math.max(8, Math.min(viewBox.width - tooltipWidth - 8, Number(nearest.x) + 12));
-            const tooltipY = Math.max(8, Number(nearest.y) - 40);
+            const tooltipY = Math.max(8, Number(nearest.y) - tooltipHeight - 10);
             layer.removeAttribute('hidden');
+            layer.setAttribute('data-epc-hover-group', String(nearestGroup.length || 1));
             guide.setAttribute('x1', nearest.x);
             guide.setAttribute('x2', nearest.x);
             marker.setAttribute('cx', nearest.x);
@@ -15980,7 +16010,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             tooltip.setAttribute('transform', `translate(${epcChartRound(tooltipX, 2)} ${epcChartRound(tooltipY, 2)})`);
             tooltipRect.setAttribute('width', epcChartRound(tooltipWidth, 2));
             tooltipRect.setAttribute('height', tooltipHeight);
-            tooltipText.textContent = label;
+            renderEpcDeviceWorkHoverTooltipLines(tooltipText, groupDisplays);
         }
 
         function hideEpcDeviceWorkHoverSnap() {
@@ -16207,7 +16237,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             <circle id="epc-device-work-hover-marker" class="epc-device-work-hover-marker" cx="${chart.left}" cy="${chart.top}" r="5"></circle>
                             <g id="epc-device-work-hover-tooltip" class="epc-device-work-hover-tooltip">
                                 <rect id="epc-device-work-hover-tooltip-rect" rx="8" ry="8"></rect>
-                                <text id="epc-device-work-hover-tooltip-text" x="11" y="20"></text>
+                                <text id="epc-device-work-hover-tooltip-text" class="epc-device-work-hover-tooltip-lines" x="11" y="20"></text>
                             </g>
                         </g>
                         <rect class="epc-device-work-hover-capture" x="${chart.left}" y="${chart.top}" width="${plotWidth}" height="${plotHeight}" data-epc-hover-points="${htmlSafe(JSON.stringify(hoverPoints))}" onmousemove="showEpcDeviceWorkHoverSnap(event)" onmouseleave="hideEpcDeviceWorkHoverSnap()"></rect>
@@ -16236,6 +16266,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         return `
                             <div ${dataAttribute} class="rounded-xl border border-slate-200 bg-white p-3">
                                 <div class="flex items-center gap-2">
+                                    <span class="epc-device-work-analysis-color h-2.5 w-8 rounded-full" style="background:${htmlSafe(color)}"></span>
                                     ${renderEpcDeviceWorkColorControls(series, color)}
                                     <div class="text-[10px] font-black uppercase text-slate-400">${htmlSafe(series.label)}</div>
                                 </div>
@@ -18320,8 +18351,30 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return [...rows].sort((a, b) => score(b) - score(a))[0] || rows[0] || {};
         }
 
+        function getEpcReportConnectionFlowRow(result = {}) {
+            const rows = getEpcEnergyFlowDisplayRows(result);
+            const base = rows[0] || {};
+            return {
+                ...base,
+                hour: null,
+                hourLabel: 'Connection Map',
+                flowKey: 'report-connection-map',
+                pvOutputKw: 0,
+                loadKw: 0,
+                pvToLoadKw: 0,
+                pvToBatteryKw: 0,
+                batteryToLoadKw: 0,
+                gensetToLoadKw: 0,
+                curtailmentKw: 0,
+                unmetKw: 0,
+                loadSplits: Array.isArray(base.loadSplits)
+                    ? base.loadSplits.map(split => ({ ...split, loadKw: 0 }))
+                    : []
+            };
+        }
+
         function renderEpcReportOnlyTopologyFlowDiagram(result = {}) {
-            const selectedRow = getEpcReportFlowRow(result);
+            const selectedRow = getEpcReportConnectionFlowRow(result);
             const flowMarkup = renderEpcTopologyFlowDiagram(result, selectedRow)
                 .replace('id="epc-flow-diagram"', 'id="epc-report-flow-diagram"')
                 .replace('id="epc-flow-svg"', 'id="epc-report-flow-svg" width="1059" height="575" preserveAspectRatio="xMidYMid meet"');
@@ -18473,7 +18526,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 getEpcReportSummaryPage(result, meta),
                 {
                     title: 'EMS Flow Diagram',
-                    subtitle: 'Topology-aware active power path at the representative operating point.',
+                    subtitle: 'Topology-aware connection map without selecting a specific operating hour.',
                     className: 'epc-report-diagram-page epc-report-ems-page',
                     result,
                     body: renderEpcReportOnlyTopologyFlowDiagram(result)

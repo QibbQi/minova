@@ -144,6 +144,7 @@ test('EPC Reports are fixed-page PDF downloads with full diagrams and XLSX BOQ e
     'buildEpcReportFixedPageElement',
     'renderEpcCustomerReportPages',
     'renderEpcReportOnlyTopologyFlowDiagram',
+    'getEpcReportConnectionFlowRow',
     'renderEpcReportOnlyDeviceWorkDiagram',
     'EMS Flow Diagram',
     'Device Work Diagram',
@@ -177,6 +178,18 @@ test('EPC Reports are fixed-page PDF downloads with full diagrams and XLSX BOQ e
   assert.doesNotMatch(html, /left = '-10000px'|zIndex = '-1'/);
   assert.doesNotMatch(html, /epc-report-print-surface \.epc-flow-diagram,\s*\.epc-report-print-surface \.epc-device-work-chart\{max-height:[^}]+overflow:hidden/);
   assert.match(html, /epc-report-rendering-overlay/);
+});
+
+test('EPC report-only EMS Flow uses a static connection map instead of an operating hour', () => {
+  const reportRenderer = html.match(/function renderEpcReportOnlyTopologyFlowDiagram\(result = \{\}\)[\s\S]*?function renderEpcReportOnlyDeviceWorkDiagram/);
+  assert.ok(reportRenderer, 'report-only EMS Flow renderer should be found');
+  assert.match(reportRenderer[0], /getEpcReportConnectionFlowRow\(result\)/);
+  assert.doesNotMatch(reportRenderer[0], /getEpcReportFlowRow\(result\)/);
+
+  const reportPages = html.match(/function renderEpcCustomerReportPages\(result = \{\}, kind = 'customer'\)[\s\S]*?function buildEpcReportFixedPageElement/);
+  assert.ok(reportPages, 'customer report page builder should be found');
+  assert.match(reportPages[0], /Topology-aware connection map/);
+  assert.doesNotMatch(reportPages[0], /representative operating point/);
 });
 
 test('EPC report-only Device Work hides embedded chart subtitles', () => {
@@ -607,6 +620,11 @@ test('EPC Device Work is a standalone chart page with status analysis', () => {
     'epc-device-work-hover-guide',
     'epc-device-work-hover-marker',
     'epc-device-work-hover-tooltip',
+    'epc-device-work-hover-tooltip-lines',
+    'epc-device-work-analysis-color',
+    'getEpcDeviceWorkHoverGroup',
+    'renderEpcDeviceWorkHoverTooltipLines',
+    'data-epc-hover-group',
     'onmousemove="showEpcDeviceWorkHoverSnap(event)"',
     'onmouseleave="hideEpcDeviceWorkHoverSnap()"'
   ]) {
@@ -616,6 +634,8 @@ test('EPC Device Work is a standalone chart page with status analysis', () => {
   assert.match(html, /oninput="previewEpcDeviceWorkRange\('start', this\.value\)"/, 'range start should preview without rerendering every step');
   assert.match(html, /onchange="setEpcDeviceWorkRange\('start', this\.value\)"/, 'range start should commit on release');
   assert.match(html, /Time Step[\s\S]*?X Axis Density[\s\S]*?Workday Peak/, 'x-axis density controls should be between time step and workday peak');
+  assert.match(html, /nearestGroup\.length/, 'hover should collect overlapping series at the snapped point');
+  assert.match(html, /createElementNS\('http:\/\/www\.w3\.org\/2000\/svg', 'tspan'\)/, 'hover tooltip should render SVG tspan lines when series overlap');
   for (const removedSnippet of [
     'smoothDeviceWorkPath',
     'setEpcDeviceWorkLineStyle',

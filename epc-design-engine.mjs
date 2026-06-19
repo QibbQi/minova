@@ -2466,9 +2466,9 @@ function topologyFlowKeysForEdge(edge = {}, source = {}, target = {}) {
   const edgeFlowKeys = {
     'pv-dc': ['pvOutputKw'],
     'pv-curtailment': ['curtailmentKw'],
-    'pv-lv': ['pvToLoadKw'],
-    'pv-tx-lv': ['pvToLoadKw'],
-    'pv-mv': ['pvToLoadKw'],
+    'pv-lv': ['pvToLoadKw', 'pvToBatteryKw'],
+    'pv-tx-lv': ['pvToLoadKw', 'pvToBatteryKw'],
+    'pv-mv': ['pvToLoadKw', 'pvToBatteryKw'],
     'lv-pcs-charge': ['pvToBatteryKw'],
     'mv-bess-charge': ['pvToBatteryKw'],
     'bess-tx-pcs-charge': ['pvToBatteryKw'],
@@ -2484,7 +2484,7 @@ function topologyFlowKeysForEdge(edge = {}, source = {}, target = {}) {
   if (edgeFlowKeys[edge.id]) return edgeFlowKeys[edge.id];
   if (source.type === 'PV_ARRAY') return ['pvOutputKw'];
   if (source.type === 'CURTAILMENT' || target.type === 'CURTAILMENT') return ['curtailmentKw'];
-  if (source.type === 'PV_INVERTER' || target.type === 'PV_INVERTER') return ['pvToLoadKw'];
+  if (source.type === 'PV_INVERTER' || target.type === 'PV_INVERTER') return ['pvToLoadKw', 'pvToBatteryKw'];
   if (source.type === 'BATTERY' || target.type === 'BATTERY') return edge.direction === 'BIDIRECTIONAL' ? ['pvToBatteryKw', 'batteryToLoadKw'] : ['batteryToLoadKw'];
   if (source.type === 'PCS' || target.type === 'PCS') return edge.direction === 'BIDIRECTIONAL' ? ['pvToBatteryKw', 'batteryToLoadKw'] : ['batteryToLoadKw'];
   if (source.type === 'GENSET' || target.type === 'GENSET') return ['gensetToLoadKw'];

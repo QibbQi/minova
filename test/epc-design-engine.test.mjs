@@ -1573,13 +1573,13 @@ test('EPC topology flow adapter separates simultaneous PV charge and battery dis
   const batteryLoadEdges = result.topologyFlow.edges.filter((item) => item.flowKeys.includes('batteryToLoadKw')).map((item) => item.id);
 
   assert.deepEqual(edge('pv-dc').flowKeys, ['pvOutputKw']);
-  assert.deepEqual(edge('pv-lv').flowKeys, ['pvToLoadKw']);
+  assert.deepEqual(edge('pv-lv').flowKeys, ['pvToLoadKw', 'pvToBatteryKw']);
   assert.deepEqual(edge('lv-pcs-charge').flowKeys, ['pvToBatteryKw']);
   assert.deepEqual(edge('pcs-battery-charge').flowKeys, ['pvToBatteryKw']);
   assert.deepEqual(edge('battery-pcs-discharge').flowKeys, ['batteryToLoadKw']);
   assert.deepEqual(edge('pcs-lv-discharge').flowKeys, ['batteryToLoadKw']);
   assert.equal(new Set(pvLoadEdges).has('pv-lv'), true);
-  assert.equal(pvBatteryEdges.includes('pv-lv'), false);
+  assert.equal(pvBatteryEdges.includes('pv-lv'), true);
   assert.equal(pvBatteryEdges.includes('lv-pcs-charge'), true);
   assert.equal(pvBatteryEdges.includes('pv-pcs-charge'), false);
   assert.equal(batteryLoadEdges.includes('battery-dc'), false);

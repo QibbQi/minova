@@ -145,6 +145,17 @@ test('EPC Reports are fixed-page PDF downloads with full diagrams and XLSX BOQ e
     "XLSX.utils.book_append_sheet(workbook, customerWorksheet, 'Customer Summary')",
     "XLSX.utils.book_append_sheet(workbook, engineeringWorksheet, 'Engineering Detail')",
     'html2pdf().set',
+    'previousScrollX',
+    'const reportPageCount = Math.max(1, element.querySelectorAll',
+    'const reportHeight = reportPageCount * 760',
+    "element.style.position = 'absolute'",
+    "element.style.height = `${reportHeight}px`",
+    "overlay.style.padding = '0'",
+    'window.scrollTo(0, 0)',
+    'x: 0',
+    'width: 1123',
+    'height: reportHeight',
+    'scrollY: 0',
     'pagebreak',
     'epc-report-page',
     'hasBlockingEpcReportRisks'
@@ -737,6 +748,8 @@ test('EPC Device Work profile renders realistic load and genset device behavior'
   assert.match(html, /const batteryDischargeAllowedKw = batteryCanDischarge \? Math\.max\(0, Number\(row\.batteryDischargeLimitKw\) \|\| 0\) : 0/, 'Battery discharge should be capped by SOC energy headroom');
   assert.match(html, /socKwh = Math\.max\(minSocKwh, Math\.min\(maxSocKwh, socKwh\)\)/, 'Device Work SOC should be maintained by a sequential energy ledger');
   assert.match(html, /socPct: epcChartRound\(adjusted\.socPct, 1\)/, 'Profile rows should expose recalculated SOC from the ledger');
+  assert.match(html, /const keys = \['pvOutputKw', 'loadKw', 'pvToBatteryKw', 'batteryToLoadKw', 'gensetToLoadKw', 'curtailmentKw'\]/, 'SOC should not be linearly interpolated as a power series');
+  assert.doesNotMatch(html, /const keys = \['pvOutputKw', 'loadKw', 'pvToBatteryKw', 'batteryToLoadKw', 'gensetToLoadKw', 'curtailmentKw', 'socPct'\]/, 'SOC interpolation creates apparent SOC movement with zero energy flow');
   const flowRenderer = html.match(/function renderEpcEnergyFlow\(result\)[\s\S]*?function renderEpcReports\(result\)/);
   assert.ok(flowRenderer, 'EMS Flow renderer should be found');
   assert.match(flowRenderer[0], /getEpcEnergyFlowDisplayRows\(result\)/, 'EMS Flow table should use profiled display rows');

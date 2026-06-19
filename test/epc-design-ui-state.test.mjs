@@ -5,6 +5,13 @@ import { readFileSync } from 'node:fs';
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const mergeSource = readFileSync(new URL('../github-sync/merge.js', import.meta.url), 'utf8');
 
+function extractFunction(name, untilName) {
+  const pattern = new RegExp(`function ${name}\\([\\s\\S]*?\\n        function ${untilName}\\(`);
+  const match = html.match(pattern);
+  assert.ok(match, `${name} source should be found`);
+  return match[0].replace(new RegExp(`\\n        function ${untilName}\\($`), '');
+}
+
 test('EPC design tab is placed between Product List and Engineering Workspace', () => {
   const databasePos = html.indexOf('id="tab-database"');
   const epcPos = html.indexOf('id="tab-epcdesign"');
@@ -886,6 +893,82 @@ test('EPC EMS table uses fixed five-minute or hourly display with final SOC', ()
   assert.match(hourlyMerge[0], /const finalRow = items\.at\(-1\)/, 'hourly SOC should come from the final five-minute row');
   assert.match(hourlyMerge[0], /socPct: epcChartRound\(finalRow\?\.socPct/, 'hourly SOC should not be averaged');
   assert.doesNotMatch(html, /id="epc-ems-flow-merge-hourly"/, 'legacy Merge hourly checkbox should be removed');
+});
+
+test('EPC hourly EMS merge ignores next-day boundary rows when carrying SOC', () => {
+  const source = [
+    extractFunction('epcMinutesToTime', 'epcAddHoursToTime'),
+    extractFunction('epcChartRound', 'normalizeEpcDeviceWorkPeakBandColor'),
+    extractFunction('getEpcEnergyFlowDurationHours', 'mergeEpcEnergyFlowLoadSplits'),
+    extractFunction('mergeEpcEnergyFlowLoadSplits', 'mergeEpcEnergyFlowRowsByHour'),
+    extractFunction('mergeEpcEnergyFlowRowsByHour', 'getEpcEnergyFlowDisplayRows'),
+    'return mergeEpcEnergyFlowRowsByHour;'
+  ].join('\n');
+  const mergeRows = Function(source)();
+  const zeroFlow = minute => ({
+    hourLabel: `${String(Math.floor(minute / 60)).padStart(2, '0')}:00`,
+    timelineMinute: minute,
+    intervalMinutes: 5,
+    durationHours: 5 / 60,
+    pvOutputKw: 0,
+    loadKw: 0,
+    pvToLoadKw: 0,
+    pvToBatteryKw: 0,
+    batteryToLoadKw: 0,
+    gensetToLoadKw: 0,
+    pcsLimitKw: 500,
+    curtailmentKw: 0
+  });
+  const rows = [
+    { ...zeroFlow(0), socPct: 82.4 },
+    { ...zeroFlow(55), socPct: 82.4 },
+    { ...zeroFlow(60), socPct: 82.4 },
+    { ...zeroFlow(65), socPct: 82.4 },
+    { ...zeroFlow(115), socPct: 82.4 },
+    { ...zeroFlow(1500), socPct: 86.1 }
+  ];
+
+  const merged = mergeRows(rows);
+  const oneToTwo = merged.find(row => row.hour === 1);
+
+  assert.equal(oneToTwo?.socPct, 82.4);
+});
+
+test('EPC hourly EMS merge carries SOC across zero-flow hours', () => {
+  const source = [
+    extractFunction('epcMinutesToTime', 'epcAddHoursToTime'),
+    extractFunction('epcChartRound', 'normalizeEpcDeviceWorkPeakBandColor'),
+    extractFunction('getEpcEnergyFlowDurationHours', 'mergeEpcEnergyFlowLoadSplits'),
+    extractFunction('mergeEpcEnergyFlowLoadSplits', 'mergeEpcEnergyFlowRowsByHour'),
+    extractFunction('mergeEpcEnergyFlowRowsByHour', 'getEpcEnergyFlowDisplayRows'),
+    'return mergeEpcEnergyFlowRowsByHour;'
+  ].join('\n');
+  const mergeRows = Function(source)();
+  const zeroFlow = (minute, socPct) => ({
+    timelineMinute: minute,
+    intervalMinutes: 5,
+    durationHours: 5 / 60,
+    pvOutputKw: 0,
+    loadKw: 0,
+    pvToLoadKw: 0,
+    pvToBatteryKw: 0,
+    batteryToLoadKw: 0,
+    gensetToLoadKw: 0,
+    pcsLimitKw: 500,
+    curtailmentKw: 0,
+    socPct
+  });
+  const rows = [
+    zeroFlow(0, 82.4),
+    zeroFlow(55, 82.4),
+    zeroFlow(60, 86.1),
+    zeroFlow(65, 86.1),
+    zeroFlow(115, 86.1)
+  ];
+
+  const merged = mergeRows(rows);
+
+  assert.equal(merged.find(row => row.hour === 1)?.socPct, 82.4);
 });
 
 test('EPC hourly EMS Flow preserves load split branch values after merging rows', () => {

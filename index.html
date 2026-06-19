@@ -16090,12 +16090,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const groups = new Map();
             source.forEach((row, index) => {
                 const minute = Number.isFinite(Number(row.timelineMinute)) ? Number(row.timelineMinute) : index * 5;
+                if (!Number.isFinite(minute) || minute < 0 || minute >= 24 * 60) return;
                 const hour = Math.floor(minute / 60);
                 if (!groups.has(hour)) groups.set(hour, []);
                 groups.get(hour).push(row);
             });
             const weightedAverageKeys = ['baseLoadKw', 'loadNoiseKw', 'loadShockKw', 'loadKw', 'pvToLoadKw', 'batteryToLoadKw', 'gensetToLoadKw', 'unmetLoadKw'];
-            return [...groups.entries()].sort(([a], [b]) => a - b).map(([hour, items]) => {
+            const mergedRows = [...groups.entries()].sort(([a], [b]) => a - b).map(([hour, items]) => {
                 const totalDuration = items.reduce((total, item) => total + Math.max(0, Number(item.durationHours) || 0), 0) || 1;
                 const finalSoc = items.at(-1)?.socPct;
                 const merged = {
@@ -16111,6 +16112,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 });
                 return merged;
             });
+            return carryEpcZeroFlowSocRows(mergedRows);
         }
 
         function setEpcDeviceWorkLoadTableInterval(minutes) {
@@ -16961,6 +16963,23 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return Math.max(0, Number(row.durationHours) || (Number(row.intervalMinutes) > 0 ? Number(row.intervalMinutes) / 60 : 1));
         }
 
+        function hasEpcEnergyFlowMovement(row = {}) {
+            const keys = ['pvOutputKw', 'loadKw', 'pvToLoadKw', 'pvToBatteryKw', 'batteryToLoadKw', 'gensetToLoadKw', 'curtailmentKw', 'unmetLoadKw'];
+            return keys.some(key => Math.abs(Number(row[key]) || 0) > 0.05);
+        }
+
+        function carryEpcZeroFlowSocRows(rows = []) {
+            let lastSoc = null;
+            return (Array.isArray(rows) ? rows : []).map(row => {
+                const next = !hasEpcEnergyFlowMovement(row) && Number.isFinite(lastSoc)
+                    ? { ...row, socPct: epcChartRound(lastSoc, 1) }
+                    : row;
+                const nextSoc = Number(next?.socPct);
+                if (Number.isFinite(nextSoc)) lastSoc = nextSoc;
+                return next;
+            });
+        }
+
         function mergeEpcEnergyFlowLoadSplits(items = []) {
             const totalDuration = items.reduce((total, item) => total + getEpcEnergyFlowDurationHours(item), 0) || items.length || 1;
             const splitMap = new Map();
@@ -17000,12 +17019,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     : Number.isFinite(Number(row.hour))
                     ? Number(row.hour) * 60
                     : index * 60;
-                const hour = Math.floor((((minute % 1440) + 1440) % 1440) / 60);
+                if (!Number.isFinite(minute) || minute < 0 || minute >= 24 * 60) return;
+                const hour = Math.floor(minute / 60);
                 if (!groups.has(hour)) groups.set(hour, []);
                 groups.get(hour).push(row);
             });
             const averageKeys = ['pvOutputKw', 'loadKw', 'pvToLoadKw', 'pvToBatteryKw', 'batteryToLoadKw', 'gensetToLoadKw', 'pcsLimitKw', 'curtailmentKw'];
-            return [...groups.entries()].sort(([a], [b]) => a - b).map(([hour, items]) => {
+            const mergedRows = [...groups.entries()].sort(([a], [b]) => a - b).map(([hour, items]) => {
                 const totalDuration = items.reduce((total, item) => total + getEpcEnergyFlowDurationHours(item), 0) || items.length || 1;
                 const finalRow = items.at(-1);
                 const merged = {
@@ -17026,6 +17046,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 });
                 return merged;
             });
+            return carryEpcZeroFlowSocRows(mergedRows);
         }
 
         function getEpcEnergyFlowDisplayRows(result = {}) {

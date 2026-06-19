@@ -660,6 +660,7 @@ test('EPC design project preserves EMS Flow display settings', () => {
       mergeHourly: false,
       emsTableIntervalMinutes: 5,
       intervalMinutes: 5,
+      xAxisTickHours: 3,
       selectedRange: { start: 2, end: 8 },
       peakBand: { visible: false, color: '#e0f2fe', startMinute: 15 * 60, endMinute: 21 * 60 },
       seriesColors: { pv: '#f59e0b', load: '#2563eb', battery: '#16a34a', genset: '#ef4444', soc: '#0ea5e9' },
@@ -708,6 +709,7 @@ test('EPC design project preserves EMS Flow display settings', () => {
   assert.equal(project.emsFlowDisplaySettings.emsTableIntervalMinutes, 5);
   assert.equal(project.assumptions.pvDcAcRatio, 1.35);
   assert.equal(project.emsFlowDisplaySettings.intervalMinutes, 5);
+  assert.equal(project.emsFlowDisplaySettings.xAxisTickHours, 3);
   assert.deepEqual(project.emsFlowDisplaySettings.selectedRange, { start: 2, end: 8 });
   assert.deepEqual(project.emsFlowDisplaySettings.peakBand, { visible: false, color: '#e0f2fe', startMinute: 900, endMinute: 1260 });
   assert.equal(project.emsFlowDisplaySettings.seriesColors.genset, '#ef4444');
@@ -764,6 +766,7 @@ test('EPC design project preserves EMS Flow display settings', () => {
   assert.equal(defaultSettings.emsFlowDisplaySettings.mergeHourly, true);
   assert.equal(defaultSettings.emsFlowDisplaySettings.emsTableIntervalMinutes, 60);
   assert.equal(defaultSettings.emsFlowDisplaySettings.intervalMinutes, 5);
+  assert.equal(defaultSettings.emsFlowDisplaySettings.xAxisTickHours, 'auto');
   assert.equal(defaultSettings.assumptions.pvDcAcRatio, 1.2);
   assert.equal(defaultSettings.emsFlowDisplaySettings.deviceWorkModel.applyToEmsFlow, true);
   assert.equal(defaultSettings.emsFlowDisplaySettings.deviceWorkModel.loadNoisePct, 3);
@@ -780,6 +783,11 @@ test('EPC design project preserves EMS Flow display settings', () => {
   }, { now: '2026-06-12T00:00:00.000Z' });
   assert.equal(legacyFiveMinuteTable.emsFlowDisplaySettings.emsTableIntervalMinutes, 5);
   assert.equal(legacyFiveMinuteTable.assumptions.pvDcAcRatio, 1.2);
+
+  const invalidXAxisDensity = normalizeEpcDesignProject({
+    emsFlowDisplaySettings: { xAxisTickHours: 5 }
+  }, { now: '2026-06-12T00:00:00.000Z' });
+  assert.equal(invalidXAxisDensity.emsFlowDisplaySettings.xAxisTickHours, 'auto');
 });
 
 test('EPC capacity overrides preserve calculated recommendation and drive effective sizing', () => {
@@ -815,10 +823,184 @@ test('EPC capacity overrides preserve calculated recommendation and drive effect
   assert.equal(recommended.calculatedBessRecommendedMwh.toFixed(2), baseRecommended.bessRecommendedMwh.toFixed(2));
   assert.equal(result.energyFlow.summary.socMaxPct, 95);
   assert.ok(result.energyFlow.rows.every((row) => row.pcsLimitKw === 2000));
-  assert.equal(result.boq.find((item) => item.item === 'PV modules and mounting').quantity, 6.5);
+  assert.equal(result.boq.find((item) => item.id === 'pv-array-capacity').quantity, 6.5);
   assert.equal(result.pvStringDesign.targetPvMwp, 6.5);
   assert.ok(result.formulaTrace.some((item) => item.key === 'capacityOverride.pvMwp' && item.result === 6.5));
   assert.ok(result.risks.some((risk) => /Manual capacity override/i.test(risk.issue)));
+});
+
+test('EPC BOQ derives MV ring quantities from final topology and architecture', () => {
+  const result = calculateEpcDesignProject({
+    selectedTopologyId: 'C7',
+    site: { gridMode: 'island' },
+    electrical: { selectedArchitectureId: 'mv_11_ring', newMvSystem: true },
+    loads: {
+      dailyLoadKwh: 12000,
+      operationHoursPerDay: 8,
+      loadCount: 2,
+      loadSplits: [
+        { id: 'load-1', label: 'Crusher Load', ratioPct: 60 },
+        { id: 'load-2', label: 'Camp Load', ratioPct: 40 }
+      ]
+    },
+    designTargets: { replacementPct: 80 }
+  }, { now: '2026-06-16T00:00:00.000Z' });
+  const row = (id) => result.boq.find((item) => item.id === id);
+
+  assert.equal(result.topologyFlow.validationBlocked, false);
+  assert.equal(row('mv-step-up-transformer')?.quantity, 1);
+  assert.equal(row('mv-switchboard')?.quantity, 1);
+  assert.equal(row('ring-rmu')?.quantity, 1);
+  assert.equal(row('mv-load-branch-rmu')?.quantity, 2);
+  assert.equal(row('load-transformer')?.quantity, 2);
+  assert.equal(row('load-feeder')?.quantity, 2);
+  assert.equal(row('ems-controller')?.source, 'ems-flow');
+});
+
+test('EPC BOQ omits MV packages for LV-only architecture', () => {
+  const result = calculateEpcDesignProject({
+    selectedTopologyId: 'C2',
+    site: { gridMode: 'island' },
+    electrical: { selectedArchitectureId: 'lv_415_centralized' },
+    loads: {
+      dailyLoadKwh: 1800,
+      operationHoursPerDay: 8,
+      loadCount: 1,
+      loadSplits: [{ id: 'load-1', label: 'LV Load', ratioPct: 100 }]
+    },
+    designTargets: { replacementPct: 80 }
+  }, { now: '2026-06-16T00:00:00.000Z' });
+  const ids = new Set(result.boq.map((item) => item.id));
+
+  assert.equal(result.electricalArchitecture.recommendedId, 'lv_415_centralized');
+  assert.equal(ids.has('mv-step-up-transformer'), false);
+  assert.equal(ids.has('mv-switchboard'), false);
+  assert.equal(ids.has('ring-rmu'), false);
+  assert.ok(ids.has('lv-bus'));
+});
+
+test('EPC BOQ normalizes manual items and Product List selections without changing calculated sizing', () => {
+  const project = normalizeEpcDesignProject({
+    selectedTopologyId: 'C2',
+    loads: { dailyLoadKwh: 1800, operationHoursPerDay: 8 },
+    designTargets: { replacementPct: 80, capacityOverrides: { pvMwp: 4 } },
+    boq: {
+      manualItems: [
+        {
+          id: 'manual-weather-station',
+          package: 'Auxiliary',
+          item: 'Weather station',
+          spec: 'Irradiance, wind and ambient temperature sensors',
+          quantity: '2',
+          unit: 'set',
+          protection: 'IP65',
+          remark: 'Client requested'
+        }
+      ],
+      lineSelections: {
+        'pv-module-count': {
+          productId: 'GFZJ001',
+          productName: '610W N-type module',
+          supplierName: 'LESSO',
+          quantityOverride: '7000',
+          remark: 'Selected from Product List'
+        }
+      }
+    }
+  }, { now: '2026-06-16T00:00:00.000Z' });
+  const result = calculateEpcDesignProject(project, { now: '2026-06-16T00:00:00.000Z' });
+  const pvModules = result.boq.find((item) => item.id === 'pv-module-count');
+  const manual = result.boq.find((item) => item.id === 'manual-weather-station');
+
+  assert.equal(project.boq.manualItems.length, 1);
+  assert.equal(project.boq.lineSelections['pv-module-count'].productId, 'GFZJ001');
+  assert.equal(pvModules.quantity, 7000);
+  assert.equal(pvModules.calculatedQuantity, result.pvStringDesign.modules);
+  assert.equal(pvModules.productId, 'GFZJ001');
+  assert.equal(pvModules.productName, '610W N-type module');
+  assert.equal(pvModules.source, 'product-bound');
+  assert.equal(result.pvStringDesign.targetPvMwp, 4);
+  assert.equal(manual.quantity, 2);
+  assert.equal(manual.manual, true);
+  assert.equal(manual.source, 'manual');
+});
+
+test('EPC BOQ hidden line ids exclude one equipment row without changing engineering results', () => {
+  const project = normalizeEpcDesignProject({
+    selectedTopologyId: 'C7',
+    site: { gridMode: 'island' },
+    electrical: { selectedArchitectureId: 'mv_11_ring', newMvSystem: true },
+    loads: {
+      dailyLoadKwh: 12000,
+      operationHoursPerDay: 8,
+      loadCount: 2,
+      loadSplits: [
+        { id: 'load-1', label: 'Crusher Load', ratioPct: 60 },
+        { id: 'load-2', label: 'Camp Load', ratioPct: 40 }
+      ]
+    },
+    designTargets: { replacementPct: 80 },
+    boq: {
+      hiddenLineIds: ['ring-rmu'],
+      lineOrder: ['manual-pv-weather', 'pv-inverter', 'ring-rmu'],
+      manualItems: [
+        { id: 'manual-pv-weather', package: 'PV System', item: 'Weather station', quantity: 1, unit: 'set' }
+      ]
+    }
+  }, { now: '2026-06-16T00:00:00.000Z' });
+  const result = calculateEpcDesignProject(project, { now: '2026-06-16T00:00:00.000Z' });
+  const pvIds = result.boq.filter((item) => item.package === 'PV System').map((item) => item.id);
+
+  assert.deepEqual(project.boq.hiddenLineIds, ['ring-rmu']);
+  assert.deepEqual(project.boq.lineOrder.slice(0, 3), ['manual-pv-weather', 'pv-inverter', 'ring-rmu']);
+  assert.equal(result.boq.some((item) => item.id === 'ring-rmu'), false);
+  assert.equal(result.boq.some((item) => item.id === 'mv-switchboard'), true);
+  assert.equal(result.boq.some((item) => item.id === 'load-transformer'), true);
+  assert.equal(result.boq.some((item) => item.package === 'Electrical Distribution'), true);
+  assert.equal(result.boq.some((item) => item.id === 'manual-pv-weather'), true);
+  assert.equal(pvIds[0], 'manual-pv-weather');
+  assert.equal(result.electricalArchitecture.recommendedId, 'mv_11_ring');
+  assert.equal(result.topologyFlow.validationBlocked, false);
+});
+
+test('EPC risks expose stable status and report gate from auto and manual acknowledgements', () => {
+  const open = calculateEpcDesignProject({
+    ...buildEpcDesignProjectFromQuickInputs(quarryInputs, { now: '2026-06-16T00:00:00.000Z' }),
+    electrical: { selectedArchitectureId: 'lv_415_centralized' }
+  }, { now: '2026-06-16T00:00:00.000Z' });
+  const openElectricalRisk = open.risks.find((risk) => risk.id === 'electrical-mv-current');
+
+  assert.equal(openElectricalRisk?.status, 'open');
+  assert.equal(openElectricalRisk?.blocking, true);
+  assert.equal(open.reportGate.blocked, true);
+
+  const ring = calculateEpcDesignProject({
+    ...buildEpcDesignProjectFromQuickInputs(quarryInputs, { now: '2026-06-16T00:00:00.000Z' }),
+    electrical: { selectedArchitectureId: 'mv_11_ring', newMvSystem: true }
+  }, { now: '2026-06-16T00:00:00.000Z' });
+  const clearedElectricalRisk = ring.risks.find((risk) => risk.id === 'electrical-mv-current');
+
+  assert.equal(clearedElectricalRisk?.status, 'auto-cleared');
+  assert.equal(clearedElectricalRisk?.blocking, false);
+  assert.match(clearedElectricalRisk?.clearedBy || '', /11kV Ring/i);
+
+  const acknowledged = calculateEpcDesignProject({
+    ...buildEpcDesignProjectFromQuickInputs(quarryInputs, { now: '2026-06-16T00:00:00.000Z' }),
+    electrical: { selectedArchitectureId: 'mv_11_ring', newMvSystem: true },
+    riskAcknowledgements: {
+      'load-measurement': {
+        reason: 'Temporary concept accepted until meter logging is complete.',
+        signer: 'JQZ',
+        signedAt: '2026-06-16T10:00:00.000Z'
+      }
+    }
+  }, { now: '2026-06-16T00:00:00.000Z' });
+  const loadRisk = acknowledged.risks.find((risk) => risk.id === 'load-measurement');
+
+  assert.equal(acknowledged.riskAcknowledgements['load-measurement'].signer, 'JQZ');
+  assert.equal(loadRisk?.status, 'manual-acknowledged');
+  assert.equal(loadRisk?.blocking, false);
+  assert.equal(acknowledged.reportGate.blocked, false);
 });
 
 test('EPC design engine makes PF and distance affect LV MV architecture output', () => {
@@ -1399,13 +1581,13 @@ test('EPC topology flow adapter separates simultaneous PV charge and battery dis
   const batteryLoadEdges = result.topologyFlow.edges.filter((item) => item.flowKeys.includes('batteryToLoadKw')).map((item) => item.id);
 
   assert.deepEqual(edge('pv-dc').flowKeys, ['pvOutputKw']);
-  assert.deepEqual(edge('pv-lv').flowKeys, ['pvToLoadKw']);
+  assert.deepEqual(edge('pv-lv').flowKeys, ['pvToLoadKw', 'pvToBatteryKw']);
   assert.deepEqual(edge('lv-pcs-charge').flowKeys, ['pvToBatteryKw']);
   assert.deepEqual(edge('pcs-battery-charge').flowKeys, ['pvToBatteryKw']);
   assert.deepEqual(edge('battery-pcs-discharge').flowKeys, ['batteryToLoadKw']);
   assert.deepEqual(edge('pcs-lv-discharge').flowKeys, ['batteryToLoadKw']);
   assert.equal(new Set(pvLoadEdges).has('pv-lv'), true);
-  assert.equal(pvBatteryEdges.includes('pv-lv'), false);
+  assert.equal(pvBatteryEdges.includes('pv-lv'), true);
   assert.equal(pvBatteryEdges.includes('lv-pcs-charge'), true);
   assert.equal(pvBatteryEdges.includes('pv-pcs-charge'), false);
   assert.equal(batteryLoadEdges.includes('battery-dc'), false);

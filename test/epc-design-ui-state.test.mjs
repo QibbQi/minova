@@ -5,6 +5,13 @@ import { readFileSync } from 'node:fs';
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const mergeSource = readFileSync(new URL('../github-sync/merge.js', import.meta.url), 'utf8');
 
+function extractFunction(name, untilName) {
+  const pattern = new RegExp(`function ${name}\\([\\s\\S]*?\\n        function ${untilName}\\(`);
+  const match = html.match(pattern);
+  assert.ok(match, `${name} source should be found`);
+  return match[0].replace(new RegExp(`\\n        function ${untilName}\\($`), '');
+}
+
 test('EPC design tab is placed between Product List and Engineering Workspace', () => {
   const databasePos = html.indexOf('id="tab-database"');
   const epcPos = html.indexOf('id="tab-epcdesign"');
@@ -60,6 +67,140 @@ test('EPC formula trace shows formula data instead of a raw inputs column', () =
   assert.match(html, /Object\.entries\(inputs \|\| \{\}\)/);
   assert.doesNotMatch(html, /<th class="px-3 py-2">Inputs<\/th>/);
   assert.doesNotMatch(html, /JSON\.stringify\(item\.inputs\)/);
+});
+
+test('EPC BOQ exposes dual professional views with manual and Product List controls', () => {
+  for (const snippet of [
+    'Customer Summary',
+    'Engineering Detail',
+    'BOQ readiness',
+    '>Equipment<',
+    '>Spec<',
+    '>Quantity<',
+    '>Unit<',
+    '>Protection<',
+    'Product Binding',
+    'Add Manual Item',
+    'Select Product',
+    'openEpcBoqProductPicker',
+    'addEpcBoqManualItem',
+    'data-epc-boq-view="customer"',
+    'data-epc-boq-view="engineering"',
+    'data-epc-boq-field="quantity"',
+    'epc-boq-product-picker-modal'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing BOQ UI snippet: ${snippet}`);
+  }
+  assert.doesNotMatch(html, /Equipment \/ 设备名称|Spec \/ 规格参数|Protection \/ 防护防腐/);
+});
+
+test('EPC BOQ manual package selector row deletion drag ordering and unit choices are wired', () => {
+  for (const snippet of [
+    'id="epc-boq-manual-package-select"',
+    "'PV System'",
+    "'BESS'",
+    "'Electrical Distribution'",
+    "'EMS & Monitoring'",
+    "'Auxiliary'",
+    "'Documents & Certification'",
+    'renderEpcBoqPackageOptions',
+    'deleteEpcBoqEquipment',
+    'restoreEpcBoqEquipment',
+    'Delete Equipment',
+    'Restore hidden equipment',
+    'draggable="true"',
+    'onDragStart',
+    'dropEpcBoqRow',
+    'data-epc-boq-line-id',
+    'epc-boq-unit-options',
+    'list="epc-boq-unit-options"'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing BOQ package control snippet: ${snippet}`);
+  }
+  assert.doesNotMatch(html, /Delete Package|deleteEpcBoqPackage|restoreEpcBoqPackage|hiddenPackages/);
+});
+
+test('EPC risks expose checkbox acknowledgement and report-gating status', () => {
+  for (const snippet of [
+    'toggleEpcRiskAcknowledgement',
+    'saveEpcRiskAcknowledgement',
+    'data-epc-risk-checkbox',
+    'data-epc-risk-reason',
+    'data-epc-risk-signer',
+    'manual-acknowledged',
+    'auto-cleared',
+    'hasBlockingEpcReportRisks'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing risk acknowledgement snippet: ${snippet}`);
+  }
+});
+
+test('EPC Reports are fixed-page PDF downloads with full diagrams and XLSX BOQ export', () => {
+  for (const snippet of [
+    'Customer EPC Report PDF',
+    'BOQ & Procurement PDF',
+    'Engineering Handoff PDF',
+    'Resolve or acknowledge all open High risks before downloading reports.',
+    'buildEpcReportFixedPageElement',
+    'renderEpcCustomerReportPages',
+    'renderEpcReportOnlyTopologyFlowDiagram',
+    'getEpcReportConnectionFlowRow',
+    'renderEpcReportOnlyDeviceWorkDiagram',
+    'EMS Flow Diagram',
+    'Device Work Diagram',
+    'downloadEpcBoqWorkbook',
+    'Complete BOQ XLSX',
+    "XLSX.utils.book_append_sheet(workbook, customerWorksheet, 'Customer Summary')",
+    "XLSX.utils.book_append_sheet(workbook, engineeringWorksheet, 'Engineering Detail')",
+    'html2pdf().set',
+    'previousScrollX',
+    'const reportPageCount = Math.max(1, element.querySelectorAll',
+    'const reportHeight = reportPageCount * 760',
+    "element.style.position = 'absolute'",
+    "element.style.height = `${reportHeight}px`",
+    "overlay.style.padding = '0'",
+    'window.scrollTo(0, 0)',
+    'x: 0',
+    'width: 1123',
+    'height: reportHeight',
+    'scrollY: 0',
+    'pagebreak',
+    'epc-report-page',
+    'hasBlockingEpcReportRisks',
+    'epc-device-work-chart-title',
+    '.epc-report-only-device .epc-device-work-chart-title{display:none!important}',
+    '.epc-report-only-device .epc-device-work-hover-layer{display:none!important}'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing report PDF snippet: ${snippet}`);
+  }
+  assert.doesNotMatch(html, /engineering-calculation\.json/);
+  assert.doesNotMatch(html, /-summary\.html/);
+  assert.doesNotMatch(html, /left = '-10000px'|zIndex = '-1'/);
+  assert.doesNotMatch(html, /epc-report-print-surface \.epc-flow-diagram,\s*\.epc-report-print-surface \.epc-device-work-chart\{max-height:[^}]+overflow:hidden/);
+  assert.match(html, /epc-report-rendering-overlay/);
+});
+
+test('EPC report-only EMS Flow uses a static connection map instead of an operating hour', () => {
+  const reportRenderer = html.match(/function renderEpcReportOnlyTopologyFlowDiagram\(result = \{\}\)[\s\S]*?function renderEpcReportOnlyDeviceWorkDiagram/);
+  assert.ok(reportRenderer, 'report-only EMS Flow renderer should be found');
+  assert.match(reportRenderer[0], /getEpcReportConnectionFlowRow\(result\)/);
+  assert.doesNotMatch(reportRenderer[0], /getEpcReportFlowRow\(result\)/);
+
+  const reportPages = html.match(/function renderEpcCustomerReportPages\(result = \{\}, kind = 'customer'\)[\s\S]*?function buildEpcReportFixedPageElement/);
+  assert.ok(reportPages, 'customer report page builder should be found');
+  assert.match(reportPages[0], /Topology-aware connection map/);
+  assert.doesNotMatch(reportPages[0], /representative operating point/);
+});
+
+test('EPC report-only Device Work hides embedded chart subtitles', () => {
+  const reportCss = html.match(/\.epc-report-only-device \.epc-device-work-chart[\s\S]*?\.epc-report-table/);
+  assert.ok(reportCss, 'report-only device CSS should be found');
+  assert.match(reportCss[0], /\.epc-report-only-device \.epc-device-work-chart-title\{display:none!important\}/);
+  assert.match(reportCss[0], /\.epc-report-only-device \.epc-device-work-hover-layer\{display:none!important\}/);
+
+  const reportRenderer = html.match(/function renderEpcReportOnlyDeviceWorkDiagram\(result = \{\}\)[\s\S]*?function chunkEpcReportRows/);
+  assert.ok(reportRenderer, 'report-only Device Work renderer should be found');
+  assert.match(reportRenderer[0], /renderEpcDeviceWorkChart\(result\)/);
 });
 
 test('EPC detailed engineering inputs are permission-gated separately from quick design', () => {
@@ -390,6 +531,7 @@ test('EPC Device Work is a standalone chart page with status analysis', () => {
     'previewEpcDeviceWorkRange',
     'resetEpcDeviceWorkRange',
     'setEpcDeviceWorkInterval',
+    'setEpcDeviceWorkXAxisTickHours',
     'setEpcDeviceWorkRange',
     'setEpcDeviceWorkPeakBandTime',
     'setEpcDeviceWorkPeakBandVisible',
@@ -404,6 +546,13 @@ test('EPC Device Work is a standalone chart page with status analysis', () => {
     'epc-device-work-range-controls',
     'epc-device-work-reset',
     'epc-device-work-time-row',
+    'epc-device-work-axis-density',
+    'X Axis Density',
+    'data-epc-device-x-axis="auto"',
+    'data-epc-device-x-axis="2"',
+    'data-epc-device-x-axis="3"',
+    'data-epc-device-x-axis="4"',
+    'data-epc-device-x-axis="6"',
     'data-epc-device-interval="1"',
     'data-epc-device-interval="5"',
     'data-epc-device-interval="15"',
@@ -459,15 +608,34 @@ test('EPC Device Work is a standalone chart page with status analysis', () => {
     'visibleSeries',
     'intervalMinutes',
     'selectedRange',
+    'xAxisTickHours',
     'peakBand',
     'seriesColors',
-    'Power axis padding 10%'
+    'Power axis padding 10%',
+    'getEpcDeviceWorkXAxisTicks',
+    'showEpcDeviceWorkHoverSnap',
+    'hideEpcDeviceWorkHoverSnap',
+    'epc-device-work-hover-layer',
+    'epc-device-work-hover-capture',
+    'epc-device-work-hover-guide',
+    'epc-device-work-hover-marker',
+    'epc-device-work-hover-tooltip',
+    'epc-device-work-hover-tooltip-lines',
+    'epc-device-work-analysis-color',
+    'getEpcDeviceWorkHoverGroup',
+    'renderEpcDeviceWorkHoverTooltipLines',
+    'data-epc-hover-group',
+    'onmousemove="showEpcDeviceWorkHoverSnap(event)"',
+    'onmouseleave="hideEpcDeviceWorkHoverSnap()"'
   ]) {
     assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing Device Work chart snippet: ${snippet}`);
   }
   assert.match(html, /intervalMinutes\) : 5/, 'Device Work interval default should be 5 minutes');
   assert.match(html, /oninput="previewEpcDeviceWorkRange\('start', this\.value\)"/, 'range start should preview without rerendering every step');
   assert.match(html, /onchange="setEpcDeviceWorkRange\('start', this\.value\)"/, 'range start should commit on release');
+  assert.match(html, /Time Step[\s\S]*?X Axis Density[\s\S]*?Workday Peak/, 'x-axis density controls should be between time step and workday peak');
+  assert.match(html, /nearestGroup\.length/, 'hover should collect overlapping series at the snapped point');
+  assert.match(html, /createElementNS\('http:\/\/www\.w3\.org\/2000\/svg', 'tspan'\)/, 'hover tooltip should render SVG tspan lines when series overlap');
   for (const removedSnippet of [
     'smoothDeviceWorkPath',
     'setEpcDeviceWorkLineStyle',
@@ -641,6 +809,8 @@ test('EPC Device Work profile renders realistic load and genset device behavior'
   assert.match(html, /const batteryDischargeAllowedKw = batteryCanDischarge \? Math\.max\(0, Number\(row\.batteryDischargeLimitKw\) \|\| 0\) : 0/, 'Battery discharge should be capped by SOC energy headroom');
   assert.match(html, /socKwh = Math\.max\(minSocKwh, Math\.min\(maxSocKwh, socKwh\)\)/, 'Device Work SOC should be maintained by a sequential energy ledger');
   assert.match(html, /socPct: epcChartRound\(adjusted\.socPct, 1\)/, 'Profile rows should expose recalculated SOC from the ledger');
+  assert.match(html, /const keys = \['pvOutputKw', 'loadKw', 'pvToBatteryKw', 'batteryToLoadKw', 'gensetToLoadKw', 'curtailmentKw'\]/, 'SOC should not be linearly interpolated as a power series');
+  assert.doesNotMatch(html, /const keys = \['pvOutputKw', 'loadKw', 'pvToBatteryKw', 'batteryToLoadKw', 'gensetToLoadKw', 'curtailmentKw', 'socPct'\]/, 'SOC interpolation creates apparent SOC movement with zero energy flow');
   const flowRenderer = html.match(/function renderEpcEnergyFlow\(result\)[\s\S]*?function renderEpcReports\(result\)/);
   assert.ok(flowRenderer, 'EMS Flow renderer should be found');
   assert.match(flowRenderer[0], /getEpcEnergyFlowDisplayRows\(result\)/, 'EMS Flow table should use profiled display rows');
@@ -729,7 +899,7 @@ test('EPC Device Work exposes auditable load work rows at 5-minute and hourly re
   ]) {
     assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing Device Work load table snippet: ${snippet}`);
   }
-  assert.match(html, /const weightedAverageKeys = \['baseLoadKw', 'loadNoiseKw', 'loadShockKw', 'loadKw', 'pvToLoadKw', 'batteryToLoadKw', 'gensetToLoadKw', 'unmetLoadKw'\]/);
+  assert.match(html, /const weightedAverageKeys = \['baseLoadKw', 'loadNoiseKw', 'loadShockKw', 'loadKw', 'pvToLoadKw', 'pvToBatteryKw', 'batteryToLoadKw', 'gensetToLoadKw', 'unmetLoadKw'\]/);
   assert.match(html, /const finalSoc = items\.at\(-1\)\?\.socPct/);
   assert.match(html, /<tfoot class="sticky bottom-0 z-10/);
   assert.match(html, />Summary</);
@@ -777,6 +947,217 @@ test('EPC EMS table uses fixed five-minute or hourly display with final SOC', ()
   assert.match(hourlyMerge[0], /const finalRow = items\.at\(-1\)/, 'hourly SOC should come from the final five-minute row');
   assert.match(hourlyMerge[0], /socPct: epcChartRound\(finalRow\?\.socPct/, 'hourly SOC should not be averaged');
   assert.doesNotMatch(html, /id="epc-ems-flow-merge-hourly"/, 'legacy Merge hourly checkbox should be removed');
+});
+
+test('EPC hourly EMS merge ignores next-day boundary rows when carrying SOC', () => {
+  const source = [
+    extractFunction('epcMinutesToTime', 'epcAddHoursToTime'),
+    extractFunction('epcChartRound', 'normalizeEpcDeviceWorkPeakBandColor'),
+    extractFunction('getEpcEnergyFlowDurationHours', 'mergeEpcEnergyFlowLoadSplits'),
+    extractFunction('mergeEpcEnergyFlowLoadSplits', 'mergeEpcEnergyFlowRowsByHour'),
+    extractFunction('mergeEpcEnergyFlowRowsByHour', 'getEpcEnergyFlowDisplayRows'),
+    'return mergeEpcEnergyFlowRowsByHour;'
+  ].join('\n');
+  const mergeRows = Function(source)();
+  const zeroFlow = minute => ({
+    hourLabel: `${String(Math.floor(minute / 60)).padStart(2, '0')}:00`,
+    timelineMinute: minute,
+    intervalMinutes: 5,
+    durationHours: 5 / 60,
+    pvOutputKw: 0,
+    loadKw: 0,
+    pvToLoadKw: 0,
+    pvToBatteryKw: 0,
+    batteryToLoadKw: 0,
+    gensetToLoadKw: 0,
+    pcsLimitKw: 500,
+    curtailmentKw: 0
+  });
+  const rows = [
+    { ...zeroFlow(0), socPct: 82.4 },
+    { ...zeroFlow(55), socPct: 82.4 },
+    { ...zeroFlow(60), socPct: 82.4 },
+    { ...zeroFlow(65), socPct: 82.4 },
+    { ...zeroFlow(115), socPct: 82.4 },
+    { ...zeroFlow(1500), socPct: 86.1 }
+  ];
+
+  const merged = mergeRows(rows);
+  const oneToTwo = merged.find(row => row.hour === 1);
+
+  assert.equal(oneToTwo?.socPct, 82.4);
+});
+
+test('EPC hourly EMS merge carries SOC across zero-flow hours', () => {
+  const source = [
+    extractFunction('epcMinutesToTime', 'epcAddHoursToTime'),
+    extractFunction('epcChartRound', 'normalizeEpcDeviceWorkPeakBandColor'),
+    extractFunction('getEpcEnergyFlowDurationHours', 'mergeEpcEnergyFlowLoadSplits'),
+    extractFunction('mergeEpcEnergyFlowLoadSplits', 'mergeEpcEnergyFlowRowsByHour'),
+    extractFunction('mergeEpcEnergyFlowRowsByHour', 'getEpcEnergyFlowDisplayRows'),
+    'return mergeEpcEnergyFlowRowsByHour;'
+  ].join('\n');
+  const mergeRows = Function(source)();
+  const zeroFlow = (minute, socPct) => ({
+    timelineMinute: minute,
+    intervalMinutes: 5,
+    durationHours: 5 / 60,
+    pvOutputKw: 0,
+    loadKw: 0,
+    pvToLoadKw: 0,
+    pvToBatteryKw: 0,
+    batteryToLoadKw: 0,
+    gensetToLoadKw: 0,
+    pcsLimitKw: 500,
+    curtailmentKw: 0,
+    socPct
+  });
+  const rows = [
+    zeroFlow(0, 82.4),
+    zeroFlow(55, 82.4),
+    zeroFlow(60, 86.1),
+    zeroFlow(65, 86.1),
+    zeroFlow(115, 86.1)
+  ];
+
+  const merged = mergeRows(rows);
+
+  assert.equal(merged.find(row => row.hour === 1)?.socPct, 82.4);
+});
+
+test('EPC hourly EMS merge carries previous day SOC across midnight zero-flow rows', () => {
+  const source = [
+    extractFunction('epcMinutesToTime', 'epcAddHoursToTime'),
+    extractFunction('epcChartRound', 'normalizeEpcDeviceWorkPeakBandColor'),
+    extractFunction('getEpcEnergyFlowDurationHours', 'mergeEpcEnergyFlowLoadSplits'),
+    extractFunction('mergeEpcEnergyFlowLoadSplits', 'mergeEpcEnergyFlowRowsByHour'),
+    extractFunction('mergeEpcEnergyFlowRowsByHour', 'getEpcEnergyFlowDisplayRows'),
+    'return mergeEpcEnergyFlowRowsByHour;'
+  ].join('\n');
+  const mergeRows = Function(source)();
+  const zeroFlow = (minute, socPct) => ({
+    timelineMinute: minute,
+    intervalMinutes: 5,
+    durationHours: 5 / 60,
+    pvOutputKw: 0,
+    loadKw: 0,
+    pvToLoadKw: 0,
+    pvToBatteryKw: 0,
+    batteryToLoadKw: 0,
+    gensetToLoadKw: 0,
+    pcsLimitKw: 500,
+    curtailmentKw: 0,
+    socPct
+  });
+  const rows = [
+    zeroFlow(0, 86.1),
+    zeroFlow(5, 86.1),
+    zeroFlow(55, 86.1),
+    zeroFlow(1380, 82.4),
+    zeroFlow(1435, 82.4)
+  ];
+
+  const merged = mergeRows(rows);
+
+  assert.equal(merged.find(row => row.hour === 0)?.socPct, 82.4);
+});
+
+test('EPC sub-hourly Load Work Profile carries previous day SOC across midnight zero-flow rows', () => {
+  const source = [
+    extractFunction('epcMinutesToTime', 'epcAddHoursToTime'),
+    extractFunction('epcChartRound', 'normalizeEpcDeviceWorkPeakBandColor'),
+    extractFunction('applyEpcDeviceWorkDurations', 'epcDeviceWorkDeterministicNoise'),
+    extractFunction('getEpcEnergyFlowDurationHours', 'mergeEpcEnergyFlowLoadSplits'),
+    extractFunction('getEpcDeviceWorkLoadTableRows', 'setEpcDeviceWorkLoadTableInterval'),
+    'return getEpcDeviceWorkLoadTableRows;'
+  ].join('\n');
+  const getRows = Function(source)();
+  const zeroFlow = (minute, socPct) => ({
+    timelineMinute: minute,
+    intervalMinutes: 1,
+    durationHours: 1 / 60,
+    baseLoadKw: 0,
+    loadNoiseKw: 0,
+    loadShockKw: 0,
+    loadKw: 0,
+    pvToLoadKw: 0,
+    pvToBatteryKw: 0,
+    batteryToLoadKw: 0,
+    gensetToLoadKw: 0,
+    unmetLoadKw: 0,
+    socPct
+  });
+  const rows = getRows([
+    zeroFlow(0, 86.1),
+    zeroFlow(1, 86.1),
+    zeroFlow(59, 86.1),
+    zeroFlow(1380, 82.4),
+    zeroFlow(1439, 82.4)
+  ], 1);
+
+  assert.equal(rows.find(row => row.timelineMinute === 0)?.socPct, 82.4);
+  assert.equal(rows.find(row => row.timelineMinute === 1)?.socPct, 82.4);
+});
+
+test('EPC sub-hourly EMS and Device Work profiles apply midnight SOC carry before display', () => {
+  const deviceProfile = html.match(/function buildEpcDeviceWorkProfileRows\(sourceRows = \[\], settings = \{\}\)[\s\S]*?function getEpcDeviceWorkRowsForSettings/);
+  assert.ok(deviceProfile, 'Device Work profile source should be found');
+  assert.match(deviceProfile[0], /return carryEpcZeroFlowSocRows\(\s*applyEpcDeviceWorkSocLedger\(/, 'Device Work profile rows should be SOC-carried before any chart or table display');
+
+  const emsProfile = html.match(/function getEpcEmsFlowProfileRows\(result = \{\}\)[\s\S]*?function getEpcEnergyFlowDurationHours/);
+  assert.ok(emsProfile, 'EMS Flow profile source should be found');
+  assert.match(emsProfile[0], /return carryEpcZeroFlowSocRows\(profileRows, \{ wrapDay: true \}\)/, 'EMS sub-hourly rows should use the same SOC carry as hourly rows');
+});
+
+test('EPC Load Work Profile exposes PV battery charge and preserves charging SOC', () => {
+  const source = [
+    extractFunction('epcMinutesToTime', 'epcAddHoursToTime'),
+    extractFunction('epcChartRound', 'normalizeEpcDeviceWorkPeakBandColor'),
+    extractFunction('applyEpcDeviceWorkDurations', 'epcDeviceWorkDeterministicNoise'),
+    extractFunction('getEpcEnergyFlowDurationHours', 'mergeEpcEnergyFlowLoadSplits'),
+    extractFunction('getEpcDeviceWorkLoadTableRows', 'setEpcDeviceWorkLoadTableInterval'),
+    'return getEpcDeviceWorkLoadTableRows;'
+  ].join('\n');
+  const getRows = Function(source)();
+  const rows = getRows([
+    {
+      timelineMinute: 1020,
+      intervalMinutes: 5,
+      durationHours: 5 / 60,
+      baseLoadKw: 0,
+      loadNoiseKw: 0,
+      loadShockKw: 0,
+      loadKw: 0,
+      pvToLoadKw: 0,
+      pvToBatteryKw: 77,
+      batteryToLoadKw: 0,
+      gensetToLoadKw: 0,
+      unmetLoadKw: 0,
+      socPct: 76.3
+    },
+    {
+      timelineMinute: 1075,
+      intervalMinutes: 5,
+      durationHours: 5 / 60,
+      baseLoadKw: 0,
+      loadNoiseKw: 0,
+      loadShockKw: 0,
+      loadKw: 0,
+      pvToLoadKw: 0,
+      pvToBatteryKw: 77,
+      batteryToLoadKw: 0,
+      gensetToLoadKw: 0,
+      unmetLoadKw: 0,
+      socPct: 82.4
+    }
+  ], 60);
+  const chargingHour = rows.find(row => row.timelineMinute === 1020);
+
+  assert.equal(chargingHour?.pvToBatteryKw, 77);
+  assert.equal(chargingHour?.socPct, 82.4);
+  assert.match(html, /PV battery kW/);
+  assert.match(html, /summarizeEnergy\('pvToBatteryKw'\)/);
+  assert.match(html, /colspan="11"/);
 });
 
 test('EPC hourly EMS Flow preserves load split branch values after merging rows', () => {

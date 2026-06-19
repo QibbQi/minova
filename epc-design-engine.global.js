@@ -110,6 +110,15 @@ const STANDARD_COMPONENT_CATALOG = [
 const STANDARD_TRANSFORMER_KVA = [100, 160, 250, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000, 10000, 12500];
 
 const EMS_FLOW_DISPLAY_SERIES = ['pv', 'load', 'battery', 'genset', 'soc'];
+
+const EPC_BOQ_PACKAGES = Object.freeze([
+  'PV System',
+  'BESS',
+  'Electrical Distribution',
+  'EMS & Monitoring',
+  'Auxiliary',
+  'Documents & Certification'
+]);
 const EMS_FLOW_SERIES_DEFAULT_COLORS = {
   pv: '#f59e0b',
   load: '#2563eb',
@@ -118,6 +127,7 @@ const EMS_FLOW_SERIES_DEFAULT_COLORS = {
   soc: '#0ea5e9'
 };
 const EMS_FLOW_INTERVAL_MINUTES = [1, 5, 15, 30, 60, 120, 360, 720];
+const EMS_FLOW_X_AXIS_TICK_HOURS = [2, 3, 4, 6];
 const EMS_FLOW_DEFAULT_PEAK_BAND_START_MINUTE = 14 * 60;
 const EMS_FLOW_DEFAULT_PEAK_BAND_END_MINUTE = 22 * 60;
 
@@ -372,6 +382,7 @@ function normalizeEmsFlowDisplaySettings(value = {}) {
     mergeHourly: input.mergeHourly !== false,
     emsTableIntervalMinutes,
     intervalMinutes: EMS_FLOW_INTERVAL_MINUTES.includes(Number(input.intervalMinutes)) ? Number(input.intervalMinutes) : 5,
+    xAxisTickHours: EMS_FLOW_X_AXIS_TICK_HOURS.includes(Number(input.xAxisTickHours)) ? Number(input.xAxisTickHours) : 'auto',
     selectedRange,
     peakBand: {
       visible: peakBandInput.visible === false ? false : true,
@@ -1280,6 +1291,110 @@ function normalizePowerTopology(rawTopology = {}, selectedTopologyId = 'C5', loa
   };
 }
 
+function normalizeBoqLineId(value = '', fallback = '') {
+  const raw = String(value || fallback || '').trim();
+  return raw
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '') || fallback;
+}
+
+function normalizeBoqPackage(value = '', fallback = 'Auxiliary') {
+  const raw = String(value || '').trim();
+  return EPC_BOQ_PACKAGES.includes(raw) ? raw : fallback;
+}
+
+function normalizeBoqHiddenPackages(value = []) {
+  return Array.from(new Set((Array.isArray(value) ? value : [])
+    .map(item => normalizeBoqPackage(item, ''))
+    .filter(Boolean)));
+}
+
+function normalizeBoqLineIdList(value = []) {
+  return Array.from(new Set((Array.isArray(value) ? value : [])
+    .map(item => normalizeBoqLineId(item))
+    .filter(Boolean)));
+}
+
+function normalizeBoqManualItems(value = []) {
+  return (Array.isArray(value) ? value : [])
+    .map((item, index) => {
+      const source = item && typeof item === 'object' ? item : {};
+      const id = normalizeBoqLineId(source.id, `manual-${index + 1}`);
+      const quantity = asNumber(source.quantity, 0);
+      return {
+        id,
+        package: normalizeBoqPackage(source.package, 'Auxiliary'),
+        item: String(source.item || source.name || '').trim(),
+        spec: String(source.spec || source.description || '').trim(),
+        quantity,
+        unit: String(source.unit || 'lot').trim() || 'lot',
+        protection: String(source.protection || '').trim(),
+        remark: String(source.remark || source.notes || '').trim(),
+        productId: String(source.productId || '').trim(),
+        productName: String(source.productName || '').trim(),
+        supplierName: String(source.supplierName || '').trim(),
+        nodeType: String(source.nodeType || '').trim(),
+        source: 'manual',
+        mandatory: Boolean(source.mandatory),
+        manual: true
+      };
+    })
+    .filter(item => item.item || item.spec || item.quantity > 0);
+}
+
+function normalizeBoqLineSelections(value = {}) {
+  const input = value && typeof value === 'object' ? value : {};
+  return Object.fromEntries(Object.entries(input)
+    .map(([key, raw]) => {
+      const item = raw && typeof raw === 'object' ? raw : {};
+      const id = normalizeBoqLineId(key);
+      if (!id) return null;
+      const quantityOverride = asNumber(item.quantityOverride, 0);
+      return [id, {
+        productId: String(item.productId || '').trim(),
+        productName: String(item.productName || '').trim(),
+        supplierName: String(item.supplierName || '').trim(),
+        quantityOverride: quantityOverride > 0 ? quantityOverride : 0,
+        unitOverride: String(item.unitOverride || '').trim(),
+        specOverride: String(item.specOverride || '').trim(),
+        protectionOverride: String(item.protectionOverride || '').trim(),
+        remark: String(item.remark || item.notes || '').trim()
+      }];
+    })
+    .filter(Boolean));
+}
+
+function normalizeEpcBoqState(value = {}) {
+  const input = value && typeof value === 'object' ? value : {};
+  return {
+    manualItems: normalizeBoqManualItems(input.manualItems || []),
+    lineSelections: normalizeBoqLineSelections(input.lineSelections || {}),
+    hiddenPackages: normalizeBoqHiddenPackages(input.hiddenPackages || []),
+    hiddenLineIds: normalizeBoqLineIdList(input.hiddenLineIds || []),
+    lineOrder: normalizeBoqLineIdList(input.lineOrder || [])
+  };
+}
+
+function normalizeRiskAcknowledgements(value = {}) {
+  const input = value && typeof value === 'object' ? value : {};
+  return Object.fromEntries(Object.entries(input)
+    .map(([key, raw]) => {
+      const item = raw && typeof raw === 'object' ? raw : {};
+      const id = normalizeBoqLineId(key);
+      const reason = String(item.reason || '').trim();
+      const signer = String(item.signer || item.signature || '').trim();
+      if (!id || !reason || !signer) return null;
+      return [id, {
+        reason,
+        signer,
+        signedAt: String(item.signedAt || item.acknowledgedAt || '').trim(),
+        mode: 'manual'
+      }];
+    })
+    .filter(Boolean));
+}
+
 function normalizeEpcDesignProject(raw = {}, options = {}) {
   const defaults = { ...EPC_DESIGN_DEFAULTS, ...(options.defaults || raw.defaults || {}) };
   const now = isoNow(options.now || raw.updatedAt || raw.createdAt);
@@ -1404,6 +1519,8 @@ function normalizeEpcDesignProject(raw = {}, options = {}) {
     },
     assumptions: normalizedAssumptions,
     calculationAssumptions: normalizedCalculationAssumptions,
+    boq: normalizeEpcBoqState(raw.boq || {}),
+    riskAcknowledgements: normalizeRiskAcknowledgements(raw.riskAcknowledgements || {}),
     documents: raw.documents && typeof raw.documents === 'object' ? raw.documents : {},
     emsFlowDisplaySettings: normalizeEmsFlowDisplaySettings(raw.emsFlowDisplaySettings || {}),
     createdAt: String(raw.createdAt || now),
@@ -2353,9 +2470,9 @@ function topologyFlowKeysForEdge(edge = {}, source = {}, target = {}) {
   const edgeFlowKeys = {
     'pv-dc': ['pvOutputKw'],
     'pv-curtailment': ['curtailmentKw'],
-    'pv-lv': ['pvToLoadKw'],
-    'pv-tx-lv': ['pvToLoadKw'],
-    'pv-mv': ['pvToLoadKw'],
+    'pv-lv': ['pvToLoadKw', 'pvToBatteryKw'],
+    'pv-tx-lv': ['pvToLoadKw', 'pvToBatteryKw'],
+    'pv-mv': ['pvToLoadKw', 'pvToBatteryKw'],
     'lv-pcs-charge': ['pvToBatteryKw'],
     'mv-bess-charge': ['pvToBatteryKw'],
     'bess-tx-pcs-charge': ['pvToBatteryKw'],
@@ -2371,7 +2488,7 @@ function topologyFlowKeysForEdge(edge = {}, source = {}, target = {}) {
   if (edgeFlowKeys[edge.id]) return edgeFlowKeys[edge.id];
   if (source.type === 'PV_ARRAY') return ['pvOutputKw'];
   if (source.type === 'CURTAILMENT' || target.type === 'CURTAILMENT') return ['curtailmentKw'];
-  if (source.type === 'PV_INVERTER' || target.type === 'PV_INVERTER') return ['pvToLoadKw'];
+  if (source.type === 'PV_INVERTER' || target.type === 'PV_INVERTER') return ['pvToLoadKw', 'pvToBatteryKw'];
   if (source.type === 'BATTERY' || target.type === 'BATTERY') return edge.direction === 'BIDIRECTIONAL' ? ['pvToBatteryKw', 'batteryToLoadKw'] : ['batteryToLoadKw'];
   if (source.type === 'PCS' || target.type === 'PCS') return edge.direction === 'BIDIRECTIONAL' ? ['pvToBatteryKw', 'batteryToLoadKw'] : ['batteryToLoadKw'];
   if (source.type === 'GENSET' || target.type === 'GENSET') return ['gensetToLoadKw'];
@@ -2508,39 +2625,357 @@ function calculateElectrical(project, recommended) {
   };
 }
 
-function buildBoq(project, recommended) {
-  return [
-    { package: 'PV', item: 'PV modules and mounting', quantity: round(recommended.pvRecommendedMwp, 2), unit: 'MWp', mandatory: true },
-    { package: 'PV', item: 'String inverter / combiner design', quantity: round(recommended.pvRecommendedMwp, 2), unit: 'MWp', mandatory: true },
-    { package: 'BESS', item: 'Battery container/system', quantity: round(recommended.bessRecommendedMwh, 2), unit: 'MWh', mandatory: true },
-    { package: 'BESS', item: 'PCS capacity', quantity: round(recommended.pcsRecommendedMw, 2), unit: 'MW', mandatory: true },
-    { package: 'Electrical', item: 'MV transformer and switchgear allowance', quantity: project.site.gridMode === 'island' || recommended.pvRecommendedMwp >= 3 ? 1 : 0, unit: 'lot', mandatory: recommended.pvRecommendedMwp >= 3 },
-    { package: 'Control', item: 'EMS with genset dispatch logic', quantity: 1, unit: 'lot', mandatory: true },
-    { package: 'Services', item: 'Site survey, SLD, protection and civil/fire review', quantity: 1, unit: 'lot', mandatory: true }
-  ];
+function countTopologyNodes(topology = {}, predicate = () => false) {
+  return (Array.isArray(topology.nodes) ? topology.nodes : []).filter(predicate).length;
 }
 
-function buildRisks(project, load, electrical, recommended) {
+function topologyNodeTypeCount(topology = {}, type = '') {
+  return countTopologyNodes(topology, node => String(node.type || '') === type);
+}
+
+function hasTopologyNode(topology = {}, predicate = () => false) {
+  return countTopologyNodes(topology, predicate) > 0;
+}
+
+function buildBoqRow(row = {}) {
+  const quantity = asNumber(row.quantity, 0);
+  return {
+    id: normalizeBoqLineId(row.id, row.item),
+    package: String(row.package || 'General').trim() || 'General',
+    item: String(row.item || '').trim(),
+    spec: String(row.spec || '').trim(),
+    quantity: round(quantity, quantity % 1 === 0 ? 0 : 2),
+    unit: String(row.unit || 'lot').trim() || 'lot',
+    protection: String(row.protection || '').trim(),
+    remark: String(row.remark || '').trim(),
+    source: String(row.source || 'calculated').trim(),
+    mandatory: row.mandatory !== false,
+    nodeType: String(row.nodeType || '').trim(),
+    productId: String(row.productId || '').trim(),
+    productName: String(row.productName || '').trim(),
+    supplierName: String(row.supplierName || '').trim(),
+    manual: Boolean(row.manual),
+    calculatedQuantity: row.calculatedQuantity === undefined ? round(quantity, quantity % 1 === 0 ? 0 : 2) : row.calculatedQuantity
+  };
+}
+
+function applyBoqLineSelections(rows = [], selections = {}) {
+  return rows.map((row) => {
+    const selection = selections[row.id];
+    if (!selection) return row;
+    const quantity = selection.quantityOverride > 0 ? selection.quantityOverride : row.quantity;
+    const bound = Boolean(selection.productId);
+    return {
+      ...row,
+      quantity: round(quantity, quantity % 1 === 0 ? 0 : 2),
+      unit: selection.unitOverride || row.unit,
+      spec: selection.specOverride || row.spec,
+      protection: selection.protectionOverride || row.protection,
+      remark: selection.remark || row.remark,
+      productId: selection.productId,
+      productName: selection.productName,
+      supplierName: selection.supplierName,
+      source: bound ? 'product-bound' : row.source,
+      manual: row.manual
+    };
+  });
+}
+
+function boqPackageOrder(packageName = '') {
+  const idx = EPC_BOQ_PACKAGES.indexOf(String(packageName || '').trim());
+  return idx === -1 ? EPC_BOQ_PACKAGES.length : idx;
+}
+
+function sortBoqRows(rows = [], lineOrder = []) {
+  const orderMap = new Map(normalizeBoqLineIdList(lineOrder).map((id, index) => [id, index]));
+  return rows
+    .map((row, index) => ({ row, index }))
+    .sort((a, b) => {
+      const packageDiff = boqPackageOrder(a.row.package) - boqPackageOrder(b.row.package);
+      if (packageDiff) return packageDiff;
+      const aOrder = orderMap.has(a.row.id) ? orderMap.get(a.row.id) : Number.POSITIVE_INFINITY;
+      const bOrder = orderMap.has(b.row.id) ? orderMap.get(b.row.id) : Number.POSITIVE_INFINITY;
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      return a.index - b.index;
+    })
+    .map(item => item.row);
+}
+
+function buildBoq(project, recommended, context = {}) {
+  const topology = context.topology || project.topology || {};
+  const topologyFlow = context.topologyFlow || {};
+  const pvStringDesign = context.pvStringDesign || {};
+  const electricalArchitecture = context.electricalArchitecture || {};
+  const loadSplits = Array.isArray(project.loads?.loadSplits) ? project.loads.loadSplits : [];
+  const nodes = Array.isArray(topology.nodes) ? topology.nodes : [];
+  const flowNodes = new Map((Array.isArray(topologyFlow.nodes) ? topologyFlow.nodes : []).map(node => [node.id, node]));
+  const validFlowEdges = (Array.isArray(topologyFlow.edges) ? topologyFlow.edges : []).filter(edge => !edge.blocked);
+  const hasMvArchitecture = String(electricalArchitecture.recommendedId || '').startsWith('mv_')
+    || nodes.some(node => String(node.type || '').startsWith('MV_'))
+    || validFlowEdges.some(edge => asNumber(edge.voltageV, 0) >= 6000);
+  const loadNodeCount = topologyNodeTypeCount(topology, 'LOAD') || Math.max(1, loadSplits.length || project.loads?.loadCount || 1);
+  const flowLoadFeederCount = validFlowEdges.filter(edge => {
+    const target = flowNodes.get(edge.target);
+    return target?.type === 'LOAD' && (edge.flowKeys || []).some(key => String(key).startsWith('loadSplit:'));
+  }).length;
+  const loadFeederCount = flowLoadFeederCount || loadNodeCount;
+  const stepUpTransformerCount = countTopologyNodes(topology, node => node.type === 'TRANSFORMER' && /step[-\s]?up/i.test(`${node.id} ${node.label}`));
+  const loadTransformerCount = countTopologyNodes(topology, node => node.type === 'TRANSFORMER' && /load[-\s]?tx|load transformer/i.test(`${node.id} ${node.label}`));
+  const mvSwitchboardCount = topologyNodeTypeCount(topology, 'MV_SWITCHBOARD');
+  const ringRmuCount = countTopologyNodes(topology, node => /ring[-\s]?rmu/i.test(`${node.id} ${node.label}`));
+  const mvBranchRmuCount = countTopologyNodes(topology, node => node.type === 'MV_BUS' && /rmu[-\s]?load/i.test(`${node.id} ${node.label}`));
+  const lvBusCount = topologyNodeTypeCount(topology, 'LV_BUS');
+  const gensetCount = topologyNodeTypeCount(topology, 'GENSET');
+  const emsCount = topologyNodeTypeCount(topology, 'EMS');
+  const pvInverterNodeCount = topologyNodeTypeCount(topology, 'PV_INVERTER');
+  const pvInverterUnitCount = Math.max(pvInverterNodeCount, recommended.pvRecommendedMwp > 0 ? Math.ceil((recommended.pvRecommendedMwp * 1000) / 800) : 0);
+  const bessContainerCount = recommended.bessRecommendedMwh > 0
+    ? Math.max(topologyNodeTypeCount(topology, 'BATTERY'), Math.ceil(recommended.bessRecommendedMwh / 5))
+    : 0;
+  const pcsUnitCount = recommended.pcsRecommendedMw > 0
+    ? Math.max(topologyNodeTypeCount(topology, 'PCS'), Math.ceil(recommended.pcsRecommendedMw / 2.5))
+    : 0;
+  const rows = [];
+  const add = (row, options = {}) => {
+    const built = buildBoqRow(row);
+    const includeZero = Boolean(options.includeZero);
+    if (!built.id || !built.item) return;
+    if (built.quantity <= 0 && !includeZero) return;
+    rows.push(built);
+  };
+
+  add({
+    id: 'pv-array-capacity',
+    package: 'PV System',
+    item: 'PV array DC capacity',
+    spec: `Concept DC capacity based on ${project.solarResource?.dataSource || 'current solar resource'}`,
+    quantity: round(recommended.pvRecommendedMwp, 2),
+    unit: 'MWp',
+    protection: 'Outdoor PV equipment, site-specific corrosion class',
+    remark: recommended.hasCapacityOverride ? 'Manual capacity override active' : 'Calculated from selected replacement target',
+    source: 'calculated',
+    mandatory: true
+  });
+  add({
+    id: 'pv-module-count',
+    package: 'PV System',
+    item: 'PV modules',
+    spec: `${pvStringDesign.moduleWp || project.assumptions?.moduleWp || EPC_DESIGN_DEFAULTS.moduleWp}Wp module, ${pvStringDesign.modulesPerString || project.assumptions?.modulesPerString || EPC_DESIGN_DEFAULTS.modulesPerString} modules/string`,
+    quantity: pvStringDesign.modules || 0,
+    unit: 'pcs',
+    protection: 'Junction box IP65 or above, C5-M frame if required',
+    remark: `Array target ${round(recommended.pvRecommendedMwp, 2)} MWp`,
+    source: 'calculated',
+    mandatory: true
+  });
+  add({
+    id: 'pv-mounting',
+    package: 'PV System',
+    item: 'PV mounting structure',
+    spec: 'Fixed tilt mounting, complete clamps, anchors and bracing',
+    quantity: recommended.pvRecommendedMwp > 0 ? 1 : 0,
+    unit: 'lot',
+    protection: 'Hot-dip galvanized / C5-M coating by site condition',
+    remark: 'Final quantity by layout and civil survey',
+    source: 'calculated',
+    mandatory: true
+  });
+  add({
+    id: 'pv-string-count',
+    package: 'PV System',
+    item: 'PV strings',
+    spec: `${pvStringDesign.modulesPerString || project.assumptions?.modulesPerString || EPC_DESIGN_DEFAULTS.modulesPerString} modules per string`,
+    quantity: pvStringDesign.strings || 0,
+    unit: 'string',
+    protection: 'DC1500V design basis',
+    remark: 'String count from current module wattage',
+    source: 'calculated',
+    mandatory: true
+  });
+  add({
+    id: 'pv-combiner-box',
+    package: 'PV System',
+    item: 'Smart PV combiner box',
+    spec: `${pvStringDesign.combinerInputs || project.assumptions?.combinerInputs || EPC_DESIGN_DEFAULTS.combinerInputs} inputs, DC1500V, SPD and monitoring`,
+    quantity: pvStringDesign.combiners || 0,
+    unit: 'pcs',
+    protection: 'IP65, C5-M when outdoor',
+    remark: 'Connect monitoring to EMS where applicable',
+    source: 'calculated',
+    mandatory: true
+  });
+  add({
+    id: 'pv-inverter',
+    package: 'PV System',
+    item: 'PV inverter / inverter station',
+    spec: '800kW class, 415V/50Hz concept basis',
+    quantity: pvInverterUnitCount,
+    unit: 'pcs',
+    protection: 'IP65, C5-M when outdoor',
+    remark: `${pvInverterNodeCount || 1} topology node(s), unit count rounded by capacity`,
+    source: 'topology',
+    nodeType: 'PV_INVERTER',
+    mandatory: true
+  });
+  add({
+    id: 'pv-dc-cable',
+    package: 'PV System',
+    item: 'PV DC cable and connectors',
+    spec: 'DC1500V flame-retardant PV cable and waterproof connectors',
+    quantity: recommended.pvRecommendedMwp > 0 ? 1 : 0,
+    unit: 'lot',
+    protection: 'UV-resistant, corrosion-resistant accessories',
+    remark: 'Final length by layout',
+    source: 'calculated',
+    mandatory: true
+  });
+
+  add({
+    id: 'bess-energy-capacity',
+    package: 'BESS',
+    item: 'BESS usable energy package',
+    spec: 'LFP battery system, liquid cooling/fire protection by vendor design',
+    quantity: round(recommended.bessRecommendedMwh, 2),
+    unit: 'MWh',
+    protection: 'Outdoor IP65, C5-M when required',
+    remark: 'Concept energy capacity before vendor finalization',
+    source: 'calculated',
+    mandatory: recommended.bessRecommendedMwh > 0
+  });
+  add({
+    id: 'bess-container',
+    package: 'BESS',
+    item: 'BESS container / cabinet',
+    spec: 'Containerized battery system including racks, HVAC and internal DC protection',
+    quantity: bessContainerCount,
+    unit: 'set',
+    protection: 'IP65, C5-M outdoor enclosure',
+    remark: `${topologyNodeTypeCount(topology, 'BATTERY') || 1} battery topology node(s)`,
+    source: 'topology',
+    nodeType: 'BATTERY',
+    mandatory: recommended.bessRecommendedMwh > 0
+  });
+  add({
+    id: 'pcs-capacity',
+    package: 'BESS',
+    item: 'PCS power capacity',
+    spec: 'Bidirectional PCS, grid-forming/off-grid capable where required',
+    quantity: round(recommended.pcsRecommendedMw, 2),
+    unit: 'MW',
+    protection: 'IP65, C5-M when outdoor',
+    remark: 'PCS sizing from selected BESS role and peak/load support logic',
+    source: 'calculated',
+    mandatory: recommended.pcsRecommendedMw > 0
+  });
+  add({
+    id: 'pcs-units',
+    package: 'BESS',
+    item: 'PCS units',
+    spec: '2.5MW class unit concept basis',
+    quantity: pcsUnitCount,
+    unit: 'pcs',
+    protection: 'IP65, C5-M when outdoor',
+    remark: `${topologyNodeTypeCount(topology, 'PCS') || 1} PCS topology node(s)`,
+    source: 'topology',
+    nodeType: 'PCS',
+    mandatory: recommended.pcsRecommendedMw > 0
+  });
+  add({ id: 'bms', package: 'BESS', item: 'Battery management system BMS', spec: 'Cell voltage, temperature, SOC/SOH, balancing and protection interface', quantity: bessContainerCount, unit: 'set', protection: 'Integrated in BESS enclosure', remark: 'Linked with PCS and EMS', source: 'calculated', mandatory: recommended.bessRecommendedMwh > 0 });
+  add({ id: 'bess-fire-suppression', package: 'BESS', item: 'BESS fire detection and suppression', spec: 'Smoke/heat/flammable gas detection and battery fire suppression package', quantity: bessContainerCount, unit: 'set', protection: 'Battery enclosure fire-rated package', remark: 'Vendor design to confirm local compliance', source: 'calculated', mandatory: recommended.bessRecommendedMwh > 0 });
+  add({ id: 'bess-thermal-control', package: 'BESS', item: 'BESS thermal and dehumidification system', spec: 'Liquid cooling / HVAC and dehumidification package', quantity: bessContainerCount, unit: 'set', protection: 'Outdoor-rated auxiliary system', remark: 'High humidity and temperature duty basis', source: 'calculated', mandatory: recommended.bessRecommendedMwh > 0 });
+
+  add({ id: 'mv-step-up-transformer', package: 'Electrical Distribution', item: 'Step-up transformer', spec: `${project.electrical?.voltageKv || EPC_DESIGN_DEFAULTS.lvVoltageKv}kV to MV step-up transformer package`, quantity: hasMvArchitecture ? stepUpTransformerCount : 0, unit: 'set', protection: 'Outdoor enclosure / transformer protection by site', remark: 'Counted from final SLD topology', source: 'topology', nodeType: 'TRANSFORMER', mandatory: hasMvArchitecture });
+  add({ id: 'mv-switchboard', package: 'Electrical Distribution', item: 'MV Switchboard', spec: `${electricalArchitecture.recommendedId || 'MV'} architecture switchgear package`, quantity: hasMvArchitecture ? mvSwitchboardCount : 0, unit: 'set', protection: 'MV switchgear enclosure by project environment', remark: 'Counted from final SLD topology', source: 'topology', nodeType: 'MV_SWITCHBOARD', mandatory: hasMvArchitecture });
+  add({ id: 'ring-rmu', package: 'Electrical Distribution', item: 'Ring RMU', spec: '11kV ring main unit concept package', quantity: hasMvArchitecture ? ringRmuCount : 0, unit: 'set', protection: 'Outdoor MV enclosure as required', remark: 'Main ring node counted from final SLD topology', source: 'topology', nodeType: 'MV_BUS', mandatory: ringRmuCount > 0 });
+  add({ id: 'mv-load-branch-rmu', package: 'Electrical Distribution', item: 'MV load branch RMU / feeder bay', spec: 'MV feeder interface to downstream load transformer', quantity: hasMvArchitecture ? mvBranchRmuCount : 0, unit: 'set', protection: 'Outdoor MV enclosure as required', remark: 'One per MV load branch where shown in SLD', source: 'topology', nodeType: 'MV_BUS', mandatory: mvBranchRmuCount > 0 });
+  add({ id: 'load-transformer', package: 'Electrical Distribution', item: 'Load step-down transformer', spec: 'MV to 415V transformer for load branch', quantity: hasMvArchitecture ? loadTransformerCount : 0, unit: 'set', protection: 'Transformer protection and enclosure by site', remark: 'One per MV-to-LV load branch where shown in SLD', source: 'topology', nodeType: 'TRANSFORMER', mandatory: loadTransformerCount > 0 });
+  add({ id: 'lv-bus', package: 'Electrical Distribution', item: 'LV bus / distribution board', spec: '415V busbar, incomer, metering and feeder protection', quantity: lvBusCount, unit: 'set', protection: 'IP65, C5-M when outdoor', remark: 'Counted from LV bus nodes in final SLD', source: 'topology', nodeType: 'LV_BUS', mandatory: lvBusCount > 0 });
+  add({ id: 'load-feeder', package: 'Electrical Distribution', item: 'Load feeder / distribution circuit', spec: '415V outgoing feeder to site load branch', quantity: loadFeederCount, unit: 'way', protection: 'Breaker, metering, SPD and cable termination by load', remark: 'Derived from valid EMS/topology load edges', source: 'topology', nodeType: 'LOAD', mandatory: loadFeederCount > 0 });
+  add({ id: 'genset-interface', package: 'Electrical Distribution', item: 'Genset interface panel', spec: '415V synchronization / remote start-stop interface', quantity: gensetCount, unit: 'set', protection: 'IP65, C5-M when outdoor', remark: 'Existing genset interface where applicable', source: 'topology', nodeType: 'GENSET', mandatory: gensetCount > 0 });
+  add({ id: 'surge-earthing', package: 'Electrical Distribution', item: 'Surge protection and earthing system', spec: 'AC/DC SPD and combined grounding network', quantity: nodes.length ? 1 : 0, unit: 'lot', protection: 'Corrosion-resistant grounding electrodes', remark: 'Final resistance and lightning study by detailed design', source: 'calculated', mandatory: true });
+
+  add({ id: 'ems-controller', package: 'EMS & Monitoring', item: 'EMS main controller', spec: 'PV/BESS/genset/load dispatch logic with programmable operation modes', quantity: Math.max(emsCount, 1), unit: 'set', protection: 'IP65 industrial enclosure where field-mounted', remark: 'Linked to topology-aware EMS Flow', source: 'ems-flow', nodeType: 'EMS', mandatory: true });
+  add({ id: 'ems-data-acquisition', package: 'EMS & Monitoring', item: 'Data acquisition unit', spec: 'Voltage, current, power, temperature, SOC and feeder status acquisition', quantity: validFlowEdges.length ? 1 : 0, unit: 'lot', protection: 'Industrial communication modules', remark: 'Covers valid active EMS Flow edges only', source: 'ems-flow', mandatory: true });
+  add({ id: 'ems-hmi', package: 'EMS & Monitoring', item: 'Local HMI / operator panel', spec: 'Industrial touch screen for local monitoring and parameter setting', quantity: 1, unit: 'set', protection: 'IP65 for field panel or indoor console', remark: 'Operator interface for commissioning and O&M', source: 'ems-flow', mandatory: true });
+  add({ id: 'ems-remote-communication', package: 'EMS & Monitoring', item: 'Remote communication terminal', spec: '4G/fiber router, remote alarm and maintenance access', quantity: 1, unit: 'set', protection: 'Industrial communication enclosure', remark: 'Final SIM/fiber scope by site survey', source: 'ems-flow', mandatory: true });
+
+  add({ id: 'aux-ventilation-fire', package: 'Auxiliary', item: 'Auxiliary ventilation, fire and maintenance package', spec: 'Ventilation/HVAC, extinguishers, seals, tools and meters', quantity: 1, unit: 'lot', protection: 'Outdoor and corrosion-resistant accessories', remark: 'Scope refined by detailed layout and vendor manuals', source: 'calculated', mandatory: true });
+  add({ id: 'documents-certification', package: 'Documents & Certification', item: 'Documentation and certification package', spec: 'IEC/UL/CE certificates, SLD, wiring drawings, manuals and commissioning records', quantity: 1, unit: 'lot', protection: 'N/A', remark: 'Customer handover document set', source: 'calculated', mandatory: true });
+
+  const hiddenPackages = new Set(normalizeBoqHiddenPackages(project.boq?.hiddenPackages || []));
+  const hiddenLineIds = new Set(normalizeBoqLineIdList(project.boq?.hiddenLineIds || []));
+  const selectedRows = applyBoqLineSelections(rows, project.boq?.lineSelections || {})
+    .filter(row => !hiddenPackages.has(row.package) && !hiddenLineIds.has(row.id));
+  const manualRows = normalizeBoqManualItems(project.boq?.manualItems || [])
+    .filter(row => !hiddenPackages.has(row.package) && !hiddenLineIds.has(row.id));
+  return sortBoqRows([...selectedRows, ...manualRows], project.boq?.lineOrder || []);
+}
+
+function applyRiskStatuses(project, risks = [], context = {}) {
+  const acknowledgements = normalizeRiskAcknowledgements(project.riskAcknowledgements || {});
+  return risks.map((risk) => {
+    const id = normalizeBoqLineId(risk.id);
+    const acknowledgement = acknowledgements[id];
+    const selectedArchitectureId = String(context.electricalArchitecture?.selectedArchitectureId || project.electrical?.selectedArchitectureId || '');
+    const selectedArchitectureValid = Boolean(context.electricalArchitecture?.selectedArchitectureValid);
+    if (id === 'electrical-mv-current' && selectedArchitectureId === 'mv_11_ring' && selectedArchitectureValid) {
+      return {
+        ...risk,
+        id,
+        status: 'auto-cleared',
+        blocking: false,
+        clearedBy: 'Selected 11kV Ring architecture avoids the 415V high-current concept risk.'
+      };
+    }
+    if (acknowledgement) {
+      return {
+        ...risk,
+        id,
+        status: 'manual-acknowledged',
+        blocking: false,
+        acknowledgement
+      };
+    }
+    return {
+      ...risk,
+      id,
+      status: 'open',
+      blocking: risk.level === 'High'
+    };
+  });
+}
+
+function buildReportGate(risks = []) {
+  const blockingRisks = risks.filter(risk => risk.level === 'High' && risk.blocking !== false);
+  return {
+    blocked: blockingRisks.length > 0,
+    blockingHighRiskCount: blockingRisks.length,
+    blockingRiskIds: blockingRisks.map(risk => risk.id)
+  };
+}
+
+function buildRisks(project, load, electrical, recommended, context = {}) {
   const risks = [];
+  const addRisk = (id, level, area, issue) => risks.push({ id, level, area, issue });
   if (project.loads.measurementMethod !== 'energy_meter') {
-    risks.push({ level: 'High', area: 'Load', issue: 'Sizing is not based on measured meter data; measured load curve is required before guarantee.' });
+    addRisk('load-measurement', 'High', 'Load', 'Sizing is not based on measured meter data; measured load curve is required before guarantee.');
   }
   if (project.solarResource.dataSource === 'Malaysia Default') {
-    risks.push({ level: 'Medium', area: 'Solar', issue: 'Solar resource uses Malaysia default yield; import Global Solar Atlas or PVsyst data for precise design.' });
+    addRisk('solar-resource-default', 'Medium', 'Solar', 'Solar resource uses Malaysia default yield; import Global Solar Atlas or PVsyst data for precise design.');
   }
   if (electrical.mvRecommended) {
-    risks.push({ level: 'High', area: 'Electrical', issue: '415V current exceeds concept threshold; 11kV MV architecture should be checked.' });
+    addRisk('electrical-mv-current', 'High', 'Electrical', '415V current exceeds concept threshold; 11kV MV architecture should be checked.');
   }
   if (project.site.availableAreaM2 > 0 && recommended.requiredAreaM2 > project.site.availableAreaM2) {
-    risks.push({ level: 'High', area: 'Civil', issue: 'Required PV area exceeds available area; phase or reduce PV capacity.' });
+    addRisk('civil-pv-area', 'High', 'Civil', 'Required PV area exceeds available area; phase or reduce PV capacity.');
   }
   if (recommended.hasCapacityOverride) {
-    risks.push({ level: 'Medium', area: 'Sizing', issue: 'Manual capacity override is active; calculated recommendation should remain auditable before final quote.' });
+    addRisk('capacity-override', 'Medium', 'Sizing', 'Manual capacity override is active; calculated recommendation should remain auditable before final quote.');
   }
   if (recommended.bessRecommendedMwh > 0) {
-    risks.push({ level: 'Medium', area: 'BESS', issue: 'BESS duty, DoD, C-rate, thermal/fire separation and EMS sequence require vendor validation.' });
+    addRisk('bess-vendor-validation', 'Medium', 'BESS', 'BESS duty, DoD, C-rate, thermal/fire separation and EMS sequence require vendor validation.');
   }
-  return risks;
+  return applyRiskStatuses(project, risks, context);
 }
 
 function defaultHourlyLoadProfile(project, load) {
@@ -2824,8 +3259,14 @@ function calculateEpcDesignProject(rawProject = {}, options = {}) {
     inverterArchitecture: project.assumptions.inverterArchitecture,
     totalStringInputs: project.assumptions.totalStringInputs
   });
-  const boq = buildBoq(project, recommended);
-  const risks = buildRisks(project, load, electrical, recommended);
+  const boq = buildBoq(topologyProject, recommended, {
+    topology: topologyProject.topology,
+    topologyFlow,
+    electricalArchitecture,
+    pvStringDesign
+  });
+  const risks = buildRisks(project, load, electrical, recommended, { electricalArchitecture });
+  const reportGate = buildReportGate(risks);
   const energyFlow = calculateEnergyFlow(project, load, recommended);
   const formulaTrace = [
     ...load.trace,
@@ -2902,6 +3343,7 @@ function calculateEpcDesignProject(rawProject = {}, options = {}) {
     pvStringDesign,
     boq,
     risks,
+    reportGate,
     dataQualityScore: dataQualityScore(project),
     formulaTrace,
     nextVerification: [

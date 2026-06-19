@@ -398,6 +398,32 @@
             stroke: #94a3b8;
             stroke-width: 1.4;
         }
+        .epc-device-work-hover-capture {
+            fill: transparent;
+            pointer-events: all;
+        }
+        .epc-device-work-hover-layer {
+            pointer-events: none;
+        }
+        .epc-device-work-hover-guide {
+            stroke: #94a3b8;
+            stroke-width: 1.2;
+            stroke-dasharray: 5 5;
+        }
+        .epc-device-work-hover-marker {
+            fill: #fff;
+            stroke-width: 3;
+            filter: drop-shadow(0 6px 10px rgba(15, 23, 42, 0.18));
+        }
+        .epc-device-work-hover-tooltip rect {
+            fill: #0f172a;
+            opacity: 0.94;
+        }
+        .epc-device-work-hover-tooltip text {
+            fill: #fff;
+            font-size: 12px;
+            font-weight: 900;
+        }
         .epc-device-work-range-input {
             position: absolute;
             inset-inline: 0;
@@ -6541,6 +6567,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         let epcDesignActiveProjectId = '';
         let epcDesignMode = 'quick';
         let epcDesignPanelTab = 'inputs';
+        let epcBoqViewMode = 'customer';
+        let epcBoqProductPickerLineId = '';
+        let epcBoqDragLineId = '';
         let epcSldWorkspaceMode = 'view';
         let epcSldSelectedNodeId = '';
         let epcSldSelectedNodeIds = [];
@@ -11334,33 +11363,551 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             `;
         }
 
-        function renderEpcBoq(result) {
-            const target = document.getElementById('epc-design-boq');
-            if (!target) return;
-            target.innerHTML = `
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    ${result.boq.map(item => `
-                        <div class="rounded-xl border border-slate-200 p-3">
-                            <div class="text-[10px] font-black text-purple-700 uppercase">${htmlSafe(item.package)}</div>
-                            <div class="text-sm font-black text-slate-800">${htmlSafe(item.item)}</div>
-                            <div class="text-xs text-slate-500 mt-1">${formatEpcNumber(item.quantity, 2, item.unit)} ${item.mandatory ? '| Mandatory' : '| Optional'}</div>
+        const EPC_BOQ_PACKAGES = ['PV System', 'BESS', 'Electrical Distribution', 'EMS & Monitoring', 'Auxiliary', 'Documents & Certification'];
+
+        function normalizeEpcBoqPackageName(packageName = '', fallback = 'Auxiliary') {
+            const value = String(packageName || '').trim();
+            return EPC_BOQ_PACKAGES.includes(value) ? value : fallback;
+        }
+
+        function renderEpcBoqPackageOptions(selected = 'PV System') {
+            const value = normalizeEpcBoqPackageName(selected, 'PV System');
+            return EPC_BOQ_PACKAGES.map(packageName => `<option value="${htmlSafe(packageName)}"${packageName === value ? ' selected' : ''}>${htmlSafe(packageName)}</option>`).join('');
+        }
+
+        function getEpcBoqPackageOrder(packageName = '') {
+            const order = [...EPC_BOQ_PACKAGES, 'Manual'];
+            const idx = order.indexOf(packageName);
+            return idx === -1 ? order.length : idx;
+        }
+
+        function groupEpcBoqRows(rows = []) {
+            const groups = new Map();
+            rows.forEach(row => {
+                const key = row.package || 'General';
+                if (!groups.has(key)) groups.set(key, []);
+                groups.get(key).push(row);
+            });
+            return [...groups.entries()].sort(([a], [b]) => getEpcBoqPackageOrder(a) - getEpcBoqPackageOrder(b) || a.localeCompare(b));
+        }
+
+        function formatEpcBoqQuantity(row = {}) {
+            const n = Number(row.quantity);
+            const digits = Number.isFinite(n) && Math.abs(n % 1) > 0.0001 ? 2 : 0;
+            return `${formatEpcNumber(row.quantity, digits)} ${htmlSafe(row.unit || '')}`.trim();
+        }
+
+        function getEpcBoqUnitOptions(rows = []) {
+            const units = ['MWp', 'MWh', 'MW', 'kW', 'kWh', 'pcs', 'set', 'lot', 'string', 'way', 'm', 'kg'];
+            (Array.isArray(rows) ? rows : []).forEach(row => {
+                const unit = String(row.unit || '').trim();
+                if (unit && !units.includes(unit)) units.push(unit);
+            });
+            return units;
+        }
+
+        function renderEpcBoqUnitDatalist(rows = []) {
+            return `<datalist id="epc-boq-unit-options">${getEpcBoqUnitOptions(rows).map(unit => `<option value="${htmlSafe(unit)}"></option>`).join('')}</datalist>`;
+        }
+
+        function renderEpcBoqSourceBadge(row = {}) {
+            const tones = {
+                calculated: 'bg-slate-100 text-slate-600 border-slate-200',
+                topology: 'bg-purple-50 text-purple-700 border-purple-200',
+                'ems-flow': 'bg-cyan-50 text-cyan-700 border-cyan-200',
+                manual: 'bg-yellow-50 text-yellow-800 border-yellow-200',
+                'product-bound': 'bg-green-50 text-green-700 border-green-200'
+            };
+            const source = row.source || 'calculated';
+            return `<span class="inline-flex rounded-full border px-2 py-1 text-[10px] font-black uppercase ${tones[source] || tones.calculated}">${htmlSafe(source)}</span>`;
+        }
+
+        function renderEpcBoqProductBinding(row = {}) {
+            if (row.productId) {
+                return `
+                    <div class="min-w-0">
+                        <div class="font-black text-green-700 truncate">${htmlSafe(row.productId)}</div>
+                        <div class="text-[10px] text-slate-500 truncate" title="${htmlSafe(row.productName || '')}">${htmlSafe(row.productName || '-')}</div>
+                        <div class="text-[10px] text-slate-400 truncate">${htmlSafe(row.supplierName || '-')}</div>
+                    </div>
+                `;
+            }
+            return '<span class="text-[10px] font-black uppercase text-slate-300">Open</span>';
+        }
+
+        function renderEpcBoqField(row = {}, field = '', value = '', options = {}) {
+            const editable = row.manual || ['quantity', 'unit', 'spec', 'protection', 'remark'].includes(field);
+            if (!editable) return htmlSafe(value || '-');
+            const type = options.type || 'text';
+            const inputClass = options.compact
+                ? 'w-20 rounded-lg border border-slate-200 bg-white px-2 py-1 text-right text-[11px] font-bold outline-none focus:border-purple-500'
+                : 'w-full min-w-[12rem] rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold outline-none focus:border-purple-500';
+            const listAttr = field === 'unit' ? ' list="epc-boq-unit-options"' : '';
+            return `<input data-epc-boq-field="${htmlSafe(field)}" type="${htmlSafe(type)}"${listAttr} value="${htmlSafe(value ?? '')}" onchange='updateEpcBoqLineField(${JSON.stringify(String(row.id || ''))}, ${JSON.stringify(field)}, this.value)' class="${inputClass}">`;
+        }
+
+        function renderEpcBoqCustomerRows(rows = []) {
+            return groupEpcBoqRows(rows).map(([packageName, packageRows]) => `
+                <tbody class="divide-y divide-slate-100">
+                    <tr class="bg-slate-50">
+                        <td colspan="8" class="px-3 py-2 text-[10px] font-black uppercase text-purple-700">${htmlSafe(packageName)}</td>
+                    </tr>
+                    ${packageRows.map(row => `
+                        <tr class="align-top hover:bg-slate-50">
+                            <td class="px-3 py-3 font-black text-slate-800">${htmlSafe(row.item || '-')}</td>
+                            <td class="px-3 py-3 text-slate-600 min-w-[18rem]">${htmlSafe(row.spec || '-')}</td>
+                            <td class="px-3 py-3 text-right font-black text-slate-800 whitespace-nowrap">${formatEpcBoqQuantity(row)}</td>
+                            <td class="px-3 py-3 text-slate-600">${htmlSafe(row.protection || '-')}</td>
+                            <td class="px-3 py-3">${renderEpcBoqProductBinding(row)}</td>
+                            <td class="px-3 py-3">${renderEpcBoqSourceBadge(row)}</td>
+                            <td class="px-3 py-3 text-slate-500 min-w-[14rem]">${htmlSafe(row.remark || '-')}</td>
+                            <td class="px-3 py-3 text-right">
+                                <button type="button" onclick='openEpcBoqProductPicker(${JSON.stringify(String(row.id || ''))})' class="rounded-lg border border-purple-200 px-2 py-1 text-[10px] font-black text-purple-700 hover:bg-purple-50">Select Product</button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            `).join('');
+        }
+
+        function renderEpcBoqEngineeringRows(rows = []) {
+            return rows.map(row => `
+                <tr data-epc-boq-line-id="${htmlSafe(row.id || '')}" draggable="true" onDragStart='startEpcBoqRowDrag(${JSON.stringify(String(row.id || ''))}, event)' ondragover="event.preventDefault(); this.classList.add('bg-purple-50')" ondragleave="this.classList.remove('bg-purple-50')" ondrop='dropEpcBoqRow(${JSON.stringify(String(row.id || ''))}, event)' class="align-top hover:bg-slate-50 cursor-move">
+                    <td class="px-3 py-3">
+                        <div class="text-[10px] font-black uppercase text-slate-400">${htmlSafe(row.package || '-')}</div>
+                        <div class="mt-1">${renderEpcBoqField(row, 'item', row.item || '')}</div>
+                    </td>
+                    <td class="px-3 py-3">${renderEpcBoqField(row, 'spec', row.spec || '')}</td>
+                    <td class="px-3 py-3 text-right">${renderEpcBoqField(row, 'quantity', row.quantity ?? '', { type: 'number', compact: true })}</td>
+                    <td class="px-3 py-3">${renderEpcBoqField(row, 'unit', row.unit || '', { compact: true })}</td>
+                    <td class="px-3 py-3">${renderEpcBoqField(row, 'protection', row.protection || '')}</td>
+                    <td class="px-3 py-3">${renderEpcBoqProductBinding(row)}</td>
+                    <td class="px-3 py-3">${renderEpcBoqSourceBadge(row)}${row.manual ? '<div class="mt-1 text-[10px] font-black text-yellow-700">Manual</div>' : ''}</td>
+                    <td class="px-3 py-3">${renderEpcBoqField(row, 'remark', row.remark || '')}</td>
+                    <td class="px-3 py-3 text-right">
+                        <div class="flex flex-col items-end gap-1">
+                            <button type="button" onclick='openEpcBoqProductPicker(${JSON.stringify(String(row.id || ''))})' class="rounded-lg border border-purple-200 px-2 py-1 text-[10px] font-black text-purple-700 hover:bg-purple-50">Select Product</button>
+                            ${row.productId ? `<button type="button" onclick='clearEpcBoqProductBinding(${JSON.stringify(String(row.id || ''))})' class="text-[10px] font-black text-slate-400 hover:text-red-600">Clear Product</button>` : ''}
+                            <button type="button" onclick='deleteEpcBoqEquipment(${JSON.stringify(String(row.id || ''))})' class="text-[10px] font-black text-red-600 hover:underline">Delete Equipment</button>
                         </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function getEpcBoqCandidateCategories(row = {}) {
+            const text = `${row.package || ''} ${row.item || ''} ${row.nodeType || ''}`.toLowerCase();
+            if (text.includes('module')) return ['PV Module'];
+            if (text.includes('inverter') || text.includes('pcs')) return ['Inverter', 'C&I Storage'];
+            if (text.includes('bess') || text.includes('battery') || text.includes('bms')) return ['Battery', 'C&I Storage'];
+            if (text.includes('cable') || text.includes('combiner') || text.includes('mounting') || text.includes('auxiliary')) return ['Accessory'];
+            if (text.includes('transformer') || text.includes('switchboard') || text.includes('rmu') || text.includes('bus') || text.includes('feeder')) return ['Accessory'];
+            return [];
+        }
+
+        function mutateEpcBoqProject(mutator) {
+            const project = JSON.parse(JSON.stringify(getActiveEpcDesignProject()));
+            project.boq = project.boq || { manualItems: [], lineSelections: {} };
+            project.boq.manualItems = Array.isArray(project.boq.manualItems) ? project.boq.manualItems : [];
+            project.boq.lineSelections = project.boq.lineSelections && typeof project.boq.lineSelections === 'object' ? project.boq.lineSelections : {};
+            project.boq.hiddenLineIds = Array.isArray(project.boq.hiddenLineIds) ? project.boq.hiddenLineIds : [];
+            project.boq.lineOrder = Array.isArray(project.boq.lineOrder) ? project.boq.lineOrder : [];
+            mutator(project.boq, project);
+            updateEpcProject(project);
+            const status = document.getElementById('epc-design-save-status');
+            if (status) status.textContent = 'BOQ draft changed locally';
+            renderEpcDesignWorkspace();
+        }
+
+        window.setEpcBoqView = (view = 'customer') => {
+            epcBoqViewMode = view === 'engineering' ? 'engineering' : 'customer';
+            renderEpcBoq(window.__lastEpcDesignResult || calculateEpcDesignProject(getActiveEpcDesignProject(), { defaults: epcDesignDefaults }));
+        };
+
+        window.addEpcBoqManualItem = () => {
+            const selectedPackage = normalizeEpcBoqPackageName(document.getElementById('epc-boq-manual-package-select')?.value, 'PV System');
+            mutateEpcBoqProject((boq) => {
+                const id = `manual-${Date.now()}`;
+                boq.manualItems.push({
+                    id,
+                    package: selectedPackage,
+                    item: 'Manual BOQ item',
+                    spec: '',
+                    quantity: 1,
+                    unit: 'lot',
+                    protection: '',
+                    remark: ''
+                });
+                epcBoqViewMode = 'engineering';
+            });
+        };
+
+        window.deleteEpcBoqEquipment = (lineId = '') => {
+            const id = String(lineId || '').trim();
+            if (!id) return;
+            mutateEpcBoqProject((boq) => {
+                const manualIndex = boq.manualItems.findIndex(item => String(item.id || '') === id);
+                if (manualIndex >= 0) {
+                    boq.manualItems.splice(manualIndex, 1);
+                } else {
+                    const hidden = new Set(Array.isArray(boq.hiddenLineIds) ? boq.hiddenLineIds : []);
+                    hidden.add(id);
+                    boq.hiddenLineIds = Array.from(hidden);
+                }
+                boq.lineOrder = (Array.isArray(boq.lineOrder) ? boq.lineOrder : []).filter(item => String(item || '') !== id);
+                epcBoqViewMode = 'engineering';
+            });
+        };
+
+        window.restoreEpcBoqEquipment = (lineId = '') => {
+            const id = String(lineId || '').trim();
+            if (!id) return;
+            mutateEpcBoqProject((boq) => {
+                boq.hiddenLineIds = (Array.isArray(boq.hiddenLineIds) ? boq.hiddenLineIds : []).filter(item => String(item || '') !== id);
+                epcBoqViewMode = 'engineering';
+            });
+        };
+
+        window.deleteEpcBoqManualItem = (lineId = '') => {
+            mutateEpcBoqProject((boq) => {
+                boq.manualItems = boq.manualItems.filter(item => String(item.id || '') !== String(lineId || ''));
+            });
+        };
+
+        window.startEpcBoqRowDrag = (lineId = '', event = null) => {
+            epcBoqDragLineId = String(lineId || '');
+            if (event?.dataTransfer) {
+                event.dataTransfer.effectAllowed = 'move';
+                event.dataTransfer.setData('text/plain', epcBoqDragLineId);
+            }
+        };
+
+        window.dropEpcBoqRow = (targetLineId = '', event = null) => {
+            event?.preventDefault?.();
+            document.querySelectorAll('[data-epc-boq-line-id]').forEach(row => row.classList.remove('bg-purple-50'));
+            const sourceId = String(event?.dataTransfer?.getData('text/plain') || epcBoqDragLineId || '');
+            const targetId = String(targetLineId || '');
+            epcBoqDragLineId = '';
+            if (!sourceId || !targetId || sourceId === targetId) return;
+            const currentRows = Array.from(document.querySelectorAll('[data-epc-boq-line-id]')).map(row => row.dataset.epcBoqLineId).filter(Boolean);
+            const nextOrder = currentRows.filter(id => id !== sourceId);
+            const targetIndex = nextOrder.indexOf(targetId);
+            nextOrder.splice(targetIndex < 0 ? nextOrder.length : targetIndex, 0, sourceId);
+            mutateEpcBoqProject((boq) => {
+                boq.lineOrder = Array.from(new Set(nextOrder));
+                epcBoqViewMode = 'engineering';
+            });
+        };
+
+        window.updateEpcBoqLineField = (lineId = '', field = '', value = '') => {
+            mutateEpcBoqProject((boq) => {
+                const manual = boq.manualItems.find(item => String(item.id || '') === String(lineId || ''));
+                if (manual) {
+                    if (field === 'quantity') manual.quantity = Math.max(0, Number(value) || 0);
+                    else if (['item', 'spec', 'unit', 'protection', 'remark', 'package'].includes(field)) manual[field] = String(value || '').trim();
+                    return;
+                }
+                const selection = boq.lineSelections[lineId] || {};
+                if (field === 'quantity') selection.quantityOverride = Math.max(0, Number(value) || 0);
+                if (field === 'unit') selection.unitOverride = String(value || '').trim();
+                if (field === 'spec') selection.specOverride = String(value || '').trim();
+                if (field === 'protection') selection.protectionOverride = String(value || '').trim();
+                if (field === 'remark') selection.remark = String(value || '').trim();
+                boq.lineSelections[lineId] = selection;
+            });
+        };
+
+        window.openEpcBoqProductPicker = (lineId = '') => {
+            epcBoqProductPickerLineId = String(lineId || '');
+            const modal = document.getElementById('epc-boq-product-picker-modal');
+            const search = document.getElementById('epc-boq-product-picker-search');
+            if (search) search.value = '';
+            window.renderEpcBoqProductPickerList('');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+        };
+
+        window.closeEpcBoqProductPicker = () => {
+            epcBoqProductPickerLineId = '';
+            const modal = document.getElementById('epc-boq-product-picker-modal');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        };
+
+        window.renderEpcBoqProductPickerList = (query = '') => {
+            const box = document.getElementById('epc-boq-product-picker-list');
+            const result = window.__lastEpcDesignResult || calculateEpcDesignProject(getActiveEpcDesignProject(), { defaults: epcDesignDefaults });
+            const row = (result.boq || []).find(item => String(item.id || '') === String(epcBoqProductPickerLineId || '')) || {};
+            const suggested = getEpcBoqCandidateCategories(row).map(normalizeProductCategory);
+            const q = String(query || '').trim().toLowerCase();
+            let rows = (Array.isArray(products) ? products : []).filter(product => {
+                const category = normalizeProductCategory(product.category || '');
+                const supplier = getProductSupplierDisplay(product);
+                const spec = typeof getProductDisplaySpec === 'function' ? getProductDisplaySpec(product) : (product.spec || '');
+                const hay = [product.id, product.name, product.category, product.scenario, supplier, spec].join(' ').toLowerCase();
+                return (!suggested.length || suggested.includes(category)) && (!q || hay.includes(q));
+            });
+            if (!rows.length && suggested.length) {
+                rows = (Array.isArray(products) ? products : []).filter(product => {
+                    const supplier = getProductSupplierDisplay(product);
+                    const spec = typeof getProductDisplaySpec === 'function' ? getProductDisplaySpec(product) : (product.spec || '');
+                    const hay = [product.id, product.name, product.category, product.scenario, supplier, spec].join(' ').toLowerCase();
+                    return !q || hay.includes(q);
+                });
+            }
+            if (!box) return;
+            box.innerHTML = rows.map(product => {
+                const supplier = getProductSupplierDisplay(product);
+                const spec = typeof getProductDisplaySpec === 'function' ? getProductDisplaySpec(product) : (product.spec || '');
+                const delivery = typeof getProductDeliveryTime === 'function' ? getProductDeliveryTime(product) : '';
+                return `
+                    <div class="flex items-center justify-between gap-3 border-b border-slate-100 p-3 last:border-b-0 hover:bg-slate-50">
+                        <div class="min-w-0">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="font-black text-slate-800">${htmlSafe(product.id || '-')}</span>
+                                <span class="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black text-slate-500">${htmlSafe(normalizeProductCategory(product.category || '-'))}</span>
+                            </div>
+                            <div class="mt-1 text-sm font-bold text-slate-700 truncate" title="${htmlSafe(product.name || '')}">${htmlSafe(product.name || '-')}</div>
+                            <div class="text-[11px] text-slate-400 truncate">${htmlSafe(supplier || '-')} · ${htmlSafe(spec || '-')} ${delivery ? `· ${htmlSafe(delivery)}` : ''}</div>
+                        </div>
+                        <button type="button" onclick='selectEpcBoqProduct(${JSON.stringify(String(epcBoqProductPickerLineId || ''))}, ${JSON.stringify(String(product.id || ''))})' class="rounded-xl bg-purple-700 px-4 py-2 text-xs font-black text-white hover:bg-purple-800">Select Product</button>
+                    </div>
+                `;
+            }).join('') || '<div class="p-8 text-center text-xs text-slate-400">No Product List matches. Keep this BOQ line manual.</div>';
+        };
+
+        window.selectEpcBoqProduct = (lineId = '', productId = '') => {
+            const product = (Array.isArray(products) ? products : []).find(item => String(item.id || '') === String(productId || ''));
+            if (!product) return;
+            const spec = typeof getProductDisplaySpec === 'function' ? getProductDisplaySpec(product) : (product.spec || '');
+            mutateEpcBoqProject((boq) => {
+                const selection = boq.lineSelections[lineId] || {};
+                selection.productId = String(product.id || '');
+                selection.productName = String(product.name || '');
+                selection.supplierName = String(getProductSupplierDisplay(product) || product.vendor || '');
+                if (spec) selection.specOverride = spec;
+                boq.lineSelections[lineId] = selection;
+            });
+            window.closeEpcBoqProductPicker();
+        };
+
+        window.clearEpcBoqProductBinding = (lineId = '') => {
+            mutateEpcBoqProject((boq) => {
+                const selection = boq.lineSelections[lineId] || {};
+                delete selection.productId;
+                delete selection.productName;
+                delete selection.supplierName;
+                boq.lineSelections[lineId] = selection;
+            });
+        };
+
+        function renderEpcBoqHiddenEquipmentRestore(project = getActiveEpcDesignProject()) {
+            const hiddenLineIds = (Array.isArray(project.boq?.hiddenLineIds) ? project.boq.hiddenLineIds : [])
+                .map(item => String(item || '').trim())
+                .filter(Boolean);
+            if (!hiddenLineIds.length) return '';
+            return `
+                <div class="flex flex-wrap items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs">
+                    <span class="font-black text-amber-800">Hidden BOQ equipment:</span>
+                    ${hiddenLineIds.map(lineId => `
+                        <button type="button" onclick='restoreEpcBoqEquipment(${JSON.stringify(lineId)})' class="rounded-lg border border-amber-300 bg-white px-2 py-1 text-[10px] font-black text-amber-800 hover:bg-amber-100">Restore hidden equipment · ${htmlSafe(lineId)}</button>
                     `).join('')}
                 </div>
             `;
         }
 
+        function renderEpcBoq(result) {
+            const target = document.getElementById('epc-design-boq');
+            if (!target) return;
+            const rows = Array.isArray(result.boq) ? result.boq : [];
+            const project = getActiveEpcDesignProject();
+            const recommended = getRecommendedEpcScheme(result);
+            const productBound = rows.filter(row => row.productId).length;
+            const manual = rows.filter(row => row.manual).length;
+            const topologyRows = rows.filter(row => row.source === 'topology' || row.source === 'ems-flow').length;
+            const activeView = epcBoqViewMode === 'engineering' ? 'engineering' : 'customer';
+            const viewBody = activeView === 'engineering'
+                ? `
+                    <div class="overflow-x-auto">
+                        <table class="w-full min-w-[1180px] text-left text-xs">
+                            <thead class="bg-slate-50 text-slate-500 uppercase">
+                                <tr>
+                                    <th class="px-3 py-2">Equipment</th>
+                                    <th class="px-3 py-2">Spec</th>
+                                    <th data-epc-boq-field="quantity" class="px-3 py-2 text-right">Quantity</th>
+                                    <th class="px-3 py-2">Unit</th>
+                                    <th class="px-3 py-2">Protection</th>
+                                    <th class="px-3 py-2">Product Binding</th>
+                                    <th class="px-3 py-2">Source</th>
+                                    <th class="px-3 py-2">Remark</th>
+                                    <th class="px-3 py-2 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">${renderEpcBoqEngineeringRows(rows)}</tbody>
+                        </table>
+                    </div>
+                `
+                : `
+                    <div class="overflow-x-auto">
+                        <table class="w-full min-w-[1080px] text-left text-xs">
+                            <thead class="bg-slate-50 text-slate-500 uppercase">
+                                <tr>
+                                    <th class="px-3 py-2">Equipment</th>
+                                    <th class="px-3 py-2">Spec</th>
+                                    <th class="px-3 py-2 text-right">Quantity</th>
+                                    <th class="px-3 py-2">Protection</th>
+                                    <th class="px-3 py-2">Product Binding</th>
+                                    <th class="px-3 py-2">Source</th>
+                                    <th class="px-3 py-2">Remark</th>
+                                    <th class="px-3 py-2 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            ${renderEpcBoqCustomerRows(rows)}
+                        </table>
+                    </div>
+                `;
+            target.innerHTML = `
+                <div class="space-y-3">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <div class="text-sm font-black text-slate-800">Topology-aware EPC BOQ</div>
+                            <div class="text-[11px] font-bold text-slate-400">BOQ readiness: ${productBound}/${rows.length} product-bound · ${topologyRows} topology/EMS-derived · ${manual} manual</div>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button type="button" data-epc-boq-view="customer" onclick="setEpcBoqView('customer')" class="${activeView === 'customer' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'} rounded-xl px-3 py-2 text-xs font-black">Customer Summary</button>
+                            <button type="button" data-epc-boq-view="engineering" onclick="setEpcBoqView('engineering')" class="${activeView === 'engineering' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'} rounded-xl px-3 py-2 text-xs font-black">Engineering Detail</button>
+                            <select id="epc-boq-manual-package-select" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600 outline-none focus:border-purple-500" aria-label="Manual BOQ package">
+                                ${renderEpcBoqPackageOptions('PV System')}
+                            </select>
+                            <button type="button" onclick="addEpcBoqManualItem()" class="rounded-xl border border-purple-200 bg-purple-50 px-3 py-2 text-xs font-black text-purple-700 hover:bg-purple-100">Add Manual Item</button>
+                        </div>
+                    </div>
+                    ${renderEpcBoqHiddenEquipmentRestore(project)}
+                    <div class="grid grid-cols-2 lg:grid-cols-6 gap-2 text-xs">
+                        <div class="rounded-xl border border-slate-200 bg-slate-50 p-3"><div class="text-[10px] font-black uppercase text-slate-400">PV</div><div class="font-black text-slate-800">${formatEpcNumber(recommended.pvRecommendedMwp, 2, 'MWp')}</div></div>
+                        <div class="rounded-xl border border-slate-200 bg-slate-50 p-3"><div class="text-[10px] font-black uppercase text-slate-400">BESS</div><div class="font-black text-slate-800">${formatEpcNumber(recommended.bessRecommendedMwh, 2, 'MWh')}</div></div>
+                        <div class="rounded-xl border border-slate-200 bg-slate-50 p-3"><div class="text-[10px] font-black uppercase text-slate-400">PCS</div><div class="font-black text-slate-800">${formatEpcNumber(recommended.pcsRecommendedMw, 2, 'MW')}</div></div>
+                        <div class="rounded-xl border border-slate-200 bg-slate-50 p-3"><div class="text-[10px] font-black uppercase text-slate-400">Architecture</div><div class="font-black text-slate-800 truncate">${htmlSafe(result.electricalArchitecture?.recommendedId || result.electrical?.architecture || '-')}</div></div>
+                        <div class="rounded-xl border border-slate-200 bg-slate-50 p-3"><div class="text-[10px] font-black uppercase text-slate-400">Topology</div><div class="font-black text-slate-800">${htmlSafe(result.topologyFlow?.topologyId || result.selectedTopologyId || '-')}</div></div>
+                        <div class="rounded-xl border border-slate-200 bg-slate-50 p-3"><div class="text-[10px] font-black uppercase text-slate-400">Load branches</div><div class="font-black text-slate-800">${formatEpcNumber(result.loads?.loadCount || 1, 0)}</div></div>
+                    </div>
+                    ${viewBody}
+                    ${renderEpcBoqUnitDatalist(rows)}
+                </div>
+                <div id="epc-boq-product-picker-modal" class="hidden fixed inset-0 z-[90] items-center justify-center bg-slate-900/35 p-4">
+                    <div class="w-full max-w-3xl rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden">
+                        <div class="flex items-center justify-between gap-3 border-b border-slate-100 p-4">
+                            <div>
+                                <div class="text-sm font-black text-slate-800">Select Product from Product List</div>
+                                <div class="text-[11px] font-bold text-slate-400">Binding enriches brand, model, supplier and spec only. BOQ pricing stays in Quotation.</div>
+                            </div>
+                            <button type="button" onclick="closeEpcBoqProductPicker()" class="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-500 hover:bg-slate-50">Close</button>
+                        </div>
+                        <div class="p-4">
+                            <input id="epc-boq-product-picker-search" oninput="renderEpcBoqProductPickerList(this.value)" placeholder="Search product, supplier, category, spec" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        </div>
+                        <div id="epc-boq-product-picker-list" class="max-h-[26rem] overflow-y-auto border-t border-slate-100"></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function hasBlockingEpcReportRisks(result = window.__lastEpcDesignResult) {
+            return Boolean(result?.reportGate?.blocked || (Array.isArray(result?.risks) && result.risks.some(risk => risk.level === 'High' && risk.blocking !== false)));
+        }
+
+        function getEpcRiskTone(risk = {}) {
+            if (risk.status === 'auto-cleared' || risk.status === 'manual-acknowledged') return 'border-green-200 bg-green-50 text-green-700';
+            if (risk.level === 'High') return 'border-red-200 bg-red-50 text-red-700';
+            return 'border-yellow-200 bg-yellow-50 text-yellow-800';
+        }
+
+        function renderEpcRiskAcknowledgementPanel(risk = {}) {
+            const riskId = String(risk.id || '');
+            if (risk.status === 'auto-cleared') {
+                return `<div class="mt-2 rounded-lg border border-green-200 bg-white/70 px-3 py-2 text-[11px] font-bold text-green-700">${htmlSafe(risk.clearedBy || 'Automatically cleared by current design selection.')}</div>`;
+            }
+            const ack = risk.acknowledgement || {};
+            const showPanel = risk.status === 'manual-acknowledged';
+            return `
+                <div id="epc-risk-ack-${htmlSafe(riskId)}" class="${showPanel ? '' : 'hidden'} mt-3 grid grid-cols-1 md:grid-cols-[1fr_12rem_auto] gap-2 rounded-lg border border-slate-200 bg-white/80 p-2">
+                    <input data-epc-risk-reason="${htmlSafe(riskId)}" value="${htmlSafe(ack.reason || '')}" placeholder="Risk mitigation reason" class="rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-bold text-slate-700 outline-none focus:border-purple-500">
+                    <input data-epc-risk-signer="${htmlSafe(riskId)}" value="${htmlSafe(ack.signer || '')}" placeholder="Typed signature" class="rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-bold text-slate-700 outline-none focus:border-purple-500">
+                    <button type="button" onclick='saveEpcRiskAcknowledgement(${JSON.stringify(riskId)})' class="rounded-lg bg-slate-900 px-3 py-1 text-[11px] font-black text-white hover:bg-slate-700">Confirm</button>
+                    ${ack.signedAt ? `<div class="md:col-span-3 text-[10px] font-bold text-green-700">Signed by ${htmlSafe(ack.signer || '-')} at ${htmlSafe(ack.signedAt)}</div>` : ''}
+                </div>
+            `;
+        }
+
+        function renderEpcRiskCard(risk = {}) {
+            const riskId = String(risk.id || '');
+            const checked = risk.status === 'auto-cleared' || risk.status === 'manual-acknowledged';
+            const disabled = risk.status === 'auto-cleared';
+            return `
+                <div data-epc-risk-status="${htmlSafe(risk.status || 'open')}" class="rounded-xl border ${getEpcRiskTone(risk)} p-3 text-xs">
+                    <div class="flex items-start gap-3">
+                        <input type="checkbox" data-epc-risk-checkbox="${htmlSafe(riskId)}" ${checked ? 'checked' : ''} ${disabled ? 'disabled' : ''} onchange='toggleEpcRiskAcknowledgement(${JSON.stringify(riskId)}, this.checked)' class="mt-0.5 h-4 w-4 rounded border-slate-300 text-green-600 focus:ring-green-500">
+                        <div class="min-w-0 flex-1">
+                            <div>
+                                <span class="font-black">${htmlSafe(risk.level)} | ${htmlSafe(risk.area)}:</span>
+                                <span>${htmlSafe(risk.issue)}</span>
+                            </div>
+                            ${risk.blocking ? '<div class="mt-1 text-[10px] font-black uppercase text-red-600">Open High risk blocks Reports PDF download</div>' : ''}
+                            ${renderEpcRiskAcknowledgementPanel(risk)}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        window.toggleEpcRiskAcknowledgement = (riskId = '', checked = false) => {
+            const id = String(riskId || '').trim();
+            if (!id) return;
+            if (!checked) {
+                const project = JSON.parse(JSON.stringify(getActiveEpcDesignProject()));
+                project.riskAcknowledgements = project.riskAcknowledgements && typeof project.riskAcknowledgements === 'object' ? project.riskAcknowledgements : {};
+                delete project.riskAcknowledgements[id];
+                updateEpcProject(project);
+                renderEpcDesignWorkspace();
+                return;
+            }
+            document.getElementById(`epc-risk-ack-${id}`)?.classList.remove('hidden');
+        };
+
+        window.saveEpcRiskAcknowledgement = (riskId = '') => {
+            const id = String(riskId || '').trim();
+            const reason = document.querySelector(`[data-epc-risk-reason="${CSS.escape(id)}"]`)?.value?.trim() || '';
+            const signer = document.querySelector(`[data-epc-risk-signer="${CSS.escape(id)}"]`)?.value?.trim() || '';
+            if (!reason || !signer) {
+                alert('Manual risk acknowledgement requires a mitigation reason and typed signature.');
+                return;
+            }
+            const project = JSON.parse(JSON.stringify(getActiveEpcDesignProject()));
+            project.riskAcknowledgements = project.riskAcknowledgements && typeof project.riskAcknowledgements === 'object' ? project.riskAcknowledgements : {};
+            project.riskAcknowledgements[id] = {
+                reason,
+                signer,
+                signedAt: new Date().toISOString(),
+                mode: 'manual'
+            };
+            updateEpcProject(project);
+            const status = document.getElementById('epc-design-save-status');
+            if (status) status.textContent = 'Risk acknowledgement saved locally';
+            renderEpcDesignWorkspace();
+        };
+
         function renderEpcRisks(result) {
             const target = document.getElementById('epc-design-risks');
             if (!target) return;
+            const blocked = hasBlockingEpcReportRisks(result);
             target.innerHTML = `
                 <div class="space-y-2">
-                    ${result.risks.map(risk => `
-                        <div class="rounded-xl border ${risk.level === 'High' ? 'border-red-200 bg-red-50 text-red-700' : 'border-yellow-200 bg-yellow-50 text-yellow-800'} p-3 text-xs">
-                            <span class="font-black">${htmlSafe(risk.level)} | ${htmlSafe(risk.area)}:</span>
-                            <span>${htmlSafe(risk.issue)}</span>
-                        </div>
-                    `).join('') || '<div class="text-sm text-slate-400">No major concept risks detected yet.</div>'}
+                    ${blocked ? '<div class="rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-black text-red-700">Reports PDF download is blocked until every open High risk is auto-cleared or manually acknowledged.</div>' : ''}
+                    ${result.risks.map(risk => renderEpcRiskCard(risk)).join('') || '<div class="text-sm text-slate-400">No major concept risks detected yet.</div>'}
                 </div>
             `;
         }
@@ -14334,6 +14881,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             { minutes: 360, label: '6h', attr: 'data-epc-device-interval="360"' },
             { minutes: 720, label: '12h', attr: 'data-epc-device-interval="720"' }
         ];
+        const EPC_DEVICE_WORK_X_AXIS_OPTIONS = [
+            { value: 'auto', label: 'Auto', attr: 'data-epc-device-x-axis="auto"' },
+            { value: 2, label: '2h', attr: 'data-epc-device-x-axis="2"' },
+            { value: 3, label: '3h', attr: 'data-epc-device-x-axis="3"' },
+            { value: 4, label: '4h', attr: 'data-epc-device-x-axis="4"' },
+            { value: 6, label: '6h', attr: 'data-epc-device-x-axis="6"' }
+        ];
         const EPC_DEVICE_WORK_DEFAULT_PEAK_BAND = '#fee2e2';
         const EPC_DEVICE_WORK_DEFAULT_PEAK_START_MINUTE = 14 * 60;
         const EPC_DEVICE_WORK_DEFAULT_PEAK_END_MINUTE = 22 * 60;
@@ -14478,6 +15032,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return {
                 visibleSeries: getEpcVisibleEmsFlowSeries(result),
                 intervalMinutes: EPC_DEVICE_WORK_INTERVALS.includes(Number(raw.intervalMinutes)) ? Number(raw.intervalMinutes) : 5,
+                xAxisTickHours: [2, 3, 4, 6].includes(Number(raw.xAxisTickHours)) ? Number(raw.xAxisTickHours) : 'auto',
                 selectedRange: range,
                 peakBand: {
                     visible: peakBand.visible === false ? false : true,
@@ -14515,6 +15070,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         function setEpcDeviceWorkInterval(minutes) {
             const intervalMinutes = EPC_DEVICE_WORK_INTERVALS.includes(Number(minutes)) ? Number(minutes) : 5;
             updateEpcDeviceWorkSettings({ intervalMinutes, selectedRange: null });
+        }
+
+        function setEpcDeviceWorkXAxisTickHours(value) {
+            const numeric = Number(value);
+            const xAxisTickHours = [2, 3, 4, 6].includes(numeric) ? numeric : 'auto';
+            updateEpcDeviceWorkSettings({ xAxisTickHours });
         }
 
         function setEpcDeviceWorkRange(edge, value) {
@@ -14722,6 +15283,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
 
         window.setEpcDeviceWorkInterval = setEpcDeviceWorkInterval;
+        window.setEpcDeviceWorkXAxisTickHours = setEpcDeviceWorkXAxisTickHours;
         window.previewEpcDeviceWorkRange = previewEpcDeviceWorkRange;
         window.setEpcDeviceWorkRange = setEpcDeviceWorkRange;
         window.resetEpcDeviceWorkRange = resetEpcDeviceWorkRange;
@@ -14736,6 +15298,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         window.removeEpcBatteryControlCustomStrategy = removeEpcBatteryControlCustomStrategy;
         window.toggleEpcDeviceWorkColorPicker = toggleEpcDeviceWorkColorPicker;
         window.setEpcDeviceWorkSeriesColor = setEpcDeviceWorkSeriesColor;
+        window.showEpcDeviceWorkHoverSnap = showEpcDeviceWorkHoverSnap;
+        window.hideEpcDeviceWorkHoverSnap = hideEpcDeviceWorkHoverSnap;
 
         function getEpcDeviceWorkValue(seriesId, row = {}) {
             if (seriesId === 'pv') return Number(row.pvOutputKw) || 0;
@@ -15110,7 +15674,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
 
         function interpolateEpcDeviceWorkRow(a = {}, b = {}, pct = 0, index = 0, intervalMinutes = 60, minute = null) {
-            const keys = ['pvOutputKw', 'loadKw', 'pvToBatteryKw', 'batteryToLoadKw', 'gensetToLoadKw', 'curtailmentKw', 'socPct'];
+            const keys = ['pvOutputKw', 'loadKw', 'pvToBatteryKw', 'batteryToLoadKw', 'gensetToLoadKw', 'curtailmentKw'];
             const timelineMinute = Number.isFinite(Number(minute)) ? Number(minute) : getEpcDeviceWorkRowStartMinute(a, index);
             const row = {
                 ...a,
@@ -15125,6 +15689,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 const bv = Number(b[key]) || av;
                 row[key] = av + (bv - av) * pct;
             });
+            row.socPct = Number.isFinite(Number(a.socPct)) ? Number(a.socPct) : 0;
             return row;
         }
 
@@ -15194,11 +15759,14 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     rows
                 };
             });
-            return applyEpcDeviceWorkSocLedger(profiled.map((row, index) => ({ ...row, rowIndex: index, rows: profiled })), {
-                ...settings,
-                deviceWorkModel: model,
-                batteryControl
-            });
+            return carryEpcZeroFlowSocRows(
+                applyEpcDeviceWorkSocLedger(profiled.map((row, index) => ({ ...row, rowIndex: index, rows: profiled })), {
+                    ...settings,
+                    deviceWorkModel: model,
+                    batteryControl
+                }),
+                { wrapDay: true }
+            );
         }
 
         function getEpcDeviceWorkRowsForSettings(sourceRows = [], settings = {}) {
@@ -15314,6 +15882,143 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             }).join('');
         }
 
+        function getEpcDeviceWorkXAxisTicks(rows = [], settings = {}, xForIndex, xForMinute, rowMinute) {
+            if (!rows.length) return [];
+            const fixedHours = [2, 3, 4, 6].includes(Number(settings.xAxisTickHours)) ? Number(settings.xAxisTickHours) : null;
+            if (!fixedHours) {
+                const labelCount = Math.min(8, rows.length);
+                const labelIndexes = new Set(Array.from({ length: labelCount }, (_, index) => (
+                    labelCount <= 1 ? 0 : Math.round((index / (labelCount - 1)) * (rows.length - 1))
+                )));
+                return rows
+                    .map((row, index) => ({ row, index }))
+                    .filter(item => labelIndexes.has(item.index))
+                    .map((item, tickIndex, array) => ({
+                        x: xForIndex(item.index),
+                        label: item.row.hourLabel || epcMinutesToTime(rowMinute(item.row)),
+                        anchor: tickIndex === 0 ? 'start' : tickIndex === array.length - 1 ? 'end' : 'middle'
+                    }));
+            }
+            const firstMinute = rowMinute(rows[0]);
+            const lastMinute = rowMinute(rows.at(-1));
+            const step = fixedHours * 60;
+            const minutes = [firstMinute];
+            for (let minute = Math.ceil(firstMinute / step) * step; minute < lastMinute; minute += step) {
+                if (minute > firstMinute) minutes.push(minute);
+            }
+            if (!minutes.some(minute => Math.abs(minute - lastMinute) < 0.5)) minutes.push(lastMinute);
+            return minutes
+                .filter((minute, index, array) => array.findIndex(other => Math.abs(other - minute) < 0.5) === index)
+                .map((minute, index, array) => ({
+                    x: xForMinute(minute),
+                    label: epcMinutesToTime(minute),
+                    anchor: index === 0 ? 'start' : index === array.length - 1 ? 'end' : 'middle'
+                }));
+        }
+
+        function getEpcDeviceWorkHoverPoints(visible = [], rows = [], xForIndex, yForPower, yForSoc, settings = {}) {
+            return visible.flatMap(series => {
+                const yForValue = series.id === 'soc' ? yForSoc : yForPower;
+                const color = settings.seriesColors?.[series.id] || series.color;
+                return rows.map((row, index) => {
+                    const value = getEpcDeviceWorkValue(series.id, row);
+                    const unit = series.id === 'soc' ? '%' : 'kW';
+                    const valueText = formatEpcNumber(value, series.id === 'soc' ? 1 : 0);
+                    return {
+                        x: epcChartRound(xForIndex(index), 2),
+                        y: epcChartRound(yForValue(value), 2),
+                        color,
+                        seriesId: series.id,
+                        label: series.label,
+                        time: row.hourLabel || epcMinutesToTime(row.timelineMinute || 0),
+                        value,
+                        unit,
+                        display: `${row.hourLabel || epcMinutesToTime(row.timelineMinute || 0)} \u00b7 ${series.label} ${valueText} ${unit}`
+                    };
+                });
+            });
+        }
+
+        function getEpcDeviceWorkHoverGroup(points = [], nearest = {}) {
+            const nearX = Number(nearest.x);
+            const nearY = Number(nearest.y);
+            if (!Number.isFinite(nearX) || !Number.isFinite(nearY)) return [];
+            return points
+                .filter(point => Math.abs((Number(point.x) || 0) - nearX) <= 0.75 && Math.abs((Number(point.y) || 0) - nearY) <= 6)
+                .sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
+        }
+
+        function renderEpcDeviceWorkHoverTooltipLines(tooltipText, lines = []) {
+            if (!tooltipText) return;
+            tooltipText.textContent = '';
+            const safeLines = lines.length ? lines : [''];
+            safeLines.forEach((line, index) => {
+                const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+                tspan.setAttribute('x', '11');
+                tspan.setAttribute('dy', index ? '15' : '0');
+                tspan.textContent = String(line || '');
+                tooltipText.appendChild(tspan);
+            });
+        }
+
+        function showEpcDeviceWorkHoverSnap(event) {
+            const capture = event?.currentTarget;
+            const svg = capture?.ownerSVGElement;
+            if (!capture || !svg) return;
+            let points = [];
+            try { points = JSON.parse(capture.dataset.epcHoverPoints || '[]'); } catch (e) { points = []; }
+            if (!points.length) {
+                hideEpcDeviceWorkHoverSnap();
+                return;
+            }
+            const rect = svg.getBoundingClientRect();
+            const viewBox = svg.viewBox?.baseVal;
+            if (!rect.width || !rect.height || !viewBox) return;
+            const pointer = {
+                x: viewBox.x + ((event.clientX - rect.left) / rect.width) * viewBox.width,
+                y: viewBox.y + ((event.clientY - rect.top) / rect.height) * viewBox.height
+            };
+            const nearest = points.reduce((best, point) => {
+                const distance = Math.hypot((Number(point.x) - pointer.x) * 1.15, Number(point.y) - pointer.y);
+                return !best || distance < best.distance ? { ...point, distance } : best;
+            }, null);
+            if (!nearest || nearest.distance > 48) {
+                hideEpcDeviceWorkHoverSnap();
+                return;
+            }
+            const nearestGroup = getEpcDeviceWorkHoverGroup(points, nearest);
+            const groupDisplays = nearestGroup.length ? nearestGroup.map(point => String(point.display || '')) : [String(nearest.display || '')];
+            const layer = svg.querySelector('#epc-device-work-hover-layer');
+            const guide = svg.querySelector('#epc-device-work-hover-guide');
+            const marker = svg.querySelector('#epc-device-work-hover-marker');
+            const tooltip = svg.querySelector('#epc-device-work-hover-tooltip');
+            const tooltipRect = svg.querySelector('#epc-device-work-hover-tooltip-rect');
+            const tooltipText = svg.querySelector('#epc-device-work-hover-tooltip-text');
+            if (!layer || !guide || !marker || !tooltip || !tooltipRect || !tooltipText) return;
+            const longestLabel = groupDisplays.reduce((longest, label) => label.length > longest.length ? label : longest, '');
+            const tooltipWidth = Math.max(136, Math.min(320, longestLabel.length * 7 + 22));
+            const tooltipHeight = 18 + groupDisplays.length * 15;
+            const tooltipX = Math.max(8, Math.min(viewBox.width - tooltipWidth - 8, Number(nearest.x) + 12));
+            const tooltipY = Math.max(8, Number(nearest.y) - tooltipHeight - 10);
+            layer.removeAttribute('hidden');
+            layer.setAttribute('data-epc-hover-group', String(nearestGroup.length || 1));
+            guide.setAttribute('x1', nearest.x);
+            guide.setAttribute('x2', nearest.x);
+            marker.setAttribute('cx', nearest.x);
+            marker.setAttribute('cy', nearest.y);
+            marker.setAttribute('stroke', nearest.color || '#0f172a');
+            tooltip.setAttribute('transform', `translate(${epcChartRound(tooltipX, 2)} ${epcChartRound(tooltipY, 2)})`);
+            tooltipRect.setAttribute('width', epcChartRound(tooltipWidth, 2));
+            tooltipRect.setAttribute('height', tooltipHeight);
+            renderEpcDeviceWorkHoverTooltipLines(tooltipText, groupDisplays);
+        }
+
+        function hideEpcDeviceWorkHoverSnap() {
+            document.querySelectorAll('.epc-device-work-hover-layer').forEach(layer => {
+                layer.setAttribute('hidden', 'hidden');
+            });
+        }
+
         function renderEpcDeviceWorkControls(settings, allRows) {
             const maxIndex = Math.max(0, allRows.length - 1);
             const rawSelected = settings.selectedRange || { start: 0, end: maxIndex };
@@ -15329,11 +16034,21 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const model = getEpcDeviceWorkModelSettings(settings.deviceWorkModel);
             return `
                 <div id="epc-device-work-controls" class="epc-device-work-controls mt-3 space-y-3 text-xs">
-                    <div id="epc-device-work-time-row" class="epc-device-work-time-row grid grid-cols-1 xl:grid-cols-[auto_1fr] gap-3">
+                    <div id="epc-device-work-time-row" class="epc-device-work-time-row grid grid-cols-1 xl:grid-cols-[auto_auto_1fr] gap-3">
                         <div class="rounded-xl border border-slate-200 bg-slate-50 p-2.5">
                             <div class="mb-1 text-[10px] font-black uppercase text-slate-400">Time Step</div>
                             <div class="flex flex-wrap gap-1">
                                 ${EPC_DEVICE_WORK_INTERVAL_OPTIONS.map(option => `<button type="button" ${option.attr} onclick="setEpcDeviceWorkInterval(${option.minutes})" class="rounded-lg px-2 py-1.5 font-black ${settings.intervalMinutes === option.minutes ? 'bg-purple-700 text-white' : 'bg-white text-slate-500 border border-slate-200'}">${option.label}</button>`).join('')}
+                            </div>
+                        </div>
+                        <div id="epc-device-work-axis-density" class="epc-device-work-axis-density rounded-xl border border-slate-200 bg-slate-50 p-2.5">
+                            <div class="mb-1 text-[10px] font-black uppercase text-slate-400">X Axis Density</div>
+                            <div class="flex flex-wrap gap-1">
+                                ${EPC_DEVICE_WORK_X_AXIS_OPTIONS.map(option => {
+                                    const active = String(settings.xAxisTickHours) === String(option.value);
+                                    const clickValue = option.value === 'auto' ? `'auto'` : option.value;
+                                    return `<button type="button" ${option.attr} onclick="setEpcDeviceWorkXAxisTickHours(${clickValue})" class="rounded-lg px-2 py-1.5 font-black ${active ? 'bg-purple-700 text-white' : 'bg-white text-slate-500 border border-slate-200'}">${option.label}</button>`;
+                                }).join('')}
                             </div>
                         </div>
                         <div class="rounded-xl border border-slate-200 bg-slate-50 p-2.5">
@@ -15486,16 +16201,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const bandVisibleEnd = Math.min(lastMinute, settings.peakBand.endMinute);
             const hasPeakBandWindow = bandVisibleEnd > bandVisibleStart;
             const gridValues = [0, 0.25, 0.5, 0.75, 1].map(pct => minPower + pct * powerSpan);
-            const labelCount = Math.min(8, rows.length);
-            const labelIndexes = new Set(Array.from({ length: labelCount }, (_, index) => (
-                labelCount <= 1 ? 0 : Math.round((index / (labelCount - 1)) * (rows.length - 1))
-            )));
-            const hourLabels = rows.filter((row, index) => labelIndexes.has(index));
+            const xAxisTicks = getEpcDeviceWorkXAxisTicks(rows, settings, xForIndex, xForMinute, rowMinute);
+            const hoverPoints = getEpcDeviceWorkHoverPoints(visible, rows, xForIndex, yForPower, yForSoc, settings);
             return `
                 <div id="epc-device-work-chart" class="epc-device-work-chart">
                     <div class="border-b border-slate-100 px-4 py-3">
                         <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
-                            <div>
+                            <div class="epc-device-work-chart-title">
                                 <div class="text-sm font-black text-slate-800">Device Work Profile</div>
                                 <div class="text-[11px] font-bold text-slate-400">Continuous daily power and SOC timeline</div>
                             </div>
@@ -15503,7 +16215,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         </div>
                         ${renderEpcDeviceWorkControls(settings, allRows)}
                     </div>
-                    <svg class="epc-device-work-svg" viewBox="0 0 ${chart.width} ${chart.height}" role="img" aria-label="Device work daily profile chart">
+                    <svg id="epc-device-work-svg" class="epc-device-work-svg" viewBox="0 0 ${chart.width} ${chart.height}" role="img" aria-label="Device work daily profile chart">
                         ${settings.peakBand.visible && hasPeakBandWindow ? `<rect x="${epcChartRound(xForMinute(bandVisibleStart), 2)}" y="${chart.top}" width="${epcChartRound(Math.max(4, xForMinute(bandVisibleEnd) - xForMinute(bandVisibleStart)), 2)}" height="${plotHeight}" class="epc-device-work-peak-band" style="fill:${htmlSafe(settings.peakBand.color)}; opacity:0.42"/>
                         <text x="${epcChartRound(xForMinute(bandVisibleStart) + 12, 2)}" y="${chart.top + plotHeight - 18}" class="epc-device-work-peak-label-below epc-device-work-axis-left" fill="#64748b">Workday Peak</text>` : ''}
                         ${gridValues.map(value => `
@@ -15515,15 +16227,20 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         ${[0, 25, 50, 75, 100].map(value => `<text x="${chart.width - chart.right + 12}" y="${epcChartRound(yForSoc(value) + 4, 2)}" class="epc-device-work-axis-right">${value}%</text>`).join('')}
                         <text x="22" y="${chart.top + plotHeight / 2}" class="epc-device-work-axis-left" transform="rotate(-90 22 ${chart.top + plotHeight / 2})">Power (kW)</text>
                         <text x="${chart.width - 18}" y="${chart.top + plotHeight / 2}" class="epc-device-work-axis-right" transform="rotate(90 ${chart.width - 18} ${chart.top + plotHeight / 2})">SOC (%)</text>
-                        ${hourLabels.map((row, index) => {
-                            const sourceIndex = rows.indexOf(row);
-                            const x = xForIndex(sourceIndex);
-                            return `
-                                <line x1="${epcChartRound(x, 2)}" x2="${epcChartRound(x, 2)}" y1="${chart.top}" y2="${chart.top + plotHeight}" stroke="#f1f5f9"/>
-                                <text x="${epcChartRound(x, 2)}" y="${chart.height - 24}" text-anchor="${index === 0 ? 'start' : index === hourLabels.length - 1 ? 'end' : 'middle'}" class="epc-device-work-axis-left">${htmlSafe(row.hourLabel || `${row.hour}:00`)}</text>
-                            `;
-                        }).join('')}
+                        ${xAxisTicks.map(tick => `
+                            <line x1="${epcChartRound(tick.x, 2)}" x2="${epcChartRound(tick.x, 2)}" y1="${chart.top}" y2="${chart.top + plotHeight}" stroke="#f1f5f9"/>
+                            <text x="${epcChartRound(tick.x, 2)}" y="${chart.height - 24}" text-anchor="${tick.anchor}" class="epc-device-work-axis-left">${htmlSafe(tick.label)}</text>
+                        `).join('')}
                         ${visible.length ? visible.map(series => renderEpcDeviceWorkPath(series, rows, xForIndex, yForPower, yForSoc, settings)).join('') : ''}
+                        <g id="epc-device-work-hover-layer" class="epc-device-work-hover-layer" hidden>
+                            <line id="epc-device-work-hover-guide" class="epc-device-work-hover-guide" x1="${chart.left}" x2="${chart.left}" y1="${chart.top}" y2="${chart.top + plotHeight}"></line>
+                            <circle id="epc-device-work-hover-marker" class="epc-device-work-hover-marker" cx="${chart.left}" cy="${chart.top}" r="5"></circle>
+                            <g id="epc-device-work-hover-tooltip" class="epc-device-work-hover-tooltip">
+                                <rect id="epc-device-work-hover-tooltip-rect" rx="8" ry="8"></rect>
+                                <text id="epc-device-work-hover-tooltip-text" class="epc-device-work-hover-tooltip-lines" x="11" y="20"></text>
+                            </g>
+                        </g>
+                        <rect class="epc-device-work-hover-capture" x="${chart.left}" y="${chart.top}" width="${plotWidth}" height="${plotHeight}" data-epc-hover-points="${htmlSafe(JSON.stringify(hoverPoints))}" onmousemove="showEpcDeviceWorkHoverSnap(event)" onmouseleave="hideEpcDeviceWorkHoverSnap()"></rect>
                     </svg>
                 </div>
             `;
@@ -15549,6 +16266,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         return `
                             <div ${dataAttribute} class="rounded-xl border border-slate-200 bg-white p-3">
                                 <div class="flex items-center gap-2">
+                                    <span class="epc-device-work-analysis-color h-2.5 w-8 rounded-full" style="background:${htmlSafe(color)}"></span>
                                     ${renderEpcDeviceWorkColorControls(series, color)}
                                     <div class="text-[10px] font-black uppercase text-slate-400">${htmlSafe(series.label)}</div>
                                 </div>
@@ -15563,17 +16281,21 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
 
         function getEpcDeviceWorkLoadTableRows(rows = [], intervalMinutes = 5) {
-            const source = applyEpcDeviceWorkDurations(Array.isArray(rows) ? rows : []);
+            const source = carryEpcZeroFlowSocRows(
+                applyEpcDeviceWorkDurations(Array.isArray(rows) ? rows : []),
+                { wrapDay: true }
+            );
             if (Number(intervalMinutes) !== 60) return source;
             const groups = new Map();
             source.forEach((row, index) => {
                 const minute = Number.isFinite(Number(row.timelineMinute)) ? Number(row.timelineMinute) : index * 5;
+                if (!Number.isFinite(minute) || minute < 0 || minute >= 24 * 60) return;
                 const hour = Math.floor(minute / 60);
                 if (!groups.has(hour)) groups.set(hour, []);
                 groups.get(hour).push(row);
             });
-            const weightedAverageKeys = ['baseLoadKw', 'loadNoiseKw', 'loadShockKw', 'loadKw', 'pvToLoadKw', 'batteryToLoadKw', 'gensetToLoadKw', 'unmetLoadKw'];
-            return [...groups.entries()].sort(([a], [b]) => a - b).map(([hour, items]) => {
+            const weightedAverageKeys = ['baseLoadKw', 'loadNoiseKw', 'loadShockKw', 'loadKw', 'pvToLoadKw', 'pvToBatteryKw', 'batteryToLoadKw', 'gensetToLoadKw', 'unmetLoadKw'];
+            const mergedRows = [...groups.entries()].sort(([a], [b]) => a - b).map(([hour, items]) => {
                 const totalDuration = items.reduce((total, item) => total + Math.max(0, Number(item.durationHours) || 0), 0) || 1;
                 const finalSoc = items.at(-1)?.socPct;
                 const merged = {
@@ -15589,6 +16311,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 });
                 return merged;
             });
+            return carryEpcZeroFlowSocRows(mergedRows, { wrapDay: true });
         }
 
         function setEpcDeviceWorkLoadTableInterval(minutes) {
@@ -15611,6 +16334,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     <td class="px-3 py-3 text-right font-black">${formatEpcNumber(summarizeEnergy('loadShockKw'), 1, 'kWh')}</td>
                     <td class="px-3 py-3 text-right font-black">${formatEpcNumber(summarizeEnergy('loadKw'), 1, 'kWh')}</td>
                     <td class="px-3 py-3 text-right font-black">${formatEpcNumber(summarizeEnergy('pvToLoadKw'), 1, 'kWh')}</td>
+                    <td class="px-3 py-3 text-right font-black">${formatEpcNumber(summarizeEnergy('pvToBatteryKw'), 1, 'kWh')}</td>
                     <td class="px-3 py-3 text-right font-black">${formatEpcNumber(summarizeEnergy('batteryToLoadKw'), 1, 'kWh')}</td>
                     <td class="px-3 py-3 text-right font-black">${formatEpcNumber(summarizeEnergy('gensetToLoadKw'), 1, 'kWh')}</td>
                     <td class="px-3 py-3 text-right font-black">${formatEpcNumber(summarizeEnergy('unmetLoadKw'), 1, 'kWh')}</td>
@@ -15659,6 +16383,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                                     <th class="px-3 py-2 text-right">Shock kW</th>
                                     <th class="px-3 py-2 text-right">Modeled load kW</th>
                                     <th class="px-3 py-2 text-right">PV load kW</th>
+                                    <th class="px-3 py-2 text-right">PV battery kW</th>
                                     <th class="px-3 py-2 text-right">Battery load kW</th>
                                     <th class="px-3 py-2 text-right">Genset load kW</th>
                                     <th class="px-3 py-2 text-right">Unmet kW</th>
@@ -15674,12 +16399,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                                         <td class="px-3 py-2 text-right font-black ${Number(row.loadShockKw) > 0 ? 'text-red-500' : 'text-slate-400'}">${Number(row.loadShockKw) > 0 ? '+' : ''}${formatEpcNumber(row.loadShockKw, 1)}</td>
                                         <td class="px-3 py-2 text-right font-black text-slate-800">${formatEpcNumber(row.loadKw, 1)}</td>
                                         <td class="px-3 py-2 text-right">${formatEpcNumber(row.pvToLoadKw, 1)}</td>
+                                        <td class="px-3 py-2 text-right">${formatEpcNumber(row.pvToBatteryKw, 1)}</td>
                                         <td class="px-3 py-2 text-right">${formatEpcNumber(row.batteryToLoadKw, 1)}</td>
                                         <td class="px-3 py-2 text-right">${formatEpcNumber(row.gensetToLoadKw, 1)}</td>
                                         <td class="px-3 py-2 text-right ${Number(row.unmetLoadKw) > 0 ? 'font-black text-red-600' : 'text-slate-400'}">${formatEpcNumber(row.unmetLoadKw, 1)}</td>
                                         <td class="px-3 py-2 text-right">${formatEpcNumber(row.socPct, 1, '%')}</td>
                                     </tr>
-                                `).join('') || '<tr><td colspan="10" class="px-3 py-6 text-center font-bold text-slate-400">No load profile rows in the selected period.</td></tr>'}
+                                `).join('') || '<tr><td colspan="11" class="px-3 py-6 text-center font-bold text-slate-400">No load profile rows in the selected period.</td></tr>'}
                             </tbody>
                             <tfoot class="sticky bottom-0 z-10 bg-slate-50">
                                 ${renderEpcDeviceWorkLoadSummaryRow(rows)}
@@ -16430,13 +17156,43 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         function getEpcEmsFlowProfileRows(result = {}) {
             const sourceRows = result.energyFlow?.rows || [];
             const settings = getEpcDeviceWorkSettings(result);
-            return settings.deviceWorkModel.applyToEmsFlow
+            const profileRows = settings.deviceWorkModel.applyToEmsFlow
                 ? buildEpcDeviceWorkProfileRows(sourceRows, { ...settings, selectedRange: null })
                 : sourceRows;
+            return carryEpcZeroFlowSocRows(profileRows, { wrapDay: true });
         }
 
         function getEpcEnergyFlowDurationHours(row = {}) {
             return Math.max(0, Number(row.durationHours) || (Number(row.intervalMinutes) > 0 ? Number(row.intervalMinutes) / 60 : 1));
+        }
+
+        function hasEpcEnergyFlowMovement(row = {}) {
+            const keys = ['pvOutputKw', 'loadKw', 'pvToLoadKw', 'pvToBatteryKw', 'batteryToLoadKw', 'gensetToLoadKw', 'curtailmentKw', 'unmetLoadKw'];
+            return keys.some(key => Math.abs(Number(row[key]) || 0) > 0.05);
+        }
+
+        function carryEpcZeroFlowSocRows(rows = [], options = {}) {
+            const source = Array.isArray(rows) ? rows : [];
+            const firstMinute = Number(source[0]?.timelineMinute);
+            const lastMinute = Number(source.at(-1)?.timelineMinute);
+            const wrapDay = options.wrapDay === true
+                && source.length > 1
+                && Number.isFinite(firstMinute)
+                && Number.isFinite(lastMinute)
+                && firstMinute <= 0
+                && lastMinute >= 23 * 60;
+            let lastSoc = wrapDay && !hasEpcEnergyFlowMovement(source[0])
+                ? Number(source.at(-1)?.socPct)
+                : null;
+            if (!Number.isFinite(lastSoc)) lastSoc = null;
+            return source.map(row => {
+                const next = !hasEpcEnergyFlowMovement(row) && Number.isFinite(lastSoc)
+                    ? { ...row, socPct: epcChartRound(lastSoc, 1) }
+                    : row;
+                const nextSoc = Number(next?.socPct);
+                if (Number.isFinite(nextSoc)) lastSoc = nextSoc;
+                return next;
+            });
         }
 
         function mergeEpcEnergyFlowLoadSplits(items = []) {
@@ -16478,12 +17234,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     : Number.isFinite(Number(row.hour))
                     ? Number(row.hour) * 60
                     : index * 60;
-                const hour = Math.floor((((minute % 1440) + 1440) % 1440) / 60);
+                if (!Number.isFinite(minute) || minute < 0 || minute >= 24 * 60) return;
+                const hour = Math.floor(minute / 60);
                 if (!groups.has(hour)) groups.set(hour, []);
                 groups.get(hour).push(row);
             });
             const averageKeys = ['pvOutputKw', 'loadKw', 'pvToLoadKw', 'pvToBatteryKw', 'batteryToLoadKw', 'gensetToLoadKw', 'pcsLimitKw', 'curtailmentKw'];
-            return [...groups.entries()].sort(([a], [b]) => a - b).map(([hour, items]) => {
+            const mergedRows = [...groups.entries()].sort(([a], [b]) => a - b).map(([hour, items]) => {
                 const totalDuration = items.reduce((total, item) => total + getEpcEnergyFlowDurationHours(item), 0) || items.length || 1;
                 const finalRow = items.at(-1);
                 const merged = {
@@ -16504,6 +17261,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 });
                 return merged;
             });
+            return carryEpcZeroFlowSocRows(mergedRows, { wrapDay: true });
         }
 
         function getEpcEnergyFlowDisplayRows(result = {}) {
@@ -16614,20 +17372,31 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         function renderEpcReports(result) {
             const target = document.getElementById('epc-design-reports');
             if (!target) return;
+            const blocked = hasBlockingEpcReportRisks(result);
+            const cards = [
+                ['customer', 'Customer EPC Report PDF', 'Fixed-page proposal with complete EMS Flow, Device Work and customer BOQ pages.'],
+                ['sales', 'BOQ & Procurement PDF', 'Procurement-facing report with BOQ, product binding and procurement notes.'],
+                ['engineering', 'Engineering Handoff PDF', 'Formula trace, topology/electrical evidence, EMS Flow, Device Work and signed risk acknowledgements.']
+            ];
             target.innerHTML = `
+                ${blocked ? '<div class="mb-3 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-black text-red-700">Resolve or acknowledge all open High risks before downloading reports.</div>' : ''}
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <button type="button" onclick="downloadEpcDesignReport('customer')" data-epc-download="customer" class="rounded-xl border border-slate-200 p-4 text-left hover:bg-slate-50">
-                        <div class="text-sm font-black text-slate-800">Customer Summary</div>
-                        <div class="text-xs text-slate-400 mt-1">Scheme, savings, key assumptions and disclaimer.</div>
-                    </button>
-                    <button type="button" onclick="downloadEpcDesignReport('sales')" data-epc-download="sales" class="rounded-xl border border-slate-200 p-4 text-left hover:bg-slate-50">
-                        <div class="text-sm font-black text-slate-800">Sales Quote Input</div>
-                        <div class="text-xs text-slate-400 mt-1">BOQ quantities for quotation preparation.</div>
-                    </button>
-                    <button type="button" onclick="downloadEpcDesignReport('engineering')" data-epc-download="engineering" class="rounded-xl border border-slate-200 p-4 text-left hover:bg-slate-50">
-                        <div class="text-sm font-black text-slate-800">Engineering Calculation</div>
-                        <div class="text-xs text-slate-400 mt-1">Full JSON handoff with formula trace.</div>
-                    </button>
+                    ${cards.map(([kind, title, description]) => `
+                        <button type="button" onclick="downloadEpcDesignReport('${kind}')" data-epc-download="${kind}" data-epc-risk-blocked="${blocked ? 'true' : 'false'}" class="rounded-xl border border-slate-200 p-4 text-left hover:bg-slate-50 ${blocked ? 'opacity-50 cursor-not-allowed' : ''}">
+                            <div class="text-sm font-black text-slate-800">${htmlSafe(title)}</div>
+                            <div class="text-xs text-slate-400 mt-1">${htmlSafe(description)}</div>
+                            <div class="mt-3 inline-flex rounded-full border border-purple-200 bg-purple-50 px-2 py-1 text-[10px] font-black uppercase text-purple-700">PDF download</div>
+                        </button>
+                    `).join('')}
+                </div>
+                <div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <div class="text-sm font-black text-slate-800">Complete BOQ XLSX</div>
+                            <div class="mt-1 text-xs font-bold text-slate-400">Customer Summary, Engineering Detail and Product Binding sheets for full procurement review.</div>
+                        </div>
+                        <button type="button" onclick="downloadEpcBoqWorkbook()" data-epc-download="boq-xlsx" data-epc-risk-blocked="${blocked ? 'true' : 'false'}" class="rounded-xl border border-green-200 bg-white px-4 py-2 text-xs font-black text-green-700 hover:bg-green-50 ${blocked ? 'opacity-50 cursor-not-allowed' : ''}">Download XLSX</button>
+                    </div>
                 </div>
             `;
             applyEpcDesignPermissions();
@@ -17467,49 +18236,613 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return window.__minovaAuth?.canPerformAction?.(resource, 'download') ?? true;
         }
 
-        function makeEpcReportHtml(result, kind) {
+        function getEpcReportMeta(kind = 'customer') {
+            const map = {
+                customer: { title: 'Customer EPC Report PDF', suffix: 'customer-epc-report' },
+                sales: { title: 'BOQ & Procurement PDF', suffix: 'boq-procurement' },
+                engineering: { title: 'Engineering Handoff PDF', suffix: 'engineering-handoff' }
+            };
+            return map[kind] || map.customer;
+        }
+
+        function renderEpcReportKpis(result = {}) {
             const recommended = getRecommendedEpcScheme(result);
-            return `<!doctype html><html><head><meta charset="utf-8"><title>${htmlSafe(result.project.name)} - ${htmlSafe(kind)}</title><style>body{font-family:Arial,sans-serif;color:#1f2937;margin:32px}h1{color:#582C83}table{border-collapse:collapse;width:100%;margin:16px 0}td,th{border:1px solid #e5e7eb;padding:8px;text-align:left}.note{color:#64748b;font-size:12px}</style></head><body>
-                <h1>${htmlSafe(result.project.name)} - ${htmlSafe(kind)}</h1>
-                <p class="note">${htmlSafe(result.disclaimer)}</p>
-                <table><tbody>
-                    <tr><th>Recommended Scheme</th><td>${htmlSafe(recommended.label)}</td></tr>
-                    <tr><th>PV</th><td>${formatEpcNumber(recommended.pvRecommendedMwp, 2, 'MWp')}</td></tr>
-                    <tr><th>BESS</th><td>${formatEpcNumber(recommended.bessRecommendedMwh, 2, 'MWh')}</td></tr>
-                    <tr><th>PCS</th><td>${formatEpcNumber(recommended.pcsRecommendedMw, 2, 'MW')}</td></tr>
-                    <tr><th>Monthly Savings</th><td>RM ${formatEpcNumber(recommended.monthlySavings, 0)}</td></tr>
-                    <tr><th>Solar Source</th><td>${htmlSafe(result.solar.dataSource)}</td></tr>
-                    <tr><th>Electrical</th><td>${htmlSafe(result.electrical.recommendation)}</td></tr>
-                </tbody></table>
-                <h2>Risks</h2><ul>${result.risks.map(r => `<li><b>${htmlSafe(r.level)} ${htmlSafe(r.area)}:</b> ${htmlSafe(r.issue)}</li>`).join('')}</ul>
-                <h2>Next Verification</h2><ul>${result.nextVerification.map(item => `<li>${htmlSafe(item)}</li>`).join('')}</ul>
-            </body></html>`;
+            return `
+                <div class="grid grid-cols-3 gap-2">
+                    ${[
+                        ['Recommended Scheme', recommended.label || '-'],
+                        ['PV', formatEpcNumber(recommended.pvRecommendedMwp, 2, 'MWp')],
+                        ['BESS', formatEpcNumber(recommended.bessRecommendedMwh, 2, 'MWh')],
+                        ['PCS', formatEpcNumber(recommended.pcsRecommendedMw, 2, 'MW')],
+                        ['Architecture', result.electricalArchitecture?.recommendedId || result.electrical?.architecture || '-'],
+                        ['Topology', result.topologyFlow?.topologyId || result.selectedTopologyId || '-'],
+                        ['Monthly Savings', `RM ${formatEpcNumber(recommended.monthlySavings, 0)}`],
+                        ['Solar Source', result.solar?.dataSource || '-'],
+                        ['Load Branches', formatEpcNumber(result.loads?.loadCount || 1, 0)]
+                    ].map(([label, value]) => `
+                        <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                            <div class="text-[10px] font-black uppercase text-slate-400">${htmlSafe(label)}</div>
+                            <div class="mt-1 text-sm font-black text-slate-900">${htmlSafe(value)}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
         }
 
-        function downloadBlob(filename, type, content) {
-            const blob = new Blob([content], { type });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = filename;
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        function renderEpcReportBoqTable(result = {}, limit = 80) {
+            const rows = (Array.isArray(result.boq) ? result.boq : []).slice(0, limit);
+            return `
+                <table class="w-full border-collapse text-left text-[10px]">
+                    <thead class="bg-slate-100 text-slate-500 uppercase">
+                        <tr>
+                            <th class="border border-slate-200 px-2 py-1.5">Package</th>
+                            <th class="border border-slate-200 px-2 py-1.5">Equipment</th>
+                            <th class="border border-slate-200 px-2 py-1.5">Spec</th>
+                            <th class="border border-slate-200 px-2 py-1.5 text-right">Quantity</th>
+                            <th class="border border-slate-200 px-2 py-1.5">Protection</th>
+                            <th class="border border-slate-200 px-2 py-1.5">Product Binding</th>
+                            <th class="border border-slate-200 px-2 py-1.5">Source</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows.map(row => `
+                            <tr>
+                                <td class="border border-slate-200 px-2 py-1.5 font-black">${htmlSafe(row.package || '-')}</td>
+                                <td class="border border-slate-200 px-2 py-1.5">${htmlSafe(row.item || '-')}</td>
+                                <td class="border border-slate-200 px-2 py-1.5">${htmlSafe(row.spec || '-')}</td>
+                                <td class="border border-slate-200 px-2 py-1.5 text-right font-black">${formatEpcBoqQuantity(row)}</td>
+                                <td class="border border-slate-200 px-2 py-1.5">${htmlSafe(row.protection || '-')}</td>
+                                <td class="border border-slate-200 px-2 py-1.5">${htmlSafe(row.productId || row.productName || 'Open')}</td>
+                                <td class="border border-slate-200 px-2 py-1.5">${htmlSafe(row.source || '-')}</td>
+                            </tr>
+                        `).join('') || '<tr><td colspan="7" class="border border-slate-200 px-2 py-4 text-center text-slate-400">No BOQ rows.</td></tr>'}
+                    </tbody>
+                </table>
+            `;
         }
 
-        window.downloadEpcDesignReport = (kind = 'customer') => {
+        function renderEpcReportRisks(result = {}) {
+            return `
+                <div class="grid grid-cols-1 gap-2">
+                    ${(result.risks || []).map(risk => {
+                        const cleared = risk.status === 'auto-cleared' || risk.status === 'manual-acknowledged';
+                        const tone = cleared ? 'border-green-200 bg-green-50 text-green-700' : risk.level === 'High' ? 'border-red-200 bg-red-50 text-red-700' : 'border-yellow-200 bg-yellow-50 text-yellow-800';
+                        const ack = risk.acknowledgement || {};
+                        return `
+                            <div class="rounded-lg border ${tone} p-2 text-[10px]">
+                                <div class="font-black">${cleared ? '[checked]' : '[ ]'} ${htmlSafe(risk.level)} | ${htmlSafe(risk.area)}: ${htmlSafe(risk.issue)}</div>
+                                ${risk.clearedBy ? `<div class="mt-1 font-bold">${htmlSafe(risk.clearedBy)}</div>` : ''}
+                                ${ack.reason ? `<div class="mt-1 font-bold">Manual acknowledgement: ${htmlSafe(ack.reason)} · ${htmlSafe(ack.signer || '-')} · ${htmlSafe(ack.signedAt || '-')}</div>` : ''}
+                            </div>
+                        `;
+                    }).join('') || '<div class="text-xs text-slate-400">No major concept risks detected.</div>'}
+                </div>
+            `;
+        }
+
+        function renderEpcReportFormulaTrace(result = {}, limit = 20) {
+            const rows = (Array.isArray(result.formulaTrace) ? result.formulaTrace : []).slice(0, limit);
+            return `
+                <table class="w-full border-collapse text-left text-[10px]">
+                    <thead class="bg-slate-100 text-slate-500 uppercase">
+                        <tr><th class="border border-slate-200 px-2 py-1.5">Output</th><th class="border border-slate-200 px-2 py-1.5">Formula</th><th class="border border-slate-200 px-2 py-1.5 text-right">Result</th><th class="border border-slate-200 px-2 py-1.5">Source</th></tr>
+                    </thead>
+                    <tbody>
+                        ${rows.map(item => `
+                            <tr>
+                                <td class="border border-slate-200 px-2 py-1.5 font-black">${htmlSafe(item.label || item.key || '-')}</td>
+                                <td class="border border-slate-200 px-2 py-1.5">${htmlSafe(item.formula || '-')}</td>
+                                <td class="border border-slate-200 px-2 py-1.5 text-right">${formatEpcNumber(item.result, 3, item.unit || '')}</td>
+                                <td class="border border-slate-200 px-2 py-1.5">${htmlSafe(item.assumptionSource || '-')}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function getEpcReportFlowRow(result = {}) {
+            const rows = getEpcEnergyFlowDisplayRows(result);
+            const rowKey = row => String(row.flowKey || row.hour);
+            const selectedRow = rows.find(row => rowKey(row) === String(epcSelectedFlowHour));
+            const score = row => ['pvToLoadKw', 'pvToBatteryKw', 'batteryToLoadKw', 'gensetToLoadKw', 'curtailmentKw']
+                .reduce((total, key) => total + Math.max(0, Number(row?.[key]) || 0), 0);
+            if (selectedRow && score(selectedRow) > 0) return selectedRow;
+            return [...rows].sort((a, b) => score(b) - score(a))[0] || rows[0] || {};
+        }
+
+        function getEpcReportConnectionFlowRow(result = {}) {
+            const rows = getEpcEnergyFlowDisplayRows(result);
+            const base = rows[0] || {};
+            return {
+                ...base,
+                hour: null,
+                hourLabel: 'Connection Map',
+                flowKey: 'report-connection-map',
+                pvOutputKw: 0,
+                loadKw: 0,
+                pvToLoadKw: 0,
+                pvToBatteryKw: 0,
+                batteryToLoadKw: 0,
+                gensetToLoadKw: 0,
+                curtailmentKw: 0,
+                unmetKw: 0,
+                loadSplits: Array.isArray(base.loadSplits)
+                    ? base.loadSplits.map(split => ({ ...split, loadKw: 0 }))
+                    : []
+            };
+        }
+
+        function renderEpcReportOnlyTopologyFlowDiagram(result = {}) {
+            const selectedRow = getEpcReportConnectionFlowRow(result);
+            const flowMarkup = renderEpcTopologyFlowDiagram(result, selectedRow)
+                .replace('id="epc-flow-diagram"', 'id="epc-report-flow-diagram"')
+                .replace('id="epc-flow-svg"', 'id="epc-report-flow-svg" width="1059" height="575" preserveAspectRatio="xMidYMid meet"');
+            return `
+                <div class="epc-report-only-flow" data-epc-report-diagram="ems-flow">
+                    ${flowMarkup}
+                </div>
+            `;
+        }
+
+        function renderEpcReportOnlyDeviceWorkDiagram(result = {}) {
+            const chartMarkup = renderEpcDeviceWorkChart(result)
+                .replace('id="epc-device-work-chart"', 'id="epc-report-device-work-chart"')
+                .replace('id="epc-device-work-controls"', 'id="epc-report-device-work-controls"')
+                .replace('class="epc-device-work-svg"', 'class="epc-device-work-svg" width="100%" height="380" preserveAspectRatio="xMidYMid meet"');
+            return `
+                <div class="epc-report-only-device" data-epc-report-diagram="device-work">
+                    ${chartMarkup}
+                    ${renderEpcDeviceWorkAnalysis(result)
+                        .replace('id="epc-device-work-analysis"', 'id="epc-report-device-work-analysis"')}
+                </div>
+            `;
+        }
+
+        function chunkEpcReportRows(rows = [], size = 12) {
+            const chunks = [];
+            for (let index = 0; index < rows.length; index += size) {
+                chunks.push(rows.slice(index, index + size));
+            }
+            return chunks.length ? chunks : [[]];
+        }
+
+        function renderEpcReportBoqPagedTable(rows = []) {
+            return `
+                <table class="epc-report-table">
+                    <thead>
+                        <tr>
+                            <th>Package</th>
+                            <th>Equipment</th>
+                            <th>Spec</th>
+                            <th class="num">Quantity</th>
+                            <th>Unit</th>
+                            <th>Protection</th>
+                            <th>Product Binding</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows.map(row => `
+                            <tr>
+                                <td class="package">${htmlSafe(row.package || '-')}</td>
+                                <td>${htmlSafe(row.item || '-')}</td>
+                                <td>${htmlSafe(row.spec || '-')}</td>
+                                <td class="num">${formatEpcNumber(row.quantity, 2)}</td>
+                                <td>${htmlSafe(row.unit || '-')}</td>
+                                <td>${htmlSafe(row.protection || '-')}</td>
+                                <td>${htmlSafe(row.productId || row.productName || 'Open')}</td>
+                            </tr>
+                        `).join('') || '<tr><td colspan="7" class="empty">No BOQ rows.</td></tr>'}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function renderEpcReportFormulaPagedTable(rows = []) {
+            return `
+                <table class="epc-report-table">
+                    <thead>
+                        <tr><th>Output</th><th>Formula</th><th class="num">Result</th><th>Source</th></tr>
+                    </thead>
+                    <tbody>
+                        ${rows.map(item => `
+                            <tr>
+                                <td class="package">${htmlSafe(item.label || item.key || '-')}</td>
+                                <td>${htmlSafe(item.formula || '-')}</td>
+                                <td class="num">${formatEpcNumber(item.result, 3, item.unit || '')}</td>
+                                <td>${htmlSafe(item.assumptionSource || '-')}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function getEpcReportPageShell(page = {}, pageNumber = 1, pageTotal = 1, meta = {}) {
+            return `
+                <section class="epc-report-page ${htmlSafe(page.className || '')}">
+                    <header class="epc-report-page-header">
+                        <div>
+                            <div class="epc-report-kicker">${htmlSafe(meta.title || 'Customer EPC Report PDF')}</div>
+                            <h1>${htmlSafe(page.title || meta.title || 'EPC Report')}</h1>
+                            ${page.subtitle ? `<div class="epc-report-subtitle">${htmlSafe(page.subtitle)}</div>` : ''}
+                        </div>
+                        <div class="epc-report-page-tag">${htmlSafe(resultReportReadyLabel(page.result || {}))}</div>
+                    </header>
+                    <main class="epc-report-page-body">
+                        ${page.body || ''}
+                    </main>
+                    <footer class="epc-report-page-footer">
+                        <span>${htmlSafe(meta.projectName || 'EPC Design')}</span>
+                        <span>Page ${pageNumber} / ${pageTotal}</span>
+                    </footer>
+                </section>
+            `;
+        }
+
+        function resultReportReadyLabel(result = {}) {
+            return hasBlockingEpcReportRisks(result) ? 'Open High Risk' : 'Report Ready';
+        }
+
+        function getEpcReportSummaryPage(result = {}, meta = {}) {
+            const recommended = getRecommendedEpcScheme(result);
+            const nextVerification = (result.nextVerification || []).slice(0, 4);
+            return {
+                title: meta.title,
+                subtitle: `${result.project?.name || 'EPC Design'} · ${new Date().toLocaleString()}`,
+                className: 'epc-report-summary-page',
+                result,
+                body: `
+                    <div class="epc-report-hero">
+                        <div>
+                            <div class="epc-report-eyebrow">Recommended Scheme</div>
+                            <div class="epc-report-hero-title">${htmlSafe(recommended.label || '-')}</div>
+                            <p>Hybrid PV, BESS, genset and EMS concept design generated from the current topology, electrical architecture and EMS Flow model.</p>
+                        </div>
+                        <div class="epc-report-ready-card ${hasBlockingEpcReportRisks(result) ? 'risk' : ''}">
+                            <span>${hasBlockingEpcReportRisks(result) ? 'Risk Gate' : 'Ready for Customer Review'}</span>
+                            <strong>${hasBlockingEpcReportRisks(result) ? 'Blocked' : 'Cleared'}</strong>
+                        </div>
+                    </div>
+                    ${renderEpcReportKpis(result)}
+                    <div class="epc-report-two-col">
+                        <section>
+                            <h2>Risk Status</h2>
+                            ${renderEpcReportRisks(result)}
+                        </section>
+                        <section>
+                            <h2>Next Verification</h2>
+                            <ul class="epc-report-list">${nextVerification.map(item => `<li>${htmlSafe(item)}</li>`).join('') || '<li>No immediate customer-facing verification item.</li>'}</ul>
+                            <div class="epc-report-note">${htmlSafe(result.disclaimer || '')}</div>
+                        </section>
+                    </div>
+                `
+            };
+        }
+
+        function renderEpcCustomerReportPages(result = {}, kind = 'customer') {
+            const meta = getEpcReportMeta(kind);
+            const pageBodies = [
+                getEpcReportSummaryPage(result, meta),
+                {
+                    title: 'EMS Flow Diagram',
+                    subtitle: 'Topology-aware connection map without selecting a specific operating hour.',
+                    className: 'epc-report-diagram-page epc-report-ems-page',
+                    result,
+                    body: renderEpcReportOnlyTopologyFlowDiagram(result)
+                },
+                {
+                    title: 'Device Work Diagram',
+                    subtitle: 'Daily PV, load, battery, genset and SOC profile for customer operation review.',
+                    className: 'epc-report-diagram-page epc-report-device-page',
+                    result,
+                    body: renderEpcReportOnlyDeviceWorkDiagram(result)
+                }
+            ];
+            const boqRows = Array.isArray(result.boq) ? result.boq : [];
+            chunkEpcReportRows(boqRows, 12).forEach((rows, index, chunks) => {
+                pageBodies.push({
+                    title: index ? 'Customer BOQ Summary' : 'Customer BOQ Summary',
+                    subtitle: `Material schedule ${index + 1} / ${chunks.length}. Complete editable BOQ is available in the XLSX download.`,
+                    className: 'epc-report-boq-page',
+                    result,
+                    body: renderEpcReportBoqPagedTable(rows)
+                });
+            });
+            if (kind === 'engineering') {
+                chunkEpcReportRows(Array.isArray(result.formulaTrace) ? result.formulaTrace : [], 10).forEach((rows, index, chunks) => {
+                    pageBodies.push({
+                        title: 'Formula Trace',
+                        subtitle: `Engineering calculation evidence ${index + 1} / ${chunks.length}.`,
+                        className: 'epc-report-boq-page',
+                        result,
+                        body: renderEpcReportFormulaPagedTable(rows)
+                    });
+                });
+            }
+            pageBodies.push({
+                title: 'Assumptions and Handover Notes',
+                subtitle: 'Customer-facing notes for EPC proposal review.',
+                className: 'epc-report-notes-page',
+                result,
+                body: `
+                    <div class="epc-report-two-col">
+                        <section>
+                            <h2>Design Basis</h2>
+                            <ul class="epc-report-list">
+                                <li>Electrical architecture: ${htmlSafe(result.electricalArchitecture?.recommendedId || result.electrical?.architecture || '-')}</li>
+                                <li>Topology: ${htmlSafe(result.topologyFlow?.topologyId || result.selectedTopologyId || '-')}</li>
+                                <li>Solar source: ${htmlSafe(result.solar?.dataSource || '-')}</li>
+                                <li>Load branches: ${formatEpcNumber(result.loads?.loadCount || 1, 0)}</li>
+                            </ul>
+                        </section>
+                        <section>
+                            <h2>Report Package</h2>
+                            <ul class="epc-report-list">
+                                <li>Customer PDF: fixed-page proposal with complete diagrams.</li>
+                                <li>BOQ XLSX: complete material schedule for procurement review.</li>
+                                <li>Engineering handoff: formula trace and detailed evidence when required.</li>
+                            </ul>
+                        </section>
+                    </div>
+                `
+            });
+            return pageBodies.map((page, index) => getEpcReportPageShell(page, index + 1, pageBodies.length, {
+                ...meta,
+                projectName: result.project?.name || 'EPC Design'
+            })).join('');
+        }
+
+        function buildEpcReportFixedPageElement(result = {}, kind = 'customer') {
+            const element = document.createElement('div');
+            element.className = 'epc-report-fixed-surface bg-white text-slate-800';
+            element.style.width = '1123px';
+            element.style.fontFamily = 'Arial, sans-serif';
+            element.innerHTML = `
+                <style>
+                    .epc-report-fixed-surface{background:#f8fafc;color:#0f172a}
+                    .epc-report-page{box-sizing:border-box;width:1123px;height:760px;overflow:hidden;background:#fff;padding:24px 32px;display:flex;flex-direction:column;page-break-after:always;break-after:page}
+                    .epc-report-page:last-child{page-break-after:auto;break-after:auto}
+                    .epc-report-page-header{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;border-bottom:2px solid #e2e8f0;padding-bottom:12px}
+                    .epc-report-kicker{font-size:10px;font-weight:900;text-transform:uppercase;color:#582C83;letter-spacing:.08em}
+                    .epc-report-page h1{font-size:25px;line-height:1.15;margin:3px 0 0;color:#111827}
+                    .epc-report-page h2{font-size:14px;line-height:1.2;margin:0 0 8px;color:#1f2937}
+                    .epc-report-subtitle{margin-top:4px;font-size:11px;font-weight:800;color:#64748b}
+                    .epc-report-page-tag{border:1px solid #bbf7d0;background:#f0fdf4;color:#15803d;border-radius:999px;padding:7px 11px;font-size:10px;font-weight:900;text-transform:uppercase;white-space:nowrap}
+                    .epc-report-page-body{flex:1;min-height:0;padding-top:14px}
+                    .epc-report-page-footer{display:flex;justify-content:space-between;border-top:1px solid #e2e8f0;padding-top:8px;font-size:9px;font-weight:800;color:#94a3b8}
+                    .epc-report-hero{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:18px;border:1px solid #e2e8f0;border-radius:14px;background:linear-gradient(135deg,#f8fafc,#fff7d6);padding:18px;margin-bottom:14px}
+                    .epc-report-eyebrow{font-size:10px;font-weight:900;text-transform:uppercase;color:#64748b}
+                    .epc-report-hero-title{margin-top:6px;font-size:25px;font-weight:900;color:#582C83}
+                    .epc-report-hero p{margin:8px 0 0;font-size:12px;line-height:1.45;font-weight:700;color:#475569}
+                    .epc-report-ready-card{border:1px solid #bbf7d0;background:#ecfdf5;border-radius:14px;padding:14px;text-align:right;color:#15803d}
+                    .epc-report-ready-card.risk{border-color:#fecaca;background:#fef2f2;color:#b91c1c}
+                    .epc-report-ready-card span{display:block;font-size:10px;font-weight:900;text-transform:uppercase}
+                    .epc-report-ready-card strong{display:block;margin-top:8px;font-size:28px;line-height:1;font-weight:900}
+                    .epc-report-two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+                    .epc-report-two-col section{border:1px solid #e2e8f0;border-radius:12px;padding:12px;background:#fff}
+                    .epc-report-list{margin:0;padding-left:16px;font-size:11px;line-height:1.45;font-weight:700;color:#475569}
+                    .epc-report-note{margin-top:10px;border-radius:10px;background:#f8fafc;padding:10px;font-size:9px;line-height:1.4;font-weight:800;color:#94a3b8}
+                    .epc-report-diagram-page .epc-report-page-body{display:flex;min-height:0}
+                    .epc-report-only-flow,.epc-report-only-device{width:100%;min-height:0}
+                    .epc-report-only-flow .epc-flow-diagram{height:575px;border:0;background:#fff;overflow:visible}
+                    .epc-report-only-flow .epc-flow-diagram>div:first-child,.epc-report-only-flow .epc-flow-diagram>div:last-child{display:none}
+                    .epc-report-only-flow .epc-flow-svg{width:1059px!important;max-width:100%!important;height:575px!important;min-height:0;display:block}
+                    .epc-report-only-device .epc-device-work-chart{border:0;background:#fff;overflow:visible}
+                    .epc-report-only-device .epc-device-work-chart-title{display:none!important}
+                    .epc-report-only-device #epc-report-device-work-controls,.epc-report-only-device button,.epc-report-only-device input,.epc-report-only-device select{display:none!important}
+                    .epc-report-only-device .epc-device-work-chart>div:first-child{padding:0 0 8px!important;border-bottom:1px solid #eef2f7}
+                    .epc-report-only-device .epc-device-work-svg{width:100%!important;height:380px!important;min-height:0;display:block}
+                    .epc-report-only-device .epc-device-work-hover-layer{display:none!important}
+                    .epc-report-only-device .epc-device-work-hover-capture{display:none!important}
+                    .epc-report-only-device .epc-device-work-analysis{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:8px}
+                    .epc-report-only-device .epc-device-work-analysis>div{padding:9px;border-radius:12px}
+                    .epc-report-only-device .epc-device-work-analysis .text-lg{font-size:17px;line-height:1.1}
+                    .epc-report-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:9.5px;line-height:1.25}
+                    .epc-report-table th{background:#edf2f7;color:#475569;text-transform:uppercase;font-size:8px;font-weight:900;border:1px solid #dbe4ee;padding:7px 6px;text-align:left}
+                    .epc-report-table td{border:1px solid #e2e8f0;padding:7px 6px;vertical-align:top;color:#334155;word-break:break-word}
+                    .epc-report-table .package{font-weight:900;color:#582C83}
+                    .epc-report-table .num{text-align:right;font-weight:900;white-space:nowrap}
+                    .epc-report-table .empty{text-align:center;color:#94a3b8;padding:28px}
+                    .epc-report-boq-page .epc-report-page-body{padding-top:12px}
+                    .epc-report-boq-page .epc-report-table th:nth-child(1){width:13%}
+                    .epc-report-boq-page .epc-report-table th:nth-child(2){width:17%}
+                    .epc-report-boq-page .epc-report-table th:nth-child(3){width:31%}
+                    .epc-report-boq-page .epc-report-table th:nth-child(4){width:8%}
+                    .epc-report-boq-page .epc-report-table th:nth-child(5){width:7%}
+                    .epc-report-boq-page .epc-report-table th:nth-child(6){width:12%}
+                    .epc-report-boq-page .epc-report-table th:nth-child(7){width:12%}
+                    .epc-report-fixed-surface svg{max-width:100%}
+                </style>
+                ${renderEpcCustomerReportPages(result, kind)}
+            `;
+            return element;
+        }
+
+        function getEpcBoqWorkbookRows(result = {}) {
+            return Array.isArray(result.boq) ? result.boq : [];
+        }
+
+        function epcBoqWorkbookQuantity(row = {}) {
+            const qty = Number(row.quantity);
+            return Number.isFinite(qty) ? qty : '';
+        }
+
+        function epcBoqWorkbookBinding(row = {}) {
+            return [row.productId, row.productName, row.supplierName]
+                .map(item => String(item || '').trim())
+                .filter(Boolean)
+                .join(' | ') || 'Open';
+        }
+
+        function epcBoqWorkbookCustomerRows(result = {}) {
+            const headers = ['Package', 'Equipment', 'Spec', 'Quantity', 'Unit', 'Protection', 'Product Binding', 'Remark'];
+            const rows = getEpcBoqWorkbookRows(result).map(row => [
+                row.package || '',
+                row.item || '',
+                row.spec || '',
+                epcBoqWorkbookQuantity(row),
+                row.unit || '',
+                row.protection || '',
+                epcBoqWorkbookBinding(row),
+                row.remark || ''
+            ]);
+            return [headers, ...rows];
+        }
+
+        function epcBoqWorkbookEngineeringRows(result = {}) {
+            const headers = ['Package', 'Equipment', 'Spec', 'Quantity', 'Unit', 'Protection', 'Product Binding', 'Source', 'Mandatory', 'Node Type', 'Manual', 'Remark'];
+            const rows = getEpcBoqWorkbookRows(result).map(row => [
+                row.package || '',
+                row.item || '',
+                row.spec || '',
+                epcBoqWorkbookQuantity(row),
+                row.unit || '',
+                row.protection || '',
+                epcBoqWorkbookBinding(row),
+                row.source || '',
+                row.mandatory ? 'Yes' : 'No',
+                row.nodeType || '',
+                row.manual ? 'Yes' : 'No',
+                row.remark || ''
+            ]);
+            return [headers, ...rows];
+        }
+
+        function epcBoqWorkbookProductRows(result = {}) {
+            const headers = ['BOQ Line ID', 'Package', 'Equipment', 'Product ID', 'Product Name', 'Supplier', 'Spec', 'Lead Time', 'Remark'];
+            const rows = getEpcBoqWorkbookRows(result).map(row => [
+                row.id || '',
+                row.package || '',
+                row.item || '',
+                row.productId || '',
+                row.productName || '',
+                row.supplierName || '',
+                row.productSpec || row.spec || '',
+                row.leadTime || '',
+                row.remark || ''
+            ]);
+            return [headers, ...rows];
+        }
+
+        function formatEpcWorksheetColumns(worksheet, widths = []) {
+            worksheet['!cols'] = widths.map(width => ({ wch: width }));
+            const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:A1');
+            for (let rowIndex = range.s.r; rowIndex <= range.e.r; rowIndex += 1) {
+                for (let colIndex = range.s.c; colIndex <= range.e.c; colIndex += 1) {
+                    const cellRef = XLSX.utils.encode_cell({ r: rowIndex, c: colIndex });
+                    const cell = worksheet[cellRef];
+                    if (!cell) continue;
+                    cell.s = {
+                        ...(cell.s || {}),
+                        alignment: { wrapText: true, vertical: 'top' },
+                        font: rowIndex === 0 ? { bold: true, color: { rgb: 'FFFFFF' } } : (cell.s?.font || {}),
+                        fill: rowIndex === 0 ? { fgColor: { rgb: '582C83' } } : (cell.s?.fill || {})
+                    };
+                }
+            }
+        }
+
+        window.downloadEpcBoqWorkbook = () => {
+            if (!canDownloadEpcReport('sales')) {
+                alert('You do not have permission to download this EPC BOQ workbook.');
+                return;
+            }
+            const project = captureEpcDesignFromDom();
+            const result = calculateEpcDesignProject(project, { defaults: epcDesignDefaults });
+            if (hasBlockingEpcReportRisks(result)) {
+                alert('Resolve or acknowledge all open High risks before downloading reports.');
+                setEpcPanelTab('risks');
+                renderEpcRisks(result);
+                renderEpcReports(result);
+                return;
+            }
+            if (!window.XLSX) {
+                alert('XLSX engine is still loading. Please try again in a moment.');
+                return;
+            }
+            const safeName = (result.project.name || 'epc-design').replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-|-$/g, '') || 'epc-design';
+            const customerWorksheet = XLSX.utils.aoa_to_sheet(epcBoqWorkbookCustomerRows(result));
+            const engineeringWorksheet = XLSX.utils.aoa_to_sheet(epcBoqWorkbookEngineeringRows(result));
+            const productWorksheet = XLSX.utils.aoa_to_sheet(epcBoqWorkbookProductRows(result));
+            formatEpcWorksheetColumns(customerWorksheet, [20, 28, 54, 12, 10, 20, 28, 42]);
+            formatEpcWorksheetColumns(engineeringWorksheet, [20, 28, 54, 12, 10, 20, 28, 16, 12, 18, 10, 42]);
+            formatEpcWorksheetColumns(productWorksheet, [22, 20, 28, 20, 34, 24, 54, 16, 42]);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, customerWorksheet, 'Customer Summary');
+            XLSX.utils.book_append_sheet(workbook, engineeringWorksheet, 'Engineering Detail');
+            XLSX.utils.book_append_sheet(workbook, productWorksheet, 'Product Binding');
+            XLSX.writeFile(workbook, `${safeName}-complete-boq.xlsx`);
+        };
+
+        window.downloadEpcDesignReport = async (kind = 'customer') => {
             if (!canDownloadEpcReport(kind)) {
                 alert('You do not have permission to download this EPC design report.');
                 return;
             }
             const project = captureEpcDesignFromDom();
             const result = calculateEpcDesignProject(project, { defaults: epcDesignDefaults });
+            if (hasBlockingEpcReportRisks(result)) {
+                alert('Resolve or acknowledge all open High risks before downloading reports.');
+                setEpcPanelTab('risks');
+                renderEpcRisks(result);
+                renderEpcReports(result);
+                return;
+            }
+            if (typeof window.html2pdf !== 'function') {
+                alert('PDF engine is still loading. Please try again in a moment.');
+                return;
+            }
+            renderEpcDeviceWorkPage(result);
+            renderEpcEnergyFlow(result);
+            const meta = getEpcReportMeta(kind);
             const safeName = (result.project.name || 'epc-design').replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-|-$/g, '') || 'epc-design';
-            if (kind === 'engineering') {
-                downloadBlob(`${safeName}-engineering-calculation.json`, 'application/json', JSON.stringify(result, null, 2));
-            } else {
-                downloadBlob(`${safeName}-${kind}-summary.html`, 'text/html', makeEpcReportHtml(result, kind));
+            const element = buildEpcReportFixedPageElement(result, kind);
+            const previousScrollX = window.scrollX || window.pageXOffset || 0;
+            const previousScrollY = window.scrollY || window.pageYOffset || 0;
+            const reportPageCount = Math.max(1, element.querySelectorAll('.epc-report-page').length);
+            const reportHeight = reportPageCount * 760;
+            element.style.position = 'absolute';
+            element.style.left = '0';
+            element.style.top = '0';
+            element.style.margin = '0';
+            element.style.height = `${reportHeight}px`;
+            const overlay = document.createElement('div');
+            overlay.className = 'epc-report-rendering-overlay';
+            overlay.style.position = 'fixed';
+            overlay.style.inset = '0';
+            overlay.style.zIndex = '99999';
+            overlay.style.overflow = 'auto';
+            overlay.style.background = '#ffffff';
+            overlay.style.padding = '0';
+            overlay.style.pointerEvents = 'none';
+            overlay.appendChild(element);
+            document.body.appendChild(overlay);
+            window.scrollTo(0, 0);
+            try {
+                await html2pdf().set({
+                    margin: 0,
+                    filename: `${safeName}-${meta.suffix}.pdf`,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: {
+                        scale: 2,
+                        useCORS: true,
+                        backgroundColor: '#ffffff',
+                        scrollX: 0,
+                        scrollY: 0,
+                        x: 0,
+                        y: 0,
+                        width: 1123,
+                        height: reportHeight,
+                        windowWidth: 1123,
+                        windowHeight: reportHeight
+                    },
+                    pagebreak: { mode: ['css', 'legacy'] },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+                }).from(element).save();
+            } finally {
+                overlay.remove();
+                window.scrollTo(previousScrollX, previousScrollY);
             }
         };
 
@@ -17517,9 +18850,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             document.querySelectorAll('[data-epc-download]').forEach(button => {
                 const kind = button.dataset.epcDownload || 'customer';
                 const allowed = canDownloadEpcReport(kind);
-                button.disabled = !allowed;
-                button.classList.toggle('opacity-50', !allowed);
-                button.title = allowed ? '' : 'Download permission required';
+                const riskBlocked = hasBlockingEpcReportRisks(window.__lastEpcDesignResult);
+                const disabled = !allowed || riskBlocked;
+                button.disabled = disabled;
+                button.dataset.epcRiskBlocked = riskBlocked ? 'true' : 'false';
+                button.classList.toggle('opacity-50', disabled);
+                button.classList.toggle('cursor-not-allowed', disabled);
+                button.title = !allowed ? 'Download permission required' : riskBlocked ? 'Resolve or acknowledge all open High risks before downloading reports.' : '';
             });
             const view = document.getElementById('view-epcdesign');
             if (!view) return;

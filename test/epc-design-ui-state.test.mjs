@@ -1008,6 +1008,53 @@ test('EPC hourly EMS merge carries previous day SOC across midnight zero-flow ro
   assert.equal(merged.find(row => row.hour === 0)?.socPct, 82.4);
 });
 
+test('EPC sub-hourly Load Work Profile carries previous day SOC across midnight zero-flow rows', () => {
+  const source = [
+    extractFunction('epcMinutesToTime', 'epcAddHoursToTime'),
+    extractFunction('epcChartRound', 'normalizeEpcDeviceWorkPeakBandColor'),
+    extractFunction('applyEpcDeviceWorkDurations', 'epcDeviceWorkDeterministicNoise'),
+    extractFunction('getEpcEnergyFlowDurationHours', 'mergeEpcEnergyFlowLoadSplits'),
+    extractFunction('getEpcDeviceWorkLoadTableRows', 'setEpcDeviceWorkLoadTableInterval'),
+    'return getEpcDeviceWorkLoadTableRows;'
+  ].join('\n');
+  const getRows = Function(source)();
+  const zeroFlow = (minute, socPct) => ({
+    timelineMinute: minute,
+    intervalMinutes: 1,
+    durationHours: 1 / 60,
+    baseLoadKw: 0,
+    loadNoiseKw: 0,
+    loadShockKw: 0,
+    loadKw: 0,
+    pvToLoadKw: 0,
+    pvToBatteryKw: 0,
+    batteryToLoadKw: 0,
+    gensetToLoadKw: 0,
+    unmetLoadKw: 0,
+    socPct
+  });
+  const rows = getRows([
+    zeroFlow(0, 86.1),
+    zeroFlow(1, 86.1),
+    zeroFlow(59, 86.1),
+    zeroFlow(1380, 82.4),
+    zeroFlow(1439, 82.4)
+  ], 1);
+
+  assert.equal(rows.find(row => row.timelineMinute === 0)?.socPct, 82.4);
+  assert.equal(rows.find(row => row.timelineMinute === 1)?.socPct, 82.4);
+});
+
+test('EPC sub-hourly EMS and Device Work profiles apply midnight SOC carry before display', () => {
+  const deviceProfile = html.match(/function buildEpcDeviceWorkProfileRows\(sourceRows = \[\], settings = \{\}\)[\s\S]*?function getEpcDeviceWorkRowsForSettings/);
+  assert.ok(deviceProfile, 'Device Work profile source should be found');
+  assert.match(deviceProfile[0], /return carryEpcZeroFlowSocRows\(\s*applyEpcDeviceWorkSocLedger\(/, 'Device Work profile rows should be SOC-carried before any chart or table display');
+
+  const emsProfile = html.match(/function getEpcEmsFlowProfileRows\(result = \{\}\)[\s\S]*?function getEpcEnergyFlowDurationHours/);
+  assert.ok(emsProfile, 'EMS Flow profile source should be found');
+  assert.match(emsProfile[0], /return carryEpcZeroFlowSocRows\(profileRows, \{ wrapDay: true \}\)/, 'EMS sub-hourly rows should use the same SOC carry as hourly rows');
+});
+
 test('EPC Load Work Profile exposes PV battery charge and preserves charging SOC', () => {
   const source = [
     extractFunction('epcMinutesToTime', 'epcAddHoursToTime'),

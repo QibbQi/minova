@@ -15716,11 +15716,14 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     rows
                 };
             });
-            return applyEpcDeviceWorkSocLedger(profiled.map((row, index) => ({ ...row, rowIndex: index, rows: profiled })), {
-                ...settings,
-                deviceWorkModel: model,
-                batteryControl
-            });
+            return carryEpcZeroFlowSocRows(
+                applyEpcDeviceWorkSocLedger(profiled.map((row, index) => ({ ...row, rowIndex: index, rows: profiled })), {
+                    ...settings,
+                    deviceWorkModel: model,
+                    batteryControl
+                }),
+                { wrapDay: true }
+            );
         }
 
         function getEpcDeviceWorkRowsForSettings(sourceRows = [], settings = {}) {
@@ -16085,7 +16088,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
 
         function getEpcDeviceWorkLoadTableRows(rows = [], intervalMinutes = 5) {
-            const source = applyEpcDeviceWorkDurations(Array.isArray(rows) ? rows : []);
+            const source = carryEpcZeroFlowSocRows(
+                applyEpcDeviceWorkDurations(Array.isArray(rows) ? rows : []),
+                { wrapDay: true }
+            );
             if (Number(intervalMinutes) !== 60) return source;
             const groups = new Map();
             source.forEach((row, index) => {
@@ -16957,9 +16963,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         function getEpcEmsFlowProfileRows(result = {}) {
             const sourceRows = result.energyFlow?.rows || [];
             const settings = getEpcDeviceWorkSettings(result);
-            return settings.deviceWorkModel.applyToEmsFlow
+            const profileRows = settings.deviceWorkModel.applyToEmsFlow
                 ? buildEpcDeviceWorkProfileRows(sourceRows, { ...settings, selectedRange: null })
                 : sourceRows;
+            return carryEpcZeroFlowSocRows(profileRows, { wrapDay: true });
         }
 
         function getEpcEnergyFlowDurationHours(row = {}) {

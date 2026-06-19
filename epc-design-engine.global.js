@@ -1,5 +1,4 @@
-// Browser global companion for epc-design-engine.mjs. Keep exported names aligned with the module.
-(function(root) {
+(function(global){
 const EPC_DESIGN_VERSION = 'epc-design-v2';
 const GLOBAL_SOLAR_ATLAS_API_BASE = 'https://2eueu84zmf.execute-api.eu-west-1.amazonaws.com/prod/';
 
@@ -84,6 +83,7 @@ const STANDARD_TOPOLOGY_LIBRARY_VERSION = 2;
 const ARCHITECTURE_TOPOLOGY_MAP = {
   lv_415_centralized: { topologyId: 'C3', voltageV: 415, variantId: 'lv_415_centralized' },
   lv_415_distributed: { topologyId: 'C3', voltageV: 415, variantId: 'lv_415_distributed' },
+  lv_800_microgrid: { topologyId: 'C3', voltageV: 800, variantId: 'lv_800_microgrid' },
   mv_6_6_radial: { topologyId: 'C5', voltageV: 6600, variantId: 'mv_6_6_radial' },
   mv_11_radial: { topologyId: 'C5', voltageV: 11000, variantId: 'mv_11_radial' },
   mv_11_ring: { topologyId: 'C7', voltageV: 11000, variantId: 'mv_11_ring' }
@@ -118,6 +118,38 @@ const EPC_BOQ_PACKAGES = Object.freeze([
   'EMS & Monitoring',
   'Auxiliary',
   'Documents & Certification'
+]);
+
+const EPC_QUARRY_TJQ_PROFILE_ID = 'quarry_tjq';
+const EPC_LOCAL_800V_REFERENCE = Object.freeze({
+  id: 'lv_800_microgrid',
+  name: '800V Microgrid',
+  pvMwp: 4,
+  bessMwh: 10,
+  pcsMw: 8,
+  source: 'Local procurement BOQ reference',
+  recommendation: 'Use as a high-reliability procurement reference, not as the default economic architecture.'
+});
+const EPC_QUARRY_TJQ_ASSET_GROUPS = Object.freeze([
+  { id: 'tjq1-primary', zone: 'TJQ1', label: 'TJQ1 primary crusher', assetType: 'crusher', assetCount: 1, feederCabinetQty: 1, ratioPct: 14, source: EPC_QUARRY_TJQ_PROFILE_ID },
+  { id: 'tjq1-secondary', zone: 'TJQ1', label: 'TJQ1 cone and VSI crushers', assetType: 'crusher', assetCount: 4, feederCabinetQty: 2, vfdCabinetQty: 1, ratioPct: 19, source: EPC_QUARRY_TJQ_PROFILE_ID },
+  { id: 'tjq1-screen', zone: 'TJQ1', label: 'TJQ1 screen and conveyor', assetType: 'screen', assetCount: 4, feederCabinetQty: 2, meteringCabinetQty: 1, ratioPct: 13, source: EPC_QUARRY_TJQ_PROFILE_ID },
+  { id: 'tjq2-primary', zone: 'TJQ2', label: 'TJQ2 primary crushers', assetType: 'crusher', assetCount: 2, feederCabinetQty: 1, ratioPct: 15, source: EPC_QUARRY_TJQ_PROFILE_ID },
+  { id: 'tjq2-secondary', zone: 'TJQ2', label: 'TJQ2 cone and mobile crushers', assetType: 'crusher', assetCount: 4, feederCabinetQty: 2, vfdCabinetQty: 2, ratioPct: 18, source: EPC_QUARRY_TJQ_PROFILE_ID },
+  { id: 'tjq2-screen', zone: 'TJQ2', label: 'TJQ2 screen and conveyor', assetType: 'screen', assetCount: 4, feederCabinetQty: 3, meteringCabinetQty: 1, ratioPct: 12, source: EPC_QUARRY_TJQ_PROFILE_ID },
+  { id: 'common-water-pump', zone: 'Common', label: 'Water pump branch', assetType: 'pump', assetCount: 7, feederCabinetQty: 7, meteringCabinetQty: 1, ratioPct: 5, source: EPC_QUARRY_TJQ_PROFILE_ID },
+  { id: 'common-aux-workshop', zone: 'Common', label: 'Auxiliary lighting and maintenance', assetType: 'auxiliary', assetCount: 4, feederCabinetQty: 4, meteringCabinetQty: 1, ratioPct: 4, source: EPC_QUARRY_TJQ_PROFILE_ID }
+]);
+const EPC_QUARRY_TJQ_GENSETS = Object.freeze([
+  { id: 'tjq1-g1', zone: 'TJQ1', label: 'CAT 350 kVA', ratedKva: 350, source: EPC_QUARRY_TJQ_PROFILE_ID },
+  { id: 'tjq1-g2', zone: 'TJQ1', label: 'CAT 750 kVA', ratedKva: 750, source: EPC_QUARRY_TJQ_PROFILE_ID },
+  { id: 'tjq1-g3', zone: 'TJQ1', label: 'Volvo Penta', ratedKva: 0, source: EPC_QUARRY_TJQ_PROFILE_ID },
+  { id: 'tjq1-g4', zone: 'TJQ1', label: 'CAT 365 kVA', ratedKva: 365, source: EPC_QUARRY_TJQ_PROFILE_ID },
+  { id: 'tjq2-g1', zone: 'TJQ2', label: 'Volvo Penta', ratedKva: 0, source: EPC_QUARRY_TJQ_PROFILE_ID },
+  { id: 'tjq2-g2', zone: 'TJQ2', label: 'Volvo Penta', ratedKva: 0, source: EPC_QUARRY_TJQ_PROFILE_ID },
+  { id: 'tjq2-g3', zone: 'TJQ2', label: 'KTA50-G1', ratedKva: 0, source: EPC_QUARRY_TJQ_PROFILE_ID },
+  { id: 'tjq2-g4', zone: 'TJQ2', label: 'CAT 3508 DITA', ratedKva: 0, source: EPC_QUARRY_TJQ_PROFILE_ID },
+  { id: 'tjq2-g5', zone: 'TJQ2', label: 'MarelliMotori AC Genset', ratedKva: 0, source: EPC_QUARRY_TJQ_PROFILE_ID }
 ]);
 const EMS_FLOW_SERIES_DEFAULT_COLORS = {
   pv: '#f59e0b',
@@ -1556,6 +1588,7 @@ function normalizeEpcDesignProject(raw = {}, options = {}) {
   return {
     id,
     mode: String(raw.mode || 'quick'),
+    procurementProfileId: String(raw.procurementProfileId || raw.project?.procurementProfileId || '').trim(),
     project: {
       id,
       name: String(project.name || raw.projectName || 'New Hybrid EPC Design').trim(),
@@ -1623,6 +1656,7 @@ function normalizeEpcDesignProject(raw = {}, options = {}) {
       existingMvVoltageKv: asNumber(electrical.existingMvVoltageKv, 0),
       newMvSystem: Boolean(electrical.newMvSystem),
       selectedArchitectureId,
+      localReferenceArchitecture: normalizeArchitectureId(electrical.localReferenceArchitecture || raw.localReferenceArchitecture),
       selectedArchitectureChosenAt: String(electrical.selectedArchitectureChosenAt || raw.selectedArchitectureChosenAt || ''),
       selectedArchitectureSource: selectedArchitectureId ? String(electrical.selectedArchitectureSource || raw.selectedArchitectureSource || 'user') : ''
     },
@@ -1675,6 +1709,89 @@ function buildEpcDesignProjectFromQuickInputs(inputs = {}, options = {}) {
     assumptions: options.defaults || {},
     createdAt: options.now,
     updatedAt: options.now
+  }, options);
+}
+
+function buildEpcQuarryProcurementProfile(baseProject = {}, options = {}) {
+  const base = baseProject && typeof baseProject === 'object' ? baseProject : {};
+  const site = base.site || {};
+  const loads = base.loads || {};
+  const designTargets = base.designTargets || {};
+  const electrical = base.electrical || {};
+  const assumptions = base.assumptions || {};
+  return normalizeEpcDesignProject({
+    ...base,
+    procurementProfileId: EPC_QUARRY_TJQ_PROFILE_ID,
+    mode: 'detailed',
+    project: {
+      ...(base.project || {}),
+      name: base.project?.name || 'TJQ Quarry Hybrid EPC Design',
+      stage: base.project?.stage || 'Concept',
+      scenario: 'Quarry PV + BESS + diesel microgrid'
+    },
+    site: {
+      ...site,
+      country: site.country || 'Malaysia',
+      state: site.state || '',
+      availableAreaM2: site.availableAreaM2 || 52000,
+      distanceToInterconnectionM: site.distanceToInterconnectionM || electrical.distanceToInterconnectionM || 650,
+      gridMode: 'island'
+    },
+    selectedTopologyId: 'C7',
+    loads: {
+      ...loads,
+      measurementMethod: 'diesel_sfc_estimate',
+      dieselTotalLiters: loads.dieselTotalLiters || 622259,
+      dieselPeriodDays: loads.dieselPeriodDays || 151,
+      dieselPricePerLiter: loads.dieselPricePerLiter || 4.67,
+      measuredDailyLoadKwh: loads.measuredDailyLoadKwh || 15452,
+      operationHoursPerDay: 8,
+      operationStartTime: loads.operationStartTime || '09:00',
+      operationFinishTime: loads.operationFinishTime || '17:00',
+      peakLoadSafetyFactor: loads.peakLoadSafetyFactor || 1.3,
+      loadCount: 8,
+      assetGroups: EPC_QUARRY_TJQ_ASSET_GROUPS.map(row => ({ ...row })),
+      gensets: EPC_QUARRY_TJQ_GENSETS.map(row => ({ ...row }))
+    },
+    gensets: EPC_QUARRY_TJQ_GENSETS.map(row => ({ ...row })),
+    solarResource: {
+      ...(base.solarResource || {}),
+      specificYieldKwhPerKwpDay: base.solarResource?.specificYieldKwhPerKwpDay || 3.6,
+      dataSource: base.solarResource?.dataSource || 'Malaysia Default'
+    },
+    designTargets: {
+      ...designTargets,
+      replacementPct: 80,
+      bessRole: designTargets.bessRole || 'diesel_replacement',
+      supportHours: designTargets.supportHours || 1.9,
+      roundUpSizing: false,
+      capacityOverrides: {
+        ...(designTargets.capacityOverrides || {}),
+        pvMwp: 4,
+        bessMwh: 5,
+        pcsMw: 2.5
+      }
+    },
+    electrical: {
+      ...electrical,
+      voltageKv: electrical.voltageKv || 0.415,
+      powerFactor: electrical.powerFactor || 0.95,
+      distanceToInterconnectionM: electrical.distanceToInterconnectionM || site.distanceToInterconnectionM || 650,
+      newMvSystem: true,
+      selectedArchitectureId: 'mv_11_ring',
+      selectedArchitectureSource: 'quarry-template',
+      localReferenceArchitecture: EPC_LOCAL_800V_REFERENCE.id
+    },
+    assumptions: {
+      ...assumptions,
+      moduleWp: assumptions.moduleWp || 580,
+      modulesPerString: assumptions.modulesPerString || 26,
+      combinerInputs: assumptions.combinerInputs || 16,
+      bessAutonomyHours: assumptions.bessAutonomyHours || 1.9,
+      pcsSafetyFactor: assumptions.pcsSafetyFactor || 1.5
+    },
+    createdAt: base.createdAt || options.now,
+    updatedAt: options.now || base.updatedAt
   }, options);
 }
 
@@ -2245,6 +2362,7 @@ function buildCableScreening(project, designKw, pf) {
     candidates: [
       buildCableCandidate({ voltageClass: '415V', voltageKv: 0.415, designKw, distanceM, pf, conductor: 'CU', sizeMm2: 630, ampacityA: 850, derating: 0.8 }),
       buildCableCandidate({ voltageClass: '415V', voltageKv: 0.415, designKw, distanceM, pf, conductor: 'AL', sizeMm2: 630, ampacityA: 720, derating: 0.8 }),
+      buildCableCandidate({ voltageClass: '800V', voltageKv: 0.8, designKw, distanceM, pf, conductor: 'CU', sizeMm2: 630, ampacityA: 850, derating: 0.8 }),
       buildCableCandidate({ voltageClass: '6.6kV', voltageKv: 6.6, designKw, distanceM, pf, conductor: 'AL', sizeMm2: 240, ampacityA: 360, derating: 0.85 }),
       buildCableCandidate({ voltageClass: '11kV', voltageKv: 11, designKw, distanceM, pf, conductor: 'AL', sizeMm2: 240, ampacityA: 360, derating: 0.85 })
     ],
@@ -2258,30 +2376,40 @@ function buildElectricalArchitecture(project, designKw, pf, distance, lvCurrentA
   const candidateSpecs = [
     ['lv_415_centralized', '415V Centralized', 0.415, 'LV', 1],
     ['lv_415_distributed', 'Distributed 415V', 0.415, 'LV', 2],
+    ['lv_800_microgrid', '800V Microgrid', 0.8, 'LV800', 2.5],
     ['mv_6_6_radial', '6.6kV Radial', 6.6, 'MV', 3],
     ['mv_11_radial', '11kV Radial', 11, 'MV', 4],
     ['mv_11_ring', '11kV Ring', 11, 'MV', 5]
   ];
   const candidates = candidateSpecs.map(([id, name, voltageKv, voltageClass, reliabilityScore]) => {
     const currentA = calculateCurrentA(designKw, voltageKv, pf);
+    const is800vReference = id === EPC_LOCAL_800V_REFERENCE.id;
     const voltageDropPct = estimateVoltageDropPct({
       currentA,
       voltageKv,
       distanceM: Math.max(1, distance),
-      conductor: voltageClass === 'LV' ? 'CU' : 'AL',
-      sizeMm2: voltageClass === 'LV' ? 630 : 240,
-      parallelRuns: voltageClass === 'LV' ? Math.max(1, Math.ceil(currentA / 680)) : 1,
+      conductor: voltageClass === 'LV' || is800vReference ? 'CU' : 'AL',
+      sizeMm2: voltageClass === 'LV' || is800vReference ? 630 : 240,
+      parallelRuns: voltageClass === 'LV' || is800vReference ? Math.max(1, Math.ceil(currentA / 680)) : 1,
       pf
     });
-    let status = 'PASS';
+    let status = is800vReference ? 'REVIEW' : 'PASS';
     const reasons = [];
+    const riskNotes = [];
     if (voltageClass === 'LV' && currentA > 2500) {
       status = 'FAIL';
       reasons.push('High 415V current');
+      riskNotes.push('High MW-level 415V current drives heavy busbar and multi-run cable scope.');
     }
     if (voltageClass === 'LV' && distance > 200 && designKw > 500) {
       status = status === 'FAIL' ? 'FAIL' : 'REVIEW';
       reasons.push('Long LV route');
+      riskNotes.push('Long LV route needs voltage-drop and fault-level validation.');
+    }
+    if (is800vReference) {
+      reasons.push('Local BOQ reference option');
+      riskNotes.push('800V reduces current versus 415V but still requires protection selectivity review.');
+      riskNotes.push('Equipment supply, local EPC familiarity, O&M spares and multiple transformer interfaces must be confirmed.');
     }
     if (id === 'mv_6_6_radial' && existingMv === 6.6) reasons.push('Matches existing 6.6kV system');
     if (id === 'mv_11_radial' && newMvSystem) reasons.push('Malaysia new MV system screening option');
@@ -2303,7 +2431,15 @@ function buildElectricalArchitecture(project, designKw, pf, distance, lvCurrentA
       reliabilityScore,
       status,
       score,
-      reasons
+      reasons,
+      riskNotes,
+      recommendation: id === 'mv_11_ring'
+        ? 'Recommended for quarry multi-zone loads, long routes and future expansion.'
+        : is800vReference
+          ? EPC_LOCAL_800V_REFERENCE.recommendation
+          : status === 'FAIL'
+            ? 'Not recommended for this concept case.'
+            : 'Comparison option; validate CAPEX, protection and local O&M before selection.'
     };
   });
   const eligible = candidates.filter(candidate => candidate.status !== 'FAIL');
@@ -2325,6 +2461,59 @@ function buildElectricalArchitecture(project, designKw, pf, distance, lvCurrentA
     selectedArchitectureWarning,
     recommendation: `${recommended.name} is preferred for concept screening; compare CAPEX, cable count, protection complexity and local O&M before final design.`,
     disclaimer: 'Experience-rule architecture screening only; not a statutory requirement or final engineering design.'
+  };
+}
+
+function pickArchitectureCableCandidate(candidate = {}, cableScreening = {}) {
+  const voltageLabel = asNumber(candidate.voltageKv, 0) >= 1
+    ? `${asNumber(candidate.voltageKv, 0)}kV`
+    : `${Math.round(asNumber(candidate.voltageKv, 0) * 1000)}V`;
+  const matches = (cableScreening.candidates || []).filter(cable => cable.voltageClass === voltageLabel);
+  if (!matches.length) return null;
+  return matches.reduce((best, item) => {
+    if (item.parallelRuns !== best.parallelRuns) return item.parallelRuns < best.parallelRuns ? item : best;
+    return item.voltageDropPct < best.voltageDropPct ? item : best;
+  }, matches[0]);
+}
+
+function buildArchitectureComparison(project, electricalArchitecture = {}, cableScreening = {}) {
+  const localReferenceId = normalizeArchitectureId(project.electrical.localReferenceArchitecture) || EPC_LOCAL_800V_REFERENCE.id;
+  const candidates = (electricalArchitecture.candidates || []).map((candidate) => {
+    const cable = pickArchitectureCableCandidate(candidate, cableScreening);
+    const riskNotes = Array.isArray(candidate.riskNotes) && candidate.riskNotes.length
+      ? candidate.riskNotes
+      : candidate.reasons || [];
+    const localReference = candidate.id === localReferenceId;
+    const recommended = candidate.id === electricalArchitecture.recommendedId;
+    return {
+      ...candidate,
+      localReference,
+      recommended,
+      parallelRuns: cable?.parallelRuns || (candidate.voltageClass === 'LV' || candidate.voltageClass === 'LV800'
+        ? Math.max(1, Math.ceil(asNumber(candidate.currentA, 0) / 680))
+        : 1),
+      cableStatus: cable?.status || '',
+      cableVoltageDropPct: cable ? round(cable.voltageDropPct, 2) : round(candidate.voltageDropPct, 2),
+      riskNotes,
+      recommendation: recommended
+        ? `${candidate.name} is recommended for this concept case.`
+        : localReference
+          ? EPC_LOCAL_800V_REFERENCE.recommendation
+          : candidate.recommendation || 'Comparison option; validate with detailed engineering before procurement.'
+    };
+  });
+  const localReference = candidates.find(candidate => candidate.id === localReferenceId)
+    || candidates.find(candidate => candidate.id === EPC_LOCAL_800V_REFERENCE.id)
+    || null;
+  return {
+    recommendedId: electricalArchitecture.recommendedId || '',
+    calculatedRecommendedId: electricalArchitecture.calculatedRecommendedId || '',
+    selectedArchitectureId: electricalArchitecture.selectedArchitectureId || '',
+    localReference,
+    candidates,
+    basis: 'Concept comparison of New-Hybrid recommendation against the local 800V procurement BOQ reference.',
+    recommendation: '11kV ring selected to reduce MW-level LV current and support distributed quarry loads.',
+    localReferenceMeta: EPC_LOCAL_800V_REFERENCE
   };
 }
 
@@ -2691,7 +2880,7 @@ function calculateElectrical(project, recommended) {
   const designKw = Math.max(roundedPvMwp * 1000, (recommended?.pcsRecommendedMw || 0) * 1000);
   const lvCurrentA = calculateCurrentA(designKw, voltageKv, pf);
   const distance = Math.max(project.site.distanceToInterconnectionM || 0, project.electrical.distanceToInterconnectionM || 0);
-  const voltageOptions = [0.415, 6.6, 11].map(optionVoltage => ({
+  const voltageOptions = [0.415, 0.8, 6.6, 11].map(optionVoltage => ({
     voltageKv: optionVoltage,
     currentA: calculateCurrentA(designKw, optionVoltage, pf)
   }));
@@ -3036,6 +3225,8 @@ function buildProcurementAdvisory(project, context = {}) {
   const loadAssetSummary = context.loadAssetSummary || buildLoadAssetSummary(project.loads?.assetGroups || [], project.gensets || project.loads?.gensets || []);
   const topology = context.topology || project.topology || {};
   const pvStringDesign = context.pvStringDesign || {};
+  const architectureComparison = context.architectureComparison || {};
+  const recommended = context.recommended || {};
   const findings = [];
   const addFinding = (finding = {}) => {
     if (!finding.id || findings.some(item => item.id === finding.id)) return;
@@ -3050,6 +3241,70 @@ function buildProcurementAdvisory(project, context = {}) {
       action: String(finding.action || '').trim()
     });
   };
+
+  if (!loadAssetSummary.branchCount && !loadAssetSummary.gensetCount) {
+    addFinding({
+      id: 'empty-asset-mapping',
+      severity: 'high',
+      domain: 'asset-mapping',
+      title: 'Asset mapping is empty',
+      evidence: 'No load asset groups or genset rows are available for procurement expansion.',
+      recommendation: 'Apply the Quarry / TJQ template or import assetGroups and gensets before issuing the customer BOQ.',
+      action: 'apply-quarry-template'
+    });
+  }
+
+  const localReference = architectureComparison.localReference || {};
+  const uses800vReference = localReference.id === EPC_LOCAL_800V_REFERENCE.id || project.electrical?.localReferenceArchitecture === EPC_LOCAL_800V_REFERENCE.id;
+  if (uses800vReference && asNumber(recommended.pcsRecommendedMw, 0) > 0 && EPC_LOCAL_800V_REFERENCE.pcsMw > recommended.pcsRecommendedMw) {
+    addFinding({
+      id: 'local-boq-high-pcs',
+      severity: 'medium',
+      domain: 'architecture',
+      title: 'Local BOQ 8MW PCS is a high-reliability option',
+      evidence: `Local reference lists ${EPC_LOCAL_800V_REFERENCE.pcsMw}MW PCS; New-Hybrid recommendation is ${round(recommended.pcsRecommendedMw, 2)}MW.`,
+      recommendation: 'Keep 8MW PCS as an uptime/redundancy alternate, but do not use it as the default economic BOQ unless the customer accepts the CAPEX premium.',
+      quantityDelta: EPC_LOCAL_800V_REFERENCE.pcsMw - recommended.pcsRecommendedMw,
+      action: 'compare-pcs-capex-option'
+    });
+  }
+
+  if (uses800vReference) {
+    addFinding({
+      id: 'local-boq-800v-review',
+      severity: 'high',
+      domain: 'electrical',
+      title: '800V bus requires electrical review',
+      evidence: `${localReference.name || EPC_LOCAL_800V_REFERENCE.name} is marked ${localReference.status || 'REVIEW'} with ${localReference.parallelRuns || 'multiple'} parallel run screening.`,
+      recommendation: 'Review protection selectivity, equipment supply, local EPC familiarity, O&M spares and multi-transformer interfaces before accepting the 800V BOQ architecture.',
+      action: 'review-800v-architecture'
+    });
+  }
+
+  if (loadAssetSummary.branchCount > 0 && loadAssetSummary.assetGroups.some(group => !(asNumber(group.ratedKva, 0) > 0))) {
+    addFinding({
+      id: 'transformer-rating-missing',
+      severity: 'medium',
+      domain: 'electrical',
+      title: 'Load transformer kVA ratings are missing',
+      evidence: `${loadAssetSummary.branchCount} load branch(es) require downstream transformer kVA confirmation by zone.`,
+      recommendation: 'Add a per-zone transformer schedule with kVA, impedance, vector group, tapping range and enclosure/protection requirements.',
+      quantityDelta: loadAssetSummary.branchCount,
+      action: 'add-load-transformer-schedule'
+    });
+  }
+
+  if (loadAssetSummary.branchCount > 0 || project.procurementProfileId === EPC_QUARRY_TJQ_PROFILE_ID) {
+    addFinding({
+      id: 'cable-schedule-missing',
+      severity: 'medium',
+      domain: 'electrical',
+      title: 'Cable schedule is still concept-level',
+      evidence: 'The BOQ has feeder counts but no route length, cable section, installation method or final voltage-drop schedule.',
+      recommendation: 'Add a cable schedule by source, destination, voltage class, route length, conductor size, parallel runs, derating and voltage-drop result before procurement release.',
+      action: 'add-cable-schedule'
+    });
+  }
 
   if (asNumber(pvStringDesign.stringRoundingGapModules, 0) > 0) {
     addFinding({
@@ -3429,6 +3684,7 @@ function calculateEpcDesignProject(rawProject = {}, options = {}) {
     disclaimer: 'Experience-rule architecture screening only; not a statutory requirement or final engineering design.'
   };
   const cableScreening = electrical.cableScreening || { candidates: [] };
+  const architectureComparison = buildArchitectureComparison(project, electricalArchitecture, cableScreening);
   let topologySelection = buildTopologySelection(project, electricalArchitecture);
   const topologyBuildOptions = {
     architectureId: electricalArchitecture.recommendedId,
@@ -3479,6 +3735,8 @@ function calculateEpcDesignProject(rawProject = {}, options = {}) {
     topology: topologyProject.topology,
     pvStringDesign,
     loadAssetSummary,
+    architectureComparison,
+    recommended,
     boq
   });
   const risks = buildRisks(project, load, electrical, recommended, { electricalArchitecture });
@@ -3553,6 +3811,7 @@ function calculateEpcDesignProject(rawProject = {}, options = {}) {
     loadAssetSummary,
     electrical,
     electricalArchitecture,
+    architectureComparison,
     cableScreening,
     protectionMatrix,
     emsStateMachine,
@@ -3700,21 +3959,5 @@ function normalizeEpcDesignProjectList(value = [], options = {}) {
     .filter(item => item.id);
 }
 
-
-if (root.document?.documentElement) {
-  root.document.documentElement.dataset.epcDesignEngine = EPC_DESIGN_VERSION;
-}
-root.MinovaEpcDesignEngine = {
-  EPC_DESIGN_VERSION,
-  GLOBAL_SOLAR_ATLAS_API_BASE,
-  EPC_DESIGN_DEFAULTS,
-  normalizeEpcDesignProject,
-  buildEpcDesignProjectFromQuickInputs,
-  calculateEpcDesignProject,
-  calculatePvStringDesign,
-  buildGlobalSolarAtlasUrl,
-  buildGlobalSolarAtlasApiUrls,
-  parseGlobalSolarAtlasSolarResource,
-  normalizeEpcDesignProjectList
-};
-})(window);
+  global.MinovaEpcDesignEngine={EPC_DESIGN_VERSION,GLOBAL_SOLAR_ATLAS_API_BASE,EPC_DESIGN_DEFAULTS,buildEpcDesignProjectFromQuickInputs,buildEpcQuarryProcurementProfile,calculateEpcDesignProject,calculatePvStringDesign,buildGlobalSolarAtlasUrl,buildGlobalSolarAtlasApiUrls,parseGlobalSolarAtlasSolarResource,normalizeEpcDesignProject,normalizeEpcDesignProjectList};
+})(typeof window!=="undefined"?window:globalThis);

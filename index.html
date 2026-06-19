@@ -2740,6 +2740,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     </select>
                     <button type="button" onclick="createEpcDesignProject()" class="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-black hover:bg-black">New</button>
                     <button type="button" onclick="saveCurrentEpcDesignProject()" class="px-3 py-2 rounded-xl bg-purple-700 text-white text-xs font-black hover:bg-purple-800">Save</button>
+                    <button type="button" onclick="applyEpcQuarryProcurementProfile()" data-epc-profile-builder="buildEpcQuarryProcurementProfile" class="px-3 py-2 rounded-xl border border-purple-200 text-purple-700 text-xs font-black hover:bg-purple-50">Apply Quarry / TJQ Template</button>
                     <button type="button" onclick="downloadEpcDesignReport('customer')" data-epc-download="customer" class="px-3 py-2 rounded-xl brand-yellow-action border text-xs font-black">Customer Summary</button>
                     <button type="button" onclick="downloadEpcDesignReport('engineering')" data-epc-download="engineering" class="hidden px-3 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-black hover:bg-slate-50" aria-label="Download engineering calculation"></button>
                 </div>
@@ -5541,6 +5542,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         const {
             EPC_DESIGN_DEFAULTS,
             buildGlobalSolarAtlasApiUrls,
+            buildEpcQuarryProcurementProfile,
             buildGlobalSolarAtlasUrl,
             calculateEpcDesignProject,
             calculatePvStringDesign,
@@ -13926,10 +13928,11 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const target = document.getElementById('epc-electrical-workspace');
             if (!target) return;
             const electricalArchitecture = result.electricalArchitecture || { candidates: [] };
+            const architectureComparison = result.architectureComparison || electricalArchitecture || { candidates: [] };
             const cableScreening = result.cableScreening || { candidates: [] };
             const protectionMatrix = result.protectionMatrix || { functions: [] };
             const transformer = result.electrical?.transformerSizing || {};
-            const candidates = electricalArchitecture.candidates || [];
+            const candidates = architectureComparison.candidates || electricalArchitecture.candidates || [];
             const cableCandidates = cableScreening.candidates || [];
             const protectionFunctions = protectionMatrix.functions || [];
             const selectedArchitectureId = String(electricalArchitecture.selectedArchitectureId || result.electrical?.selectedArchitectureId || '').trim();
@@ -13959,21 +13962,22 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <div class="bg-slate-50 px-3 py-2 text-[10px] font-black uppercase text-slate-500">Architecture Comparison</div>
                         <div class="overflow-x-auto">
                             <table class="w-full text-xs">
-                                <thead class="text-left text-slate-400 uppercase"><tr><th class="px-3 py-2">Architecture</th><th class="px-3 py-2 text-right">Voltage</th><th class="px-3 py-2 text-right">Current A</th><th class="px-3 py-2 text-right">Drop %</th><th class="px-3 py-2">Status</th><th class="px-3 py-2">Choose</th><th class="px-3 py-2">Reasons</th></tr></thead>
+                                <thead class="text-left text-slate-400 uppercase"><tr><th class="px-3 py-2">Architecture</th><th class="px-3 py-2 text-right">Voltage</th><th class="px-3 py-2 text-right">Current A</th><th class="px-3 py-2 text-right">Drop %</th><th class="px-3 py-2 text-right">Parallel Runs</th><th class="px-3 py-2">Status</th><th class="px-3 py-2">Choose</th><th class="px-3 py-2">Risk Notes</th></tr></thead>
                                 <tbody class="divide-y divide-slate-100">
                                     ${candidates.map(candidate => `
-                                        <tr class="${candidate.id === electricalArchitecture.recommendedId ? 'bg-yellow-50' : ''} ${candidate.id === selectedArchitectureId ? 'ring-1 ring-purple-200' : ''}">
-                                            <td class="px-3 py-2 font-black text-slate-700">${htmlSafe(candidate.name)}</td>
+                                        <tr class="${candidate.id === architectureComparison.recommendedId ? 'bg-yellow-50' : ''} ${candidate.id === selectedArchitectureId ? 'ring-1 ring-purple-200' : ''}">
+                                            <td class="px-3 py-2 font-black text-slate-700">${htmlSafe(candidate.name)}${candidate.localReference ? '<div class="text-[9px] font-black uppercase text-blue-600">Local BOQ Reference</div>' : ''}</td>
                                             <td class="px-3 py-2 text-right">${formatEpcNumber(candidate.voltageKv, 3, 'kV')}</td>
                                             <td class="px-3 py-2 text-right">${formatEpcNumber(candidate.currentA, 0)}</td>
-                                            <td class="px-3 py-2 text-right">${formatEpcNumber(candidate.voltageDropPct, 2)}</td>
+                                            <td class="px-3 py-2 text-right">${formatEpcNumber(candidate.cableVoltageDropPct ?? candidate.voltageDropPct, 2)}</td>
+                                            <td class="px-3 py-2 text-right">${formatEpcNumber(candidate.parallelRuns || 0, 0)}</td>
                                             <td class="px-3 py-2 font-black">${htmlSafe(candidate.status)}${candidate.id === selectedArchitectureId ? ' · SELECTED' : ''}</td>
                                             <td class="px-3 py-2">
-                                                ${candidate.status === 'PASS'
+                                                ${candidate.status === 'PASS' && candidate.id !== 'lv_800_microgrid'
                                                     ? `<button type="button" data-epc-architecture-choose="${htmlSafe(candidate.id)}" onclick="chooseEpcElectricalArchitecture('${htmlSafe(candidate.id)}')" ${!canEditEpcEngineering() ? 'disabled' : ''} class="rounded-lg border border-purple-200 bg-white px-3 py-1.5 text-[10px] font-black text-purple-700 hover:bg-purple-50 disabled:opacity-40">${candidate.id === selectedArchitectureId ? 'Chosen' : 'Choose'}</button>`
-                                                    : '<span class="text-[10px] font-bold text-slate-300">--</span>'}
+                                                    : '<span class="text-[10px] font-bold text-slate-300">Review</span>'}
                                             </td>
-                                            <td class="px-3 py-2 text-slate-500">${htmlSafe((candidate.reasons || []).join('; ') || '--')}</td>
+                                            <td class="px-3 py-2 text-slate-500">${htmlSafe((candidate.riskNotes || candidate.reasons || []).join('; ') || candidate.recommendation || '--')}</td>
                                         </tr>
                                     `).join('')}
                                 </tbody>
@@ -14773,6 +14777,54 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             });
         }
 
+        function getEpcGensetZoneSummary(summary = {}) {
+            const gensets = Array.isArray(summary.gensets) ? summary.gensets : [];
+            if (!gensets.length) return 'No genset asset rows';
+            const zoneCounts = gensets.reduce((acc, row) => {
+                const zone = String(row.zone || 'Common').trim() || 'Common';
+                acc[zone] = (acc[zone] || 0) + 1;
+                return acc;
+            }, {});
+            const defaultQuarryGensetSummary = '9 units / TJQ1 4 / TJQ2 5';
+            if (gensets.length === 9 && zoneCounts.TJQ1 === 4 && zoneCounts.TJQ2 === 5) return defaultQuarryGensetSummary;
+            return `${gensets.length} units / ${Object.entries(zoneCounts).map(([zone, count]) => `${zone} ${count}`).join(' / ')}`;
+        }
+
+        function renderEpcTopologyFlowZoneSummary(result = {}) {
+            const summary = result.loadAssetSummary || {};
+            const groups = Array.isArray(summary.assetGroups) ? summary.assetGroups : [];
+            const gensets = Array.isArray(summary.gensets) ? summary.gensets : [];
+            if (!groups.length && !gensets.length) return '';
+            const zoneRows = Object.values(groups.reduce((acc, row) => {
+                const zone = String(row.zone || 'Common').trim() || 'Common';
+                if (!acc[zone]) acc[zone] = { zone, branchCount: 0, assetCount: 0 };
+                acc[zone].branchCount += 1;
+                acc[zone].assetCount += Number(row.assetCount) || 0;
+                return acc;
+            }, {}));
+            const architectureNote = result.architectureComparison?.recommendation || '11kV ring selected to reduce MW-level LV current and support distributed quarry loads.';
+            return `
+                <div class="border-b border-slate-100 bg-white px-4 py-3">
+                    <div class="mb-2 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
+                        <div class="text-[10px] font-black uppercase text-purple-700">zone-aware grouping</div>
+                        <div class="text-[11px] font-bold text-slate-500">${htmlSafe(architectureNote)}</div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-2">
+                        ${zoneRows.map(zone => `
+                            <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                                <div class="text-xs font-black text-slate-800">${htmlSafe(zone.zone)}</div>
+                                <div class="mt-1 text-[11px] font-bold text-slate-500">${formatEpcNumber(zone.branchCount, 0)} load branch / ${formatEpcNumber(zone.branchCount, 0)} Load TX / ${formatEpcNumber(zone.branchCount, 0)} LV BUS / ${formatEpcNumber(zone.assetCount, 0)} assets</div>
+                            </div>
+                        `).join('')}
+                        <div class="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2">
+                            <div class="text-xs font-black text-blue-800">DG Station</div>
+                            <div class="mt-1 text-[11px] font-bold text-blue-600">${htmlSafe(getEpcGensetZoneSummary(summary))}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
         function renderEpcTopologyFlowDiagram(result, row) {
             const model = buildEpcTopologyFlowRenderModel(result, row);
             const topologyFlow = model.topologyFlow;
@@ -14803,6 +14855,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             ${warnings.length ? `<span class="rounded-full border border-yellow-200 bg-yellow-50 px-3 py-1 text-[10px] font-black text-yellow-700">${warnings.length} warning(s)</span>` : ''}
                         </div>
                     </div>
+                    ${renderEpcTopologyFlowZoneSummary(result)}
                     ${topologyFlow.validationBlocked ? `<div class="border-b border-red-100 bg-red-50 px-4 py-2 text-xs font-bold text-red-700">${htmlSafe(errors.map(item => `${item.code}: ${item.message}`).join(' | '))}</div>` : ''}
                     <svg id="epc-flow-svg" class="epc-flow-svg" viewBox="${htmlSafe(model.viewBox)}" role="img" aria-label="Topology-aware hybrid energy flow diagram">
                         <defs>
@@ -17486,6 +17539,17 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             renderEpcDesignWorkspace();
         };
 
+        window.applyEpcQuarryProcurementProfile = () => {
+            const current = captureEpcDesignFromDom();
+            const project = buildEpcQuarryProcurementProfile(current, { defaults: epcDesignDefaults });
+            epcDesignMode = project.mode || 'detailed';
+            clearEpcSldHistory();
+            updateEpcProject(project);
+            renderEpcDesignWorkspace();
+            const status = document.getElementById('epc-design-save-status');
+            if (status) status.textContent = 'Quarry / TJQ template applied locally';
+        };
+
         window.selectEpcDesignProject = (id) => {
             clearEpcSldHistory();
             epcDesignActiveProjectId = String(id || '');
@@ -18458,6 +18522,44 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             `;
         }
 
+        function renderEpcReportArchitectureDecision(result = {}) {
+            const candidates = Array.isArray(result.architectureComparison?.candidates) ? result.architectureComparison.candidates : [];
+            const note = result.architectureComparison?.recommendation || '11kV ring selected to reduce MW-level LV current and support distributed quarry loads.';
+            return `
+                <div class="grid grid-cols-3 gap-2 mb-3">
+                    ${[
+                        ['New-Hybrid Recommendation', result.architectureComparison?.recommendedId || 'mv_11_ring'],
+                        ['Local BOQ Reference', result.architectureComparison?.localReference?.name || '800V Microgrid'],
+                        ['Decision', '11kV Ring']
+                    ].map(([label, value]) => `
+                        <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                            <div class="text-[9px] font-black uppercase text-slate-400">${htmlSafe(label)}</div>
+                            <div class="mt-1 text-sm font-black text-slate-900">${htmlSafe(value)}</div>
+                        </div>
+                    `).join('')}
+                </div>
+                <table class="epc-report-table">
+                    <thead>
+                        <tr><th>Architecture</th><th>Voltage / Bus</th><th class="num">Current A</th><th class="num">Drop %</th><th class="num">Parallel Runs</th><th>Status</th><th>Recommendation</th></tr>
+                    </thead>
+                    <tbody>
+                        ${candidates.map(candidate => `
+                            <tr>
+                                <td class="package">${htmlSafe(candidate.name || '-')}</td>
+                                <td>${htmlSafe(candidate.voltageKv >= 1 ? `${candidate.voltageKv}kV` : `${Math.round((candidate.voltageKv || 0) * 1000)}V`)}</td>
+                                <td class="num">${formatEpcNumber(candidate.currentA, 0)}</td>
+                                <td class="num">${formatEpcNumber(candidate.cableVoltageDropPct ?? candidate.voltageDropPct, 2)}</td>
+                                <td class="num">${formatEpcNumber(candidate.parallelRuns, 0)}</td>
+                                <td>${htmlSafe(candidate.status || '-')}</td>
+                                <td>${htmlSafe(candidate.recommendation || (candidate.riskNotes || []).join('; ') || '-')}</td>
+                            </tr>
+                        `).join('') || '<tr><td colspan="7" class="empty">No architecture comparison rows.</td></tr>'}
+                    </tbody>
+                </table>
+                <div class="epc-report-note">${htmlSafe(note)}</div>
+            `;
+        }
+
         function renderEpcReportProcurementAdvisory(result = {}) {
             const findings = Array.isArray(result.procurementAdvisory?.findings) ? result.procurementAdvisory.findings : [];
             const summary = result.procurementAdvisory?.summary || {};
@@ -18616,6 +18718,15 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     body: renderEpcReportOnlyDeviceWorkDiagram(result)
                 }
             ];
+            if ((Array.isArray(result.architectureComparison?.candidates) ? result.architectureComparison.candidates : []).length) {
+                pageBodies.push({
+                    title: 'Architecture Decision',
+                    subtitle: 'New-Hybrid 11kV Ring recommendation compared with the local 800V Microgrid BOQ reference.',
+                    className: 'epc-report-boq-page epc-report-architecture-page',
+                    result,
+                    body: renderEpcReportArchitectureDecision(result)
+                });
+            }
             if ((Array.isArray(result.procurementAdvisory?.findings) ? result.procurementAdvisory.findings : []).length) {
                 pageBodies.push({
                     title: 'Procurement Gap Review',
@@ -18820,6 +18931,23 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return [headers, ...rows];
         }
 
+        function epcBoqWorkbookArchitectureComparisonRows(result = {}) {
+            const headers = ['Architecture ID', 'Architecture', 'Voltage / Bus', 'Current A', 'Voltage Drop %', 'Parallel Runs', 'Status', 'Cable Status', 'Recommendation', 'Risk Notes'];
+            const rows = (Array.isArray(result.architectureComparison?.candidates) ? result.architectureComparison.candidates : []).map(candidate => [
+                candidate.id || '',
+                candidate.name || '',
+                Number(candidate.voltageKv) >= 1 ? `${candidate.voltageKv}kV` : `${Math.round((Number(candidate.voltageKv) || 0) * 1000)}V`,
+                Number.isFinite(Number(candidate.currentA)) ? Number(candidate.currentA) : '',
+                Number.isFinite(Number(candidate.cableVoltageDropPct ?? candidate.voltageDropPct)) ? Number(candidate.cableVoltageDropPct ?? candidate.voltageDropPct) : '',
+                Number.isFinite(Number(candidate.parallelRuns)) ? Number(candidate.parallelRuns) : '',
+                candidate.status || '',
+                candidate.cableStatus || '',
+                candidate.recommendation || '',
+                (candidate.riskNotes || candidate.reasons || []).join(' | ')
+            ]);
+            return [headers, ...(rows.length ? rows : [['', 'No architecture comparison rows', '', '', '', '', '', '', '', '']])];
+        }
+
         function epcBoqWorkbookProcurementAdvisorRows(result = {}) {
             const headers = ['Finding ID', 'Severity', 'Domain', 'Title', 'Evidence', 'Recommendation', 'Quantity Delta', 'Action', 'Full String Module Delta', 'Genset Count'];
             const findings = Array.isArray(result.procurementAdvisory?.findings) ? result.procurementAdvisory.findings : [];
@@ -18898,17 +19026,20 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const customerWorksheet = XLSX.utils.aoa_to_sheet(epcBoqWorkbookCustomerRows(result));
             const engineeringWorksheet = XLSX.utils.aoa_to_sheet(epcBoqWorkbookEngineeringRows(result));
             const productWorksheet = XLSX.utils.aoa_to_sheet(epcBoqWorkbookProductRows(result));
+            const architectureWorksheet = XLSX.utils.aoa_to_sheet(epcBoqWorkbookArchitectureComparisonRows(result));
             const procurementWorksheet = XLSX.utils.aoa_to_sheet(epcBoqWorkbookProcurementAdvisorRows(result));
             const assetWorksheet = XLSX.utils.aoa_to_sheet(epcBoqWorkbookAssetMappingRows(result));
             formatEpcWorksheetColumns(customerWorksheet, [20, 28, 54, 12, 10, 20, 28, 42]);
             formatEpcWorksheetColumns(engineeringWorksheet, [20, 28, 54, 12, 10, 20, 28, 16, 12, 18, 10, 42]);
             formatEpcWorksheetColumns(productWorksheet, [22, 20, 28, 20, 34, 24, 54, 16, 42]);
+            formatEpcWorksheetColumns(architectureWorksheet, [22, 24, 18, 14, 16, 16, 12, 14, 54, 64]);
             formatEpcWorksheetColumns(procurementWorksheet, [24, 12, 14, 34, 54, 64, 16, 28, 24, 16]);
             formatEpcWorksheetColumns(assetWorksheet, [24, 18, 34, 18, 14, 20, 18, 20, 16, 20]);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, customerWorksheet, 'Customer Summary');
             XLSX.utils.book_append_sheet(workbook, engineeringWorksheet, 'Engineering Detail');
             XLSX.utils.book_append_sheet(workbook, productWorksheet, 'Product Binding');
+            XLSX.utils.book_append_sheet(workbook, architectureWorksheet, 'Architecture Comparison');
             XLSX.utils.book_append_sheet(workbook, procurementWorksheet, 'Procurement Advisor');
             XLSX.utils.book_append_sheet(workbook, assetWorksheet, 'Asset Mapping');
             XLSX.writeFile(workbook, `${safeName}-complete-boq.xlsx`);

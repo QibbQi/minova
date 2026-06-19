@@ -5,6 +5,7 @@ import {
   EPC_DESIGN_DEFAULTS,
   buildGlobalSolarAtlasApiUrls,
   buildEpcDesignProjectFromQuickInputs,
+  buildEpcQuarryProcurementProfile,
   buildGlobalSolarAtlasUrl,
   calculateEpcDesignProject,
   calculatePvStringDesign,
@@ -1117,6 +1118,95 @@ test('EPC asset mapping expands quarry MV ring BOQ to procurement-grade feeder a
   assert.equal(result.procurementAdvisory.findings.some((item) => item.id === 'pv-string-rounding' && item.quantityDelta === 19), true);
 });
 
+test('EPC quarry procurement profile seeds TJQ loads gensets and fixed default architecture', () => {
+  const project = buildEpcQuarryProcurementProfile({}, {
+    now: '2026-06-19T00:00:00.000Z'
+  });
+  const result = calculateEpcDesignProject(project, {
+    now: '2026-06-19T00:00:00.000Z'
+  });
+
+  assert.equal(project.procurementProfileId, 'quarry_tjq');
+  assert.equal(project.loads.loadCount, 8);
+  assert.equal(project.loads.assetGroups.length, 8);
+  assert.equal(project.gensets.length, 9);
+  assert.equal(project.designTargets.capacityOverrides.pvMwp, 4);
+  assert.equal(project.designTargets.capacityOverrides.bessMwh, 5);
+  assert.equal(project.designTargets.capacityOverrides.pcsMw, 2.5);
+  assert.equal(project.electrical.selectedArchitectureId, 'mv_11_ring');
+  assert.equal(project.electrical.localReferenceArchitecture, 'lv_800_microgrid');
+  assert.equal(result.loadAssetSummary.branchCount, 8);
+  assert.equal(result.loadAssetSummary.assetCount, 30);
+  assert.equal(result.loadAssetSummary.gensetCount, 9);
+  assert.equal(result.loadAssetSummary.assetGroups.length, 8);
+  assert.equal(result.boq.find((item) => item.id === 'genset-remote-control')?.quantity, 9);
+  assert.equal(result.architectureComparison.recommendedId, 'mv_11_ring');
+});
+
+test('EPC architecture comparison keeps 800V as local reference and 11kV ring recommended for quarry', () => {
+  const result = calculateEpcDesignProject(buildEpcQuarryProcurementProfile({
+    electrical: { distanceToInterconnectionM: 650 }
+  }, {
+    now: '2026-06-19T00:00:00.000Z'
+  }), { now: '2026-06-19T00:00:00.000Z' });
+  const candidate = (id) => result.architectureComparison.candidates.find((item) => item.id === id);
+  const lv415 = candidate('lv_415_centralized');
+  const lv800 = candidate('lv_800_microgrid');
+  const ring = candidate('mv_11_ring');
+
+  assert.ok(lv415, '415V candidate should be present');
+  assert.ok(lv800, '800V local BOQ reference candidate should be present');
+  assert.ok(ring, '11kV ring candidate should be present');
+  assert.equal(result.architectureComparison.localReference.id, 'lv_800_microgrid');
+  assert.equal(result.architectureComparison.recommendedId, 'mv_11_ring');
+  assert.equal(lv800.status, 'REVIEW');
+  assert.ok(lv800.currentA < lv415.currentA);
+  assert.ok(lv800.currentA > ring.currentA);
+  assert.ok(lv800.riskNotes.some((note) => /protection|supply|O&M|transformer/i.test(note)));
+  assert.match(ring.recommendation, /recommended/i);
+});
+
+test('EPC procurement advisory emits quarry architecture and data-gap findings', () => {
+  const emptyMapping = calculateEpcDesignProject({
+    project: { name: 'Quarry without asset data' },
+    electrical: {
+      selectedArchitectureId: 'mv_11_ring',
+      localReferenceArchitecture: 'lv_800_microgrid',
+      distanceToInterconnectionM: 650,
+      newMvSystem: true
+    },
+    loads: {
+      dailyLoadKwh: 15452,
+      operationHoursPerDay: 8
+    },
+    designTargets: {
+      replacementPct: 80,
+      capacityOverrides: { pvMwp: 4, bessMwh: 5, pcsMw: 2.5 }
+    }
+  }, { now: '2026-06-19T00:00:00.000Z' });
+  const emptyIds = new Set(emptyMapping.procurementAdvisory.findings.map((finding) => finding.id));
+
+  assert.ok(emptyIds.has('empty-asset-mapping'));
+
+  const quarry = calculateEpcDesignProject(buildEpcQuarryProcurementProfile({}, {
+    now: '2026-06-19T00:00:00.000Z'
+  }), { now: '2026-06-19T00:00:00.000Z' });
+  const quarryFindings = new Map(quarry.procurementAdvisory.findings.map((finding) => [finding.id, finding]));
+
+  for (const id of [
+    'local-boq-high-pcs',
+    'local-boq-800v-review',
+    'transformer-rating-missing',
+    'cable-schedule-missing'
+  ]) {
+    assert.ok(quarryFindings.has(id), `missing procurement advisory finding: ${id}`);
+  }
+  assert.equal(quarryFindings.get('local-boq-high-pcs').severity, 'medium');
+  assert.equal(quarryFindings.get('local-boq-800v-review').severity, 'high');
+  assert.equal(quarryFindings.get('transformer-rating-missing').severity, 'medium');
+  assert.equal(quarryFindings.get('cable-schedule-missing').severity, 'medium');
+});
+
 test('EPC off-grid projects default to the C5 standard topology with LV and MV buses', () => {
   const project = normalizeEpcDesignProject({
     site: { gridMode: 'island' }
@@ -1182,12 +1272,14 @@ test('EPC electrical architecture returns LV MV candidates cable screening and p
   const candidateIds = result.electricalArchitecture.candidates.map((candidate) => candidate.id);
   const cableStatuses = result.cableScreening.candidates.map((candidate) => candidate.status);
 
-  assert.deepEqual(candidateIds, ['lv_415_centralized', 'lv_415_distributed', 'mv_6_6_radial', 'mv_11_radial', 'mv_11_ring']);
+  assert.deepEqual(candidateIds, ['lv_415_centralized', 'lv_415_distributed', 'lv_800_microgrid', 'mv_6_6_radial', 'mv_11_radial', 'mv_11_ring']);
   assert.equal(result.electricalArchitecture.recommendedId, 'mv_11_ring');
   assert.equal(result.electricalArchitecture.candidates.find((candidate) => candidate.id === 'mv_11_ring').voltageKv, 11);
+  assert.equal(result.electricalArchitecture.candidates.find((candidate) => candidate.id === 'lv_800_microgrid').status, 'REVIEW');
   assert.ok(result.electrical.transformerSizing.requiredKva > 4900);
   assert.equal(result.electrical.transformerSizing.selectedStandardKva, 5000);
   assert.ok(result.cableScreening.candidates.some((candidate) => candidate.voltageClass === '415V'));
+  assert.ok(result.cableScreening.candidates.some((candidate) => candidate.voltageClass === '800V'));
   assert.ok(result.cableScreening.candidates.some((candidate) => candidate.voltageClass === '11kV'));
   assert.ok(cableStatuses.includes('PASS') || cableStatuses.includes('REVIEW'));
   assert.ok(result.protectionMatrix.functions.some((item) => item.code === 'SYNC_CHECK'));

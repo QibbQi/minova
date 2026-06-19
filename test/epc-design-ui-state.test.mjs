@@ -46,6 +46,9 @@ test('EPC design workspace exposes quick detailed map solar and report surfaces'
     'data-epc-recommendation-target="100"',
     'setEpcRecommendationTarget(50)',
     'setEpcRecommendationTarget(100)',
+    'Apply Quarry / TJQ Template',
+    'applyEpcQuarryProcurementProfile',
+    'buildEpcQuarryProcurementProfile',
     'epc-design-schemes',
     'epc-design-formula-trace',
     'epc-design-boq',
@@ -184,15 +187,24 @@ test('EPC reports and BOQ workbook expose procurement advisory and asset mapping
   for (const snippet of [
     'renderEpcReportProcurementAdvisory',
     'renderEpcReportAssetMapping',
+    'renderEpcReportArchitectureDecision',
     'Procurement Gap Review',
+    'Architecture Decision',
+    '800V Microgrid',
+    '11kV Ring',
     'Asset Mapping',
+    'result.architectureComparison?.candidates',
     'result.procurementAdvisory?.findings',
     'result.loadAssetSummary?.assetGroups',
+    'epcBoqWorkbookArchitectureComparisonRows',
     'epcBoqWorkbookProcurementAdvisorRows',
     'epcBoqWorkbookAssetMappingRows',
+    'Voltage / Bus',
+    'Parallel Runs',
     'Finding ID',
     'Full String Module Delta',
     'Genset Count',
+    "XLSX.utils.book_append_sheet(workbook, architectureWorksheet, 'Architecture Comparison')",
     "XLSX.utils.book_append_sheet(workbook, procurementWorksheet, 'Procurement Advisor')",
     "XLSX.utils.book_append_sheet(workbook, assetWorksheet, 'Asset Mapping')"
   ]) {
@@ -201,6 +213,7 @@ test('EPC reports and BOQ workbook expose procurement advisory and asset mapping
 
   const reportPages = html.match(/function renderEpcCustomerReportPages\(result = \{\}, kind = 'customer'\)[\s\S]*?function buildEpcReportFixedPageElement/);
   assert.ok(reportPages, 'customer report page builder should be found');
+  assert.match(reportPages[0], /renderEpcReportArchitectureDecision\(result\)/);
   assert.match(reportPages[0], /renderEpcReportProcurementAdvisory\(result\)/);
   assert.match(reportPages[0], /renderEpcReportAssetMapping\(result\)/);
 });
@@ -1585,6 +1598,10 @@ test('EPC EMS Flow renders topology-aware standard components and validation sta
     'Load TX',
     'LV BUS',
     'topologyFlow.validationBlocked',
+    'renderEpcTopologyFlowZoneSummary',
+    'zone-aware grouping',
+    '11kV ring selected to reduce MW-level LV current and support distributed quarry loads.',
+    '9 units / TJQ1 4 / TJQ2 5',
     'epc-flow-line-blocked',
     'renderEpcTopologyFlowDiagram(result, selectedRow)'
   ]) {

@@ -127,6 +127,7 @@ const EMS_FLOW_SERIES_DEFAULT_COLORS = {
   soc: '#0ea5e9'
 };
 const EMS_FLOW_INTERVAL_MINUTES = [1, 5, 15, 30, 60, 120, 360, 720];
+const EMS_FLOW_X_AXIS_TICK_HOURS = [2, 3, 4, 6];
 const EMS_FLOW_DEFAULT_PEAK_BAND_START_MINUTE = 14 * 60;
 const EMS_FLOW_DEFAULT_PEAK_BAND_END_MINUTE = 22 * 60;
 
@@ -381,6 +382,7 @@ function normalizeEmsFlowDisplaySettings(value = {}) {
     mergeHourly: input.mergeHourly !== false,
     emsTableIntervalMinutes,
     intervalMinutes: EMS_FLOW_INTERVAL_MINUTES.includes(Number(input.intervalMinutes)) ? Number(input.intervalMinutes) : 5,
+    xAxisTickHours: EMS_FLOW_X_AXIS_TICK_HOURS.includes(Number(input.xAxisTickHours)) ? Number(input.xAxisTickHours) : 'auto',
     selectedRange,
     peakBand: {
       visible: peakBandInput.visible === false ? false : true,

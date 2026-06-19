@@ -165,7 +165,10 @@ test('EPC Reports are fixed-page PDF downloads with full diagrams and XLSX BOQ e
     'scrollY: 0',
     'pagebreak',
     'epc-report-page',
-    'hasBlockingEpcReportRisks'
+    'hasBlockingEpcReportRisks',
+    'epc-device-work-chart-title',
+    '.epc-report-only-device .epc-device-work-chart-title{display:none!important}',
+    '.epc-report-only-device .epc-device-work-hover-layer{display:none!important}'
   ]) {
     assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing report PDF snippet: ${snippet}`);
   }
@@ -174,6 +177,17 @@ test('EPC Reports are fixed-page PDF downloads with full diagrams and XLSX BOQ e
   assert.doesNotMatch(html, /left = '-10000px'|zIndex = '-1'/);
   assert.doesNotMatch(html, /epc-report-print-surface \.epc-flow-diagram,\s*\.epc-report-print-surface \.epc-device-work-chart\{max-height:[^}]+overflow:hidden/);
   assert.match(html, /epc-report-rendering-overlay/);
+});
+
+test('EPC report-only Device Work hides embedded chart subtitles', () => {
+  const reportCss = html.match(/\.epc-report-only-device \.epc-device-work-chart[\s\S]*?\.epc-report-table/);
+  assert.ok(reportCss, 'report-only device CSS should be found');
+  assert.match(reportCss[0], /\.epc-report-only-device \.epc-device-work-chart-title\{display:none!important\}/);
+  assert.match(reportCss[0], /\.epc-report-only-device \.epc-device-work-hover-layer\{display:none!important\}/);
+
+  const reportRenderer = html.match(/function renderEpcReportOnlyDeviceWorkDiagram\(result = \{\}\)[\s\S]*?function chunkEpcReportRows/);
+  assert.ok(reportRenderer, 'report-only Device Work renderer should be found');
+  assert.match(reportRenderer[0], /renderEpcDeviceWorkChart\(result\)/);
 });
 
 test('EPC detailed engineering inputs are permission-gated separately from quick design', () => {
@@ -504,6 +518,7 @@ test('EPC Device Work is a standalone chart page with status analysis', () => {
     'previewEpcDeviceWorkRange',
     'resetEpcDeviceWorkRange',
     'setEpcDeviceWorkInterval',
+    'setEpcDeviceWorkXAxisTickHours',
     'setEpcDeviceWorkRange',
     'setEpcDeviceWorkPeakBandTime',
     'setEpcDeviceWorkPeakBandVisible',
@@ -518,6 +533,13 @@ test('EPC Device Work is a standalone chart page with status analysis', () => {
     'epc-device-work-range-controls',
     'epc-device-work-reset',
     'epc-device-work-time-row',
+    'epc-device-work-axis-density',
+    'X Axis Density',
+    'data-epc-device-x-axis="auto"',
+    'data-epc-device-x-axis="2"',
+    'data-epc-device-x-axis="3"',
+    'data-epc-device-x-axis="4"',
+    'data-epc-device-x-axis="6"',
     'data-epc-device-interval="1"',
     'data-epc-device-interval="5"',
     'data-epc-device-interval="15"',
@@ -573,15 +595,27 @@ test('EPC Device Work is a standalone chart page with status analysis', () => {
     'visibleSeries',
     'intervalMinutes',
     'selectedRange',
+    'xAxisTickHours',
     'peakBand',
     'seriesColors',
-    'Power axis padding 10%'
+    'Power axis padding 10%',
+    'getEpcDeviceWorkXAxisTicks',
+    'showEpcDeviceWorkHoverSnap',
+    'hideEpcDeviceWorkHoverSnap',
+    'epc-device-work-hover-layer',
+    'epc-device-work-hover-capture',
+    'epc-device-work-hover-guide',
+    'epc-device-work-hover-marker',
+    'epc-device-work-hover-tooltip',
+    'onmousemove="showEpcDeviceWorkHoverSnap(event)"',
+    'onmouseleave="hideEpcDeviceWorkHoverSnap()"'
   ]) {
     assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing Device Work chart snippet: ${snippet}`);
   }
   assert.match(html, /intervalMinutes\) : 5/, 'Device Work interval default should be 5 minutes');
   assert.match(html, /oninput="previewEpcDeviceWorkRange\('start', this\.value\)"/, 'range start should preview without rerendering every step');
   assert.match(html, /onchange="setEpcDeviceWorkRange\('start', this\.value\)"/, 'range start should commit on release');
+  assert.match(html, /Time Step[\s\S]*?X Axis Density[\s\S]*?Workday Peak/, 'x-axis density controls should be between time step and workday peak');
   for (const removedSnippet of [
     'smoothDeviceWorkPath',
     'setEpcDeviceWorkLineStyle',

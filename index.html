@@ -398,6 +398,32 @@
             stroke: #94a3b8;
             stroke-width: 1.4;
         }
+        .epc-device-work-hover-capture {
+            fill: transparent;
+            pointer-events: all;
+        }
+        .epc-device-work-hover-layer {
+            pointer-events: none;
+        }
+        .epc-device-work-hover-guide {
+            stroke: #94a3b8;
+            stroke-width: 1.2;
+            stroke-dasharray: 5 5;
+        }
+        .epc-device-work-hover-marker {
+            fill: #fff;
+            stroke-width: 3;
+            filter: drop-shadow(0 6px 10px rgba(15, 23, 42, 0.18));
+        }
+        .epc-device-work-hover-tooltip rect {
+            fill: #0f172a;
+            opacity: 0.94;
+        }
+        .epc-device-work-hover-tooltip text {
+            fill: #fff;
+            font-size: 12px;
+            font-weight: 900;
+        }
         .epc-device-work-range-input {
             position: absolute;
             inset-inline: 0;
@@ -14855,6 +14881,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             { minutes: 360, label: '6h', attr: 'data-epc-device-interval="360"' },
             { minutes: 720, label: '12h', attr: 'data-epc-device-interval="720"' }
         ];
+        const EPC_DEVICE_WORK_X_AXIS_OPTIONS = [
+            { value: 'auto', label: 'Auto', attr: 'data-epc-device-x-axis="auto"' },
+            { value: 2, label: '2h', attr: 'data-epc-device-x-axis="2"' },
+            { value: 3, label: '3h', attr: 'data-epc-device-x-axis="3"' },
+            { value: 4, label: '4h', attr: 'data-epc-device-x-axis="4"' },
+            { value: 6, label: '6h', attr: 'data-epc-device-x-axis="6"' }
+        ];
         const EPC_DEVICE_WORK_DEFAULT_PEAK_BAND = '#fee2e2';
         const EPC_DEVICE_WORK_DEFAULT_PEAK_START_MINUTE = 14 * 60;
         const EPC_DEVICE_WORK_DEFAULT_PEAK_END_MINUTE = 22 * 60;
@@ -14999,6 +15032,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return {
                 visibleSeries: getEpcVisibleEmsFlowSeries(result),
                 intervalMinutes: EPC_DEVICE_WORK_INTERVALS.includes(Number(raw.intervalMinutes)) ? Number(raw.intervalMinutes) : 5,
+                xAxisTickHours: [2, 3, 4, 6].includes(Number(raw.xAxisTickHours)) ? Number(raw.xAxisTickHours) : 'auto',
                 selectedRange: range,
                 peakBand: {
                     visible: peakBand.visible === false ? false : true,
@@ -15036,6 +15070,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         function setEpcDeviceWorkInterval(minutes) {
             const intervalMinutes = EPC_DEVICE_WORK_INTERVALS.includes(Number(minutes)) ? Number(minutes) : 5;
             updateEpcDeviceWorkSettings({ intervalMinutes, selectedRange: null });
+        }
+
+        function setEpcDeviceWorkXAxisTickHours(value) {
+            const numeric = Number(value);
+            const xAxisTickHours = [2, 3, 4, 6].includes(numeric) ? numeric : 'auto';
+            updateEpcDeviceWorkSettings({ xAxisTickHours });
         }
 
         function setEpcDeviceWorkRange(edge, value) {
@@ -15243,6 +15283,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
 
         window.setEpcDeviceWorkInterval = setEpcDeviceWorkInterval;
+        window.setEpcDeviceWorkXAxisTickHours = setEpcDeviceWorkXAxisTickHours;
         window.previewEpcDeviceWorkRange = previewEpcDeviceWorkRange;
         window.setEpcDeviceWorkRange = setEpcDeviceWorkRange;
         window.resetEpcDeviceWorkRange = resetEpcDeviceWorkRange;
@@ -15257,6 +15298,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         window.removeEpcBatteryControlCustomStrategy = removeEpcBatteryControlCustomStrategy;
         window.toggleEpcDeviceWorkColorPicker = toggleEpcDeviceWorkColorPicker;
         window.setEpcDeviceWorkSeriesColor = setEpcDeviceWorkSeriesColor;
+        window.showEpcDeviceWorkHoverSnap = showEpcDeviceWorkHoverSnap;
+        window.hideEpcDeviceWorkHoverSnap = hideEpcDeviceWorkHoverSnap;
 
         function getEpcDeviceWorkValue(seriesId, row = {}) {
             if (seriesId === 'pv') return Number(row.pvOutputKw) || 0;
@@ -15839,6 +15882,113 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             }).join('');
         }
 
+        function getEpcDeviceWorkXAxisTicks(rows = [], settings = {}, xForIndex, xForMinute, rowMinute) {
+            if (!rows.length) return [];
+            const fixedHours = [2, 3, 4, 6].includes(Number(settings.xAxisTickHours)) ? Number(settings.xAxisTickHours) : null;
+            if (!fixedHours) {
+                const labelCount = Math.min(8, rows.length);
+                const labelIndexes = new Set(Array.from({ length: labelCount }, (_, index) => (
+                    labelCount <= 1 ? 0 : Math.round((index / (labelCount - 1)) * (rows.length - 1))
+                )));
+                return rows
+                    .map((row, index) => ({ row, index }))
+                    .filter(item => labelIndexes.has(item.index))
+                    .map((item, tickIndex, array) => ({
+                        x: xForIndex(item.index),
+                        label: item.row.hourLabel || epcMinutesToTime(rowMinute(item.row)),
+                        anchor: tickIndex === 0 ? 'start' : tickIndex === array.length - 1 ? 'end' : 'middle'
+                    }));
+            }
+            const firstMinute = rowMinute(rows[0]);
+            const lastMinute = rowMinute(rows.at(-1));
+            const step = fixedHours * 60;
+            const minutes = [firstMinute];
+            for (let minute = Math.ceil(firstMinute / step) * step; minute < lastMinute; minute += step) {
+                if (minute > firstMinute) minutes.push(minute);
+            }
+            if (!minutes.some(minute => Math.abs(minute - lastMinute) < 0.5)) minutes.push(lastMinute);
+            return minutes
+                .filter((minute, index, array) => array.findIndex(other => Math.abs(other - minute) < 0.5) === index)
+                .map((minute, index, array) => ({
+                    x: xForMinute(minute),
+                    label: epcMinutesToTime(minute),
+                    anchor: index === 0 ? 'start' : index === array.length - 1 ? 'end' : 'middle'
+                }));
+        }
+
+        function getEpcDeviceWorkHoverPoints(visible = [], rows = [], xForIndex, yForPower, yForSoc, settings = {}) {
+            return visible.flatMap(series => {
+                const yForValue = series.id === 'soc' ? yForSoc : yForPower;
+                const color = settings.seriesColors?.[series.id] || series.color;
+                return rows.map((row, index) => {
+                    const value = getEpcDeviceWorkValue(series.id, row);
+                    const unit = series.id === 'soc' ? '%' : 'kW';
+                    const valueText = formatEpcNumber(value, series.id === 'soc' ? 1 : 0);
+                    return {
+                        x: epcChartRound(xForIndex(index), 2),
+                        y: epcChartRound(yForValue(value), 2),
+                        color,
+                        display: `${row.hourLabel || epcMinutesToTime(row.timelineMinute || 0)} \u00b7 ${series.label} ${valueText} ${unit}`
+                    };
+                });
+            });
+        }
+
+        function showEpcDeviceWorkHoverSnap(event) {
+            const capture = event?.currentTarget;
+            const svg = capture?.ownerSVGElement;
+            if (!capture || !svg) return;
+            let points = [];
+            try { points = JSON.parse(capture.dataset.epcHoverPoints || '[]'); } catch (e) { points = []; }
+            if (!points.length) {
+                hideEpcDeviceWorkHoverSnap();
+                return;
+            }
+            const rect = svg.getBoundingClientRect();
+            const viewBox = svg.viewBox?.baseVal;
+            if (!rect.width || !rect.height || !viewBox) return;
+            const pointer = {
+                x: viewBox.x + ((event.clientX - rect.left) / rect.width) * viewBox.width,
+                y: viewBox.y + ((event.clientY - rect.top) / rect.height) * viewBox.height
+            };
+            const nearest = points.reduce((best, point) => {
+                const distance = Math.hypot((Number(point.x) - pointer.x) * 1.15, Number(point.y) - pointer.y);
+                return !best || distance < best.distance ? { ...point, distance } : best;
+            }, null);
+            if (!nearest || nearest.distance > 48) {
+                hideEpcDeviceWorkHoverSnap();
+                return;
+            }
+            const layer = svg.querySelector('#epc-device-work-hover-layer');
+            const guide = svg.querySelector('#epc-device-work-hover-guide');
+            const marker = svg.querySelector('#epc-device-work-hover-marker');
+            const tooltip = svg.querySelector('#epc-device-work-hover-tooltip');
+            const tooltipRect = svg.querySelector('#epc-device-work-hover-tooltip-rect');
+            const tooltipText = svg.querySelector('#epc-device-work-hover-tooltip-text');
+            if (!layer || !guide || !marker || !tooltip || !tooltipRect || !tooltipText) return;
+            const label = String(nearest.display || '');
+            const tooltipWidth = Math.max(136, Math.min(260, label.length * 7 + 22));
+            const tooltipHeight = 30;
+            const tooltipX = Math.max(8, Math.min(viewBox.width - tooltipWidth - 8, Number(nearest.x) + 12));
+            const tooltipY = Math.max(8, Number(nearest.y) - 40);
+            layer.removeAttribute('hidden');
+            guide.setAttribute('x1', nearest.x);
+            guide.setAttribute('x2', nearest.x);
+            marker.setAttribute('cx', nearest.x);
+            marker.setAttribute('cy', nearest.y);
+            marker.setAttribute('stroke', nearest.color || '#0f172a');
+            tooltip.setAttribute('transform', `translate(${epcChartRound(tooltipX, 2)} ${epcChartRound(tooltipY, 2)})`);
+            tooltipRect.setAttribute('width', epcChartRound(tooltipWidth, 2));
+            tooltipRect.setAttribute('height', tooltipHeight);
+            tooltipText.textContent = label;
+        }
+
+        function hideEpcDeviceWorkHoverSnap() {
+            document.querySelectorAll('.epc-device-work-hover-layer').forEach(layer => {
+                layer.setAttribute('hidden', 'hidden');
+            });
+        }
+
         function renderEpcDeviceWorkControls(settings, allRows) {
             const maxIndex = Math.max(0, allRows.length - 1);
             const rawSelected = settings.selectedRange || { start: 0, end: maxIndex };
@@ -15854,11 +16004,21 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const model = getEpcDeviceWorkModelSettings(settings.deviceWorkModel);
             return `
                 <div id="epc-device-work-controls" class="epc-device-work-controls mt-3 space-y-3 text-xs">
-                    <div id="epc-device-work-time-row" class="epc-device-work-time-row grid grid-cols-1 xl:grid-cols-[auto_1fr] gap-3">
+                    <div id="epc-device-work-time-row" class="epc-device-work-time-row grid grid-cols-1 xl:grid-cols-[auto_auto_1fr] gap-3">
                         <div class="rounded-xl border border-slate-200 bg-slate-50 p-2.5">
                             <div class="mb-1 text-[10px] font-black uppercase text-slate-400">Time Step</div>
                             <div class="flex flex-wrap gap-1">
                                 ${EPC_DEVICE_WORK_INTERVAL_OPTIONS.map(option => `<button type="button" ${option.attr} onclick="setEpcDeviceWorkInterval(${option.minutes})" class="rounded-lg px-2 py-1.5 font-black ${settings.intervalMinutes === option.minutes ? 'bg-purple-700 text-white' : 'bg-white text-slate-500 border border-slate-200'}">${option.label}</button>`).join('')}
+                            </div>
+                        </div>
+                        <div id="epc-device-work-axis-density" class="epc-device-work-axis-density rounded-xl border border-slate-200 bg-slate-50 p-2.5">
+                            <div class="mb-1 text-[10px] font-black uppercase text-slate-400">X Axis Density</div>
+                            <div class="flex flex-wrap gap-1">
+                                ${EPC_DEVICE_WORK_X_AXIS_OPTIONS.map(option => {
+                                    const active = String(settings.xAxisTickHours) === String(option.value);
+                                    const clickValue = option.value === 'auto' ? `'auto'` : option.value;
+                                    return `<button type="button" ${option.attr} onclick="setEpcDeviceWorkXAxisTickHours(${clickValue})" class="rounded-lg px-2 py-1.5 font-black ${active ? 'bg-purple-700 text-white' : 'bg-white text-slate-500 border border-slate-200'}">${option.label}</button>`;
+                                }).join('')}
                             </div>
                         </div>
                         <div class="rounded-xl border border-slate-200 bg-slate-50 p-2.5">
@@ -16011,16 +16171,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const bandVisibleEnd = Math.min(lastMinute, settings.peakBand.endMinute);
             const hasPeakBandWindow = bandVisibleEnd > bandVisibleStart;
             const gridValues = [0, 0.25, 0.5, 0.75, 1].map(pct => minPower + pct * powerSpan);
-            const labelCount = Math.min(8, rows.length);
-            const labelIndexes = new Set(Array.from({ length: labelCount }, (_, index) => (
-                labelCount <= 1 ? 0 : Math.round((index / (labelCount - 1)) * (rows.length - 1))
-            )));
-            const hourLabels = rows.filter((row, index) => labelIndexes.has(index));
+            const xAxisTicks = getEpcDeviceWorkXAxisTicks(rows, settings, xForIndex, xForMinute, rowMinute);
+            const hoverPoints = getEpcDeviceWorkHoverPoints(visible, rows, xForIndex, yForPower, yForSoc, settings);
             return `
                 <div id="epc-device-work-chart" class="epc-device-work-chart">
                     <div class="border-b border-slate-100 px-4 py-3">
                         <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
-                            <div>
+                            <div class="epc-device-work-chart-title">
                                 <div class="text-sm font-black text-slate-800">Device Work Profile</div>
                                 <div class="text-[11px] font-bold text-slate-400">Continuous daily power and SOC timeline</div>
                             </div>
@@ -16028,7 +16185,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         </div>
                         ${renderEpcDeviceWorkControls(settings, allRows)}
                     </div>
-                    <svg class="epc-device-work-svg" viewBox="0 0 ${chart.width} ${chart.height}" role="img" aria-label="Device work daily profile chart">
+                    <svg id="epc-device-work-svg" class="epc-device-work-svg" viewBox="0 0 ${chart.width} ${chart.height}" role="img" aria-label="Device work daily profile chart">
                         ${settings.peakBand.visible && hasPeakBandWindow ? `<rect x="${epcChartRound(xForMinute(bandVisibleStart), 2)}" y="${chart.top}" width="${epcChartRound(Math.max(4, xForMinute(bandVisibleEnd) - xForMinute(bandVisibleStart)), 2)}" height="${plotHeight}" class="epc-device-work-peak-band" style="fill:${htmlSafe(settings.peakBand.color)}; opacity:0.42"/>
                         <text x="${epcChartRound(xForMinute(bandVisibleStart) + 12, 2)}" y="${chart.top + plotHeight - 18}" class="epc-device-work-peak-label-below epc-device-work-axis-left" fill="#64748b">Workday Peak</text>` : ''}
                         ${gridValues.map(value => `
@@ -16040,15 +16197,20 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         ${[0, 25, 50, 75, 100].map(value => `<text x="${chart.width - chart.right + 12}" y="${epcChartRound(yForSoc(value) + 4, 2)}" class="epc-device-work-axis-right">${value}%</text>`).join('')}
                         <text x="22" y="${chart.top + plotHeight / 2}" class="epc-device-work-axis-left" transform="rotate(-90 22 ${chart.top + plotHeight / 2})">Power (kW)</text>
                         <text x="${chart.width - 18}" y="${chart.top + plotHeight / 2}" class="epc-device-work-axis-right" transform="rotate(90 ${chart.width - 18} ${chart.top + plotHeight / 2})">SOC (%)</text>
-                        ${hourLabels.map((row, index) => {
-                            const sourceIndex = rows.indexOf(row);
-                            const x = xForIndex(sourceIndex);
-                            return `
-                                <line x1="${epcChartRound(x, 2)}" x2="${epcChartRound(x, 2)}" y1="${chart.top}" y2="${chart.top + plotHeight}" stroke="#f1f5f9"/>
-                                <text x="${epcChartRound(x, 2)}" y="${chart.height - 24}" text-anchor="${index === 0 ? 'start' : index === hourLabels.length - 1 ? 'end' : 'middle'}" class="epc-device-work-axis-left">${htmlSafe(row.hourLabel || `${row.hour}:00`)}</text>
-                            `;
-                        }).join('')}
+                        ${xAxisTicks.map(tick => `
+                            <line x1="${epcChartRound(tick.x, 2)}" x2="${epcChartRound(tick.x, 2)}" y1="${chart.top}" y2="${chart.top + plotHeight}" stroke="#f1f5f9"/>
+                            <text x="${epcChartRound(tick.x, 2)}" y="${chart.height - 24}" text-anchor="${tick.anchor}" class="epc-device-work-axis-left">${htmlSafe(tick.label)}</text>
+                        `).join('')}
                         ${visible.length ? visible.map(series => renderEpcDeviceWorkPath(series, rows, xForIndex, yForPower, yForSoc, settings)).join('') : ''}
+                        <g id="epc-device-work-hover-layer" class="epc-device-work-hover-layer" hidden>
+                            <line id="epc-device-work-hover-guide" class="epc-device-work-hover-guide" x1="${chart.left}" x2="${chart.left}" y1="${chart.top}" y2="${chart.top + plotHeight}"></line>
+                            <circle id="epc-device-work-hover-marker" class="epc-device-work-hover-marker" cx="${chart.left}" cy="${chart.top}" r="5"></circle>
+                            <g id="epc-device-work-hover-tooltip" class="epc-device-work-hover-tooltip">
+                                <rect id="epc-device-work-hover-tooltip-rect" rx="8" ry="8"></rect>
+                                <text id="epc-device-work-hover-tooltip-text" x="11" y="20"></text>
+                            </g>
+                        </g>
+                        <rect class="epc-device-work-hover-capture" x="${chart.left}" y="${chart.top}" width="${plotWidth}" height="${plotHeight}" data-epc-hover-points="${htmlSafe(JSON.stringify(hoverPoints))}" onmousemove="showEpcDeviceWorkHoverSnap(event)" onmouseleave="hideEpcDeviceWorkHoverSnap()"></rect>
                     </svg>
                 </div>
             `;
@@ -18414,10 +18576,14 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     .epc-report-only-flow .epc-flow-diagram>div:first-child,.epc-report-only-flow .epc-flow-diagram>div:last-child{display:none}
                     .epc-report-only-flow .epc-flow-svg{width:1059px!important;max-width:100%!important;height:575px!important;min-height:0;display:block}
                     .epc-report-only-device .epc-device-work-chart{border:0;background:#fff;overflow:visible}
+                    .epc-report-only-device .epc-device-work-chart-title{display:none!important}
                     .epc-report-only-device #epc-report-device-work-controls,.epc-report-only-device button,.epc-report-only-device input,.epc-report-only-device select{display:none!important}
+                    .epc-report-only-device .epc-device-work-chart>div:first-child{padding:0 0 8px!important;border-bottom:1px solid #eef2f7}
                     .epc-report-only-device .epc-device-work-svg{width:100%!important;height:380px!important;min-height:0;display:block}
-                    .epc-report-only-device .epc-device-work-analysis{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:10px}
-                    .epc-report-only-device .epc-device-work-analysis>div{padding:10px;border-radius:12px}
+                    .epc-report-only-device .epc-device-work-hover-layer{display:none!important}
+                    .epc-report-only-device .epc-device-work-hover-capture{display:none!important}
+                    .epc-report-only-device .epc-device-work-analysis{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:8px}
+                    .epc-report-only-device .epc-device-work-analysis>div{padding:9px;border-radius:12px}
                     .epc-report-only-device .epc-device-work-analysis .text-lg{font-size:17px;line-height:1.1}
                     .epc-report-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:9.5px;line-height:1.25}
                     .epc-report-table th{background:#edf2f7;color:#475569;text-transform:uppercase;font-size:8px;font-weight:900;border:1px solid #dbe4ee;padding:7px 6px;text-align:left}

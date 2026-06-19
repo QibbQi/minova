@@ -660,6 +660,7 @@ test('EPC design project preserves EMS Flow display settings', () => {
       mergeHourly: false,
       emsTableIntervalMinutes: 5,
       intervalMinutes: 5,
+      xAxisTickHours: 3,
       selectedRange: { start: 2, end: 8 },
       peakBand: { visible: false, color: '#e0f2fe', startMinute: 15 * 60, endMinute: 21 * 60 },
       seriesColors: { pv: '#f59e0b', load: '#2563eb', battery: '#16a34a', genset: '#ef4444', soc: '#0ea5e9' },
@@ -708,6 +709,7 @@ test('EPC design project preserves EMS Flow display settings', () => {
   assert.equal(project.emsFlowDisplaySettings.emsTableIntervalMinutes, 5);
   assert.equal(project.assumptions.pvDcAcRatio, 1.35);
   assert.equal(project.emsFlowDisplaySettings.intervalMinutes, 5);
+  assert.equal(project.emsFlowDisplaySettings.xAxisTickHours, 3);
   assert.deepEqual(project.emsFlowDisplaySettings.selectedRange, { start: 2, end: 8 });
   assert.deepEqual(project.emsFlowDisplaySettings.peakBand, { visible: false, color: '#e0f2fe', startMinute: 900, endMinute: 1260 });
   assert.equal(project.emsFlowDisplaySettings.seriesColors.genset, '#ef4444');
@@ -764,6 +766,7 @@ test('EPC design project preserves EMS Flow display settings', () => {
   assert.equal(defaultSettings.emsFlowDisplaySettings.mergeHourly, true);
   assert.equal(defaultSettings.emsFlowDisplaySettings.emsTableIntervalMinutes, 60);
   assert.equal(defaultSettings.emsFlowDisplaySettings.intervalMinutes, 5);
+  assert.equal(defaultSettings.emsFlowDisplaySettings.xAxisTickHours, 'auto');
   assert.equal(defaultSettings.assumptions.pvDcAcRatio, 1.2);
   assert.equal(defaultSettings.emsFlowDisplaySettings.deviceWorkModel.applyToEmsFlow, true);
   assert.equal(defaultSettings.emsFlowDisplaySettings.deviceWorkModel.loadNoisePct, 3);
@@ -780,6 +783,11 @@ test('EPC design project preserves EMS Flow display settings', () => {
   }, { now: '2026-06-12T00:00:00.000Z' });
   assert.equal(legacyFiveMinuteTable.emsFlowDisplaySettings.emsTableIntervalMinutes, 5);
   assert.equal(legacyFiveMinuteTable.assumptions.pvDcAcRatio, 1.2);
+
+  const invalidXAxisDensity = normalizeEpcDesignProject({
+    emsFlowDisplaySettings: { xAxisTickHours: 5 }
+  }, { now: '2026-06-12T00:00:00.000Z' });
+  assert.equal(invalidXAxisDensity.emsFlowDisplaySettings.xAxisTickHours, 'auto');
 });
 
 test('EPC capacity overrides preserve calculated recommendation and drive effective sizing', () => {

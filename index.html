@@ -3115,7 +3115,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         </div>
                         <div>
                             <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Number of downstream load branches in EMS Flow.">Load Qty <span data-epc-help="load-count" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Number of downstream load branches in EMS Flow.">i</span></label>
-                            <input id="epc-load-count" data-epc-field="loads.loadCount" type="number" min="1" max="6" step="1" oninput="onEpcLoadCountChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                            <input id="epc-load-count" data-epc-field="loads.loadCount" type="number" min="1" max="12" step="1" oninput="onEpcLoadCountChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                         </div>
                     </div>
                     <div id="epc-load-split-controls" class="rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs"></div>
@@ -10532,7 +10532,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
         function epcNormalizeLoadCount(value) {
             const n = Math.round(Number(value) || 1);
-            return Math.min(6, Math.max(1, Number.isFinite(n) ? n : 1));
+            return Math.min(12, Math.max(1, Number.isFinite(n) ? n : 1));
         }
 
         function epcDefaultLoadSplits(count = 1) {
@@ -18458,6 +18458,83 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             `;
         }
 
+        function renderEpcReportProcurementAdvisory(result = {}) {
+            const findings = Array.isArray(result.procurementAdvisory?.findings) ? result.procurementAdvisory.findings : [];
+            const summary = result.procurementAdvisory?.summary || {};
+            return `
+                <div class="grid grid-cols-4 gap-2 mb-3">
+                    ${[
+                        ['Findings', formatEpcNumber(summary.findingCount || findings.length, 0)],
+                        ['High Priority', formatEpcNumber(summary.highCount || findings.filter(item => item.severity === 'high').length, 0)],
+                        ['Full String Module Delta', formatEpcNumber(summary.fullStringModuleDelta || result.pvStringDesign?.stringRoundingGapModules || 0, 0)],
+                        ['Genset Count', formatEpcNumber(summary.gensetCount || result.loadAssetSummary?.gensetCount || 0, 0)]
+                    ].map(([label, value]) => `
+                        <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                            <div class="text-[9px] font-black uppercase text-slate-400">${htmlSafe(label)}</div>
+                            <div class="mt-1 text-sm font-black text-slate-900">${htmlSafe(value)}</div>
+                        </div>
+                    `).join('')}
+                </div>
+                <table class="epc-report-table">
+                    <thead>
+                        <tr><th>Finding ID</th><th>Severity</th><th>Domain</th><th>Evidence</th><th>Recommendation</th><th class="num">Delta</th></tr>
+                    </thead>
+                    <tbody>
+                        ${findings.map(item => `
+                            <tr>
+                                <td class="package">${htmlSafe(item.id || '-')}</td>
+                                <td>${htmlSafe(item.severity || '-')}</td>
+                                <td>${htmlSafe(item.domain || '-')}</td>
+                                <td>${htmlSafe(item.evidence || item.title || '-')}</td>
+                                <td>${htmlSafe(item.recommendation || '-')}</td>
+                                <td class="num">${formatEpcNumber(item.quantityDelta, 2)}</td>
+                            </tr>
+                        `).join('') || '<tr><td colspan="6" class="empty">No procurement advisory findings.</td></tr>'}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function renderEpcReportAssetMapping(result = {}) {
+            const groups = Array.isArray(result.loadAssetSummary?.assetGroups) ? result.loadAssetSummary.assetGroups : [];
+            const gensets = Array.isArray(result.loadAssetSummary?.gensets) ? result.loadAssetSummary.gensets : [];
+            return `
+                <div class="grid grid-cols-5 gap-2 mb-3">
+                    ${[
+                        ['Zones', formatEpcNumber(result.loadAssetSummary?.zoneCount || 0, 0)],
+                        ['Load Branches', formatEpcNumber(result.loadAssetSummary?.branchCount || groups.length, 0)],
+                        ['Assets', formatEpcNumber(result.loadAssetSummary?.assetCount || 0, 0)],
+                        ['Feeder Cabinets', formatEpcNumber(result.loadAssetSummary?.feederCabinetCount || 0, 0)],
+                        ['Gensets', formatEpcNumber(result.loadAssetSummary?.gensetCount || gensets.length, 0)]
+                    ].map(([label, value]) => `
+                        <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                            <div class="text-[9px] font-black uppercase text-slate-400">${htmlSafe(label)}</div>
+                            <div class="mt-1 text-sm font-black text-slate-900">${htmlSafe(value)}</div>
+                        </div>
+                    `).join('')}
+                </div>
+                <table class="epc-report-table">
+                    <thead>
+                        <tr><th>Zone</th><th>Asset Group</th><th>Type</th><th class="num">Assets</th><th class="num">Feeder</th><th class="num">VFD</th><th class="num">Metering</th></tr>
+                    </thead>
+                    <tbody>
+                        ${groups.map(row => `
+                            <tr>
+                                <td class="package">${htmlSafe(row.zone || '-')}</td>
+                                <td>${htmlSafe(row.label || row.id || '-')}</td>
+                                <td>${htmlSafe(row.assetType || row.feederType || '-')}</td>
+                                <td class="num">${formatEpcNumber(row.assetCount, 0)}</td>
+                                <td class="num">${formatEpcNumber(row.feederCabinetQty, 0)}</td>
+                                <td class="num">${formatEpcNumber(row.vfdCabinetQty, 0)}</td>
+                                <td class="num">${formatEpcNumber(row.meteringCabinetQty, 0)}</td>
+                            </tr>
+                        `).join('') || '<tr><td colspan="7" class="empty">No asset mapping rows.</td></tr>'}
+                    </tbody>
+                </table>
+                ${gensets.length ? `<div class="epc-report-note">Genset Count: ${formatEpcNumber(gensets.length, 0)}. EMS BOQ expands remote control and metering/runtime monitoring per genset.</div>` : ''}
+            `;
+        }
+
         function getEpcReportPageShell(page = {}, pageNumber = 1, pageTotal = 1, meta = {}) {
             return `
                 <section class="epc-report-page ${htmlSafe(page.className || '')}">
@@ -18539,6 +18616,24 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     body: renderEpcReportOnlyDeviceWorkDiagram(result)
                 }
             ];
+            if ((Array.isArray(result.procurementAdvisory?.findings) ? result.procurementAdvisory.findings : []).length) {
+                pageBodies.push({
+                    title: 'Procurement Gap Review',
+                    subtitle: 'Automated comparison of concept design, full-string PV procurement and asset-level EMS/BOQ scope.',
+                    className: 'epc-report-boq-page epc-report-procurement-page',
+                    result,
+                    body: renderEpcReportProcurementAdvisory(result)
+                });
+            }
+            if ((Array.isArray(result.loadAssetSummary?.assetGroups) ? result.loadAssetSummary.assetGroups : []).length) {
+                pageBodies.push({
+                    title: 'Asset Mapping',
+                    subtitle: 'Load branch, feeder cabinet, VFD, metering and genset scope derived from the asset list.',
+                    className: 'epc-report-boq-page epc-report-asset-page',
+                    result,
+                    body: renderEpcReportAssetMapping(result)
+                });
+            }
             const boqRows = Array.isArray(result.boq) ? result.boq : [];
             chunkEpcReportRows(boqRows, 12).forEach((rows, index, chunks) => {
                 pageBodies.push({
@@ -18725,6 +18820,44 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return [headers, ...rows];
         }
 
+        function epcBoqWorkbookProcurementAdvisorRows(result = {}) {
+            const headers = ['Finding ID', 'Severity', 'Domain', 'Title', 'Evidence', 'Recommendation', 'Quantity Delta', 'Action', 'Full String Module Delta', 'Genset Count'];
+            const findings = Array.isArray(result.procurementAdvisory?.findings) ? result.procurementAdvisory.findings : [];
+            const summary = result.procurementAdvisory?.summary || {};
+            const rows = findings.map(item => [
+                item.id || '',
+                item.severity || '',
+                item.domain || '',
+                item.title || '',
+                item.evidence || '',
+                item.recommendation || '',
+                Number.isFinite(Number(item.quantityDelta)) ? Number(item.quantityDelta) : '',
+                item.action || '',
+                Number.isFinite(Number(summary.fullStringModuleDelta)) ? Number(summary.fullStringModuleDelta) : '',
+                Number.isFinite(Number(summary.gensetCount)) ? Number(summary.gensetCount) : ''
+            ]);
+            return [headers, ...(rows.length ? rows : [['', '', '', 'No procurement advisory findings', '', '', '', '', summary.fullStringModuleDelta || 0, summary.gensetCount || 0]])];
+        }
+
+        function epcBoqWorkbookAssetMappingRows(result = {}) {
+            const headers = ['Asset Group ID', 'Zone', 'Label', 'Asset Type', 'Asset Count', 'Feeder Cabinet Qty', 'VFD Cabinet Qty', 'Metering Cabinet Qty', 'Genset Count', 'Source'];
+            const groups = Array.isArray(result.loadAssetSummary?.assetGroups) ? result.loadAssetSummary.assetGroups : [];
+            const summary = result.loadAssetSummary || {};
+            const rows = groups.map(row => [
+                row.id || '',
+                row.zone || '',
+                row.label || '',
+                row.assetType || row.feederType || '',
+                Number.isFinite(Number(row.assetCount)) ? Number(row.assetCount) : '',
+                Number.isFinite(Number(row.feederCabinetQty)) ? Number(row.feederCabinetQty) : '',
+                Number.isFinite(Number(row.vfdCabinetQty)) ? Number(row.vfdCabinetQty) : '',
+                Number.isFinite(Number(row.meteringCabinetQty)) ? Number(row.meteringCabinetQty) : '',
+                Number.isFinite(Number(summary.gensetCount)) ? Number(summary.gensetCount) : '',
+                row.source || 'asset-mapping'
+            ]);
+            return [headers, ...(rows.length ? rows : [['', '', 'No asset mapping rows', '', '', '', '', '', summary.gensetCount || 0, '']])];
+        }
+
         function formatEpcWorksheetColumns(worksheet, widths = []) {
             worksheet['!cols'] = widths.map(width => ({ wch: width }));
             const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:A1');
@@ -18765,13 +18898,19 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const customerWorksheet = XLSX.utils.aoa_to_sheet(epcBoqWorkbookCustomerRows(result));
             const engineeringWorksheet = XLSX.utils.aoa_to_sheet(epcBoqWorkbookEngineeringRows(result));
             const productWorksheet = XLSX.utils.aoa_to_sheet(epcBoqWorkbookProductRows(result));
+            const procurementWorksheet = XLSX.utils.aoa_to_sheet(epcBoqWorkbookProcurementAdvisorRows(result));
+            const assetWorksheet = XLSX.utils.aoa_to_sheet(epcBoqWorkbookAssetMappingRows(result));
             formatEpcWorksheetColumns(customerWorksheet, [20, 28, 54, 12, 10, 20, 28, 42]);
             formatEpcWorksheetColumns(engineeringWorksheet, [20, 28, 54, 12, 10, 20, 28, 16, 12, 18, 10, 42]);
             formatEpcWorksheetColumns(productWorksheet, [22, 20, 28, 20, 34, 24, 54, 16, 42]);
+            formatEpcWorksheetColumns(procurementWorksheet, [24, 12, 14, 34, 54, 64, 16, 28, 24, 16]);
+            formatEpcWorksheetColumns(assetWorksheet, [24, 18, 34, 18, 14, 20, 18, 20, 16, 20]);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, customerWorksheet, 'Customer Summary');
             XLSX.utils.book_append_sheet(workbook, engineeringWorksheet, 'Engineering Detail');
             XLSX.utils.book_append_sheet(workbook, productWorksheet, 'Product Binding');
+            XLSX.utils.book_append_sheet(workbook, procurementWorksheet, 'Procurement Advisor');
+            XLSX.utils.book_append_sheet(workbook, assetWorksheet, 'Asset Mapping');
             XLSX.writeFile(workbook, `${safeName}-complete-boq.xlsx`);
         };
 

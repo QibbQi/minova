@@ -1046,6 +1046,77 @@ test('EPC PV string design supports module specs and architecture warnings', () 
   assert.ok(design.warnings.some((warning) => warning.includes('module/string ratio')));
 });
 
+test('EPC PV string design reports full-string rounding gap for procurement review', () => {
+  const design = calculatePvStringDesign({
+    targetPvMwp: 4,
+    moduleWp: 580,
+    modulesPerString: 26,
+    combinerInputs: 16,
+    inverterArchitecture: 'central'
+  });
+
+  assert.equal(design.modules, 6897);
+  assert.equal(design.strings, 266);
+  assert.equal(design.fullStringModuleCount, 6916);
+  assert.equal(design.stringRoundingGapModules, 19);
+  assert.ok(design.warnings.some((warning) => /full string/i.test(warning)));
+});
+
+test('EPC asset mapping expands quarry MV ring BOQ to procurement-grade feeder and genset lines', () => {
+  const result = calculateEpcDesignProject({
+    selectedTopologyId: 'C7',
+    site: { gridMode: 'island' },
+    electrical: { selectedArchitectureId: 'mv_11_ring', newMvSystem: true },
+    loads: {
+      dailyLoadKwh: 15452,
+      operationHoursPerDay: 8,
+      assetGroups: [
+        { id: 'tjq1-primary', zone: 'TJQ1', label: 'TJQ1 primary crusher', assetType: 'crusher', assetCount: 1, feederCabinetQty: 1, ratioPct: 14 },
+        { id: 'tjq1-secondary', zone: 'TJQ1', label: 'TJQ1 cone and VSI crushers', assetType: 'crusher', assetCount: 4, feederCabinetQty: 2, vfdCabinetQty: 1, ratioPct: 19 },
+        { id: 'tjq1-screen', zone: 'TJQ1', label: 'TJQ1 screen and conveyor', assetType: 'screen', assetCount: 4, feederCabinetQty: 2, meteringCabinetQty: 1, ratioPct: 13 },
+        { id: 'tjq2-primary', zone: 'TJQ2', label: 'TJQ2 primary crushers', assetType: 'crusher', assetCount: 2, feederCabinetQty: 1, ratioPct: 15 },
+        { id: 'tjq2-secondary', zone: 'TJQ2', label: 'TJQ2 cone and mobile crushers', assetType: 'crusher', assetCount: 4, feederCabinetQty: 2, vfdCabinetQty: 2, ratioPct: 18 },
+        { id: 'tjq2-screen', zone: 'TJQ2', label: 'TJQ2 screen and conveyor', assetType: 'screen', assetCount: 4, feederCabinetQty: 3, meteringCabinetQty: 1, ratioPct: 12 },
+        { id: 'aux-pump', zone: 'Common', label: 'Water pump branch', assetType: 'pump', assetCount: 7, feederCabinetQty: 7, meteringCabinetQty: 1, ratioPct: 5 },
+        { id: 'aux-workshop', zone: 'Common', label: 'Auxiliary lighting and maintenance', assetType: 'auxiliary', assetCount: 4, feederCabinetQty: 4, meteringCabinetQty: 1, ratioPct: 4 }
+      ]
+    },
+    gensets: [
+      { id: 'tjq1-g1', zone: 'TJQ1', label: 'CAT 350 kVA', ratedKva: 350 },
+      { id: 'tjq1-g2', zone: 'TJQ1', label: 'CAT 750 kVA', ratedKva: 750 },
+      { id: 'tjq1-g3', zone: 'TJQ1', label: 'Volvo Penta', ratedKva: 0 },
+      { id: 'tjq1-g4', zone: 'TJQ1', label: 'CAT 365 kVA', ratedKva: 365 },
+      { id: 'tjq2-g1', zone: 'TJQ2', label: 'Volvo Penta', ratedKva: 0 },
+      { id: 'tjq2-g2', zone: 'TJQ2', label: 'Volvo Penta', ratedKva: 0 },
+      { id: 'tjq2-g3', zone: 'TJQ2', label: 'KTA50-G1', ratedKva: 0 },
+      { id: 'tjq2-g4', zone: 'TJQ2', label: 'CAT 3508 DITA', ratedKva: 0 },
+      { id: 'tjq2-g5', zone: 'TJQ2', label: 'MarelliMotori AC Genset', ratedKva: 0 }
+    ],
+    designTargets: {
+      replacementPct: 80,
+      capacityOverrides: { pvMwp: 4, bessMwh: 5, pcsMw: 2.5 }
+    }
+  }, { now: '2026-06-19T00:00:00.000Z' });
+  const row = (id) => result.boq.find((item) => item.id === id);
+
+  assert.equal(result.loads.loadCount, 8);
+  assert.equal(result.loadAssetSummary.zoneCount, 3);
+  assert.equal(result.loadAssetSummary.assetCount, 30);
+  assert.equal(result.loadAssetSummary.gensetCount, 9);
+  assert.equal(result.topology.nodes.some((node) => node.id === 'load-8' && node.label === 'Auxiliary lighting and maintenance'), true);
+  assert.equal(row('mv-load-branch-rmu')?.quantity, 8);
+  assert.equal(row('load-transformer')?.quantity, 8);
+  assert.equal(row('crusher-feeder-cabinet')?.quantity, 6);
+  assert.equal(row('screen-feeder-cabinet')?.quantity, 5);
+  assert.equal(row('pump-feeder-cabinet')?.quantity, 7);
+  assert.equal(row('vfd-feeder-cabinet')?.quantity, 3);
+  assert.equal(row('zone-metering-cabinet')?.quantity, 4);
+  assert.equal(row('genset-remote-control')?.quantity, 9);
+  assert.equal(row('genset-metering-runtime')?.quantity, 9);
+  assert.equal(result.procurementAdvisory.findings.some((item) => item.id === 'genset-asset-mapping' && item.severity === 'high'), true);
+  assert.equal(result.procurementAdvisory.findings.some((item) => item.id === 'pv-string-rounding' && item.quantityDelta === 19), true);
+});
+
 test('EPC off-grid projects default to the C5 standard topology with LV and MV buses', () => {
   const project = normalizeEpcDesignProject({
     site: { gridMode: 'island' }

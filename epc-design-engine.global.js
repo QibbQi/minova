@@ -567,7 +567,103 @@ function normalizePowerEdge(edge = {}, index = 0) {
 
 function normalizeLoadCount(value) {
   const n = Math.round(asNumber(value, 1));
-  return Math.min(6, Math.max(1, Number.isFinite(n) ? n : 1));
+  return Math.min(12, Math.max(1, Number.isFinite(n) ? n : 1));
+}
+
+function normalizeAssetType(value) {
+  const raw = String(value || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+  if (raw.includes('crusher') || raw.includes('jaw') || raw.includes('cone') || raw.includes('vsi') || raw.includes('gyratory') || raw.includes('lokotrack')) return 'crusher';
+  if (raw.includes('screen') || raw.includes('conveyor')) return 'screen';
+  if (raw.includes('pump')) return 'pump';
+  if (raw.includes('vfd') || raw.includes('variable_frequency')) return 'vfd';
+  if (raw.includes('meter')) return 'metering';
+  if (raw.includes('light') || raw.includes('workshop') || raw.includes('aux')) return 'auxiliary';
+  return raw || 'load';
+}
+
+function normalizeAssetGroup(row = {}, index = 0) {
+  const assetType = normalizeAssetType(row.assetType || row.type || row.feederType);
+  const assetCount = Math.max(0, Math.round(asNumber(row.assetCount ?? row.count ?? row.quantity, 1)));
+  const feederCabinetQty = Math.max(0, Math.round(asNumber(row.feederCabinetQty ?? row.feederQty ?? row.cabinetQty, assetCount > 0 ? 1 : 0)));
+  return {
+    id: String(row.id || `asset-group-${index + 1}`).trim() || `asset-group-${index + 1}`,
+    zone: String(row.zone || row.area || row.plant || '').trim() || 'Common',
+    label: String(row.label || row.name || row.equipment || `${assetType} branch ${index + 1}`).trim(),
+    assetType,
+    assetCount,
+    ratedKw: asNumber(row.ratedKw ?? row.powerKw, 0),
+    ratedKva: asNumber(row.ratedKva ?? row.kva, 0),
+    feederType: normalizeAssetType(row.feederType || assetType),
+    feederCabinetQty,
+    vfdCabinetQty: Math.max(0, Math.round(asNumber(row.vfdCabinetQty ?? row.vfdQty, assetType === 'vfd' ? feederCabinetQty : 0))),
+    meteringCabinetQty: Math.max(0, Math.round(asNumber(row.meteringCabinetQty ?? row.meteringQty, 0))),
+    ratioPct: Math.max(0, asNumber(row.ratioPct ?? row.percent ?? row.allocationPct, 0)),
+    source: String(row.source || '').trim()
+  };
+}
+
+function normalizeAssetGroups(value = []) {
+  return (Array.isArray(value) ? value : [])
+    .map((row, index) => normalizeAssetGroup(row, index))
+    .filter(row => row.assetCount > 0 || row.feederCabinetQty > 0 || row.ratioPct > 0);
+}
+
+function normalizeGensetAssets(value = []) {
+  return (Array.isArray(value) ? value : [])
+    .map((row, index) => ({
+      id: String(row?.id || `genset-${index + 1}`).trim() || `genset-${index + 1}`,
+      zone: String(row?.zone || row?.area || row?.plant || '').trim() || 'Common',
+      label: String(row?.label || row?.name || `Genset ${index + 1}`).trim(),
+      ratedKva: asNumber(row?.ratedKva ?? row?.kva, 0),
+      ratedKw: asNumber(row?.ratedKw ?? row?.kw, 0),
+      assetCode: String(row?.assetCode || row?.code || '').trim()
+    }))
+    .filter(row => row.id || row.label);
+}
+
+function loadSplitsFromAssetGroups(assetGroups = []) {
+  const groups = normalizeAssetGroups(assetGroups);
+  if (!groups.length) return [];
+  const totalRatio = groups.reduce((sum, row) => sum + row.ratioPct, 0);
+  const totalAssets = groups.reduce((sum, row) => sum + Math.max(0, row.assetCount), 0);
+  return groups.map((row, index) => ({
+    id: `load-${index + 1}`,
+    label: row.label || `${row.zone} ${row.assetType}`,
+    ratioPct: totalRatio > 0
+      ? row.ratioPct
+      : totalAssets > 0
+        ? (row.assetCount / totalAssets) * 100
+        : 100 / groups.length,
+    assetGroupId: row.id,
+    zone: row.zone,
+    assetType: row.assetType
+  }));
+}
+
+function buildLoadAssetSummary(assetGroups = [], gensets = []) {
+  const groups = normalizeAssetGroups(assetGroups);
+  const gensetRows = normalizeGensetAssets(gensets);
+  const sumBy = predicate => groups.reduce((sum, row) => sum + (predicate(row) ? row.feederCabinetQty : 0), 0);
+  const zoneSet = new Set(groups.map(row => row.zone).filter(Boolean));
+  const gensetZoneSet = new Set(gensetRows.map(row => row.zone).filter(Boolean));
+  return {
+    branchCount: groups.length,
+    zoneCount: zoneSet.size,
+    zones: Array.from(zoneSet),
+    assetCount: groups.reduce((sum, row) => sum + row.assetCount, 0),
+    gensetCount: gensetRows.length,
+    gensetZoneCount: gensetZoneSet.size,
+    gensetZones: Array.from(gensetZoneSet),
+    feederCabinetCount: groups.reduce((sum, row) => sum + row.feederCabinetQty, 0),
+    crusherFeederCabinetCount: sumBy(row => row.assetType === 'crusher' || row.feederType === 'crusher'),
+    screenFeederCabinetCount: sumBy(row => row.assetType === 'screen' || row.feederType === 'screen'),
+    pumpFeederCabinetCount: sumBy(row => row.assetType === 'pump' || row.feederType === 'pump'),
+    auxiliaryFeederCabinetCount: sumBy(row => row.assetType === 'auxiliary' || row.feederType === 'auxiliary'),
+    vfdCabinetCount: groups.reduce((sum, row) => sum + row.vfdCabinetQty, 0),
+    meteringCabinetCount: groups.reduce((sum, row) => sum + row.meteringCabinetQty, 0),
+    assetGroups: groups,
+    gensets: gensetRows
+  };
 }
 
 function normalizeLoadSplits(value = [], count = 1) {
@@ -602,6 +698,8 @@ function normalizeLoadSplits(value = [], count = 1) {
 }
 
 function defaultLoadSplitsForTopology(loads = {}) {
+  const assetSplits = loadSplitsFromAssetGroups(loads.assetGroups || []);
+  if (assetSplits.length) return normalizeLoadSplits(assetSplits, assetSplits.length);
   const count = normalizeLoadCount(loads.loadCount ?? (Array.isArray(loads.loadSplits) ? loads.loadSplits.length : 1));
   return normalizeLoadSplits(loads.loadSplits || [], count);
 }
@@ -1002,6 +1100,8 @@ function buildStandardTopologyGraph(id = 'C5', loads = {}, options = {}) {
     };
   };
   const loadSplits = defaultLoadSplitsForTopology(loads);
+  const gensetCount = Math.max(0, Math.round(asNumber(loads.gensetCount, 0))) || normalizeGensetAssets(loads.gensets || []).length;
+  const gensetLabel = gensetCount > 1 ? `DG Station (${gensetCount} units)` : 'Genset';
   const node = (nodeId, type, label, x, y, voltageV = 0, extra = {}) => ({
     id: nodeId,
     type,
@@ -1026,7 +1126,7 @@ function buildStandardTopologyGraph(id = 'C5', loads = {}, options = {}) {
       node('pv-array', 'PV_ARRAY', 'PV Array', 40, 60, 1000),
       node('pv-inverter', 'PV_INVERTER', 'PV Inverter', 220, 60, 415),
       node('curtailment', 'CURTAILMENT', 'Curtailment', 430, 0, 415),
-      node('genset', 'GENSET', 'Genset', 220, 210, 415),
+      node('genset', 'GENSET', gensetLabel, 220, 210, 415),
       node('lv-bus', 'LV_BUS', 'Common 415V Bus', 430, 130, 415, { busOrientation: 'vertical' }),
       commonEms
     ];
@@ -1051,7 +1151,7 @@ function buildStandardTopologyGraph(id = 'C5', loads = {}, options = {}) {
       node('curtailment', 'CURTAILMENT', 'Curtailment', 450, 20, 415),
       node('battery', 'BATTERY', 'Battery', 40, 210, 800),
       node('pcs', 'PCS', 'PCS', 220, 210, 415),
-      node('genset', 'GENSET', 'Genset', 220, 340, 415),
+      node('genset', 'GENSET', gensetLabel, 220, 340, 415),
       node('lv-bus', 'LV_BUS', 'Common 415V Bus', 450, 160, 415, { busOrientation: 'vertical' }),
       commonEms
     ];
@@ -1079,7 +1179,7 @@ function buildStandardTopologyGraph(id = 'C5', loads = {}, options = {}) {
       node('curtailment', 'CURTAILMENT', 'Curtailment', 460, 40, 415),
       node('battery', 'BATTERY', 'BESS', 40, 210, 800),
       node('pcs', 'PCS', 'PCS', 220, 210, 415),
-      node('genset', 'GENSET', 'DG Station', 220, 350, 415),
+      node('genset', 'GENSET', gensetCount > 1 ? gensetLabel : 'DG Station', 220, 350, 415),
       node('lv-bus', 'LV_BUS', 'Source 415V Bus', 460, 210, 415, { busOrientation: 'vertical' }),
       node('step-up-tx', 'TRANSFORMER', 'Step-up TX', 650, 210, 11000),
       node('mv-bus', 'MV_SWITCHBOARD', '11kV Main Switchboard', 840, 210, 11000),
@@ -1116,7 +1216,7 @@ function buildStandardTopologyGraph(id = 'C5', loads = {}, options = {}) {
       node('curtailment', 'CURTAILMENT', 'Curtailment', 450, 20, 415),
       node('battery', 'BATTERY', 'Battery', 40, 180, 800),
       node('pcs', 'PCS', 'Grid-forming PCS', 220, 180, 415),
-      node('genset', 'GENSET', 'Genset', 220, 320, 415),
+      node('genset', 'GENSET', gensetLabel, 220, 320, 415),
       node('lv-bus', 'LV_BUS', 'Microgrid 415V Bus', 450, 180, 415, { busOrientation: 'vertical' }),
       node('step-up-tx', 'TRANSFORMER', 'Step-up TX', 620, 180, mvVoltageV),
       node('mv-switchboard', 'MV_SWITCHBOARD', `${mvLabel} MV Switchboard`, 800, 180, mvVoltageV),
@@ -1148,7 +1248,7 @@ function buildStandardTopologyGraph(id = 'C5', loads = {}, options = {}) {
       node('curtailment', 'CURTAILMENT', 'Curtailment', 450, 20, 415),
       node('battery', 'BATTERY', 'Battery', 40, 180, 800),
       node('pcs', 'PCS', 'Grid-forming PCS', 220, 180, 415),
-      node('genset', 'GENSET', 'Genset', 220, 320, 415),
+      node('genset', 'GENSET', gensetLabel, 220, 320, 415),
       node('lv-bus', 'LV_BUS', 'Microgrid 415V Bus', 450, 180, 415, { busOrientation: 'vertical' }),
       node('step-up-tx', 'TRANSFORMER', 'Step-up TX', 620, 180, 11000),
       node('mv-switchboard', 'MV_SWITCHBOARD', 'MV Switchboard', 800, 180, 11000),
@@ -1418,8 +1518,14 @@ function normalizeEpcDesignProject(raw = {}, options = {}) {
     const dayHours = clamp(loads.operationHoursPerDay ?? raw.operationHoursPerDay, 1, 24, 8);
     const operationStartTime = normalizeTime(loads.operationStartTime ?? raw.operationStartTime, '09:00');
     const operationFinishTime = normalizeTime(loads.operationFinishTime ?? raw.operationFinishTime, addHoursToTime(operationStartTime, dayHours));
-  const loadCount = normalizeLoadCount(loads.loadCount ?? raw.loadCount ?? (Array.isArray(loads.loadSplits) ? loads.loadSplits.length : 1));
-  const loadSplits = normalizeLoadSplits(loads.loadSplits || raw.loadSplits || [], loadCount);
+  const assetGroups = normalizeAssetGroups(loads.assetGroups || raw.assetGroups || []);
+  const gensetAssets = normalizeGensetAssets(loads.gensets || raw.gensets || []);
+  const assetLoadSplits = loadSplitsFromAssetGroups(assetGroups);
+  const inferredLoadCount = assetLoadSplits.length || (Array.isArray(loads.loadSplits) ? loads.loadSplits.length : 1);
+  const loadCount = normalizeLoadCount(loads.loadCount ?? raw.loadCount ?? inferredLoadCount);
+  const loadSplits = assetLoadSplits.length
+    ? normalizeLoadSplits(assetLoadSplits, Math.max(loadCount, assetLoadSplits.length))
+    : normalizeLoadSplits(loads.loadSplits || raw.loadSplits || [], loadCount);
   const scheduleWorkingHours = Math.min(24, Math.max(1, hoursBetweenTimes(operationStartTime, operationFinishTime)));
   const normalizedAssumptions = { ...defaults, ...assumptions };
   const hasLegacySocDefaults = asNumber(assumptions.minSocPct, defaults.minSocPct) === 25
@@ -1442,7 +1548,7 @@ function normalizeEpcDesignProject(raw = {}, options = {}) {
   const selectedTopologyId = normalizeSelectedTopologyId(raw.selectedTopologyId || raw.topology?.selectedTopologyId, {
     gridMode: site.gridMode || raw.gridMode || 'hybrid'
   });
-  const topology = normalizePowerTopology(raw.topology || {}, selectedTopologyId, { loadCount, loadSplits }, {
+  const topology = normalizePowerTopology(raw.topology || {}, selectedTopologyId, { loadCount, loadSplits, assetGroups, gensets: gensetAssets, gensetCount: gensetAssets.length }, {
     architectureId: selectedArchitectureId,
     standardTopologyLibrary: normalizedCalculationAssumptions.standardTopologyLibrary
   });
@@ -1466,7 +1572,7 @@ function normalizeEpcDesignProject(raw = {}, options = {}) {
       distanceToInterconnectionM: asNumber(site.distanceToInterconnectionM, 0),
       gridMode: String(site.gridMode || raw.gridMode || 'hybrid').trim()
     },
-    gensets: Array.isArray(raw.gensets) ? raw.gensets : [],
+    gensets: gensetAssets,
     loadProfile: Array.isArray(raw.loadProfile) ? raw.loadProfile : Array.isArray(raw.load_profile) ? raw.load_profile : [],
     selectedTopologyId,
     topology,
@@ -1486,6 +1592,9 @@ function normalizeEpcDesignProject(raw = {}, options = {}) {
         criticalLoadKw: asNumber(loads.criticalLoadKw ?? raw.criticalLoadKw, 0),
         loadCount,
         loadSplits,
+        assetGroups,
+        gensets: gensetAssets,
+        gensetCount: gensetAssets.length,
         allowedGensetLoadKw: asNumber(loads.allowedGensetLoadKw ?? raw.allowedGensetLoadKw, 0),
         equipmentType: String(loads.equipmentType || raw.equipmentType || 'water_pump').trim(),
         energyMeterSummary,
@@ -2447,6 +2556,7 @@ function topologyFlowNodeLabel(node = {}) {
     METER: 'Meter'
   };
   const label = String(node.label || '').trim();
+  if (node.type === 'GENSET' && label && !/^genset$/i.test(label)) return label;
   if (/ring\s*rmu/i.test(label)) return 'Ring RMU';
   if (/mv\s*switchboard/i.test(label)) return 'MV Switchboard';
   if (/load\s*tx/i.test(label)) return 'Load TX';
@@ -2706,6 +2816,7 @@ function buildBoq(project, recommended, context = {}) {
   const topologyFlow = context.topologyFlow || {};
   const pvStringDesign = context.pvStringDesign || {};
   const electricalArchitecture = context.electricalArchitecture || {};
+  const loadAssetSummary = context.loadAssetSummary || buildLoadAssetSummary(project.loads?.assetGroups || [], project.gensets || project.loads?.gensets || []);
   const loadSplits = Array.isArray(project.loads?.loadSplits) ? project.loads.loadSplits : [];
   const nodes = Array.isArray(topology.nodes) ? topology.nodes : [];
   const flowNodes = new Map((Array.isArray(topologyFlow.nodes) ? topologyFlow.nodes : []).map(node => [node.id, node]));
@@ -2725,7 +2836,9 @@ function buildBoq(project, recommended, context = {}) {
   const ringRmuCount = countTopologyNodes(topology, node => /ring[-\s]?rmu/i.test(`${node.id} ${node.label}`));
   const mvBranchRmuCount = countTopologyNodes(topology, node => node.type === 'MV_BUS' && /rmu[-\s]?load/i.test(`${node.id} ${node.label}`));
   const lvBusCount = topologyNodeTypeCount(topology, 'LV_BUS');
-  const gensetCount = topologyNodeTypeCount(topology, 'GENSET');
+  const topologyGensetCount = topologyNodeTypeCount(topology, 'GENSET');
+  const gensetCount = Math.max(topologyGensetCount, loadAssetSummary.gensetZoneCount || 0);
+  const gensetAssetCount = Math.max(loadAssetSummary.gensetCount || 0, topologyGensetCount);
   const emsCount = topologyNodeTypeCount(topology, 'EMS');
   const pvInverterNodeCount = topologyNodeTypeCount(topology, 'PV_INVERTER');
   const pvInverterUnitCount = Math.max(pvInverterNodeCount, recommended.pvRecommendedMwp > 0 ? Math.ceil((recommended.pvRecommendedMwp * 1000) / 800) : 0);
@@ -2891,11 +3004,19 @@ function buildBoq(project, recommended, context = {}) {
   add({ id: 'load-transformer', package: 'Electrical Distribution', item: 'Load step-down transformer', spec: 'MV to 415V transformer for load branch', quantity: hasMvArchitecture ? loadTransformerCount : 0, unit: 'set', protection: 'Transformer protection and enclosure by site', remark: 'One per MV-to-LV load branch where shown in SLD', source: 'topology', nodeType: 'TRANSFORMER', mandatory: loadTransformerCount > 0 });
   add({ id: 'lv-bus', package: 'Electrical Distribution', item: 'LV bus / distribution board', spec: '415V busbar, incomer, metering and feeder protection', quantity: lvBusCount, unit: 'set', protection: 'IP65, C5-M when outdoor', remark: 'Counted from LV bus nodes in final SLD', source: 'topology', nodeType: 'LV_BUS', mandatory: lvBusCount > 0 });
   add({ id: 'load-feeder', package: 'Electrical Distribution', item: 'Load feeder / distribution circuit', spec: '415V outgoing feeder to site load branch', quantity: loadFeederCount, unit: 'way', protection: 'Breaker, metering, SPD and cable termination by load', remark: 'Derived from valid EMS/topology load edges', source: 'topology', nodeType: 'LOAD', mandatory: loadFeederCount > 0 });
-  add({ id: 'genset-interface', package: 'Electrical Distribution', item: 'Genset interface panel', spec: '415V synchronization / remote start-stop interface', quantity: gensetCount, unit: 'set', protection: 'IP65, C5-M when outdoor', remark: 'Existing genset interface where applicable', source: 'topology', nodeType: 'GENSET', mandatory: gensetCount > 0 });
+  add({ id: 'genset-interface', package: 'Electrical Distribution', item: 'Genset interface panel', spec: '415V synchronization / remote start-stop interface', quantity: gensetCount, unit: 'set', protection: 'IP65, C5-M when outdoor', remark: loadAssetSummary.gensetCount ? 'Grouped by genset zone; asset-level controls are listed in EMS scope' : 'Existing genset interface where applicable', source: loadAssetSummary.gensetCount ? 'asset-mapping' : 'topology', nodeType: 'GENSET', mandatory: gensetCount > 0 });
+  add({ id: 'crusher-feeder-cabinet', package: 'Electrical Distribution', item: 'Crusher feeder cabinet', spec: 'Motor feeder / MCC outgoing panel for crusher branches', quantity: loadAssetSummary.crusherFeederCabinetCount || 0, unit: 'set', protection: 'MCCB/ACB, motor protection and metering by branch', remark: 'Derived from asset mapping', source: 'asset-mapping', mandatory: loadAssetSummary.crusherFeederCabinetCount > 0 });
+  add({ id: 'screen-feeder-cabinet', package: 'Electrical Distribution', item: 'Screen and conveyor feeder cabinet', spec: 'Motor feeder panel for screen and conveyor branches', quantity: loadAssetSummary.screenFeederCabinetCount || 0, unit: 'set', protection: 'MCCB, overload, emergency stop and local isolation', remark: 'Derived from asset mapping', source: 'asset-mapping', mandatory: loadAssetSummary.screenFeederCabinetCount > 0 });
+  add({ id: 'pump-feeder-cabinet', package: 'Electrical Distribution', item: 'Pump feeder cabinet', spec: 'Pump feeder panel with motor protection and local control interface', quantity: loadAssetSummary.pumpFeederCabinetCount || 0, unit: 'set', protection: 'Motor protection relay, overload and isolator', remark: 'Derived from asset mapping', source: 'asset-mapping', mandatory: loadAssetSummary.pumpFeederCabinetCount > 0 });
+  add({ id: 'auxiliary-feeder-cabinet', package: 'Electrical Distribution', item: 'Auxiliary feeder cabinet', spec: 'Auxiliary lighting/workshop feeder panel', quantity: loadAssetSummary.auxiliaryFeederCabinetCount || 0, unit: 'set', protection: 'MCB/MCCB feeder protection and local isolation', remark: 'Derived from asset mapping', source: 'asset-mapping', mandatory: loadAssetSummary.auxiliaryFeederCabinetCount > 0 });
+  add({ id: 'vfd-feeder-cabinet', package: 'Electrical Distribution', item: 'VFD feeder cabinet', spec: 'Variable frequency drive cabinet for crusher/pump speed control branches', quantity: loadAssetSummary.vfdCabinetCount || 0, unit: 'set', protection: 'Input/output reactor, bypass/isolation and motor protection', remark: 'Derived from asset mapping', source: 'asset-mapping', mandatory: loadAssetSummary.vfdCabinetCount > 0 });
+  add({ id: 'zone-metering-cabinet', package: 'Electrical Distribution', item: 'Zone metering cabinet', spec: 'Dedicated branch metering and feeder status collection by production zone', quantity: loadAssetSummary.meteringCabinetCount || 0, unit: 'set', protection: 'Multifunction meter, CTs, SPD and communication gateway', remark: 'Derived from asset mapping', source: 'asset-mapping', mandatory: loadAssetSummary.meteringCabinetCount > 0 });
   add({ id: 'surge-earthing', package: 'Electrical Distribution', item: 'Surge protection and earthing system', spec: 'AC/DC SPD and combined grounding network', quantity: nodes.length ? 1 : 0, unit: 'lot', protection: 'Corrosion-resistant grounding electrodes', remark: 'Final resistance and lightning study by detailed design', source: 'calculated', mandatory: true });
 
   add({ id: 'ems-controller', package: 'EMS & Monitoring', item: 'EMS main controller', spec: 'PV/BESS/genset/load dispatch logic with programmable operation modes', quantity: Math.max(emsCount, 1), unit: 'set', protection: 'IP65 industrial enclosure where field-mounted', remark: 'Linked to topology-aware EMS Flow', source: 'ems-flow', nodeType: 'EMS', mandatory: true });
   add({ id: 'ems-data-acquisition', package: 'EMS & Monitoring', item: 'Data acquisition unit', spec: 'Voltage, current, power, temperature, SOC and feeder status acquisition', quantity: validFlowEdges.length ? 1 : 0, unit: 'lot', protection: 'Industrial communication modules', remark: 'Covers valid active EMS Flow edges only', source: 'ems-flow', mandatory: true });
+  add({ id: 'genset-remote-control', package: 'EMS & Monitoring', item: 'Genset remote control interface', spec: 'Remote start-stop, breaker status and EMS dispatch interface per genset', quantity: gensetAssetCount, unit: 'set', protection: 'Industrial I/O and protocol gateway', remark: loadAssetSummary.gensetCount ? 'Expanded from asset list rather than single topology symbol' : 'Counted from topology genset node', source: loadAssetSummary.gensetCount ? 'asset-mapping' : 'topology', nodeType: 'GENSET', mandatory: gensetAssetCount > 0 });
+  add({ id: 'genset-metering-runtime', package: 'EMS & Monitoring', item: 'Genset metering and runtime monitor', spec: 'Power, fuel/runtime and synchronization/breaker status monitoring per genset', quantity: gensetAssetCount, unit: 'set', protection: 'Revenue-grade or industrial meter with RS485/Ethernet interface', remark: loadAssetSummary.gensetCount ? 'Expanded from asset list for dispatch and maintenance visibility' : 'Counted from topology genset node', source: loadAssetSummary.gensetCount ? 'asset-mapping' : 'topology', nodeType: 'GENSET', mandatory: gensetAssetCount > 0 });
   add({ id: 'ems-hmi', package: 'EMS & Monitoring', item: 'Local HMI / operator panel', spec: 'Industrial touch screen for local monitoring and parameter setting', quantity: 1, unit: 'set', protection: 'IP65 for field panel or indoor console', remark: 'Operator interface for commissioning and O&M', source: 'ems-flow', mandatory: true });
   add({ id: 'ems-remote-communication', package: 'EMS & Monitoring', item: 'Remote communication terminal', spec: '4G/fiber router, remote alarm and maintenance access', quantity: 1, unit: 'set', protection: 'Industrial communication enclosure', remark: 'Final SIM/fiber scope by site survey', source: 'ems-flow', mandatory: true });
 
@@ -2909,6 +3030,93 @@ function buildBoq(project, recommended, context = {}) {
   const manualRows = normalizeBoqManualItems(project.boq?.manualItems || [])
     .filter(row => !hiddenPackages.has(row.package) && !hiddenLineIds.has(row.id));
   return sortBoqRows([...selectedRows, ...manualRows], project.boq?.lineOrder || []);
+}
+
+function buildProcurementAdvisory(project, context = {}) {
+  const loadAssetSummary = context.loadAssetSummary || buildLoadAssetSummary(project.loads?.assetGroups || [], project.gensets || project.loads?.gensets || []);
+  const topology = context.topology || project.topology || {};
+  const pvStringDesign = context.pvStringDesign || {};
+  const findings = [];
+  const addFinding = (finding = {}) => {
+    if (!finding.id || findings.some(item => item.id === finding.id)) return;
+    findings.push({
+      id: String(finding.id),
+      severity: finding.severity || 'medium',
+      domain: finding.domain || 'boq',
+      title: String(finding.title || '').trim(),
+      evidence: String(finding.evidence || '').trim(),
+      recommendation: String(finding.recommendation || '').trim(),
+      quantityDelta: round(asNumber(finding.quantityDelta, 0), 2),
+      action: String(finding.action || '').trim()
+    });
+  };
+
+  if (asNumber(pvStringDesign.stringRoundingGapModules, 0) > 0) {
+    addFinding({
+      id: 'pv-string-rounding',
+      severity: 'medium',
+      domain: 'boq',
+      title: 'PV module count does not close on full strings',
+      evidence: `${pvStringDesign.strings || 0} strings x ${pvStringDesign.modulesPerString || 0} modules = ${pvStringDesign.fullStringModuleCount || 0} modules.`,
+      recommendation: 'Use the full-string module count for procurement, or adjust target MWp/module/string assumptions before issuing the RFQ.',
+      quantityDelta: pvStringDesign.stringRoundingGapModules,
+      action: 'apply-full-string-module-count'
+    });
+  }
+
+  const topologyGensetCount = topologyNodeTypeCount(topology, 'GENSET');
+  if (loadAssetSummary.gensetCount > topologyGensetCount) {
+    addFinding({
+      id: 'genset-asset-mapping',
+      severity: 'high',
+      domain: 'ems',
+      title: 'Expand genset controls from station symbol to asset-level scope',
+      evidence: `Asset list has ${loadAssetSummary.gensetCount} genset(s); topology has ${topologyGensetCount} genset station node(s).`,
+      recommendation: 'Keep one DG station in the concept topology, but expand BOQ and EMS monitoring to every genset controller, breaker status and runtime meter.',
+      quantityDelta: loadAssetSummary.gensetCount - topologyGensetCount,
+      action: 'add-genset-remote-and-metering'
+    });
+  }
+
+  if (loadAssetSummary.branchCount >= 4) {
+    addFinding({
+      id: 'asset-branch-mapping',
+      severity: 'medium',
+      domain: 'topology',
+      title: 'Use zone-aware load branch mapping',
+      evidence: `${loadAssetSummary.branchCount} load branch(es) across ${loadAssetSummary.zoneCount} zone(s), covering ${loadAssetSummary.assetCount} asset(s).`,
+      recommendation: 'Map each production branch to its own MV/LV feeder, transformer and EMS metering point instead of using a single aggregate load block.',
+      quantityDelta: loadAssetSummary.branchCount,
+      action: 'expand-load-branches'
+    });
+  }
+
+  if (loadAssetSummary.vfdCabinetCount > 0) {
+    addFinding({
+      id: 'vfd-procurement-scope',
+      severity: 'medium',
+      domain: 'electrical',
+      title: 'Separate VFD feeder cabinet scope',
+      evidence: `${loadAssetSummary.vfdCabinetCount} VFD cabinet(s) appear in the equipment mapping.`,
+      recommendation: 'List VFD cabinets separately so vendors include bypass, reactors, ventilation and motor protection details in the RFQ response.',
+      quantityDelta: loadAssetSummary.vfdCabinetCount,
+      action: 'list-vfd-cabinets'
+    });
+  }
+
+  const severityWeight = { high: 3, medium: 2, low: 1 };
+  findings.sort((a, b) => (severityWeight[b.severity] || 0) - (severityWeight[a.severity] || 0));
+  return {
+    summary: {
+      findingCount: findings.length,
+      highCount: findings.filter(item => item.severity === 'high').length,
+      mediumCount: findings.filter(item => item.severity === 'medium').length,
+      assetBranchCount: loadAssetSummary.branchCount,
+      gensetCount: loadAssetSummary.gensetCount,
+      fullStringModuleDelta: asNumber(pvStringDesign.stringRoundingGapModules, 0)
+    },
+    findings
+  };
 }
 
 function applyRiskStatuses(project, risks = [], context = {}) {
@@ -3249,6 +3457,7 @@ function calculateEpcDesignProject(rawProject = {}, options = {}) {
   }
   const topologyValidation = validatePowerTopology(topologyProject.topology);
   const topologyFlow = buildTopologyFlowAdapter(topologyProject.topology, topologyValidation);
+  const loadAssetSummary = buildLoadAssetSummary(topologyProject.loads?.assetGroups || [], topologyProject.gensets || topologyProject.loads?.gensets || []);
   const protectionMatrix = buildProtectionMatrix(project, electrical);
   const emsStateMachine = buildEmsStateMachine(project);
   const pvStringDesign = calculatePvStringDesign({
@@ -3263,7 +3472,14 @@ function calculateEpcDesignProject(rawProject = {}, options = {}) {
     topology: topologyProject.topology,
     topologyFlow,
     electricalArchitecture,
-    pvStringDesign
+    pvStringDesign,
+    loadAssetSummary
+  });
+  const procurementAdvisory = buildProcurementAdvisory(topologyProject, {
+    topology: topologyProject.topology,
+    pvStringDesign,
+    loadAssetSummary,
+    boq
   });
   const risks = buildRisks(project, load, electrical, recommended, { electricalArchitecture });
   const reportGate = buildReportGate(risks);
@@ -3334,6 +3550,7 @@ function calculateEpcDesignProject(rawProject = {}, options = {}) {
     topologyValidation,
     topologyFlow,
     topologySelection,
+    loadAssetSummary,
     electrical,
     electricalArchitecture,
     cableScreening,
@@ -3342,6 +3559,7 @@ function calculateEpcDesignProject(rawProject = {}, options = {}) {
     energyFlow,
     pvStringDesign,
     boq,
+    procurementAdvisory,
     risks,
     reportGate,
     dataQualityScore: dataQualityScore(project),
@@ -3365,8 +3583,12 @@ function calculatePvStringDesign({
   totalStringInputs = 0,
   minimumExpectedModulesPerString = 18
 } = {}) {
-  const modules = Math.ceil((asNumber(targetPvMwp, 0) * 1000000) / Math.max(1, asNumber(moduleWp, EPC_DESIGN_DEFAULTS.moduleWp)));
-  const strings = Math.ceil(modules / Math.max(1, asNumber(modulesPerString, EPC_DESIGN_DEFAULTS.modulesPerString)));
+  const moduleWpValue = Math.max(1, asNumber(moduleWp, EPC_DESIGN_DEFAULTS.moduleWp));
+  const modulesPerStringValue = Math.max(1, asNumber(modulesPerString, EPC_DESIGN_DEFAULTS.modulesPerString));
+  const modules = Math.ceil((asNumber(targetPvMwp, 0) * 1000000) / moduleWpValue);
+  const strings = Math.ceil(modules / modulesPerStringValue);
+  const fullStringModuleCount = strings * modulesPerStringValue;
+  const stringRoundingGapModules = Math.max(0, fullStringModuleCount - modules);
   const architecture = String(inverterArchitecture || 'central');
   const combiners = architecture === 'string'
     ? 0
@@ -3376,12 +3598,17 @@ function calculatePvStringDesign({
   if (inputCount > 0 && modules / inputCount < asNumber(minimumExpectedModulesPerString, 18)) {
     warnings.push('Review module/string ratio: total string inputs imply unusually low modules per string.');
   }
+  if (stringRoundingGapModules > 0) {
+    warnings.push(`Full string procurement requires ${fullStringModuleCount} modules, ${stringRoundingGapModules} more than the target module count.`);
+  }
   return {
     targetPvMwp: asNumber(targetPvMwp, 0),
-    moduleWp: asNumber(moduleWp, EPC_DESIGN_DEFAULTS.moduleWp),
+    moduleWp: moduleWpValue,
     modules,
-    modulesPerString: asNumber(modulesPerString, EPC_DESIGN_DEFAULTS.modulesPerString),
+    modulesPerString: modulesPerStringValue,
     strings,
+    fullStringModuleCount,
+    stringRoundingGapModules,
     combinerInputs: asNumber(combinerInputs, EPC_DESIGN_DEFAULTS.combinerInputs),
     combiners,
     inverterArchitecture: architecture,

@@ -180,6 +180,31 @@ test('EPC Reports are fixed-page PDF downloads with full diagrams and XLSX BOQ e
   assert.match(html, /epc-report-rendering-overlay/);
 });
 
+test('EPC reports and BOQ workbook expose procurement advisory and asset mapping outputs', () => {
+  for (const snippet of [
+    'renderEpcReportProcurementAdvisory',
+    'renderEpcReportAssetMapping',
+    'Procurement Gap Review',
+    'Asset Mapping',
+    'result.procurementAdvisory?.findings',
+    'result.loadAssetSummary?.assetGroups',
+    'epcBoqWorkbookProcurementAdvisorRows',
+    'epcBoqWorkbookAssetMappingRows',
+    'Finding ID',
+    'Full String Module Delta',
+    'Genset Count',
+    "XLSX.utils.book_append_sheet(workbook, procurementWorksheet, 'Procurement Advisor')",
+    "XLSX.utils.book_append_sheet(workbook, assetWorksheet, 'Asset Mapping')"
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing procurement advisory snippet: ${snippet}`);
+  }
+
+  const reportPages = html.match(/function renderEpcCustomerReportPages\(result = \{\}, kind = 'customer'\)[\s\S]*?function buildEpcReportFixedPageElement/);
+  assert.ok(reportPages, 'customer report page builder should be found');
+  assert.match(reportPages[0], /renderEpcReportProcurementAdvisory\(result\)/);
+  assert.match(reportPages[0], /renderEpcReportAssetMapping\(result\)/);
+});
+
 test('EPC report-only EMS Flow uses a static connection map instead of an operating hour', () => {
   const reportRenderer = html.match(/function renderEpcReportOnlyTopologyFlowDiagram\(result = \{\}\)[\s\S]*?function renderEpcReportOnlyDeviceWorkDiagram/);
   assert.ok(reportRenderer, 'report-only EMS Flow renderer should be found');

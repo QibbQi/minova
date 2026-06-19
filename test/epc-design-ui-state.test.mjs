@@ -128,16 +128,25 @@ test('EPC risks expose checkbox acknowledgement and report-gating status', () =>
   }
 });
 
-test('EPC Reports are gated PDF downloads with EMS Flow and Device Work diagrams', () => {
+test('EPC Reports are fixed-page PDF downloads with full diagrams and XLSX BOQ export', () => {
   for (const snippet of [
     'Customer EPC Report PDF',
     'BOQ & Procurement PDF',
     'Engineering Handoff PDF',
     'Resolve or acknowledge all open High risks before downloading reports.',
-    'buildEpcReportPdfElement',
+    'buildEpcReportFixedPageElement',
+    'renderEpcCustomerReportPages',
+    'renderEpcReportOnlyTopologyFlowDiagram',
+    'renderEpcReportOnlyDeviceWorkDiagram',
     'EMS Flow Diagram',
     'Device Work Diagram',
+    'downloadEpcBoqWorkbook',
+    'Complete BOQ XLSX',
+    "XLSX.utils.book_append_sheet(workbook, customerWorksheet, 'Customer Summary')",
+    "XLSX.utils.book_append_sheet(workbook, engineeringWorksheet, 'Engineering Detail')",
     'html2pdf().set',
+    'pagebreak',
+    'epc-report-page',
     'hasBlockingEpcReportRisks'
   ]) {
     assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing report PDF snippet: ${snippet}`);
@@ -145,6 +154,7 @@ test('EPC Reports are gated PDF downloads with EMS Flow and Device Work diagrams
   assert.doesNotMatch(html, /engineering-calculation\.json/);
   assert.doesNotMatch(html, /-summary\.html/);
   assert.doesNotMatch(html, /left = '-10000px'|zIndex = '-1'/);
+  assert.doesNotMatch(html, /epc-report-print-surface \.epc-flow-diagram,\s*\.epc-report-print-surface \.epc-device-work-chart\{max-height:[^}]+overflow:hidden/);
   assert.match(html, /epc-report-rendering-overlay/);
 });
 

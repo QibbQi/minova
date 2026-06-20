@@ -513,10 +513,17 @@ test('EPC Assets List keeps genset fuel mapping conditional and searchable', () 
   for (const snippet of [
     'id="epc-genset-fuel-mapping-panel"',
     'data-epc-genset-fuel-mapping-panel="true"',
+    'name="epc-asset-genset-load-basis"',
+    'value="asset_list"',
+    'value="genset_fuel_mapping"',
+    'selectEpcAssetGensetLoadBasis',
+    'scheduleEpcAssetMappingLiveUpdate',
+    'applyEpcAssetMappingLiveUpdate',
     'Save Genset Fuel'
   ]) {
     assert.match(assetsPage[0], new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing asset/genset mapping UI snippet: ${snippet}`);
   }
+  assert.match(assetTable[0], /Start Time[\s\S]*?Hours[\s\S]*?Line[\s\S]*?Area[\s\S]*?Conveyor[\s\S]*?Gensets/, 'Asset List columns should place Hours after Start Time and Line/Area/Conveyor before Gensets');
 
   for (const snippet of [
     "epcSuggestionInputCell('asset', 'zone'",
@@ -532,6 +539,8 @@ test('EPC Assets List keeps genset fuel mapping conditional and searchable', () 
     'estimateMethod',
     'kVA Profile',
     'Fuel / SFC',
+    'onchange="scheduleEpcAssetMappingLiveUpdate()"',
+    'oninput="scheduleEpcAssetMappingLiveUpdate()"',
     'powerFactor',
     'loadFactor',
     'overloadFactor'
@@ -570,6 +579,7 @@ test('EPC Assets List keeps genset fuel mapping conditional and searchable', () 
     'function buildEpcAssetSuggestionOptions',
     'function epcSuggestionInputCell',
     'function syncEpcAssetGensetMappings',
+    'window.selectEpcAssetGensetLoadBasis',
     'window.saveEpcGensetFuelRows'
   ]) {
     assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing mapping helper snippet: ${snippet}`);
@@ -1806,6 +1816,8 @@ test('EPC topology-aware flow can render manual SLD routes from standard templat
 test('EPC inputs expose split load count and ratio controls for EMS Flow', () => {
   for (const snippet of [
     'id="epc-load-count"',
+    'id="epc-manual-load-splits"',
+    'data-epc-field="loads.manualLoadSplits"',
     'data-epc-field="loads.loadCount"',
     'id="epc-load-split-controls"',
     'function renderEpcLoadSplitControls(project',
@@ -1818,6 +1830,7 @@ test('EPC inputs expose split load count and ratio controls for EMS Flow', () =>
     'rebalanceEpcLoadSplits',
     'setEpcStandardTopologyDirty(project)',
     'project.loads.loadSplits[index] =',
+    'project.loads.manualLoadSplits = isEpcManualLoadSplitEnabled()',
     "field === 'label'",
     'Number(value)'
   ]) {

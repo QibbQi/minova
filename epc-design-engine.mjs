@@ -674,6 +674,13 @@ function normalizeGensetEstimateMethod(value = '') {
   return '';
 }
 
+function normalizeAssetGensetLoadBasis(value = '') {
+  const raw = String(value || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+  if (['asset_list', 'assets', 'asset', 'load_asset_list'].includes(raw)) return 'asset_list';
+  if (['genset_fuel_mapping', 'fuel_mapping', 'genset_fuel', 'fuel_sfc', 'fuel'].includes(raw)) return 'genset_fuel_mapping';
+  return 'genset_fuel_mapping';
+}
+
 function normalizeIdList(value = []) {
   if (Array.isArray(value)) {
     return value.map(item => String(item || '').trim()).filter(Boolean);
@@ -2081,6 +2088,7 @@ export function normalizeEpcDesignProject(raw = {}, options = {}) {
     const solarResource = defaultSolarResource(raw.solarResource || {}, defaults);
     const id = String(raw.id || project.id || `epc-${Date.parse(now) || Date.now()}`).trim();
     const measurementMethod = normalizeMeasurementMethod(loads.measurementMethod ?? raw.measurementMethod);
+    const assetGensetLoadBasis = normalizeAssetGensetLoadBasis(loads.assetGensetLoadBasis ?? raw.assetGensetLoadBasis);
     const energyMeterSummary = normalizeEnergyMeterSummary(loads.energyMeterSummary || raw.energyMeterSummary || {});
     const equipmentSchedule = (Array.isArray(loads.equipmentSchedule) ? loads.equipmentSchedule : Array.isArray(raw.equipmentSchedule) ? raw.equipmentSchedule : [])
       .map((row, index) => normalizeEquipmentScheduleRow(row, index))
@@ -2113,7 +2121,7 @@ export function normalizeEpcDesignProject(raw = {}, options = {}) {
     const loadCount = manualLoadSplits
         ? requestedLoadCount
         : assetLoadSplits.length
-        ? normalizeLoadCount(Math.max(requestedLoadCount, assetLoadSplits.length))
+        ? normalizeLoadCount(assetLoadSplits.length)
         : requestedLoadCount;
     const loadSplits = manualLoadSplits
         ? normalizeLoadSplits(loads.loadSplits || raw.loadSplits || [], loadCount)
@@ -2172,6 +2180,7 @@ export function normalizeEpcDesignProject(raw = {}, options = {}) {
     topology,
       loads: {
         measurementMethod,
+        assetGensetLoadBasis,
         dieselTotalLiters: asNumber(loads.dieselTotalLiters ?? raw.dieselTotalLiters, 0),
         dieselPeriodDays: Math.max(1, asNumber(loads.dieselPeriodDays ?? raw.dieselPeriodDays, 1)),
         dieselPricePerLiter: asNumber(loads.dieselPricePerLiter ?? raw.dieselPricePerLiter, 0),
@@ -2504,10 +2513,12 @@ function calculateEquipmentScheduleLoad(project, now) {
 function calculateAssetGensetFuelLoad(project, now) {
   const assets = Array.isArray(project.loads.assets) ? project.loads.assets : [];
   const feeders = Array.isArray(project.loads.feederZoning?.feeders) ? project.loads.feederZoning.feeders : [];
+  const assetTimeProfile = project.loads.feederZoning?.assetTimeProfile || {};
   const generation = project.loads.feederZoning?.gensetGeneration || buildGensetGenerationSummary(project.gensets || project.loads.gensets || [], {
     powerFactor: project.electrical?.powerFactor || FEEDER_ZONING_DEFAULTS.powerFactor,
     sfcLPerKwh: project.assumptions.dieselSfcLPerKwh
   });
+  const loadBasis = normalizeAssetGensetLoadBasis(project.loads.assetGensetLoadBasis);
   const assetDailyKwh = assets.reduce((sum, asset) => {
     return sum + asset.kw * asset.qty * asset.operationHours * asset.dutyFactor * asset.simultaneityFactor;
   }, 0);
@@ -2521,43 +2532,56 @@ function calculateAssetGensetFuelLoad(project, now) {
     return sum + (dailyFuel > 0 ? dailyFuel / sfc : 0);
   }, 0);
   const fuelDailyKwh = generation.energyBasisDailyKwh || assetFuelDailyKwh;
-  const dailyLoadKwh = generation.energyBasisDailyKwh > 0 ? generation.energyBasisDailyKwh : assetDailyKwh > 0 ? assetDailyKwh : fuelDailyKwh;
-  const operatingHours = generation.energyBasisRuntimeHours > 0
-    ? generation.energyBasisRuntimeHours
-    : generation.maxRuntimeHours > 0
-      ? generation.maxRuntimeHours
-    : Math.max(1, assets.reduce((max, asset) => Math.max(max, asset.operationHours), project.loads.operationHoursPerDay || 0));
+  const profileActiveHours = Array.isArray(assetTimeProfile.hourly)
+    ? assetTimeProfile.hourly.filter(row => asNumber(row.loadKw, 0) > 0).length
+    : 0;
+  const assetOperatingHours = Math.max(1, profileActiveHours, assets.reduce((max, asset) => Math.max(max, asset.operationHours), 0) || project.loads.operationHoursPerDay || 0);
+  const usingAssetBasis = loadBasis === 'asset_list';
+  const dailyLoadKwh = usingAssetBasis
+    ? assetDailyKwh > 0 ? assetDailyKwh : fuelDailyKwh
+    : generation.energyBasisDailyKwh > 0 ? generation.energyBasisDailyKwh : assetDailyKwh > 0 ? assetDailyKwh : fuelDailyKwh;
+  const operatingHours = usingAssetBasis
+    ? assetOperatingHours
+    : generation.energyBasisRuntimeHours > 0
+      ? generation.energyBasisRuntimeHours
+      : generation.maxRuntimeHours > 0
+        ? generation.maxRuntimeHours
+        : assetOperatingHours;
   const averageLoadKw = dailyLoadKwh / operatingHours;
   const feederPeakKw = feeders.reduce((sum, row) => sum + Math.max(row.peakProfileKw || 0, row.operatingKw || 0, row.totalKw || 0), 0);
   const peakLoadKw = Math.max(averageLoadKw * Math.max(1, project.loads.peakLoadSafetyFactor || project.assumptions.peakLoadFactor), connectedPeakKw, feederPeakKw, generation.totalPeakSupportKw || 0);
+  const sourceLabel = usingAssetBasis ? 'Asset List' : 'Genset Fuel Mapping';
   return decorateLoadResult(project, {
     dailyLoadKwh: round(dailyLoadKwh, 4),
     averageLoadKw: round(averageLoadKw, 4),
     peakLoadKw: round(peakLoadKw, 4),
     operatingHours: round(operatingHours, 4),
+    assetGensetLoadBasis: loadBasis,
     assetDailyKwh: round(assetDailyKwh, 4),
     fuelDailyKwh: round(fuelDailyKwh, 4),
     assetOperatingKw: round(assetOperatingKw, 4),
-    loadSource: 'Asset + Genset Fuel Mapping'
+    loadSource: sourceLabel
   }, [
     buildFormulaTrace({
       key: 'dailyLoadKwh',
       label: 'Daily Load',
-      formula: 'Σ Fuel/SFC genset generation estimate, fallback to kVA profile or asset kWh if fuel data is incomplete',
-      inputs: { assetCount: assets.length, assetDailyKwh: round(assetDailyKwh, 4), fuelDailyKwh: round(fuelDailyKwh, 4), gensetDailyKwh: round(generation.totalDailyKwh || 0, 4), energyBasisMethod: generation.energyBasisMethod || 'asset' },
+      formula: usingAssetBasis
+        ? 'Σ Asset kW x Qty x Hours x Duty x Simultaneity'
+        : 'Σ Fuel/SFC genset generation estimate, fallback to kVA profile or asset kWh if fuel data is incomplete',
+      inputs: { assetCount: assets.length, assetDailyKwh: round(assetDailyKwh, 4), fuelDailyKwh: round(fuelDailyKwh, 4), gensetDailyKwh: round(generation.totalDailyKwh || 0, 4), assetGensetLoadBasis: loadBasis, energyBasisMethod: generation.energyBasisMethod || 'asset' },
       result: round(dailyLoadKwh, 4),
       unit: 'kWh/day',
-      assumptionSource: 'Asset + Genset Fuel Mapping',
+      assumptionSource: sourceLabel,
       now
     }),
     buildFormulaTrace({
       key: 'averageLoadKw',
       label: 'Average Load',
-      formula: 'Asset/Fuel Daily kWh / Asset Operating Window',
+      formula: usingAssetBasis ? 'Asset Daily kWh / Active Asset Operating Window' : 'Genset Fuel Daily kWh / Genset Runtime Window',
       inputs: { dailyLoadKwh: round(dailyLoadKwh, 4), operatingHours: round(operatingHours, 4) },
       result: round(averageLoadKw, 4),
       unit: 'kW',
-      assumptionSource: 'Asset + Genset Fuel Mapping',
+      assumptionSource: sourceLabel,
       now
     }),
     buildFormulaTrace({
@@ -2567,7 +2591,7 @@ function calculateAssetGensetFuelLoad(project, now) {
       inputs: { connectedPeakKw: round(connectedPeakKw, 4), feederPeakKw: round(feederPeakKw, 4), peakLoadSafetyFactor: project.loads.peakLoadSafetyFactor },
       result: round(peakLoadKw, 4),
       unit: 'kW',
-      assumptionSource: 'Asset + Genset Fuel Mapping',
+      assumptionSource: sourceLabel,
       now
     })
   ]);
@@ -3880,6 +3904,28 @@ function equipmentScheduleHourlyLoadProfile(project) {
     .filter(item => item.loadKw > 0);
 }
 
+function assetListHourlyLoadProfile(project, load) {
+  if (project.loads.measurementMethod !== 'asset_genset_fuel_mapping') return [];
+  const profile = project.loads.feederZoning?.assetTimeProfile;
+  const hourly = Array.isArray(profile?.hourly) ? profile.hourly : [];
+  const profileDailyKwh = asNumber(profile?.dailyKwh, hourly.reduce((sum, row) => sum + asNumber(row.loadKw, 0), 0));
+  if (!(profileDailyKwh > 0)) return [];
+  const loadDailyKwh = asNumber(load?.dailyLoadKwh, 0);
+  const scale = loadDailyKwh > 0 ? loadDailyKwh / profileDailyKwh : 1;
+  return hourly
+    .filter(row => asNumber(row.loadKw, 0) > 0)
+    .map(row => {
+      const hour = Math.round(asNumber(row.hour, 0));
+      return {
+        hour,
+        hourLabel: `${formatMinutes(hour * 60)}-${formatMinutes(hour * 60 + 60, hour >= 23 ? 1 : 0)}`,
+        flowKey: `asset-list-${hour}`,
+        loadKw: round(asNumber(row.loadKw, 0) * scale, 2),
+        assets: Array.isArray(row.assets) ? row.assets.slice() : []
+      };
+    });
+}
+
 function defaultHourlyPvProfile(recommended) {
   const factors = {
     9: 0.18,
@@ -3943,7 +3989,8 @@ function inferProfileIntervalMinutes(profile, index) {
 
 function calculateEnergyFlow(project, load, recommended) {
   const scheduleLoadProfile = equipmentScheduleHourlyLoadProfile(project);
-  const loadProfile = scheduleLoadProfile.length ? scheduleLoadProfile : project.loadProfile.length ? project.loadProfile : defaultHourlyLoadProfile(project, load);
+  const assetLoadProfile = assetListHourlyLoadProfile(project, load);
+  const loadProfile = scheduleLoadProfile.length ? scheduleLoadProfile : assetLoadProfile.length ? assetLoadProfile : project.loadProfile.length ? project.loadProfile : defaultHourlyLoadProfile(project, load);
   const pvProfile = Array.isArray(project.solarResource.hourlyPvProfile) && project.solarResource.hourlyPvProfile.length
     ? project.solarResource.hourlyPvProfile
     : defaultHourlyPvProfile(recommended);
@@ -4052,7 +4099,7 @@ function calculateEnergyFlow(project, load, recommended) {
   const rowDurationHours = row => Math.max(0, asNumber(row.durationHours, 1));
   const sum = key => rows.reduce((total, row) => total + row[key] * rowDurationHours(row), 0);
   return {
-    method: `EMS order: PV -> Load, Excess PV -> Battery, Battery -> Load, Genset -> Load, curtail surplus.${densePvProfile ? ' PV profile source: PV Simulator.' : ''}${scheduleLoadProfile.length ? ' Load profile source: Equipment Schedule timetable.' : ''}`,
+    method: `EMS order: PV -> Load, Excess PV -> Battery, Battery -> Load, Genset -> Load, curtail surplus.${densePvProfile ? ' PV profile source: PV Simulator.' : ''}${scheduleLoadProfile.length ? ' Load profile source: Equipment Schedule timetable.' : assetLoadProfile.length ? ' Load profile source: Asset List timetable.' : ''}`,
     rows,
     summary: {
       pvDirectKwh: round(sum('pvToLoadKw'), 2),

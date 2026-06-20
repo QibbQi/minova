@@ -3132,10 +3132,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     </div>
                 </div>
             </div>
-            <div id="epc-assets-list-page" data-epc-detail-page="assets" class="hidden p-4 space-y-4">
+            <div id="epc-assets-list-page" data-epc-detail-page="assets" data-epc-live-schedule="scheduleEpcAssetMappingLiveUpdate" data-epc-live-apply="applyEpcAssetMappingLiveUpdate" class="hidden p-4 space-y-4">
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
                     <div>
-                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Number of downstream load branches in EMS Flow.">Load Qty <span data-epc-help="load-count" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Number of downstream load branches in EMS Flow.">i</span></label>
+                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1 flex items-center gap-2" title="Number of downstream load branches in EMS Flow.">
+                            <input id="epc-manual-load-splits" data-epc-field="loads.manualLoadSplits" type="checkbox" onchange="onEpcManualLoadSplitsChanged()" class="h-4 w-4 rounded border-slate-300 text-purple-700 focus:ring-purple-500">
+                            <span>Load Qty <span data-epc-help="load-count" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Number of downstream load branches in EMS Flow.">i</span></span>
+                        </label>
                         <input id="epc-load-count" data-epc-field="loads.loadCount" type="number" min="1" max="12" step="1" oninput="onEpcLoadCountChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                     </div>
                     <div class="lg:col-span-2">
@@ -3148,7 +3151,11 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             <div class="text-[10px] font-black uppercase text-purple-700">Asset List</div>
                             <div class="text-[11px] font-bold text-slate-400">Zone, feeder grouping, kW, start type, distance, genset mapping and fuel basis.</div>
                         </div>
-                        <div class="flex gap-2">
+                        <div class="flex gap-2 items-center">
+                            <label data-epc-show-for-load-method="asset_genset_fuel_mapping" class="inline-flex items-center gap-1.5 rounded-lg border border-purple-100 bg-purple-50 px-2.5 py-1.5 text-[10px] font-black text-purple-700" title="Use Asset List as the main Daily Load input.">
+                                <input type="radio" name="epc-asset-genset-load-basis" value="asset_list" onchange="selectEpcAssetGensetLoadBasis('asset_list')" class="h-3.5 w-3.5 text-purple-700 focus:ring-purple-500">
+                                Use
+                            </label>
                             <button type="button" onclick="addEpcAssetListRow()" class="px-3 py-1.5 rounded-lg border border-slate-200 text-[10px] font-black text-slate-600 hover:bg-slate-50">Add Asset</button>
                             <button type="button" onclick="saveEpcAssetListRows()" class="px-3 py-1.5 rounded-lg bg-purple-700 text-white text-[10px] font-black hover:bg-purple-800">Save Assets</button>
                         </div>
@@ -3161,22 +3168,22 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                                     <th class="px-2 py-2 text-left">Name</th>
                                     <th class="px-2 py-2 text-left">Type</th>
                                     <th class="px-2 py-2 text-left">Zone</th>
-                                    <th class="px-2 py-2 text-left">Line</th>
-                                    <th class="px-2 py-2 text-left">Area</th>
-                                    <th class="px-2 py-2 text-left">Conveyor</th>
                                     <th class="px-2 py-2 text-right">kW</th>
                                     <th class="px-2 py-2 text-right">Qty</th>
                                     <th class="px-2 py-2 text-left">Start Time</th>
+                                    <th class="px-2 py-2 text-right">Hours</th>
                                     <th class="px-2 py-2 text-left">Method</th>
                                     <th class="px-2 py-2 text-right">Distance m</th>
-                                    <th class="px-2 py-2 text-right">Hours</th>
                                     <th class="px-2 py-2 text-right">Duty</th>
                                     <th class="px-2 py-2 text-right">Simult.</th>
+                                    <th class="px-2 py-2 text-left">Line</th>
+                                    <th class="px-2 py-2 text-left">Area</th>
+                                    <th class="px-2 py-2 text-left">Conveyor</th>
                                     <th class="px-2 py-2 text-left">Gensets</th>
                                     <th class="px-2 py-2"></th>
                                 </tr>
                             </thead>
-                            <tbody id="epc-asset-list-rows" class="divide-y divide-slate-100"></tbody>
+                            <tbody id="epc-asset-list-rows" oninput="scheduleEpcAssetMappingLiveUpdate()" onchange="scheduleEpcAssetMappingLiveUpdate()" class="divide-y divide-slate-100"></tbody>
                         </table>
                         <datalist id="epc-asset-zone-options"></datalist>
                         <datalist id="epc-asset-line-options"></datalist>
@@ -3192,7 +3199,11 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             <div class="text-[10px] font-black uppercase text-purple-700">Genset Fuel Mapping</div>
                             <div class="text-[11px] font-bold text-slate-400">Map gensets to supported assets and fuel/runtime for load validation.</div>
                         </div>
-                        <div class="flex gap-2">
+                        <div class="flex gap-2 items-center">
+                            <label class="inline-flex items-center gap-1.5 rounded-lg border border-purple-100 bg-purple-50 px-2.5 py-1.5 text-[10px] font-black text-purple-700" title="Use Genset Fuel Mapping as the main Daily Load input.">
+                                <input type="radio" name="epc-asset-genset-load-basis" value="genset_fuel_mapping" onchange="selectEpcAssetGensetLoadBasis('genset_fuel_mapping')" class="h-3.5 w-3.5 text-purple-700 focus:ring-purple-500">
+                                Use
+                            </label>
                             <button type="button" onclick="addEpcGensetListRow()" class="px-3 py-1.5 rounded-lg border border-slate-200 text-[10px] font-black text-slate-600 hover:bg-slate-50">Add Genset</button>
                             <button type="button" onclick="saveEpcGensetFuelRows()" class="px-3 py-1.5 rounded-lg bg-purple-700 text-white text-[10px] font-black hover:bg-purple-800">Save Genset Fuel</button>
                         </div>
@@ -3218,7 +3229,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                                     <th class="px-2 py-2"></th>
                                 </tr>
                             </thead>
-                            <tbody id="epc-genset-list-rows" class="divide-y divide-slate-100"></tbody>
+                            <tbody id="epc-genset-list-rows" oninput="scheduleEpcAssetMappingLiveUpdate()" onchange="scheduleEpcAssetMappingLiveUpdate()" class="divide-y divide-slate-100"></tbody>
                         </table>
                     </div>
                 </div>
@@ -10828,13 +10839,15 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
 
         function epcInputCell(kind, field, value = '', attrs = '') {
-            return `<input data-epc-${kind}-field="${field}" value="${htmlSafe(value ?? '')}" ${attrs} class="w-24 min-w-0 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold outline-none focus:border-purple-500">`;
+            const liveAttrs = ['asset', 'genset'].includes(kind) ? 'oninput="scheduleEpcAssetMappingLiveUpdate()" onchange="scheduleEpcAssetMappingLiveUpdate()"' : '';
+            return `<input data-epc-${kind}-field="${field}" value="${htmlSafe(value ?? '')}" ${attrs} ${liveAttrs} class="w-24 min-w-0 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold outline-none focus:border-purple-500">`;
         }
 
         function epcSuggestionInputCell(kind, field, value = '', attrs = '', listId = '', suggestField = field) {
             const suggestAttr = suggestField ? `data-epc-${kind}-suggest-field="${htmlSafe(suggestField)}"` : '';
             const listAttr = listId ? `list="${htmlSafe(listId)}"` : '';
-            return `<input data-epc-${kind}-field="${field}" ${suggestAttr} ${listAttr} value="${htmlSafe(value ?? '')}" ${attrs} class="w-28 min-w-0 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold outline-none focus:border-purple-500">`;
+            const liveAttrs = ['asset', 'genset'].includes(kind) ? 'oninput="scheduleEpcAssetMappingLiveUpdate()" onchange="scheduleEpcAssetMappingLiveUpdate()"' : '';
+            return `<input data-epc-${kind}-field="${field}" ${suggestAttr} ${listAttr} value="${htmlSafe(value ?? '')}" ${attrs} ${liveAttrs} class="w-28 min-w-0 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold outline-none focus:border-purple-500">`;
         }
 
         function renderEpcAssetListRows(rows = []) {
@@ -10846,19 +10859,17 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     <td class="px-2 py-2">${epcInputCell('asset', 'id', row.id || `asset-${index + 1}`)}</td>
                     <td class="px-2 py-2">${epcInputCell('asset', 'name', row.name || row.label || '')}</td>
                     <td class="px-2 py-2">
-                        <select data-epc-asset-field="type" class="w-28 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold outline-none focus:border-purple-500">
+                        <select data-epc-asset-field="type" onchange="scheduleEpcAssetMappingLiveUpdate()" class="w-28 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold outline-none focus:border-purple-500">
                             ${['crusher', 'screen', 'pump', 'vfd', 'auxiliary', 'load'].map(type => `<option value="${type}" ${String(row.type || row.assetType || 'load') === type ? 'selected' : ''}>${type}</option>`).join('')}
                         </select>
                     </td>
                     <td class="px-2 py-2">${epcSuggestionInputCell('asset', 'zone', row.zone || 'Common', '', 'epc-asset-zone-options', 'zone')}</td>
-                    <td class="px-2 py-2">${epcSuggestionInputCell('asset', 'line', row.line || '', '', 'epc-asset-line-options', 'line')}</td>
-                    <td class="px-2 py-2">${epcSuggestionInputCell('asset', 'area', row.area || '', '', 'epc-asset-area-options', 'area')}</td>
-                    <td class="px-2 py-2">${epcSuggestionInputCell('asset', 'conveyorSystem', row.conveyorSystem || '', '', 'epc-asset-conveyor-options', 'conveyorSystem')}</td>
                     <td class="px-2 py-2">${epcInputCell('asset', 'kw', row.kw ?? row.ratedKw ?? '', 'type="number" min="0" step="0.1"')}</td>
                     <td class="px-2 py-2">${epcInputCell('asset', 'qty', row.qty ?? row.quantity ?? 1, 'type="number" min="1" step="1"')}</td>
                     <td class="px-2 py-2">${epcInputCell('asset', 'startTime', row.startTime || '00:00', 'type="time"')}</td>
+                    <td class="px-2 py-2">${epcInputCell('asset', 'operationHours', row.operationHours ?? '', 'type="number" min="0" max="24" step="0.1"')}</td>
                     <td class="px-2 py-2">
-                        <select data-epc-asset-field="startType" class="w-24 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold outline-none focus:border-purple-500">
+                        <select data-epc-asset-field="startType" onchange="scheduleEpcAssetMappingLiveUpdate()" class="w-24 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold outline-none focus:border-purple-500">
                             ${[
                                 ['DOL', 'DOL'],
                                 ['soft_start', 'Soft Start'],
@@ -10868,11 +10879,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         </select>
                     </td>
                     <td class="px-2 py-2">${epcInputCell('asset', 'distanceM', row.distanceM ?? '', 'type="number" min="0" step="1"')}</td>
-                    <td class="px-2 py-2">${epcInputCell('asset', 'operationHours', row.operationHours ?? '', 'type="number" min="0" max="24" step="0.1"')}</td>
                     <td class="px-2 py-2">${epcInputCell('asset', 'dutyFactor', row.dutyFactor ?? 1, 'type="number" min="0" max="1" step="0.01"')}</td>
                     <td class="px-2 py-2">${epcInputCell('asset', 'simultaneityFactor', row.simultaneityFactor ?? 1, 'type="number" min="0" max="1" step="0.01"')}</td>
+                    <td class="px-2 py-2">${epcSuggestionInputCell('asset', 'line', row.line || '', '', 'epc-asset-line-options', 'line')}</td>
+                    <td class="px-2 py-2">${epcSuggestionInputCell('asset', 'area', row.area || '', '', 'epc-asset-area-options', 'area')}</td>
+                    <td class="px-2 py-2">${epcSuggestionInputCell('asset', 'conveyorSystem', row.conveyorSystem || '', '', 'epc-asset-conveyor-options', 'conveyorSystem')}</td>
                     <td class="px-2 py-2">${epcSuggestionInputCell('asset', 'assignedGensetIds', csvListValue(row.assignedGensetIds), '', 'epc-genset-id-options', 'assignedGensetIds')}</td>
-                    <td class="px-2 py-2 text-right"><button type="button" onclick="this.closest('tr')?.remove()" class="px-2 py-1 rounded-lg border border-slate-200 text-[10px] font-black text-slate-500 hover:bg-slate-50">Delete</button></td>
+                    <td class="px-2 py-2 text-right"><button type="button" onclick="deleteEpcAssetListRow(this)" class="px-2 py-1 rounded-lg border border-slate-200 text-[10px] font-black text-slate-500 hover:bg-slate-50">Delete</button></td>
                 </tr>
             `).join('');
             updateEpcAssetSuggestionDatalists(safeRows, epcGensetRowsFromDom());
@@ -10888,7 +10901,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     <td class="px-2 py-2">${epcInputCell('genset', 'name', row.name || row.label || '')}</td>
                     <td class="px-2 py-2">${epcSuggestionInputCell('genset', 'zone', row.zone || 'Common', '', 'epc-asset-zone-options', 'zone')}</td>
                     <td class="px-2 py-2">
-                        <select data-epc-genset-field="estimateMethod" class="w-28 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold outline-none focus:border-purple-500">
+                        <select data-epc-genset-field="estimateMethod" onchange="scheduleEpcAssetMappingLiveUpdate()" class="w-28 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold outline-none focus:border-purple-500">
                             ${[
                                 ['kva_profile', 'kVA Profile'],
                                 ['fuel_sfc', 'Fuel / SFC']
@@ -10905,7 +10918,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     <td class="px-2 py-2">${epcInputCell('genset', 'fuelPeriodDays', row.fuelPeriodDays ?? 1, 'type="number" min="1" step="1"')}</td>
                     <td class="px-2 py-2">${epcInputCell('genset', 'runtimeHours', row.runtimeHours ?? '', 'type="number" min="0" max="24" step="0.1"')}</td>
                     <td class="px-2 py-2">${epcInputCell('genset', 'sfcLPerKwh', row.sfcLPerKwh ?? 0.27, 'type="number" min="0" step="0.01"')}</td>
-                    <td class="px-2 py-2 text-right"><button type="button" onclick="this.closest('tr')?.remove()" class="px-2 py-1 rounded-lg border border-slate-200 text-[10px] font-black text-slate-500 hover:bg-slate-50">Delete</button></td>
+                    <td class="px-2 py-2 text-right"><button type="button" onclick="deleteEpcGensetListRow(this)" class="px-2 py-1 rounded-lg border border-slate-200 text-[10px] font-black text-slate-500 hover:bg-slate-50">Delete</button></td>
                 </tr>
             `).join('');
             updateEpcAssetSuggestionDatalists(epcAssetRowsFromDom(), safeRows);
@@ -10923,35 +10936,80 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
         window.renderEpcAssetListRows = renderEpcAssetListRows;
         window.renderEpcGensetListRows = renderEpcGensetListRows;
-        window.addEpcAssetListRow = () => renderEpcAssetListRows([...epcAssetRowsFromDom(), { id: `asset-${Date.now()}`, name: '', type: 'load', zone: 'Common', qty: 1, dutyFactor: 1, simultaneityFactor: 1 }]);
-        window.addEpcGensetListRow = () => renderEpcGensetListRows([...epcGensetRowsFromDom(), { id: `genset-${Date.now()}`, name: '', zone: 'Common', fuelPeriodDays: 1, sfcLPerKwh: 0.27 }]);
-        window.saveEpcAssetListRows = () => {
+
+        function getEpcAssetGensetLoadBasis() {
+            const checked = document.querySelector('input[name="epc-asset-genset-load-basis"]:checked');
+            return checked?.value === 'asset_list' ? 'asset_list' : 'genset_fuel_mapping';
+        }
+
+        function setEpcAssetGensetLoadBasisRadios(value = 'genset_fuel_mapping') {
+            const basis = value === 'asset_list' ? 'asset_list' : 'genset_fuel_mapping';
+            document.querySelectorAll('input[name="epc-asset-genset-load-basis"]').forEach(input => {
+                input.checked = input.value === basis;
+            });
+        }
+
+        function applyEpcAssetMappingLiveUpdate(statusText = 'Draft changed locally') {
+            if (epcAssetMappingLiveUpdateTimer) {
+                clearTimeout(epcAssetMappingLiveUpdateTimer);
+                epcAssetMappingLiveUpdateTimer = null;
+            }
             const project = captureEpcDesignFromDom();
             const synced = syncEpcAssetGensetMappings(epcAssetRowsFromDom(), epcGensetRowsFromDom());
+            project.loads = project.loads || {};
             project.loads.assets = synced.assets;
+            project.loads.assetGensetLoadBasis = getEpcAssetGensetLoadBasis();
             project.gensets = synced.gensets;
             project.loads.gensets = project.gensets;
             setEpcStandardTopologyDirty(project);
-            updateEpcProject(project);
-            syncEpcDesignInputs(project);
-            renderEpcDesignResult(project);
-            setEpcDetailInputsTab('assets');
+            const normalized = updateEpcProject(project);
+            renderEpcDesignResult(normalized);
+            renderEpcAssetMethodStatus(normalized, window.__lastEpcDesignResult || null);
+            updateEpcAssetSuggestionDatalists(synced.assets, synced.gensets);
             const status = document.getElementById('epc-design-save-status');
-            if (status) status.textContent = 'Asset list updated locally';
+            if (status) status.textContent = statusText;
+            return normalized;
+        }
+
+        let epcAssetMappingLiveUpdateTimer = null;
+        function scheduleEpcAssetMappingLiveUpdate() {
+            if (epcAssetMappingLiveUpdateTimer) clearTimeout(epcAssetMappingLiveUpdateTimer);
+            epcAssetMappingLiveUpdateTimer = setTimeout(() => {
+                applyEpcAssetMappingLiveUpdate('Draft changed locally');
+            }, 150);
+        }
+
+        window.selectEpcAssetGensetLoadBasis = (basis) => {
+            setEpcAssetGensetLoadBasisRadios(basis);
+            applyEpcAssetMappingLiveUpdate(basis === 'asset_list' ? 'Asset List selected as Daily Load source' : 'Genset Fuel Mapping selected as Daily Load source');
+        };
+        window.applyEpcAssetMappingLiveUpdate = applyEpcAssetMappingLiveUpdate;
+        window.scheduleEpcAssetMappingLiveUpdate = scheduleEpcAssetMappingLiveUpdate;
+        window.addEpcAssetListRow = () => {
+            renderEpcAssetListRows([...epcAssetRowsFromDom(), { id: `asset-${Date.now()}`, name: '', type: 'load', zone: 'Common', qty: 1, dutyFactor: 1, simultaneityFactor: 1 }]);
+            scheduleEpcAssetMappingLiveUpdate();
+        };
+        window.addEpcGensetListRow = () => {
+            renderEpcGensetListRows([...epcGensetRowsFromDom(), { id: `genset-${Date.now()}`, name: '', zone: 'Common', fuelPeriodDays: 1, sfcLPerKwh: 0.27 }]);
+            scheduleEpcAssetMappingLiveUpdate();
+        };
+        window.deleteEpcAssetListRow = (button) => {
+            button?.closest('tr')?.remove();
+            applyEpcAssetMappingLiveUpdate('Asset list updated locally');
+        };
+        window.deleteEpcGensetListRow = (button) => {
+            button?.closest('tr')?.remove();
+            applyEpcAssetMappingLiveUpdate('Genset fuel mapping updated locally');
+        };
+        window.saveEpcAssetListRows = () => {
+            const project = applyEpcAssetMappingLiveUpdate('Asset list updated locally');
+            syncEpcDesignInputs(project);
+            setEpcDetailInputsTab('assets');
         };
         window.saveEpcGensetFuelRows = () => {
-            const project = captureEpcDesignFromDom();
-            const synced = syncEpcAssetGensetMappings(epcAssetRowsFromDom(), epcGensetRowsFromDom());
-            project.loads.assets = synced.assets;
-            project.gensets = synced.gensets;
-            project.loads.gensets = project.gensets;
-            setEpcStandardTopologyDirty(project);
-            updateEpcProject(project);
+            const project = applyEpcAssetMappingLiveUpdate('Genset fuel mapping updated locally');
             syncEpcDesignInputs(project);
-            renderEpcDesignResult(project);
             setEpcDetailInputsTab('assets');
-            const status = document.getElementById('epc-design-save-status');
-            if (status) status.textContent = 'Genset fuel mapping updated locally';
         };
 
         function captureEpcDesignFromDom() {
@@ -10968,6 +11026,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             }
             draft.loads = draft.loads || {};
             draft.loads.loadCount = epcNormalizeLoadCount(draft.loads.loadCount || current.loads?.loadCount || 1);
+            draft.loads.assetGensetLoadBasis = getEpcAssetGensetLoadBasis();
             draft.loads.loadSplits = epcLoadSplitsFromDom(draft.loads.loadCount, current.loads?.loadSplits || []);
             const assetRows = epcAssetRowsFromDom();
             const gensetRows = epcGensetRowsFromDom();
@@ -11502,7 +11561,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             setInputValue('epc-allowed-genset-load', project.loads.allowedGensetLoadKw || '');
             setInputValue('epc-load-equipment-type', project.loads.equipmentType || 'water_pump');
             setInputValue('epc-critical-load', project.loads.criticalLoadKw || '');
+            setInputValue('epc-manual-load-splits', project.loads.manualLoadSplits);
             setInputValue('epc-load-count', project.loads.loadCount || 1);
+            setEpcAssetGensetLoadBasisRadios(project.loads.assetGensetLoadBasis || 'genset_fuel_mapping');
             setInputValue('epc-support-hours', project.designTargets.supportHours || EPC_DESIGN_DEFAULTS.bessAutonomyHours);
             setInputValue('epc-sfc', project.assumptions.dieselSfcLPerKwh || EPC_DESIGN_DEFAULTS.dieselSfcLPerKwh);
             setInputValue('epc-pv-yield', project.solarResource.specificYieldKwhPerKwpDay || EPC_DESIGN_DEFAULTS.malaysiaYieldBase);
@@ -11542,9 +11603,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const totalPct = splits.reduce((sum, split) => sum + (Number(split.ratioPct) || 0), 0);
             const rowLoadKw = result?.energyFlow?.rows?.find(row => Number(row.loadKw) > 0)?.loadKw || result?.load?.averageLoadKw || 0;
             const valid = Math.abs(totalPct - 100) < 0.01;
+            const manual = Boolean(project.loads?.manualLoadSplits);
+            const disabledAttr = manual ? '' : 'disabled';
+            const disabledClass = manual ? 'bg-white' : 'bg-slate-100 text-slate-400 cursor-not-allowed';
             container.innerHTML = `
                 <div class="mb-2 flex items-center justify-between gap-2">
-                    <div class="text-[10px] font-black uppercase text-slate-400">Load Allocation %</div>
+                    <div class="text-[10px] font-black uppercase text-slate-400">Load Allocation % · ${manual ? 'Manual override' : 'Auto from Asset List'}</div>
                     <div class="${valid ? 'text-green-700' : 'text-red-600'} text-[10px] font-black">Total ${formatEpcNumber(totalPct, 2, '%')} must equal 100%</div>
                 </div>
                 <div class="space-y-2">
@@ -11552,8 +11616,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         const kw = rowLoadKw * (Number(split.ratioPct) || 0) / 100;
                         return `
                             <div data-epc-load-split-row="${index}" class="grid grid-cols-[1fr_5rem_5.5rem] items-center gap-2">
-                                <input data-epc-load-split-label value="${htmlSafe(split.label || `Load ${index + 1}`)}" oninput="updateEpcLoadSplitRatio(${index}, this.value, 'label')" class="min-w-0 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold outline-none focus:border-purple-500">
-                                <input data-epc-load-split-ratio type="number" min="0" max="100" step="0.1" value="${htmlSafe(split.ratioPct)}" oninput="updateEpcLoadSplitRatio(${index}, this.value)" class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-right text-[11px] font-bold outline-none focus:border-purple-500" aria-label="Allocation %">
+                                <input data-epc-load-split-label value="${htmlSafe(split.label || `Load ${index + 1}`)}" oninput="updateEpcLoadSplitRatio(${index}, this.value, 'label')" ${disabledAttr} class="min-w-0 rounded-lg border border-slate-200 ${disabledClass} px-2 py-1 text-[11px] font-bold outline-none focus:border-purple-500">
+                                <input data-epc-load-split-ratio type="number" min="0" max="100" step="0.1" value="${htmlSafe(split.ratioPct)}" oninput="updateEpcLoadSplitRatio(${index}, this.value)" ${disabledAttr} class="rounded-lg border border-slate-200 ${disabledClass} px-2 py-1 text-right text-[11px] font-bold outline-none focus:border-purple-500" aria-label="Allocation %">
                                 <span class="text-right text-[11px] font-black text-slate-500">${formatEpcNumber(kw, 0, 'kW')}</span>
                             </div>
                         `;
@@ -11562,7 +11626,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             `;
         }
 
+        function isEpcManualLoadSplitEnabled() {
+            return Boolean(document.getElementById('epc-manual-load-splits')?.checked);
+        }
+
         function updateEpcLoadSplitRatio(index, value, field = 'ratio') {
+            if (!isEpcManualLoadSplitEnabled()) return;
             const project = JSON.parse(JSON.stringify(getActiveEpcDesignProject()));
             project.loads = project.loads || {};
             project.loads.loadCount = epcNormalizeLoadCount(project.loads.loadCount || 1);
@@ -11593,20 +11662,42 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
         window.updateEpcLoadSplitRatio = updateEpcLoadSplitRatio;
 
+        function onEpcManualLoadSplitsChanged() {
+            const project = captureEpcDesignFromDom();
+            project.loads.manualLoadSplits = isEpcManualLoadSplitEnabled();
+            project.loads.loadSplitSource = project.loads.manualLoadSplits ? 'manual' : 'auto';
+            if (project.loads.manualLoadSplits) {
+                project.loads.loadCount = epcNormalizeLoadCount(document.getElementById('epc-load-count')?.value || project.loads.loadCount || 1);
+                project.loads.loadSplits = epcNormalizeLoadSplits(project.loads.loadSplits || [], project.loads.loadCount);
+            }
+            setEpcStandardTopologyDirty(project);
+            const normalized = updateEpcProject(project);
+            syncEpcDesignInputs(normalized);
+            renderEpcDesignResult(normalized);
+            setEpcDetailInputsTab('assets');
+            const status = document.getElementById('epc-design-save-status');
+            if (status) status.textContent = project.loads.manualLoadSplits ? 'Manual load allocation enabled' : 'Asset List auto allocation enabled';
+        }
+
         function onEpcLoadCountChanged() {
             const project = captureEpcDesignFromDom();
             project.loads.loadCount = epcNormalizeLoadCount(document.getElementById('epc-load-count')?.value || project.loads.loadCount || 1);
-            project.loads.loadSplits = epcDefaultLoadSplits(project.loads.loadCount);
-            project.loads.manualLoadSplits = true;
-            project.loads.loadSplitSource = 'manual';
+            project.loads.manualLoadSplits = isEpcManualLoadSplitEnabled();
+            project.loads.loadSplitSource = project.loads.manualLoadSplits ? 'manual' : 'auto';
+            if (project.loads.manualLoadSplits) {
+                project.loads.loadSplits = epcDefaultLoadSplits(project.loads.loadCount);
+            }
             setEpcStandardTopologyDirty(project);
-            updateEpcProject(project);
-            syncEpcDesignInputs(project);
-            renderEpcDesignResult(project);
+            const normalized = updateEpcProject(project);
+            syncEpcDesignInputs(normalized);
+            renderEpcDesignResult(normalized);
+            setEpcDetailInputsTab('assets');
             const status = document.getElementById('epc-design-save-status');
             if (status) status.textContent = 'Draft changed locally';
         }
         window.onEpcLoadCountChanged = onEpcLoadCountChanged;
+        window.onEpcManualLoadSplitsChanged = onEpcManualLoadSplitsChanged;
+        window.isEpcManualLoadSplitEnabled = isEpcManualLoadSplitEnabled;
 
         function getRecommendedEpcScheme(result) {
             return result.schemes.find(scheme => scheme.id === result.recommendedSchemeId) || result.schemes[0] || {};
@@ -19291,24 +19382,24 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
 
         function epcBoqWorkbookAssetListRows(result = {}) {
-            const headers = ['Asset ID', 'Name', 'Type', 'Zone', 'Line', 'Area', 'Conveyor System', 'kW', 'Qty', 'Start Time', 'Method', 'Distance m', 'Operation Hours', 'Duty Factor', 'Simultaneity Factor', 'Assigned Genset'];
+            const headers = ['Asset ID', 'Name', 'Type', 'Zone', 'kW', 'Qty', 'Start Time', 'Operation Hours', 'Method', 'Distance m', 'Duty Factor', 'Simultaneity Factor', 'Line', 'Area', 'Conveyor System', 'Assigned Genset'];
             const assets = Array.isArray(result.loads?.assets) ? result.loads.assets : [];
             const rows = assets.map(row => [
                 row.id || '',
                 row.name || row.label || '',
                 row.type || row.assetType || '',
                 row.zone || '',
-                row.line || '',
-                row.area || '',
-                row.conveyorSystem || '',
                 Number.isFinite(Number(row.kw)) ? Number(row.kw) : '',
                 Number.isFinite(Number(row.qty)) ? Number(row.qty) : '',
                 row.startTime || '',
+                Number.isFinite(Number(row.operationHours)) ? Number(row.operationHours) : '',
                 row.startType || '',
                 Number.isFinite(Number(row.distanceM)) ? Number(row.distanceM) : '',
-                Number.isFinite(Number(row.operationHours)) ? Number(row.operationHours) : '',
                 Number.isFinite(Number(row.dutyFactor)) ? Number(row.dutyFactor) : '',
                 Number.isFinite(Number(row.simultaneityFactor)) ? Number(row.simultaneityFactor) : '',
+                row.line || '',
+                row.area || '',
+                row.conveyorSystem || '',
                 (row.assignedGensetIds || []).join(', ')
             ]);
             return [headers, ...(rows.length ? rows : [['', 'No asset rows', '', '', '', '', '', '', '', '', '', '', '', '', '', '']])];

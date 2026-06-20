@@ -594,6 +594,14 @@ test('EPC asset genset live updates write auto load count and mirrored mappings 
   assert.match(liveUpdater[0], /setInputValue\('epc-load-count', normalized\.loads\.loadCount \|\| 1\)/);
   assert.match(liveUpdater[0], /syncEpcAssetGensetMappingInputs\(synced\.assets, synced\.gensets\)/);
 
+  const assetReader = html.match(/function epcAssetRowsFromDom\(\)[\s\S]*?function epcGensetRowsFromDom\(\)/);
+  assert.ok(assetReader, 'asset DOM reader should be found');
+  assert.match(assetReader[0], /rawType !== 'load'/);
+  assert.match(assetReader[0], /rawZone && rawZone !== 'Common'/);
+  assert.match(assetReader[0], /rawGensets/);
+  assert.match(assetReader[0], /kw > 0/);
+  assert.doesNotMatch(assetReader[0], /\.filter\(Boolean\)\.filter\(row => row\.kw > 0/);
+
   const mappingInputSync = html.match(/function syncEpcAssetGensetMappingInputs\(assets = \[\], gensets = \[\]\)[\s\S]*?function getEpcAssetGensetLoadBasis\(\)/);
   assert.ok(mappingInputSync, 'asset/genset mapping input sync helper should be found');
   for (const snippet of [

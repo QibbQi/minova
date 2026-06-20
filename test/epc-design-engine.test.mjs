@@ -1303,6 +1303,30 @@ test('EPC automatic asset feeder splits ignore Load Qty unless manual override i
   assert.equal(result.loads.loadSplits.some(split => split.label === 'Manual Pit A'), false);
 });
 
+test('EPC asset list preserves zero-kW draft assets and still creates feeder branches', () => {
+  const result = calculateEpcDesignProject({
+    site: { gridMode: 'island' },
+    loads: {
+      measurementMethod: 'energy_meter',
+      manualLoadSplits: false,
+      loadCount: 1,
+      energyMeterSummary: { dailyLoadKwh: 9000, averageLoadKw: 450, rawPeakKw: 700, smoothedPeakKw: 680 },
+      assets: [
+        { id: 'A1', name: 'Draft Crusher', type: 'crusher', zone: 'Pit A', kw: 0, qty: 1, operationHours: 0, assignedGensetIds: ['G1'] },
+        { id: 'A2', name: 'Draft Pump', type: 'pump', zone: 'Water', kw: 0, qty: 1, operationHours: 0, assignedGensetIds: ['G1'] }
+      ]
+    },
+    gensets: [{ id: 'G1', name: 'G1', zone: 'Pit A', ratedKva: 800, supportedAssetIds: ['A1', 'A2'] }]
+  }, { now: '2026-06-20T00:00:00.000Z' });
+
+  assert.equal(result.loads.assets.length, 2);
+  assert.equal(result.feederZoning.feeders.length, 2);
+  assert.equal(result.loads.loadCount, 2);
+  assert.equal(result.loads.loadSplits.length, 2);
+  assert.deepEqual(result.loads.loadSplits.map(split => split.ratioPct), [50, 50]);
+  assert.equal(result.topology.nodes.filter(node => node.type === 'LOAD').length, 2);
+});
+
 test('EPC inferred feeder grouping uses zone type genset cluster and distance when line details are missing', () => {
   const result = calculateEpcDesignProject({
     site: { gridMode: 'island' },

@@ -704,36 +704,63 @@ function normalizeAssetInputs(value = [], options = {}) {
   const fallbackHours = asNumber(options.operationHoursPerDay, 8);
   return (Array.isArray(value) ? value : [])
     .map((row, index) => {
-      const type = normalizeAssetType(row?.assetType || row?.type || row?.equipmentType);
+      const rawType = String(row?.assetType || row?.type || row?.equipmentType || '').trim();
+      const type = normalizeAssetType(rawType);
       const quantity = Math.max(1, Math.round(asNumber(row?.qty ?? row?.quantity ?? row?.assetCount, 1)));
-      const name = String(row?.name || row?.label || row?.equipment || `${type} ${index + 1}`).trim();
-      const id = String(row?.id || row?.assetId || idSafe(name) || `asset-${index + 1}`).trim() || `asset-${index + 1}`;
+      const rawName = String(row?.name || row?.label || row?.equipment || '').trim();
+      const rawId = String(row?.id || row?.assetId || '').trim();
+      const name = String(rawName || `${type} ${index + 1}`).trim();
+      const id = String(rawId || idSafe(name) || `asset-${index + 1}`).trim() || `asset-${index + 1}`;
       const operationHours = clamp(row?.operationHours ?? row?.hours ?? row?.runtimeHours, 0, 24, fallbackHours);
+      const zone = String(row?.zone || row?.areaZone || row?.plant || '').trim() || 'Common';
+      const line = String(row?.line || row?.productionLine || '').trim();
+      const area = String(row?.area || row?.location || '').trim();
+      const conveyorSystem = String(row?.conveyorSystem || row?.conveyor || '').trim();
+      const kw = asNumber(row?.kw ?? row?.ratedKw ?? row?.powerKw, 0);
+      const distanceM = Math.max(0, asNumber(row?.distanceM ?? row?.distance_m, 0));
+      const assignedGensetIds = normalizeIdList(row?.assignedGensetIds ?? row?.gensetIds ?? row?.gensetId);
+      const hasExplicitId = Boolean(rawId && !/^asset-\d+$/i.test(rawId));
+      const hasDraftContent = Boolean(
+        rawName ||
+        hasExplicitId ||
+        rawType ||
+        zone !== 'Common' ||
+        line ||
+        area ||
+        conveyorSystem ||
+        kw > 0 ||
+        distanceM > 0 ||
+        operationHours > 0 ||
+        assignedGensetIds.length
+      );
       return {
         id,
         name,
         label: name,
         type,
         assetType: type,
-        zone: String(row?.zone || row?.areaZone || row?.plant || '').trim() || 'Common',
-        line: String(row?.line || row?.productionLine || '').trim(),
-        area: String(row?.area || row?.location || '').trim(),
-        conveyorSystem: String(row?.conveyorSystem || row?.conveyor || '').trim(),
-        kw: asNumber(row?.kw ?? row?.ratedKw ?? row?.powerKw, 0),
+        zone,
+        line,
+        area,
+        conveyorSystem,
+        kw,
         qty: quantity,
         startTime: normalizeTime(row?.startTime ?? row?.operationStartTime ?? row?.startAt, '00:00'),
         startType: normalizeStartType(row?.startType ?? row?.start_type),
-        distanceM: Math.max(0, asNumber(row?.distanceM ?? row?.distance_m, 0)),
+        distanceM,
         operationHours,
         dutyFactor: clamp(row?.dutyFactor ?? row?.duty ?? row?.loadFactor, 0, 1, 1),
         simultaneityFactor: clamp(row?.simultaneityFactor ?? row?.simultaneity ?? row?.coincidenceFactor, 0, 1, 1),
-        assignedGensetIds: normalizeIdList(row?.assignedGensetIds ?? row?.gensetIds ?? row?.gensetId),
+        assignedGensetIds,
         fuelLiters: asNumber(row?.fuelLiters ?? row?.dieselLiters, 0),
         fuelPeriodDays: Math.max(1, asNumber(row?.fuelPeriodDays ?? row?.dieselPeriodDays, 1)),
-        fuelRuntimeHours: asNumber(row?.fuelRuntimeHours ?? row?.runtimeHours, 0)
+        fuelRuntimeHours: asNumber(row?.fuelRuntimeHours ?? row?.runtimeHours, 0),
+        powerKnown: kw > 0,
+        draftPowerMissing: !(kw > 0),
+        hasDraftContent
       };
     })
-    .filter(row => row.kw > 0 && row.qty > 0);
+    .filter(row => row.qty > 0 && (row.kw > 0 || row.hasDraftContent));
 }
 
 function reconcileAssetGensetMappings(assetInputs = [], gensets = []) {
@@ -1077,12 +1104,15 @@ function buildFeederZoning(assetInputs = [], gensets = [], options = {}) {
   ]));
   const loadSplits = (() => {
     const total = feeders.reduce((sum, row) => sum + Math.max(0, row.peakProfileKw || row.operatingKw || row.totalKw), 0);
-    if (!(total > 0)) return [];
+    if (!feeders.length) return [];
+    const equalRatio = feeders.length ? Math.floor((100 / feeders.length) * 100) / 100 : 100;
     let assigned = 0;
     return feeders.map((row, index) => {
       const ratioPct = index === feeders.length - 1
         ? round(Math.max(0, 100 - assigned), 2)
-        : round(((row.peakProfileKw || row.operatingKw || row.totalKw) / total) * 100, 2);
+        : total > 0
+          ? round(((row.peakProfileKw || row.operatingKw || row.totalKw) / total) * 100, 2)
+          : equalRatio;
       assigned += ratioPct;
       return {
         id: `load-${index + 1}`,

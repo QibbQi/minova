@@ -10807,27 +10807,58 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         function epcAssetRowsFromDom() {
             return [...document.querySelectorAll('[data-epc-asset-row]')].map((row, index) => {
                 const field = name => row.querySelector(`[data-epc-asset-field="${name}"]`)?.value || '';
-                const hasContent = ['name', 'kw', 'zone', 'line', 'area', 'conveyorSystem'].some(name => String(field(name)).trim());
+                const rawName = String(field('name')).trim();
+                const rawType = String(field('type') || 'load').trim();
+                const rawZone = String(field('zone')).trim();
+                const rawLine = String(field('line')).trim();
+                const rawArea = String(field('area')).trim();
+                const rawConveyor = String(field('conveyorSystem')).trim();
+                const rawGensets = String(field('assignedGensetIds')).trim();
+                const startTime = field('startTime') || '00:00';
+                const startType = field('startType') || 'DOL';
+                const kw = Number(field('kw')) || 0;
+                const qty = Number(field('qty')) || 1;
+                const distanceM = Number(field('distanceM')) || 0;
+                const operationHours = Number(field('operationHours')) || 0;
+                const dutyFactor = Number(field('dutyFactor')) || 1;
+                const simultaneityFactor = Number(field('simultaneityFactor')) || 1;
+                const hasContent = Boolean(
+                    rawName ||
+                    rawType !== 'load' ||
+                    (rawZone && rawZone !== 'Common') ||
+                    rawLine ||
+                    rawArea ||
+                    rawConveyor ||
+                    rawGensets ||
+                    kw > 0 ||
+                    qty !== 1 ||
+                    startTime !== '00:00' ||
+                    startType !== 'DOL' ||
+                    distanceM > 0 ||
+                    operationHours > 0 ||
+                    dutyFactor !== 1 ||
+                    simultaneityFactor !== 1
+                );
                 if (!hasContent) return null;
                 return {
                     id: field('id') || `asset-${index + 1}`,
-                    name: field('name') || `Asset ${index + 1}`,
-                    type: field('type') || 'load',
-                    zone: field('zone') || 'Common',
-                    line: field('line'),
-                    area: field('area'),
-                    conveyorSystem: field('conveyorSystem'),
-                    kw: Number(field('kw')) || 0,
-                    qty: Number(field('qty')) || 1,
-                    startTime: field('startTime') || '00:00',
-                    startType: field('startType'),
-                    distanceM: Number(field('distanceM')) || 0,
-                    operationHours: Number(field('operationHours')) || 0,
-                    dutyFactor: Number(field('dutyFactor')) || 1,
-                    simultaneityFactor: Number(field('simultaneityFactor')) || 1,
-                    assignedGensetIds: splitCsvList(field('assignedGensetIds'))
+                    name: rawName || `Asset ${index + 1}`,
+                    type: rawType || 'load',
+                    zone: rawZone || 'Common',
+                    line: rawLine,
+                    area: rawArea,
+                    conveyorSystem: rawConveyor,
+                    kw,
+                    qty,
+                    startTime,
+                    startType,
+                    distanceM,
+                    operationHours,
+                    dutyFactor,
+                    simultaneityFactor,
+                    assignedGensetIds: splitCsvList(rawGensets)
                 };
-            }).filter(Boolean).filter(row => row.kw > 0 || row.name.trim() !== `Asset ${row.id}` || row.zone !== 'Common' || row.line || row.area || row.conveyorSystem);
+            }).filter(Boolean);
         }
 
         function epcGensetRowsFromDom() {

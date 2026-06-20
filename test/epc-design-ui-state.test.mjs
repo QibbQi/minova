@@ -541,6 +541,7 @@ test('EPC Assets List keeps genset fuel mapping conditional and searchable', () 
     'estimateMethod',
     'kVA Profile',
     'Fuel / SFC',
+    "estimateMethod: 'fuel_sfc'",
     'onchange="scheduleEpcAssetMappingLiveUpdate()"',
     'oninput="scheduleEpcAssetMappingLiveUpdate()"',
     'powerFactor',

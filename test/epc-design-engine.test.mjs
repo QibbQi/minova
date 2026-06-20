@@ -1224,6 +1224,96 @@ test('EPC asset genset fuel mapping uses Fuel/SFC for energy and kVA profile for
   assert.ok(result.load.peakLoadKw >= 760, 'kVA profile should still lift PCS/transformer/cable/protection capacity basis');
 });
 
+test('EPC genset Use Data ignores Asset List kW and uses Fuel/SFC rows as the main sizing source', () => {
+  const project = {
+    site: { gridMode: 'island' },
+    loads: {
+      measurementMethod: 'asset_genset_fuel_mapping',
+      assetGensetLoadBasis: 'genset_fuel_mapping',
+      operationHoursPerDay: 8,
+      peakLoadSafetyFactor: 1.3,
+      assets: [
+        { id: 'A1', name: 'Asset 1', type: 'load', zone: 'Common', kw: 500, qty: 1, startTime: '00:00', operationHours: 0 },
+        { id: 'A2', name: 'Asset 2', type: 'crusher', zone: 'Common', kw: 300, qty: 1, startTime: '09:00', operationHours: 4 },
+        { id: 'A3', name: 'Asset 3', type: 'crusher', zone: 'Common', kw: 200, qty: 1, startTime: '10:00', operationHours: 7 },
+        { id: 'A4', name: 'Asset 4', type: 'load', zone: 'Common', kw: 300, qty: 1, startTime: '09:00', operationHours: 8 },
+        { id: 'A5', name: 'Asset 5', type: 'load', zone: 'Common', kw: 100, qty: 1, startTime: '00:00', operationHours: 0 }
+      ]
+    },
+    gensets: [
+      { id: 'G-FUEL', name: 'Fuel DG', estimateMethod: 'kva_profile', ratedKva: 0, ratedKw: 0, fuelLiters: 1500, fuelPeriodDays: 15, runtimeHours: 8, sfcLPerKwh: 0.27, supportedAssetIds: ['A1', 'A2'] }
+    ],
+    designTargets: { replacementPct: 80, bessRole: 'diesel_replacement' }
+  };
+  const result = calculateEpcDesignProject(project, { now: '2026-06-20T00:00:00.000Z' });
+  const assetKwChanged = calculateEpcDesignProject({
+    ...project,
+    loads: {
+      ...project.loads,
+      assets: project.loads.assets.map(asset => ({ ...asset, kw: asset.kw * 2 }))
+    }
+  }, { now: '2026-06-20T00:00:00.000Z' });
+  const fuelChanged = calculateEpcDesignProject({
+    ...project,
+    gensets: [{ ...project.gensets[0], fuelLiters: 3000, runtimeHours: 10 }]
+  }, { now: '2026-06-20T00:00:00.000Z' });
+
+  const recommended = result.schemes.find(scheme => scheme.id === 'replace-80');
+  const recommendedAssetKwChanged = assetKwChanged.schemes.find(scheme => scheme.id === 'replace-80');
+  const recommendedFuelChanged = fuelChanged.schemes.find(scheme => scheme.id === 'replace-80');
+
+  assert.equal(result.load.loadSource, 'Genset Fuel Mapping');
+  assert.equal(result.load.dailyLoadKwh.toFixed(2), '370.37');
+  assert.equal(result.load.averageLoadKw.toFixed(2), '46.30');
+  assert.equal(result.load.peakLoadKw.toFixed(2), '60.19');
+  assert.equal(recommended.pvRecommendedMwp.toFixed(2), '0.09');
+  assert.equal(recommended.bessRecommendedMwh.toFixed(2), '0.12');
+  assert.equal(recommended.pcsRecommendedMw.toFixed(2), '0.50');
+
+  assert.equal(assetKwChanged.load.dailyLoadKwh.toFixed(2), result.load.dailyLoadKwh.toFixed(2));
+  assert.equal(assetKwChanged.load.averageLoadKw.toFixed(2), result.load.averageLoadKw.toFixed(2));
+  assert.equal(assetKwChanged.load.peakLoadKw.toFixed(2), result.load.peakLoadKw.toFixed(2));
+  assert.equal(recommendedAssetKwChanged.pvRecommendedMwp.toFixed(2), recommended.pvRecommendedMwp.toFixed(2));
+  assert.equal(recommendedAssetKwChanged.bessRecommendedMwh.toFixed(2), recommended.bessRecommendedMwh.toFixed(2));
+  assert.equal(recommendedAssetKwChanged.pcsRecommendedMw.toFixed(2), recommended.pcsRecommendedMw.toFixed(2));
+
+  assert.equal(fuelChanged.load.dailyLoadKwh.toFixed(2), '740.74');
+  assert.equal(fuelChanged.load.averageLoadKw.toFixed(2), '74.07');
+  assert.notEqual(recommendedFuelChanged.pvRecommendedMwp.toFixed(2), recommended.pvRecommendedMwp.toFixed(2));
+  assert.notEqual(recommendedFuelChanged.bessRecommendedMwh.toFixed(2), recommended.bessRecommendedMwh.toFixed(2));
+});
+
+test('EPC genset Use Data uses genset kVA as PCS peak cap instead of Asset List connected peak', () => {
+  const result = calculateEpcDesignProject({
+    site: { gridMode: 'island' },
+    loads: {
+      measurementMethod: 'asset_genset_fuel_mapping',
+      assetGensetLoadBasis: 'genset_fuel_mapping',
+      operationHoursPerDay: 8,
+      peakLoadSafetyFactor: 1.3,
+      assets: [
+        { id: 'A1', name: 'Asset 1', type: 'load', zone: 'Common', kw: 500, qty: 1, operationHours: 0 },
+        { id: 'A2', name: 'Asset 2', type: 'crusher', zone: 'Common', kw: 300, qty: 1, startTime: '09:00', operationHours: 4 },
+        { id: 'A3', name: 'Asset 3', type: 'crusher', zone: 'Common', kw: 200, qty: 1, startTime: '10:00', operationHours: 7 },
+        { id: 'A4', name: 'Asset 4', type: 'load', zone: 'Common', kw: 300, qty: 1, startTime: '09:00', operationHours: 8 },
+        { id: 'A5', name: 'Asset 5', type: 'load', zone: 'Common', kw: 100, qty: 1, operationHours: 0 }
+      ]
+    },
+    gensets: [
+      { id: 'G-FUEL', name: 'Fuel DG', estimateMethod: 'fuel_sfc', ratedKva: 1200, powerFactor: 0.8, overloadFactor: 0.95, fuelLiters: 1500, fuelPeriodDays: 15, runtimeHours: 8, sfcLPerKwh: 0.27 }
+    ],
+    designTargets: { replacementPct: 80, bessRole: 'diesel_replacement' }
+  }, { now: '2026-06-20T00:00:00.000Z' });
+  const recommended = result.schemes.find(scheme => scheme.id === 'replace-80');
+
+  assert.equal(result.load.dailyLoadKwh.toFixed(2), '370.37');
+  assert.equal(result.load.averageLoadKw.toFixed(2), '46.30');
+  assert.equal(result.load.peakLoadKw.toFixed(2), '912.00');
+  assert.equal(recommended.pcsRecommendedMw.toFixed(2), '1.00');
+  assert.equal(result.loads.loadSplits.length > 1, true, 'Asset List should still drive load branch allocation');
+  assert.equal(result.topology.nodes.filter(node => node.type === 'LOAD').length, result.loads.loadSplits.length);
+});
+
 test('EPC asset genset fuel mapping can use Asset List as the main daily load basis', () => {
   const result = calculateEpcDesignProject({
     site: { gridMode: 'island' },

@@ -10866,19 +10866,26 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 const field = name => row.querySelector(`[data-epc-genset-field="${name}"]`)?.value || '';
                 const hasContent = ['name', 'ratedKva', 'ratedKw', 'fuelLiters'].some(name => String(field(name)).trim());
                 if (!hasContent) return null;
+                const ratedKva = Number(field('ratedKva')) || 0;
+                const ratedKw = Number(field('ratedKw')) || 0;
+                const fuelLiters = Number(field('fuelLiters')) || 0;
+                const selectedMethod = field('estimateMethod') || 'fuel_sfc';
+                const estimateMethod = selectedMethod === 'kva_profile' && ratedKva <= 0 && ratedKw <= 0 && fuelLiters > 0
+                    ? 'fuel_sfc'
+                    : selectedMethod;
                 return {
                     id: field('id') || `genset-${index + 1}`,
                     name: field('name') || `Genset ${index + 1}`,
                     label: field('name') || `Genset ${index + 1}`,
                     zone: field('zone') || 'Common',
-                    estimateMethod: field('estimateMethod') || 'fuel_sfc',
-                    ratedKva: Number(field('ratedKva')) || 0,
-                    ratedKw: Number(field('ratedKw')) || 0,
+                    estimateMethod,
+                    ratedKva,
+                    ratedKw,
                     powerFactor: Number(field('powerFactor')) || 0.8,
                     loadFactor: Number(field('loadFactor')) || 0.7,
                     overloadFactor: Number(field('overloadFactor')) || 0.95,
                     supportedAssetIds: splitCsvList(field('supportedAssetIds')),
-                    fuelLiters: Number(field('fuelLiters')) || 0,
+                    fuelLiters,
                     fuelPeriodDays: Number(field('fuelPeriodDays')) || 1,
                     runtimeHours: Number(field('runtimeHours')) || 0,
                     sfcLPerKwh: Number(field('sfcLPerKwh')) || 0.27
@@ -10942,7 +10949,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         function renderEpcGensetListRows(rows = []) {
             const body = document.getElementById('epc-genset-list-rows');
             if (!body) return;
-            const safeRows = rows.length ? rows : [{ id: 'genset-1', name: '', zone: 'Common', fuelPeriodDays: 1, sfcLPerKwh: 0.27 }];
+            const safeRows = rows.length ? rows : [{ id: 'genset-1', name: '', zone: 'Common', estimateMethod: 'fuel_sfc', fuelPeriodDays: 1, sfcLPerKwh: 0.27 }];
             body.innerHTML = safeRows.map((row, index) => `
                 <tr data-epc-genset-row="${htmlSafe(row.id || `genset-${index + 1}`)}">
                     <td class="px-2 py-2">${epcInputCell('genset', 'id', row.id || `genset-${index + 1}`)}</td>
@@ -10953,7 +10960,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             ${[
                                 ['kva_profile', 'kVA Profile'],
                                 ['fuel_sfc', 'Fuel / SFC']
-                            ].map(([value, label]) => `<option value="${value}" ${String(row.estimateMethod || (Number(row.fuelLiters) > 0 ? 'fuel_sfc' : 'kva_profile')) === value ? 'selected' : ''}>${label}</option>`).join('')}
+                            ].map(([value, label]) => `<option value="${value}" ${String(row.estimateMethod || 'fuel_sfc') === value ? 'selected' : ''}>${label}</option>`).join('')}
                         </select>
                     </td>
                     <td class="px-2 py-2">${epcInputCell('genset', 'ratedKva', row.ratedKva ?? '', 'type="number" min="0" step="0.1"')}</td>
@@ -11041,7 +11048,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             scheduleEpcAssetMappingLiveUpdate();
         };
         window.addEpcGensetListRow = () => {
-            renderEpcGensetListRows([...epcGensetRowsFromDom(), { id: `genset-${Date.now()}`, name: '', zone: 'Common', fuelPeriodDays: 1, sfcLPerKwh: 0.27 }]);
+            renderEpcGensetListRows([...epcGensetRowsFromDom(), { id: `genset-${Date.now()}`, name: '', zone: 'Common', estimateMethod: 'fuel_sfc', fuelPeriodDays: 1, sfcLPerKwh: 0.27 }]);
             scheduleEpcAssetMappingLiveUpdate();
         };
         window.deleteEpcAssetListRow = (button) => {
@@ -11655,11 +11662,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const rowLoadKw = result?.energyFlow?.rows?.find(row => Number(row.loadKw) > 0)?.loadKw || result?.load?.averageLoadKw || 0;
             const valid = Math.abs(totalPct - 100) < 0.01;
             const manual = Boolean(project.loads?.manualLoadSplits);
+            const splitSourceLabel = manual ? 'Manual override' : 'Auto feeder split from Asset List';
             const disabledAttr = manual ? '' : 'disabled';
             const disabledClass = manual ? 'bg-white' : 'bg-slate-100 text-slate-400 cursor-not-allowed';
             container.innerHTML = `
                 <div class="mb-2 flex items-center justify-between gap-2">
-                    <div class="text-[10px] font-black uppercase text-slate-400">Load Allocation % · ${manual ? 'Manual override' : 'Auto from Asset List'}</div>
+                    <div class="text-[10px] font-black uppercase text-slate-400">Load Allocation % · ${splitSourceLabel}</div>
                     <div class="${valid ? 'text-green-700' : 'text-red-600'} text-[10px] font-black">Total ${formatEpcNumber(totalPct, 2, '%')} must equal 100%</div>
                 </div>
                 <div class="space-y-2">

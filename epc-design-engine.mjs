@@ -642,16 +642,21 @@ function normalizeGensetAssets(value = []) {
   return (Array.isArray(value) ? value : [])
     .map((row, index) => {
       const ratedKva = asNumber(row?.ratedKva ?? row?.kva, 0);
+      const ratedKw = asNumber(row?.ratedKw ?? row?.kw, 0);
       const fuelLiters = asNumber(row?.fuelLiters ?? row?.dieselLiters, 0);
       const explicitMethod = normalizeGensetEstimateMethod(row?.estimateMethod ?? row?.generationMethod);
+      const hasCapacityProfile = ratedKva > 0 || ratedKw > 0;
+      const estimateMethod = explicitMethod === 'kva_profile' && !hasCapacityProfile && fuelLiters > 0
+        ? 'fuel_sfc'
+        : explicitMethod || (fuelLiters > 0 ? 'fuel_sfc' : 'kva_profile');
       return {
         id: String(row?.id || `genset-${index + 1}`).trim() || `genset-${index + 1}`,
         zone: String(row?.zone || row?.area || row?.plant || '').trim() || 'Common',
         label: String(row?.label || row?.name || `Genset ${index + 1}`).trim(),
         name: String(row?.name || row?.label || `Genset ${index + 1}`).trim(),
-        estimateMethod: explicitMethod || (fuelLiters > 0 ? 'fuel_sfc' : 'kva_profile'),
+        estimateMethod,
         ratedKva,
-        ratedKw: asNumber(row?.ratedKw ?? row?.kw, 0),
+        ratedKw,
         powerFactor: clamp(row?.powerFactor ?? row?.pf, 0.1, 1, 0.8),
         loadFactor: clamp(row?.loadFactor ?? row?.gensetLoadFactor, 0, 1, 0.7),
         overloadFactor: clamp(row?.overloadFactor ?? row?.peakFactor, 0, 1.5, 0.95),
@@ -2579,7 +2584,11 @@ function calculateAssetGensetFuelLoad(project, now) {
         : assetOperatingHours;
   const averageLoadKw = dailyLoadKwh / operatingHours;
   const feederPeakKw = feeders.reduce((sum, row) => sum + Math.max(row.peakProfileKw || 0, row.operatingKw || 0, row.totalKw || 0), 0);
-  const peakLoadKw = Math.max(averageLoadKw * Math.max(1, project.loads.peakLoadSafetyFactor || project.assumptions.peakLoadFactor), connectedPeakKw, feederPeakKw, generation.totalPeakSupportKw || 0);
+  const peakSafetyKw = averageLoadKw * Math.max(1, project.loads.peakLoadSafetyFactor || project.assumptions.peakLoadFactor);
+  const gensetCapacityPeakKw = Math.max(0, generation.totalPeakSupportKw || 0);
+  const peakLoadKw = usingAssetBasis
+    ? Math.max(peakSafetyKw, connectedPeakKw, feederPeakKw, gensetCapacityPeakKw)
+    : Math.max(peakSafetyKw, gensetCapacityPeakKw);
   const sourceLabel = usingAssetBasis ? 'Asset List' : 'Genset Fuel Mapping';
   return decorateLoadResult(project, {
     dailyLoadKwh: round(dailyLoadKwh, 4),
@@ -2590,6 +2599,7 @@ function calculateAssetGensetFuelLoad(project, now) {
     assetDailyKwh: round(assetDailyKwh, 4),
     fuelDailyKwh: round(fuelDailyKwh, 4),
     assetOperatingKw: round(assetOperatingKw, 4),
+    gensetCapacityPeakKw: round(gensetCapacityPeakKw, 4),
     loadSource: sourceLabel
   }, [
     buildFormulaTrace({
@@ -2617,8 +2627,17 @@ function calculateAssetGensetFuelLoad(project, now) {
     buildFormulaTrace({
       key: 'peakLoadKw',
       label: 'Peak Load',
-      formula: 'Max connected asset kW, feeder peak kW and average load safety factor',
-      inputs: { connectedPeakKw: round(connectedPeakKw, 4), feederPeakKw: round(feederPeakKw, 4), peakLoadSafetyFactor: project.loads.peakLoadSafetyFactor },
+      formula: usingAssetBasis
+        ? 'Max connected asset kW, feeder peak kW, genset capacity and average load safety factor'
+        : 'Max genset kVA capacity and average load safety factor; Asset List kW is allocation/topology only',
+      inputs: {
+        averageLoadKw: round(averageLoadKw, 4),
+        peakSafetyKw: round(peakSafetyKw, 4),
+        connectedPeakKw: round(connectedPeakKw, 4),
+        feederPeakKw: round(feederPeakKw, 4),
+        gensetCapacityPeakKw: round(gensetCapacityPeakKw, 4),
+        assetGensetLoadBasis: loadBasis
+      },
       result: round(peakLoadKw, 4),
       unit: 'kW',
       assumptionSource: sourceLabel,

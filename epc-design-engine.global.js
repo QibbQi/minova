@@ -135,6 +135,9 @@ const FEEDER_ZONING_DEFAULTS = Object.freeze({
   maxVoltageDropPct: 5,
   maxFeederCurrentA: 800,
   mandatoryMeteringKw: 200,
+  crusherMergeDistanceM: 100,
+  pumpMaxAssetsPerFeeder: 3,
+  proximityBucketM: 80,
   breakerMargin: 1.25,
   cableAmpacityMargin: 1.1,
   upstreamBreakerRatio: 1.6,
@@ -903,6 +906,18 @@ function feederDiversityFactor(type = 'load') {
   return FEEDER_DIVERSITY_FACTORS[normalizeAssetType(type)] ?? FEEDER_DIVERSITY_FACTORS.load;
 }
 
+function normalizeFeederZoningRules(raw = {}) {
+  const source = raw || {};
+  return {
+    maxFeederCurrentA: Math.max(1, asNumber(source.maxFeederCurrentA ?? source.max_feeder_current_a, FEEDER_ZONING_DEFAULTS.maxFeederCurrentA)) || FEEDER_ZONING_DEFAULTS.maxFeederCurrentA,
+    mandatoryMeteringKw: Math.max(0, asNumber(source.mandatoryMeteringKw ?? source.mandatory_metering_kw, FEEDER_ZONING_DEFAULTS.mandatoryMeteringKw)),
+    maxVoltageDropPct: Math.max(0.1, asNumber(source.maxVoltageDropPct ?? source.max_voltage_drop_pct ?? source.max_voltage_drop, FEEDER_ZONING_DEFAULTS.maxVoltageDropPct)) || FEEDER_ZONING_DEFAULTS.maxVoltageDropPct,
+    crusherMergeDistanceM: Math.max(0, asNumber(source.crusherMergeDistanceM ?? source.crusher_merge_distance_m, FEEDER_ZONING_DEFAULTS.crusherMergeDistanceM)),
+    pumpMaxAssetsPerFeeder: Math.max(1, Math.round(asNumber(source.pumpMaxAssetsPerFeeder ?? source.pump_max_assets_per_feeder, FEEDER_ZONING_DEFAULTS.pumpMaxAssetsPerFeeder))) || FEEDER_ZONING_DEFAULTS.pumpMaxAssetsPerFeeder,
+    proximityBucketM: Math.max(1, asNumber(source.proximityBucketM ?? source.proximity_bucket_m, FEEDER_ZONING_DEFAULTS.proximityBucketM)) || FEEDER_ZONING_DEFAULTS.proximityBucketM
+  };
+}
+
 function calculateFeederCurrentA(totalKw = 0, system = {}) {
   const voltage = Math.max(1, asNumber(system.voltageLv, FEEDER_ZONING_DEFAULTS.voltageLv));
   const pf = Math.max(0.1, asNumber(system.powerFactor, FEEDER_ZONING_DEFAULTS.powerFactor));
@@ -920,7 +935,7 @@ function assetGensetClusterKey(asset = {}) {
   return ids.length ? ids.join('+') : 'UNKNOWN';
 }
 
-function assetDistanceBucket(asset = {}, thresholdM = 80) {
+function assetDistanceBucket(asset = {}, thresholdM = FEEDER_ZONING_DEFAULTS.proximityBucketM) {
   const distance = Math.max(0, asNumber(asset.distanceM, 0));
   if (!(distance > 0)) return 'unknown-distance';
   return `d${Math.floor(distance / Math.max(1, thresholdM))}`;
@@ -977,23 +992,25 @@ function buildFeederAssumptionMeta(assets = [], system = {}) {
   };
 }
 
-function feederGroupingKey(asset = {}) {
+function feederGroupingKey(asset = {}, rules = FEEDER_ZONING_DEFAULTS) {
   const zone = asset.zone || 'Common';
   const type = normalizeAssetType(asset.type);
   const cluster = assetGensetClusterKey(asset);
-  const proximity = assetDistanceBucket(asset);
+  const zoningRules = normalizeFeederZoningRules(rules);
+  const proximity = assetDistanceBucket(asset, zoningRules.proximityBucketM);
   if (type === 'vfd' || asset.startType === 'vfd') return `vfd:${asset.id}`;
   if (!assetHasProcessGroupingBasis(asset)) return `${type}:${zone}:cluster:${cluster}:${proximity}`;
   if (type === 'crusher') {
     const line = asset.line || 'line';
-    return asset.distanceM > 0 && asset.distanceM < 100 ? `crusher:${zone}:${line}:near` : `crusher:${zone}:${line}:${asset.id}`;
+    return asset.distanceM > 0 && asset.distanceM < zoningRules.crusherMergeDistanceM ? `crusher:${zone}:${line}:near` : `crusher:${zone}:${line}:${asset.id}`;
   }
   if (type === 'screen') return `screen:${zone}:${asset.conveyorSystem || asset.line || asset.area || 'screen'}`;
   if (type === 'pump') return `pump:${zone}:${asset.area || asset.line || 'pump'}`;
   return `${type}:${zone}:${asset.area || asset.line || asset.id}`;
 }
 
-function buildFeederRow(assets = [], index = 0, system = {}, splitReason = '') {
+function buildFeederRow(assets = [], index = 0, system = {}, splitReason = '', rules = FEEDER_ZONING_DEFAULTS) {
+  const zoningRules = normalizeFeederZoningRules(rules);
   const primary = assets[0] || {};
   const type = normalizeAssetType(primary.type || 'load');
   const assumptionMeta = buildFeederAssumptionMeta(assets, system);
@@ -1005,10 +1022,10 @@ function buildFeederRow(assets = [], index = 0, system = {}, splitReason = '') {
   const breakerA = currentA * FEEDER_ZONING_DEFAULTS.breakerMargin;
   const cableAmpacityA = breakerA * FEEDER_ZONING_DEFAULTS.cableAmpacityMargin;
   const voltageDropPct = calculateFeederVoltageDropPct(currentA, distanceM, system);
-  const meteringRequired = connectedKw > FEEDER_ZONING_DEFAULTS.mandatoryMeteringKw;
+  const meteringRequired = connectedKw > zoningRules.mandatoryMeteringKw;
   const assignedGensetIds = Array.from(new Set(assets.flatMap(asset => asset.assignedGensetIds || [])));
   const feederId = `${idSafe(primary.zone || 'zone')}-${idSafe(type)}-f${index + 1}`;
-  const review = currentA > FEEDER_ZONING_DEFAULTS.maxFeederCurrentA || voltageDropPct > FEEDER_ZONING_DEFAULTS.maxVoltageDropPct;
+  const review = currentA > zoningRules.maxFeederCurrentA || voltageDropPct > zoningRules.maxVoltageDropPct;
   return {
     feederId,
     zone: primary.zone || 'Common',
@@ -1024,7 +1041,7 @@ function buildFeederRow(assets = [], index = 0, system = {}, splitReason = '') {
     breakerA: round(breakerA, 2),
     cableAmpacityA: round(cableAmpacityA, 2),
     voltageDropPct: round(voltageDropPct, 2),
-    cableStatus: voltageDropPct > FEEDER_ZONING_DEFAULTS.maxVoltageDropPct ? 'REVIEW' : 'PASS',
+    cableStatus: voltageDropPct > zoningRules.maxVoltageDropPct ? 'REVIEW' : 'PASS',
     distanceM: round(distanceM, 2),
     requiresVfd: type === 'vfd' || assets.some(asset => asset.startType === 'vfd'),
     meteringRequired,
@@ -1040,34 +1057,35 @@ function buildFeederRow(assets = [], index = 0, system = {}, splitReason = '') {
   };
 }
 
-function buildFeederRowsFromAssets(assets = [], system = {}) {
+function buildFeederRowsFromAssets(assets = [], system = {}, rules = FEEDER_ZONING_DEFAULTS) {
+  const zoningRules = normalizeFeederZoningRules(rules);
   const grouped = new Map();
   assets.forEach(asset => {
-    const key = feederGroupingKey(asset);
+    const key = feederGroupingKey(asset, zoningRules);
     if (!grouped.has(key)) grouped.set(key, []);
     grouped.get(key).push(asset);
   });
   const rows = [];
   let index = 0;
   for (const groupAssets of grouped.values()) {
-    const row = buildFeederRow(groupAssets, index, system);
-    if (row.type === 'pump' && row.assetCount > 3) {
+    const row = buildFeederRow(groupAssets, index, system, '', zoningRules);
+    if (row.type === 'pump' && row.assetCount > zoningRules.pumpMaxAssetsPerFeeder) {
       groupAssets.forEach(asset => {
-        rows.push(buildFeederRow([asset], index, system, 'pump-count'));
+        rows.push(buildFeederRow([asset], index, system, 'pump-count', zoningRules));
         index += 1;
       });
       continue;
     }
-    if (row.currentA > FEEDER_ZONING_DEFAULTS.maxFeederCurrentA && groupAssets.length > 1) {
+    if (row.currentA > zoningRules.maxFeederCurrentA && groupAssets.length > 1) {
       groupAssets.forEach(asset => {
-        rows.push(buildFeederRow([asset], index, system, 'current-limit'));
+        rows.push(buildFeederRow([asset], index, system, 'current-limit', zoningRules));
         index += 1;
       });
       continue;
     }
     rows.push({
       ...row,
-      splitReason: row.currentA > FEEDER_ZONING_DEFAULTS.maxFeederCurrentA ? 'current-limit' : row.splitReason
+      splitReason: row.currentA > zoningRules.maxFeederCurrentA ? 'current-limit' : row.splitReason
     });
     index += 1;
   }
@@ -1080,13 +1098,14 @@ function buildFeederZoning(assetInputs = [], gensets = [], options = {}) {
   const reconciled = reconcileAssetGensetMappings(normalizedAssets, normalizedGensets);
   const assets = reconciled.assets;
   const gensetRows = reconciled.gensets;
+  const rules = normalizeFeederZoningRules(options.feederZoningRules || options);
   const system = {
     voltageLv: asNumber(options.voltageLv ?? options.voltage_lv, FEEDER_ZONING_DEFAULTS.voltageLv),
     powerFactor: asNumber(options.powerFactor ?? options.pf, FEEDER_ZONING_DEFAULTS.powerFactor),
-    maxVoltageDropPct: asNumber(options.maxVoltageDropPct ?? options.max_voltage_drop, FEEDER_ZONING_DEFAULTS.maxVoltageDropPct),
+    maxVoltageDropPct: rules.maxVoltageDropPct,
     cableResistanceOhmPerKm: asNumber(options.cableResistanceOhmPerKm, FEEDER_ZONING_DEFAULTS.cableResistanceOhmPerKm)
   };
-  let feeders = buildFeederRowsFromAssets(assets, system);
+  let feeders = buildFeederRowsFromAssets(assets, system, rules);
   const assetTimeProfile = buildAssetTimeProfile(assets, feeders);
   const profileByFeeder = new Map(assetTimeProfile.feederProfiles.map(profile => [profile.feederId, profile]));
   feeders = feeders.map(row => {
@@ -1206,6 +1225,7 @@ function buildFeederZoning(assetInputs = [], gensets = [], options = {}) {
   }
   return {
     system,
+    rules,
     zones,
     assets,
     gensets: gensetRows,
@@ -2138,11 +2158,15 @@ function normalizeEpcDesignProject(raw = {}, options = {}) {
     const operationFinishTime = normalizeTime(loads.operationFinishTime ?? raw.operationFinishTime, addHoursToTime(operationStartTime, dayHours));
     const gensetAssets = normalizeGensetAssets(loads.gensets || raw.gensets || []);
     const assetInputs = normalizeAssetInputs(loads.assets || raw.assets || [], { operationHoursPerDay: dayHours });
+    const feederZoningRules = normalizeFeederZoningRules({
+        maxVoltageDropPct: electrical.maxVoltageDropPct ?? raw.maxVoltageDropPct,
+        ...(loads.feederZoningRules || raw.feederZoningRules || {})
+    });
     const feederZoning = buildFeederZoning(assetInputs, gensetAssets, {
         operationHoursPerDay: dayHours,
         voltageLv: asNumber(electrical.voltageLv ?? electrical.lvVoltageV ?? raw.voltageLv, FEEDER_ZONING_DEFAULTS.voltageLv),
         powerFactor: asNumber(electrical.powerFactor ?? raw.powerFactor, FEEDER_ZONING_DEFAULTS.powerFactor),
-        maxVoltageDropPct: asNumber(electrical.maxVoltageDropPct ?? raw.maxVoltageDropPct, FEEDER_ZONING_DEFAULTS.maxVoltageDropPct)
+        feederZoningRules
     });
     const assetGroups = assetInputs.length
         ? normalizeAssetGroups(feederZoning.assetGroups)
@@ -2217,6 +2241,7 @@ function normalizeEpcDesignProject(raw = {}, options = {}) {
       loads: {
         measurementMethod,
         assetGensetLoadBasis,
+        feederZoningRules,
         dieselTotalLiters: asNumber(loads.dieselTotalLiters ?? raw.dieselTotalLiters, 0),
         dieselPeriodDays: Math.max(1, asNumber(loads.dieselPeriodDays ?? raw.dieselPeriodDays, 1)),
         dieselPricePerLiter: asNumber(loads.dieselPricePerLiter ?? raw.dieselPricePerLiter, 0),

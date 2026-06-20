@@ -1480,6 +1480,65 @@ test('EPC explicit manual load splits override asset-derived topology branch cou
   assert.equal(result.topology.nodes.filter(node => node.type === 'LOAD').length, 4);
 });
 
+test('EPC feeder zoning rules are project-level inputs for auto feeder splits', () => {
+  const project = {
+    site: { gridMode: 'island' },
+    loads: {
+      measurementMethod: 'energy_meter',
+      manualLoadSplits: false,
+      energyMeterSummary: { dailyLoadKwh: 8000, averageLoadKw: 400, rawPeakKw: 700, smoothedPeakKw: 680 },
+      feederZoningRules: {
+        maxFeederCurrentA: 500,
+        mandatoryMeteringKw: 500,
+        maxVoltageDropPct: 4,
+        crusherMergeDistanceM: 200,
+        pumpMaxAssetsPerFeeder: 4,
+        proximityBucketM: 120
+      },
+      assets: [
+        { id: 'C1', name: 'Crusher 1', type: 'crusher', zone: 'Pit', line: 'L1', kw: 220, qty: 1, distanceM: 50, operationHours: 8, assignedGensetIds: ['G1'] },
+        { id: 'C2', name: 'Crusher 2', type: 'crusher', zone: 'Pit', line: 'L1', kw: 220, qty: 1, distanceM: 150, operationHours: 8, assignedGensetIds: ['G1'] },
+        { id: 'P1', name: 'Pump 1', type: 'pump', zone: 'Water', area: 'pond', kw: 20, qty: 1, distanceM: 10, operationHours: 8, assignedGensetIds: ['G2'] },
+        { id: 'P2', name: 'Pump 2', type: 'pump', zone: 'Water', area: 'pond', kw: 20, qty: 1, distanceM: 20, operationHours: 8, assignedGensetIds: ['G2'] },
+        { id: 'P3', name: 'Pump 3', type: 'pump', zone: 'Water', area: 'pond', kw: 20, qty: 1, distanceM: 30, operationHours: 8, assignedGensetIds: ['G2'] },
+        { id: 'P4', name: 'Pump 4', type: 'pump', zone: 'Water', area: 'pond', kw: 20, qty: 1, distanceM: 40, operationHours: 8, assignedGensetIds: ['G2'] },
+        { id: 'A1', name: 'Aux 1', type: 'auxiliary', zone: 'Remote', kw: 10, qty: 1, distanceM: 20, operationHours: 8, assignedGensetIds: ['G3'] },
+        { id: 'A2', name: 'Aux 2', type: 'auxiliary', zone: 'Remote', kw: 10, qty: 1, distanceM: 95, operationHours: 8, assignedGensetIds: ['G3'] }
+      ]
+    },
+    gensets: [
+      { id: 'G1', name: 'G1', ratedKva: 800 },
+      { id: 'G2', name: 'G2', ratedKva: 300 },
+      { id: 'G3', name: 'G3', ratedKva: 300 }
+    ]
+  };
+
+  const defaultRules = calculateEpcDesignProject({
+    ...project,
+    loads: { ...project.loads, feederZoningRules: {} }
+  }, { now: '2026-06-20T00:00:00.000Z' });
+  const customRules = calculateEpcDesignProject(project, { now: '2026-06-20T00:00:00.000Z' });
+
+  assert.equal(defaultRules.loads.feederZoningRules.maxFeederCurrentA, 800);
+  assert.equal(customRules.loads.feederZoningRules.maxFeederCurrentA, 500);
+  assert.equal(customRules.loads.feederZoningRules.mandatoryMeteringKw, 500);
+  assert.equal(customRules.loads.feederZoningRules.maxVoltageDropPct, 4);
+  assert.equal(customRules.loads.feederZoningRules.crusherMergeDistanceM, 200);
+  assert.equal(customRules.loads.feederZoningRules.pumpMaxAssetsPerFeeder, 4);
+  assert.equal(customRules.loads.feederZoningRules.proximityBucketM, 120);
+
+  assert.equal(defaultRules.feederZoning.feeders.filter(row => row.type === 'crusher').length, 2, 'default crusher merge distance keeps far crusher separate');
+  assert.equal(customRules.feederZoning.feeders.filter(row => row.type === 'crusher').length, 2, 'custom current limit splits the merged crusher feeder');
+  assert.equal(customRules.feederZoning.feeders.filter(row => row.type === 'crusher').every(row => row.splitReason === 'current-limit'), true);
+  assert.equal(defaultRules.feederZoning.feeders.filter(row => row.type === 'pump').length, 4, 'default pump max splits four pumps');
+  assert.equal(customRules.feederZoning.feeders.filter(row => row.type === 'pump').length, 1, 'custom pump max keeps four pumps together');
+  assert.equal(defaultRules.feederZoning.feeders.filter(row => row.type === 'auxiliary').length, 2, 'default proximity bucket separates unknown-process assets');
+  assert.equal(customRules.feederZoning.feeders.filter(row => row.type === 'auxiliary').length, 1, 'custom proximity bucket groups unknown-process assets');
+  assert.equal(defaultRules.feederZoning.metering.some(row => row.feederId.includes('crusher')), true);
+  assert.equal(customRules.feederZoning.metering.some(row => row.feederId.includes('crusher')), false);
+  assert.equal(customRules.loads.loadSplits.length, customRules.feederZoning.loadSplits.length);
+});
+
 test('EPC non-asset load measurements keep their load source while asset list drives feeder zoning', () => {
   const result = calculateEpcDesignProject({
     site: { gridMode: 'island' },

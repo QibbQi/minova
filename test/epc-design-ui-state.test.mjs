@@ -1874,6 +1874,37 @@ test('EPC inputs expose split load count and ratio controls for EMS Flow', () =>
   assert.match(assetsPage[0], /id="epc-load-split-controls"/);
 });
 
+test('EPC Assets List exposes project-level feeder split rules beside load allocation', () => {
+  const assetsPage = html.match(/data-epc-detail-page="assets"[\s\S]*?<\/section>/);
+  assert.ok(assetsPage, 'assets list page should hold feeder split rules');
+  const assetsTopGrid = assetsPage[0].match(/<div class="grid grid-cols-1 lg:grid-cols-3 gap-3">[\s\S]*?<div class="lg:col-span-2">/);
+  assert.ok(assetsTopGrid, 'feeder rules should live in the left side of the assets top grid');
+  for (const snippet of [
+    'Feeder Split Rules',
+    'id="epc-feeder-rule-max-current"',
+    'id="epc-feeder-rule-metering-kw"',
+    'id="epc-feeder-rule-max-vdrop"',
+    'id="epc-feeder-rule-crusher-merge"',
+    'id="epc-feeder-rule-pump-max"',
+    'id="epc-feeder-rule-proximity"',
+    'data-epc-field="loads.feederZoningRules.maxFeederCurrentA"',
+    'data-epc-field="loads.feederZoningRules.mandatoryMeteringKw"',
+    'data-epc-field="loads.feederZoningRules.maxVoltageDropPct"',
+    'data-epc-field="loads.feederZoningRules.crusherMergeDistanceM"',
+    'data-epc-field="loads.feederZoningRules.pumpMaxAssetsPerFeeder"',
+    'data-epc-field="loads.feederZoningRules.proximityBucketM"',
+    'oninput="onEpcFeederZoningRulesChanged()"',
+    'Reset Rules',
+    'resetEpcFeederZoningRules'
+  ]) {
+    assert.match(assetsPage[0], new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing feeder split rule UI snippet: ${snippet}`);
+  }
+  assert.match(html, /function syncEpcFeederZoningRuleInputs\(project = getActiveEpcDesignProject\(\)\)/);
+  assert.match(html, /window\.syncEpcFeederZoningRuleInputs = syncEpcFeederZoningRuleInputs/);
+  assert.match(html, /setInputValue\('epc-feeder-rule-max-current', project\.loads\.feederZoningRules\?\.maxFeederCurrentA \|\| 800\)/);
+  assert.match(html, /function onEpcFeederZoningRulesChanged\(\)[\s\S]*?scheduleEpcAssetMappingLiveUpdate\(\)/);
+});
+
 test('EPC topology-aware flow can label per-branch split load power', () => {
   for (const snippet of [
     'loadSplit:',

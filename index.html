@@ -3140,6 +3140,32 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             <span>Load Qty <span data-epc-help="load-count" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Number of downstream load branches in EMS Flow.">i</span></span>
                         </label>
                         <input id="epc-load-count" data-epc-field="loads.loadCount" type="number" min="1" max="12" step="1" oninput="onEpcLoadCountChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        <div id="epc-feeder-split-rules-panel" class="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5">
+                            <div class="mb-2 flex items-center justify-between gap-2">
+                                <div class="text-[10px] font-black uppercase text-purple-700">Feeder Split Rules</div>
+                                <button type="button" onclick="resetEpcFeederZoningRules()" class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[9px] font-black text-slate-500 hover:bg-slate-50">Reset Rules</button>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <label class="text-[9px] font-black uppercase text-slate-400">Max Current A
+                                    <input id="epc-feeder-rule-max-current" data-epc-field="loads.feederZoningRules.maxFeederCurrentA" type="number" min="1" step="10" oninput="onEpcFeederZoningRulesChanged()" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold text-slate-700 outline-none focus:border-purple-500">
+                                </label>
+                                <label class="text-[9px] font-black uppercase text-slate-400">Metering kW
+                                    <input id="epc-feeder-rule-metering-kw" data-epc-field="loads.feederZoningRules.mandatoryMeteringKw" type="number" min="0" step="10" oninput="onEpcFeederZoningRulesChanged()" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold text-slate-700 outline-none focus:border-purple-500">
+                                </label>
+                                <label class="text-[9px] font-black uppercase text-slate-400">Max V-Drop %
+                                    <input id="epc-feeder-rule-max-vdrop" data-epc-field="loads.feederZoningRules.maxVoltageDropPct" type="number" min="0.1" step="0.1" oninput="onEpcFeederZoningRulesChanged()" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold text-slate-700 outline-none focus:border-purple-500">
+                                </label>
+                                <label class="text-[9px] font-black uppercase text-slate-400">Crusher Merge m
+                                    <input id="epc-feeder-rule-crusher-merge" data-epc-field="loads.feederZoningRules.crusherMergeDistanceM" type="number" min="0" step="5" oninput="onEpcFeederZoningRulesChanged()" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold text-slate-700 outline-none focus:border-purple-500">
+                                </label>
+                                <label class="text-[9px] font-black uppercase text-slate-400">Pump Max / Feeder
+                                    <input id="epc-feeder-rule-pump-max" data-epc-field="loads.feederZoningRules.pumpMaxAssetsPerFeeder" type="number" min="1" step="1" oninput="onEpcFeederZoningRulesChanged()" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold text-slate-700 outline-none focus:border-purple-500">
+                                </label>
+                                <label class="text-[9px] font-black uppercase text-slate-400">Proximity Bucket m
+                                    <input id="epc-feeder-rule-proximity" data-epc-field="loads.feederZoningRules.proximityBucketM" type="number" min="1" step="5" oninput="onEpcFeederZoningRulesChanged()" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold text-slate-700 outline-none focus:border-purple-500">
+                                </label>
+                            </div>
+                        </div>
                     </div>
                     <div class="lg:col-span-2">
                         <div id="epc-load-split-controls" class="rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs"></div>
@@ -11021,6 +11047,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             renderEpcDesignResult(normalized);
             setInputValue('epc-load-count', normalized.loads.loadCount || 1);
             setInputValue('epc-manual-load-splits', normalized.loads.manualLoadSplits);
+            syncEpcFeederZoningRuleInputs(normalized);
             syncEpcAssetGensetMappingInputs(synced.assets, synced.gensets);
             renderEpcAssetMethodStatus(normalized, window.__lastEpcDesignResult || null);
             updateEpcAssetSuggestionDatalists(synced.assets, synced.gensets);
@@ -11119,6 +11146,32 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const decimal = Number.isFinite(value) ? value : (Number.isFinite(fallback) ? fallback : 0);
             setInputValue(id, Math.round(decimal * 10000) / 100);
         }
+
+        function syncEpcFeederZoningRuleInputs(project = getActiveEpcDesignProject()) {
+            project.loads = project.loads || {};
+            setInputValue('epc-feeder-rule-max-current', project.loads.feederZoningRules?.maxFeederCurrentA || 800);
+            setInputValue('epc-feeder-rule-metering-kw', project.loads.feederZoningRules?.mandatoryMeteringKw || 200);
+            setInputValue('epc-feeder-rule-max-vdrop', project.loads.feederZoningRules?.maxVoltageDropPct || 5);
+            setInputValue('epc-feeder-rule-crusher-merge', project.loads.feederZoningRules?.crusherMergeDistanceM || 100);
+            setInputValue('epc-feeder-rule-pump-max', project.loads.feederZoningRules?.pumpMaxAssetsPerFeeder || 3);
+            setInputValue('epc-feeder-rule-proximity', project.loads.feederZoningRules?.proximityBucketM || 80);
+        }
+
+        function onEpcFeederZoningRulesChanged() {
+            scheduleEpcAssetMappingLiveUpdate();
+        }
+
+        window.resetEpcFeederZoningRules = () => {
+            setInputValue('epc-feeder-rule-max-current', 800);
+            setInputValue('epc-feeder-rule-metering-kw', 200);
+            setInputValue('epc-feeder-rule-max-vdrop', 5);
+            setInputValue('epc-feeder-rule-crusher-merge', 100);
+            setInputValue('epc-feeder-rule-pump-max', 3);
+            setInputValue('epc-feeder-rule-proximity', 80);
+            applyEpcAssetMappingLiveUpdate('Feeder split rules reset');
+        };
+        window.onEpcFeederZoningRulesChanged = onEpcFeederZoningRulesChanged;
+        window.syncEpcFeederZoningRuleInputs = syncEpcFeederZoningRuleInputs;
 
         function epcTimeToMinutes(value, fallback = '09:00') {
             const raw = String(value || fallback || '09:00');
@@ -11621,6 +11674,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             setInputValue('epc-critical-load', project.loads.criticalLoadKw || '');
             setInputValue('epc-manual-load-splits', project.loads.manualLoadSplits);
             setInputValue('epc-load-count', project.loads.loadCount || 1);
+            syncEpcFeederZoningRuleInputs(project);
             setEpcAssetGensetLoadBasisRadios(project.loads.assetGensetLoadBasis || 'genset_fuel_mapping');
             setInputValue('epc-support-hours', project.designTargets.supportHours || EPC_DESIGN_DEFAULTS.bessAutonomyHours);
             setInputValue('epc-sfc', project.assumptions.dieselSfcLPerKwh || EPC_DESIGN_DEFAULTS.dieselSfcLPerKwh);

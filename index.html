@@ -3136,7 +3136,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
                     <div>
                         <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Number of downstream load branches in EMS Flow.">Load Qty <span data-epc-help="load-count" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Number of downstream load branches in EMS Flow.">i</span></label>
-                        <input id="epc-load-count" data-epc-field="loads.loadCount" type="number" min="1" max="6" step="1" oninput="onEpcLoadCountChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                        <input id="epc-load-count" data-epc-field="loads.loadCount" type="number" min="1" max="12" step="1" oninput="onEpcLoadCountChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                     </div>
                     <div class="lg:col-span-2">
                         <div id="epc-load-split-controls" class="rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs"></div>
@@ -10624,7 +10624,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
         function epcNormalizeLoadCount(value) {
             const n = Math.round(Number(value) || 1);
-            return Math.min(6, Math.max(1, Number.isFinite(n) ? n : 1));
+            return Math.min(12, Math.max(1, Number.isFinite(n) ? n : 1));
         }
 
         function epcDefaultLoadSplits(count = 1) {

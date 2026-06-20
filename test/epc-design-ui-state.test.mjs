@@ -1284,6 +1284,18 @@ test('EPC sub-hourly EMS and Device Work profiles apply midnight SOC carry befor
   assert.match(emsProfile[0], /return carryEpcZeroFlowSocRows\(profileRows, \{ wrapDay: true \}\)/, 'EMS sub-hourly rows should use the same SOC carry as hourly rows');
 });
 
+test('EPC EMS Flow preserves exact Asset List schedules before Device Work profile', () => {
+  const emsProfile = html.match(/function hasEpcExactAssetScheduleRows\(rows = \[\]\)[\s\S]*?function getEpcEnergyFlowDurationHours/);
+  assert.ok(emsProfile, 'EMS Flow exact Asset List schedule guard should be found');
+  assert.match(emsProfile[0], /String\(row\.flowKey \|\| ''\)\.startsWith\('asset-list-'\)/, 'Asset List EMS rows should be detected by source key');
+  assert.match(emsProfile[0], /const useExactAssetSchedule = hasEpcExactAssetScheduleRows\(sourceRows\)/, 'EMS Flow should identify exact Asset List schedules before profiling');
+  assert.match(emsProfile[0], /settings\.deviceWorkModel\.applyToEmsFlow\s*&&\s*!useExactAssetSchedule/, 'Device Work profile should be skipped for exact Asset List schedules');
+
+  const flowRenderer = html.match(/function renderEpcEnergyFlow\(result\)[\s\S]*?function renderEpcReports\(result\)/);
+  assert.ok(flowRenderer, 'EMS Flow renderer should be found');
+  assert.match(flowRenderer[0], /const profileApplied = getEpcDeviceWorkSettings\(result\)\.deviceWorkModel\.applyToEmsFlow\s*&&\s*!hasEpcExactAssetScheduleRows\(sourceRows\)/, 'EMS Flow footer should describe the actual displayed profile source');
+});
+
 test('EPC Load Work Profile exposes PV battery charge and preserves charging SOC', () => {
   const source = [
     extractFunction('epcMinutesToTime', 'epcAddHoursToTime'),

@@ -1285,6 +1285,54 @@ test('EPC genset Use Data ignores Asset List kW and uses Fuel/SFC rows as the ma
   assert.notEqual(recommendedFuelChanged.bessRecommendedMwh.toFixed(2), recommended.bessRecommendedMwh.toFixed(2));
 });
 
+test('EPC EMS Flow uses exact Asset List schedule before genset average fallback', () => {
+  const project = {
+    site: { gridMode: 'island' },
+    loads: {
+      measurementMethod: 'asset_genset_fuel_mapping',
+      assetGensetLoadBasis: 'genset_fuel_mapping',
+      operationHoursPerDay: 6,
+      assets: [
+        { id: 'A1', name: 'Pump 1', type: 'pump', zone: 'Common', kw: 100, qty: 1, startTime: '01:00', operationHours: 10 },
+        { id: 'A2', name: 'Pump 2', type: 'pump', zone: 'Common', kw: 200, qty: 1, startTime: '01:00', operationHours: 10 },
+        { id: 'A3', name: 'Pump 3', type: 'pump', zone: 'Common', kw: 500, qty: 1, startTime: '01:00', operationHours: 5 },
+        { id: 'A4', name: 'Aux 1', type: 'load', zone: 'Common', kw: 200, qty: 1, startTime: '01:00', operationHours: 6 },
+        { id: 'A5', name: 'Aux 2', type: 'load', zone: 'Common', kw: 100, qty: 1, startTime: '01:00', operationHours: 8 }
+      ]
+    },
+    gensets: [
+      { id: 'G1', name: 'Fuel DG 1', estimateMethod: 'fuel_sfc', fuelLiters: 1500, fuelPeriodDays: 15, runtimeHours: 6, sfcLPerKwh: 0.27 },
+      { id: 'G2', name: 'Fuel DG 2', estimateMethod: 'fuel_sfc', fuelLiters: 2000, fuelPeriodDays: 10, runtimeHours: 5, sfcLPerKwh: 0.27 },
+      { id: 'G3', name: 'Fuel DG 3', estimateMethod: 'fuel_sfc', fuelLiters: 4000, fuelPeriodDays: 20, runtimeHours: 5, sfcLPerKwh: 0.27 }
+    ],
+    designTargets: { replacementPct: 80, bessRole: 'diesel_replacement' }
+  };
+
+  const result = calculateEpcDesignProject(project, { now: '2026-06-21T00:00:00.000Z' });
+  const assetHour1 = result.feederZoning.assetTimeProfile.hourly.find(row => row.hour === 1);
+  const flowHour1 = result.energyFlow.rows.find(row => row.flowKey === 'asset-list-1');
+
+  assert.equal(result.load.loadSource, 'Genset Fuel Mapping');
+  assert.equal(result.load.dailyLoadKwh.toFixed(2), '1851.85');
+  assert.equal(assetHour1.loadKw, 1100);
+  assert.equal(flowHour1.loadKw, 1100);
+  assert.equal(
+    flowHour1.loadSplits.reduce((sum, split) => sum + split.loadKw, 0).toFixed(2),
+    '1100.00'
+  );
+
+  const fallbackResult = calculateEpcDesignProject({
+    ...project,
+    loads: {
+      ...project.loads,
+      assets: project.loads.assets.map(asset => ({ ...asset, operationHours: 0 }))
+    }
+  }, { now: '2026-06-21T00:00:00.000Z' });
+  assert.equal(fallbackResult.feederZoning.assetTimeProfile.dailyKwh, 0);
+  assert.equal(fallbackResult.energyFlow.rows.some(row => String(row.flowKey).startsWith('asset-list-')), false);
+  assert.ok(fallbackResult.energyFlow.rows.some(row => row.loadKw > 0), 'Genset fallback should still produce EMS load rows');
+});
+
 test('EPC genset Use Data uses genset kVA as PCS peak cap instead of Asset List connected peak', () => {
   const result = calculateEpcDesignProject({
     site: { gridMode: 'island' },

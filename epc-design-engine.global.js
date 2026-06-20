@@ -3989,8 +3989,6 @@ function assetListHourlyLoadProfile(project, load) {
   const hourly = Array.isArray(profile?.hourly) ? profile.hourly : [];
   const profileDailyKwh = asNumber(profile?.dailyKwh, hourly.reduce((sum, row) => sum + asNumber(row.loadKw, 0), 0));
   if (!(profileDailyKwh > 0)) return [];
-  const loadDailyKwh = asNumber(load?.dailyLoadKwh, 0);
-  const scale = loadDailyKwh > 0 ? loadDailyKwh / profileDailyKwh : 1;
   return hourly
     .filter(row => asNumber(row.loadKw, 0) > 0)
     .map(row => {
@@ -3999,7 +3997,7 @@ function assetListHourlyLoadProfile(project, load) {
         hour,
         hourLabel: `${formatMinutes(hour * 60)}-${formatMinutes(hour * 60 + 60, hour >= 23 ? 1 : 0)}`,
         flowKey: `asset-list-${hour}`,
-        loadKw: round(asNumber(row.loadKw, 0) * scale, 2),
+        loadKw: round(asNumber(row.loadKw, 0), 2),
         assets: Array.isArray(row.assets) ? row.assets.slice() : []
       };
     });

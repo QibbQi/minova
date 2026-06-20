@@ -17890,10 +17890,15 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             window.toggleEpcEmsFlowSeries(seriesId, true);
         };
 
+        function hasEpcExactAssetScheduleRows(rows = []) {
+            return (Array.isArray(rows) ? rows : []).some(row => String(row.flowKey || '').startsWith('asset-list-') && Number(row.loadKw) > 0);
+        }
+
         function getEpcEmsFlowProfileRows(result = {}) {
             const sourceRows = result.energyFlow?.rows || [];
             const settings = getEpcDeviceWorkSettings(result);
-            const profileRows = settings.deviceWorkModel.applyToEmsFlow
+            const useExactAssetSchedule = hasEpcExactAssetScheduleRows(sourceRows);
+            const profileRows = settings.deviceWorkModel.applyToEmsFlow && !useExactAssetSchedule
                 ? buildEpcDeviceWorkProfileRows(sourceRows, { ...settings, selectedRange: null })
                 : sourceRows;
             return carryEpcZeroFlowSocRows(profileRows, { wrapDay: true });
@@ -18087,7 +18092,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const sourceRows = getEpcEmsFlowProfileRows(result);
             const rows = getEpcEnergyFlowDisplayRows(result);
             const emsTableIntervalMinutes = Number(result.emsFlowDisplaySettings?.emsTableIntervalMinutes) === 5 ? 5 : 60;
-            const profileApplied = getEpcDeviceWorkSettings(result).deviceWorkModel.applyToEmsFlow;
+            const profileApplied = getEpcDeviceWorkSettings(result).deviceWorkModel.applyToEmsFlow && !hasEpcExactAssetScheduleRows(sourceRows);
             const stringDesign = result.pvStringDesign || {};
             const rowKey = row => getEpcEnergyFlowDisplayRowKey(row);
             const selectedRow = getEpcSelectedEnergyFlowDisplayRow(result);

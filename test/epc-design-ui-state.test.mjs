@@ -494,6 +494,7 @@ test('EPC load measurement modes expose method-specific inputs and state', () =>
     'renderEpcAssetListRows',
     'renderEpcGensetListRows',
     'saveEpcAssetListRows',
+    'saveEpcGensetFuelRows',
     'energyMeterSummary',
     'equipmentSchedule',
     'equipmentScheduleOperatingHours',
@@ -502,6 +503,54 @@ test('EPC load measurement modes expose method-specific inputs and state', () =>
     assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing measurement UI snippet: ${snippet}`);
   }
   assert.match(html, /load:\s*!\s*requirements\.load\.missing\.length && result\.load\?\.dailyLoadKwh > 0 && result\.load\?\.averageLoadKw > 0 && result\.load\?\.peakLoadKw > 0/);
+});
+
+test('EPC Assets List keeps genset fuel mapping conditional and searchable', () => {
+  const assetsPage = html.match(/<div id="epc-assets-list-page"[\s\S]*?<\/div>\s*<\/section>\s*<div id="epc-equipment-schedule-modal"/);
+  assert.ok(assetsPage, 'assets detail page should be found');
+  for (const snippet of [
+    'id="epc-genset-fuel-mapping-panel"',
+    'data-epc-genset-fuel-mapping-panel="true"',
+    'Save Genset Fuel'
+  ]) {
+    assert.match(assetsPage[0], new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing asset/genset mapping UI snippet: ${snippet}`);
+  }
+
+  for (const snippet of [
+    "epcSuggestionInputCell('asset', 'zone'",
+    "epcSuggestionInputCell('asset', 'line'",
+    "epcSuggestionInputCell('asset', 'area'",
+    "epcSuggestionInputCell('asset', 'assignedGensetIds'",
+    "epcSuggestionInputCell('genset', 'supportedAssetIds'",
+    "epcInputCell('asset', 'startTime'",
+    'type="time"',
+    'data-epc-asset-field="startType"',
+    'estimateMethod',
+    'kVA Profile',
+    'Fuel / SFC',
+    'powerFactor',
+    'loadFactor',
+    'overloadFactor'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing asset/genset mapping source snippet: ${snippet}`);
+  }
+
+  const measurementRenderer = extractFunction('renderEpcLoadMeasurementPanels', 'renderEpcDesignWorkspace');
+  assert.match(measurementRenderer, /epc-genset-fuel-mapping-panel/);
+  assert.match(measurementRenderer, /measurementMethod === 'asset_genset_fuel_mapping'/);
+
+  const saveAssets = html.match(/window\.saveEpcAssetListRows = \(\) => \{[\s\S]*?\n        \};/);
+  assert.ok(saveAssets, 'save assets handler should exist');
+  assert.doesNotMatch(saveAssets[0], /project\.loads\.measurementMethod = 'asset_genset_fuel_mapping'/);
+
+  for (const snippet of [
+    'function buildEpcAssetSuggestionOptions',
+    'function epcSuggestionInputCell',
+    'function syncEpcAssetGensetMappings',
+    'window.saveEpcGensetFuelRows'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing mapping helper snippet: ${snippet}`);
+  }
 });
 
 test('EPC Diesel SFC and SOC inputs are placed in the correct panels', () => {

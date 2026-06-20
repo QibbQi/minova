@@ -1133,9 +1133,9 @@ test('EPC asset genset fuel mapping creates feeder zoning load splits and topolo
       ]
     },
     gensets: [
-      { id: 'G1', name: 'TJQ1 Genset', zone: 'TJQ1', ratedKva: 750, fuelLiters: 700, fuelPeriodDays: 1, runtimeHours: 8, supportedAssetIds: ['C1', 'C2', 'S1', 'S2'] },
-      { id: 'G2', name: 'Remote Genset', zone: 'TJQ1', ratedKva: 350, fuelLiters: 260, fuelPeriodDays: 1, runtimeHours: 8, supportedAssetIds: ['C3'] },
-      { id: 'G3', name: 'Common Genset', zone: 'Common', ratedKva: 300, fuelLiters: 150, fuelPeriodDays: 1, runtimeHours: 10, supportedAssetIds: ['P1', 'V1'] }
+      { id: 'G1', name: 'TJQ1 Genset', zone: 'TJQ1', ratedKva: 750, fuelLiters: 900, fuelPeriodDays: 1, runtimeHours: 8, supportedAssetIds: ['C1', 'C2', 'S1', 'S2'] },
+      { id: 'G2', name: 'Remote Genset', zone: 'TJQ1', ratedKva: 350, fuelLiters: 500, fuelPeriodDays: 1, runtimeHours: 8, supportedAssetIds: ['C3'] },
+      { id: 'G3', name: 'Common Genset', zone: 'Common', ratedKva: 300, fuelLiters: 450, fuelPeriodDays: 1, runtimeHours: 10, supportedAssetIds: ['P1', 'V1'] }
     ],
     designTargets: { replacementPct: 80 }
   }, { now: '2026-06-20T00:00:00.000Z' });
@@ -1155,6 +1155,75 @@ test('EPC asset genset fuel mapping creates feeder zoning load splits and topolo
   assert.equal(result.loads.loadSplits.length, result.feederZoning.loadSplits.length);
   assert.ok(result.feederZoning.topologyRecommendations.some((item) => /VFD|metering|MV|transformer|split/i.test(item.recommendation)));
   assert.equal(Object.hasOwn(result, 'procurementAdvisory'), false);
+});
+
+test('EPC asset genset fuel mapping uses genset generation methods and asset time profile', () => {
+  const result = calculateEpcDesignProject({
+    site: { gridMode: 'island' },
+    loads: {
+      measurementMethod: 'asset_genset_fuel_mapping',
+      operationHoursPerDay: 10,
+      assets: [
+        { id: 'A1', name: 'Morning Crusher', type: 'crusher', zone: 'Pit A', line: 'L1', kw: 100, qty: 1, startTime: '08:00', operationHours: 4, dutyFactor: 1, simultaneityFactor: 1, assignedGensetIds: ['G1'] },
+        { id: 'A2', name: 'Day Screen', type: 'screen', zone: 'Pit A', conveyorSystem: 'CV1', kw: 50, qty: 1, startTime: '10:00', operationHours: 4, dutyFactor: 1, simultaneityFactor: 1, assignedGensetIds: ['G1'] },
+        { id: 'A3', name: 'Night Pump', type: 'pump', zone: 'Water', area: 'Pond', kw: 80, qty: 1, startTime: '23:00', operationHours: 3, dutyFactor: 1, simultaneityFactor: 1 },
+        { id: 'A4', name: 'Unmapped Workshop', type: 'auxiliary', zone: 'Common', area: 'Workshop', kw: 10, qty: 1, startTime: '05:00', operationHours: 1, dutyFactor: 1, simultaneityFactor: 1 }
+      ]
+    },
+    gensets: [
+      { id: 'G1', name: 'KVA Profile DG', zone: 'Pit A', estimateMethod: 'kva_profile', ratedKva: 500, powerFactor: 0.8, loadFactor: 0.6, runtimeHours: 10, overloadFactor: 1.1, supportedAssetIds: ['A1'] },
+      { id: 'G2', name: 'Fuel SFC DG', zone: 'Water', estimateMethod: 'fuel_sfc', ratedKva: 400, powerFactor: 0.8, overloadFactor: 1.05, fuelLiters: 540, fuelPeriodDays: 1, runtimeHours: 9, sfcLPerKwh: 0.27, supportedAssetIds: ['A3'] }
+    ],
+    designTargets: { replacementPct: 80 }
+  }, { now: '2026-06-20T00:00:00.000Z' });
+
+  assert.equal(result.load.measurementMethod, 'asset_genset_fuel_mapping');
+  assert.equal(result.load.dailyLoadKwh.toFixed(2), '4400.00');
+  assert.equal(result.load.averageLoadKw.toFixed(2), '440.00');
+  assert.ok(result.load.peakLoadKw >= 776);
+  assert.equal(result.feederZoning.gensetGeneration.totalDailyKwh.toFixed(2), '4400.00');
+  assert.equal(result.feederZoning.gensetGeneration.rows.map(row => row.estimateMethod).join(','), 'kva_profile,fuel_sfc');
+  assert.equal(result.feederZoning.assets.find(asset => asset.id === 'A2').assignedGensetIds.includes('G1'), true);
+  assert.equal(result.feederZoning.gensets.find(genset => genset.id === 'G1').supportedAssetIds.includes('A2'), true);
+  assert.ok(result.feederZoning.mappingWarnings.some(warning => /unmapped asset/i.test(warning.message)));
+
+  const hour10 = result.feederZoning.assetTimeProfile.hourly.find(row => row.hour === 10);
+  const hour23 = result.feederZoning.assetTimeProfile.hourly.find(row => row.hour === 23);
+  const hour1 = result.feederZoning.assetTimeProfile.hourly.find(row => row.hour === 1);
+  assert.equal(hour10.loadKw, 150);
+  assert.equal(hour23.loadKw, 80);
+  assert.equal(hour1.loadKw, 80);
+  assert.ok(result.feederZoning.feeders.some(row => row.peakProfileKw >= row.operatingKw));
+  assert.equal(result.loads.loadSplits.length, result.feederZoning.loadSplits.length);
+});
+
+test('EPC non-asset load measurements keep their load source while asset list drives feeder zoning', () => {
+  const result = calculateEpcDesignProject({
+    site: { gridMode: 'island' },
+    loads: {
+      measurementMethod: 'energy_meter',
+      operationHoursPerDay: 8,
+      energyMeterSummary: {
+        dailyLoadKwh: 8000,
+        averageLoadKw: 400,
+        rawPeakKw: 620,
+        smoothedPeakKw: 580
+      },
+      assets: [
+        { id: 'A1', name: 'Mapped Crusher', type: 'crusher', zone: 'Pit A', line: 'L1', kw: 150, qty: 1, startTime: '08:00', operationHours: 6, dutyFactor: 0.8, simultaneityFactor: 1, assignedGensetIds: ['G1'] }
+      ]
+    },
+    gensets: [
+      { id: 'G1', name: 'Support DG', zone: 'Pit A', estimateMethod: 'fuel_sfc', fuelLiters: 999, fuelPeriodDays: 1, runtimeHours: 8, sfcLPerKwh: 0.27, supportedAssetIds: ['A1'] }
+    ]
+  }, { now: '2026-06-20T00:00:00.000Z' });
+
+  assert.equal(result.load.loadSource, 'Energy Meter');
+  assert.equal(result.load.dailyLoadKwh, 8000);
+  assert.equal(result.load.averageLoadKw, 400);
+  assert.equal(result.feederZoning.feeders.length, 1);
+  assert.equal(result.loads.loadSplits[0].feederId, result.feederZoning.feeders[0].feederId);
+  assert.equal(result.feederZoning.gensetGeneration.totalDailyKwh > 3000, true);
 });
 
 test('EPC off-grid projects default to the C5 standard topology with LV and MV buses', () => {

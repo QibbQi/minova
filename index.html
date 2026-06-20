@@ -16311,7 +16311,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     gensetReason: adjusted.gensetReason || '',
                     curtailmentKw: epcChartRound(adjusted.curtailmentKw, 2),
                     unmetLoadKw: epcChartRound(adjusted.unmetLoadKw, 2),
-                    socPct: epcChartRound(adjusted.socPct, 1)
+                    socPct: epcChartRound(adjusted.socPct, 1),
+                    loadSplits: syncEpcDeviceWorkLoadSplits(row.loadSplits, row.loadKw)
                 };
             });
         }
@@ -16389,6 +16390,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 const loadShock = getEpcDeviceWorkLoadShockMultiplier(row, index, rows, model, 'load');
                 // Load shock is a concept-design visual assumption, not a replacement for measured load study.
                 const loadKwWithShock = Math.min(loadPeakKw * 1.25, Math.max(0, baseLoadKw * (1 + loadNoise + loadShock)));
+                const profiledLoadKw = epcChartRound(loadKwWithShock, 2);
                 const loadNoiseKw = baseLoadKw * loadNoise;
                 const loadShockKw = loadKwWithShock - baseLoadKw - loadNoiseKw;
                 return {
@@ -16398,7 +16400,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     baseLoadKw: epcChartRound(baseLoadKw, 2),
                     loadNoiseKw: epcChartRound(loadNoiseKw, 2),
                     loadShockKw: epcChartRound(loadShockKw, 2),
-                    loadKw: epcChartRound(loadKwWithShock, 2),
+                    loadKw: profiledLoadKw,
+                    loadSplits: syncEpcDeviceWorkLoadSplits(row.loadSplits, profiledLoadKw),
                     rows
                 };
             });
@@ -17807,6 +17810,32 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
         function getEpcEnergyFlowDurationHours(row = {}) {
             return Math.max(0, Number(row.durationHours) || (Number(row.intervalMinutes) > 0 ? Number(row.intervalMinutes) / 60 : 1));
+        }
+
+        function syncEpcDeviceWorkLoadSplits(loadSplits = [], loadKw = 0) {
+            const splits = Array.isArray(loadSplits) ? loadSplits : [];
+            const targetKw = Math.max(0, Number(loadKw) || 0);
+            if (!splits.length) return [];
+            const ratioTotal = splits.reduce((total, split) => total + Math.max(0, Number(split.ratioPct) || 0), 0);
+            const existingKwTotal = splits.reduce((total, split) => total + Math.max(0, Number(split.loadKw) || 0), 0);
+            let assignedKw = 0;
+            return splits.map((split, index) => {
+                const ratio = ratioTotal > 0
+                    ? Math.max(0, Number(split.ratioPct) || 0) / ratioTotal
+                    : existingKwTotal > 0
+                    ? Math.max(0, Number(split.loadKw) || 0) / existingKwTotal
+                    : 1 / splits.length;
+                const value = index === splits.length - 1
+                    ? Math.max(0, targetKw - assignedKw)
+                    : targetKw * ratio;
+                const roundedValue = epcChartRound(value, 2);
+                assignedKw += roundedValue;
+                return {
+                    ...split,
+                    ratioPct: epcChartRound(ratio * 100, 2),
+                    loadKw: index === splits.length - 1 ? epcChartRound(Math.max(0, targetKw - (assignedKw - roundedValue)), 2) : roundedValue
+                };
+            });
         }
 
         function hasEpcEnergyFlowMovement(row = {}) {

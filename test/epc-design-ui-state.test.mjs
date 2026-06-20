@@ -962,7 +962,7 @@ test('EPC Device Work profile renders realistic load and genset device behavior'
   assert.ok(profileSource, 'Device Work profile source should be found');
   assert.doesNotMatch(profileSource[0], /Math\.random\(\)/, 'Device Work profile must be deterministic across refreshes');
   assert.doesNotMatch(profileSource[0], /(^|[^.A-Za-z0-9_$])round\(/, 'Device Work profile must use browser-local rounding helpers');
-  assert.match(html, /loadKw:\s*epcChartRound\(loadKwWithShock, 2\)/, 'Load profile should include deterministic fluctuation and shock');
+  assert.match(html, /const profiledLoadKw = epcChartRound\(loadKwWithShock, 2\)/, 'Load profile should include deterministic fluctuation and shock');
   const shockSource = html.match(/function getEpcDeviceWorkLoadShockMultiplier\([\s\S]*?function quantizeEpcDeviceWorkGensetPlatform/);
   assert.ok(shockSource, 'Device Work shock source should be found');
   assert.match(shockSource[0], /const activeWindow = getEpcDeviceWorkActiveWindow\(rows, component\)/, 'shock position should use the active equipment window');
@@ -970,6 +970,9 @@ test('EPC Device Work profile renders realistic load and genset device behavior'
   assert.match(html, /pvToLoadKw:\s*epcChartRound\(adjusted\.pvToLoadKw, 2\)/, 'PV to load should come from SOC-ledger dispatch output');
   assert.match(html, /batteryToLoadKw:\s*epcChartRound\(adjusted\.batteryToLoadKw, 2\)/, 'Battery should come from SOC-ledger dispatch output');
   assert.match(html, /gensetToLoadKw:\s*epcChartRound\(adjusted\.gensetToLoadKw, 2\)/, 'Genset should come from SOC-ledger dispatch output');
+  assert.match(html, /function syncEpcDeviceWorkLoadSplits\(loadSplits = \[\], loadKw = 0\)/, 'Device Work should rescale branch load splits when visual load changes');
+  assert.match(profileSource[0], /loadSplits:\s*syncEpcDeviceWorkLoadSplits\(row\.loadSplits, profiledLoadKw\)/, 'profile rows should not keep stale asset split kW after load shock');
+  assert.match(html, /loadSplits:\s*syncEpcDeviceWorkLoadSplits\(row\.loadSplits, row\.loadKw\)/, 'SOC-ledger rows should keep branch totals aligned with displayed load');
   assert.match(html, /let pvToLoadKw = Math\.min\(pvOutputKw, loadKw\)/, 'PV should serve load before charging or curtailing');
   assert.match(html, /let remainingLoadKw = Math\.max\(0, loadKw - pvToLoadKw\)/, 'Battery and genset should only serve remaining load');
   assert.match(html, /const demandKw = remainingLoadKw;/, 'Genset should serve only the remaining load unless strategy changes');

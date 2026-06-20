@@ -597,7 +597,7 @@ function normalizePowerEdge(edge = {}, index = 0) {
 
 function normalizeLoadCount(value) {
   const n = Math.round(asNumber(value, 1));
-  return Math.min(12, Math.max(1, Number.isFinite(n) ? n : 1));
+  return Math.min(6, Math.max(1, Number.isFinite(n) ? n : 1));
 }
 
 function normalizeAssetType(value) {

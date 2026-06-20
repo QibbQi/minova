@@ -508,6 +508,8 @@ test('EPC load measurement modes expose method-specific inputs and state', () =>
 test('EPC Assets List keeps genset fuel mapping conditional and searchable', () => {
   const assetsPage = html.match(/<div id="epc-assets-list-page"[\s\S]*?<\/div>\s*<\/section>\s*<div id="epc-equipment-schedule-modal"/);
   assert.ok(assetsPage, 'assets detail page should be found');
+  const assetTable = assetsPage[0].match(/<div class="rounded-2xl border border-slate-200 overflow-hidden">[\s\S]*?<div id="epc-genset-fuel-mapping-panel"/);
+  assert.ok(assetTable, 'asset table section should be found');
   for (const snippet of [
     'id="epc-genset-fuel-mapping-panel"',
     'data-epc-genset-fuel-mapping-panel="true"',
@@ -520,8 +522,10 @@ test('EPC Assets List keeps genset fuel mapping conditional and searchable', () 
     "epcSuggestionInputCell('asset', 'zone'",
     "epcSuggestionInputCell('asset', 'line'",
     "epcSuggestionInputCell('asset', 'area'",
+    "epcSuggestionInputCell('asset', 'conveyorSystem'",
     "epcSuggestionInputCell('asset', 'assignedGensetIds'",
     "epcSuggestionInputCell('genset', 'supportedAssetIds'",
+    'epc-asset-conveyor-options',
     "epcInputCell('asset', 'startTime'",
     'type="time"',
     'data-epc-asset-field="startType"',
@@ -533,6 +537,25 @@ test('EPC Assets List keeps genset fuel mapping conditional and searchable', () 
     'overloadFactor'
   ]) {
     assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing asset/genset mapping source snippet: ${snippet}`);
+  }
+  for (const snippet of [
+    '<th class="px-2 py-2 text-right">Fuel L</th>',
+    '<th class="px-2 py-2 text-right">Fuel Days</th>',
+    '<th class="px-2 py-2 text-right">Fuel h</th>',
+    "epcInputCell('asset', 'fuelLiters'",
+    "epcInputCell('asset', 'fuelPeriodDays'",
+    "epcInputCell('asset', 'fuelRuntimeHours'",
+    "'Fuel Liters'",
+    "'Fuel Runtime Hours'"
+  ]) {
+    assert.doesNotMatch(assetTable[0], new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `Asset List should not expose obsolete fuel input: ${snippet}`);
+  }
+  for (const snippet of [
+    'row.powerFactor ?? 0.8',
+    'row.loadFactor ?? 0.7',
+    'row.overloadFactor ?? 0.95'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing genset default snippet: ${snippet}`);
   }
 
   const measurementRenderer = extractFunction('renderEpcLoadMeasurementPanels', 'renderEpcDesignWorkspace');
@@ -1655,10 +1678,12 @@ test('EPC Topology selector is editable while EMS Flow remains electrical locked
 
 test('EPC EMS Flow renders topology-aware standard components and validation state', () => {
   const flowRenderer = html.match(/function renderEpcFlowDiagram\(result, row\)[\s\S]*?function renderEpcSocBadge/);
+  const topologyRenderer = html.match(/function renderEpcTopologyFlowDiagram\(result, row, options = \{\}\)[\s\S]*?function renderEpcFlowDiagram/);
   assert.ok(flowRenderer, 'EMS Flow renderer should be found');
+  assert.ok(topologyRenderer, 'topology EMS Flow renderer should be found');
   for (const snippet of [
     'function buildEpcTopologyFlowRenderModel(result, row)',
-    'function renderEpcTopologyFlowDiagram(result, row)',
+    'function renderEpcTopologyFlowDiagram(result, row, options = {})',
     'result.topologyFlow',
     'topologyFlow.nodes',
     'topologyFlow.edges',
@@ -1679,6 +1704,12 @@ test('EPC EMS Flow renders topology-aware standard components and validation sta
   ]) {
     assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing topology-aware flow snippet: ${snippet}`);
   }
+  assert.match(html, /function renderEpcTopologyFlowDiagram\(result, row, options = \{\}\)/);
+  assert.match(html, /data-epc-flow-zone-summary="true"/);
+  assert.match(html, /const feederZoning = result\.feederZoning \|\| \{\};/);
+  assert.match(html, /includeZoneSummary === false/);
+  assert.match(html, /renderEpcTopologyFlowDiagram\(result, selectedRow, \{ includeZoneSummary: false \}\)/);
+  assert.match(topologyRenderer[0], /<svg id="epc-flow-svg"[\s\S]*?<\/svg>[\s\S]*?renderEpcTopologyFlowZoneSummary\(result\)/, 'zone-aware grouping should render below the EMS Flow SVG');
   assert.doesNotMatch(flowRenderer[0], /<path class="\$\{flowLineClass\(row\?\.pvOutputKw/, 'EMS Flow should not render fixed legacy paths directly');
   assert.doesNotMatch(flowRenderer[0], /Customize Connections|openEpcTopologyConnectionModal/, 'EMS Flow should not expose topology editing controls');
 });

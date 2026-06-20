@@ -652,9 +652,9 @@ function normalizeGensetAssets(value = []) {
         estimateMethod: explicitMethod || (fuelLiters > 0 ? 'fuel_sfc' : 'kva_profile'),
         ratedKva,
         ratedKw: asNumber(row?.ratedKw ?? row?.kw, 0),
-        powerFactor: clamp(row?.powerFactor ?? row?.pf, 0.1, 1, EPC_DESIGN_DEFAULTS.powerFactor || 0.8),
-        loadFactor: clamp(row?.loadFactor ?? row?.gensetLoadFactor, 0, 1, 0),
-        overloadFactor: Math.max(1, asNumber(row?.overloadFactor ?? row?.peakFactor, 1)),
+        powerFactor: clamp(row?.powerFactor ?? row?.pf, 0.1, 1, 0.8),
+        loadFactor: clamp(row?.loadFactor ?? row?.gensetLoadFactor, 0, 1, 0.7),
+        overloadFactor: clamp(row?.overloadFactor ?? row?.peakFactor, 0, 1.5, 0.95),
         assetCode: String(row?.assetCode || row?.code || '').trim(),
         supportedAssetIds: normalizeIdList(row?.supportedAssetIds ?? row?.assetIds ?? row?.supportedAssets),
         fuelLiters,
@@ -801,10 +801,14 @@ function buildAssetTimeProfile(assetInputs = [], feeders = []) {
 function calculateGensetGenerationRow(genset = {}, defaults = {}) {
   const method = normalizeGensetEstimateMethod(genset.estimateMethod) || 'fuel_sfc';
   const pf = clamp(genset.powerFactor, 0.1, 1, defaults.powerFactor || 0.8);
-  const runtimeHours = Math.max(0, asNumber(genset.runtimeHours || genset.hoursPerDay, 0));
+  const runtimeHours = Math.max(0, asNumber(genset.runtimeHours, 0) > 0
+    ? asNumber(genset.runtimeHours, 0)
+    : asNumber(genset.hoursPerDay, 0) > 0
+      ? asNumber(genset.hoursPerDay, 0)
+      : asNumber(defaults.runtimeHours, 0));
   const ratedKw = asNumber(genset.ratedKw, 0) > 0 ? asNumber(genset.ratedKw, 0) : asNumber(genset.ratedKva, 0) * pf;
-  const loadFactor = clamp(genset.loadFactor, 0, 1, method === 'kva_profile' ? 0.7 : 0);
-  const overloadFactor = Math.max(1, asNumber(genset.overloadFactor, 1));
+  const loadFactor = clamp(genset.loadFactor, 0, 1, 0.7);
+  const overloadFactor = clamp(genset.overloadFactor, 0, 1.5, 0.95);
   const sfc = Math.max(0.001, asNumber(genset.sfcLPerKwh, defaults.sfcLPerKwh || EPC_DESIGN_DEFAULTS.dieselSfcLPerKwh));
   const dailyFuel = asNumber(genset.fuelLiters, 0) / Math.max(1, asNumber(genset.fuelPeriodDays, 1));
   const dailyKwh = method === 'kva_profile'
@@ -835,9 +839,20 @@ function calculateGensetGenerationRow(genset = {}, defaults = {}) {
 
 function buildGensetGenerationSummary(gensets = [], defaults = {}) {
   const rows = gensets.map(genset => calculateGensetGenerationRow(genset, defaults));
+  const fuelRows = rows.filter(row => row.estimateMethod === 'fuel_sfc' && row.dailyKwh > 0);
+  const kvaRows = rows.filter(row => row.estimateMethod === 'kva_profile' && row.dailyKwh > 0);
+  const totalFuelProfileDailyKwh = round(fuelRows.reduce((sum, row) => sum + row.dailyKwh, 0), 4);
+  const totalKvaProfileDailyKwh = round(kvaRows.reduce((sum, row) => sum + row.dailyKwh, 0), 4);
+  const energyBasisRows = fuelRows.length ? fuelRows : rows.filter(row => row.dailyKwh > 0);
+  const energyBasisDailyKwh = round(energyBasisRows.reduce((sum, row) => sum + row.dailyKwh, 0), 4);
   return {
     rows,
     totalDailyKwh: round(rows.reduce((sum, row) => sum + row.dailyKwh, 0), 4),
+    totalFuelProfileDailyKwh,
+    totalKvaProfileDailyKwh,
+    energyBasisDailyKwh,
+    energyBasisMethod: fuelRows.length ? 'fuel_sfc' : energyBasisRows.length ? 'kva_profile' : 'none',
+    energyBasisRuntimeHours: round(energyBasisRows.reduce((max, row) => Math.max(max, row.runtimeHours), 0), 4),
     totalAverageKw: round(rows.reduce((sum, row) => sum + row.averageKw, 0), 4),
     totalPeakSupportKw: round(rows.reduce((sum, row) => sum + row.peakSupportKw, 0), 4),
     maxRuntimeHours: round(rows.reduce((max, row) => Math.max(max, row.runtimeHours), 0), 4)
@@ -860,10 +875,75 @@ function calculateFeederVoltageDropPct(currentA = 0, distanceM = 0, system = {})
   return (Math.max(0, currentA) * resistance * (Math.max(0, distanceM) / 1000) / voltage) * 100;
 }
 
+function assetGensetClusterKey(asset = {}) {
+  const ids = normalizeIdList(asset.assignedGensetIds).sort();
+  return ids.length ? ids.join('+') : 'UNKNOWN';
+}
+
+function assetDistanceBucket(asset = {}, thresholdM = 80) {
+  const distance = Math.max(0, asNumber(asset.distanceM, 0));
+  if (!(distance > 0)) return 'unknown-distance';
+  return `d${Math.floor(distance / Math.max(1, thresholdM))}`;
+}
+
+function assetHasProcessGroupingBasis(asset = {}) {
+  return Boolean(String(asset.line || asset.area || asset.conveyorSystem || '').trim());
+}
+
+function assetSequenceHint(ids = []) {
+  const parsed = ids.map(id => {
+    const match = String(id || '').match(/([A-Za-z]+)\s*0*(\d+)$/);
+    return match ? { prefix: match[1].toUpperCase(), number: Number(match[2]) } : null;
+  }).filter(Boolean);
+  if (parsed.length < 2) return false;
+  const prefix = parsed[0].prefix;
+  const numbers = parsed.map(item => item.number).sort((a, b) => a - b);
+  return parsed.every(item => item.prefix === prefix)
+    && numbers.every((number, index) => index === 0 || number - numbers[index - 1] <= 1);
+}
+
+function buildFeederAssumptionMeta(assets = [], system = {}) {
+  if (!assets.length) return { assumed: false, confidenceScore: 100, confidenceBand: 'high', assumption: '', needsVerification: [] };
+  const zones = new Set(assets.map(asset => asset.zone || 'Common'));
+  const types = new Set(assets.map(asset => normalizeAssetType(asset.type)));
+  const clusters = new Set(assets.map(asset => assetGensetClusterKey(asset)));
+  const distances = assets.map(asset => Math.max(0, asNumber(asset.distanceM, 0))).filter(distance => distance > 0);
+  const hasProcessBasis = assets.every(asset => assetHasProcessGroupingBasis(asset));
+  const assumed = !hasProcessBasis;
+  const distanceClose = distances.length > 1 ? Math.max(...distances) - Math.min(...distances) <= 80 : distances.length === 1;
+  let score = 0;
+  if (zones.size === 1) score += 30;
+  if (types.size === 1) score += 25;
+  if (clusters.size === 1 && !clusters.has('UNKNOWN')) score += 20;
+  if (distanceClose) score += 15;
+  if (assetSequenceHint(assets.map(asset => asset.id))) score += 10;
+  if (types.size > 1) score -= 30;
+  if (zones.size > 1) score -= 50;
+  if (!hasProcessBasis) score -= 20;
+  if (assets.some(asset => !(asset.kw > 0))) score -= 20;
+  const confidenceScore = Math.max(0, Math.min(assumed ? 79 : 100, score));
+  const confidenceBand = confidenceScore >= 80 ? 'high' : confidenceScore >= 60 ? 'medium' : confidenceScore >= 40 ? 'low' : 'review';
+  return {
+    assumed,
+    confidenceScore,
+    confidenceBand,
+    assumption: assumed ? 'Grouped by zone + type + genset cluster + distance because line/area/conveyor is unknown.' : 'Grouped by explicit line/area/conveyor process basis.',
+    needsVerification: assumed ? [
+      'confirm same production line',
+      'confirm motor kW',
+      'confirm starter type',
+      'confirm cable route'
+    ] : []
+  };
+}
+
 function feederGroupingKey(asset = {}) {
   const zone = asset.zone || 'Common';
   const type = normalizeAssetType(asset.type);
+  const cluster = assetGensetClusterKey(asset);
+  const proximity = assetDistanceBucket(asset);
   if (type === 'vfd' || asset.startType === 'vfd') return `vfd:${asset.id}`;
+  if (!assetHasProcessGroupingBasis(asset)) return `${type}:${zone}:cluster:${cluster}:${proximity}`;
   if (type === 'crusher') {
     const line = asset.line || 'line';
     return asset.distanceM > 0 && asset.distanceM < 100 ? `crusher:${zone}:${line}:near` : `crusher:${zone}:${line}:${asset.id}`;
@@ -876,6 +956,7 @@ function feederGroupingKey(asset = {}) {
 function buildFeederRow(assets = [], index = 0, system = {}, splitReason = '') {
   const primary = assets[0] || {};
   const type = normalizeAssetType(primary.type || 'load');
+  const assumptionMeta = buildFeederAssumptionMeta(assets, system);
   const connectedKw = assets.reduce((sum, asset) => sum + asset.kw * asset.qty, 0);
   const operatingKw = assets.reduce((sum, asset) => sum + asset.kw * asset.qty * asset.dutyFactor * asset.simultaneityFactor, 0);
   const dailyKwh = assets.reduce((sum, asset) => sum + asset.kw * asset.qty * asset.operationHours * asset.dutyFactor * asset.simultaneityFactor, 0);
@@ -887,10 +968,12 @@ function buildFeederRow(assets = [], index = 0, system = {}, splitReason = '') {
   const meteringRequired = connectedKw > FEEDER_ZONING_DEFAULTS.mandatoryMeteringKw;
   const assignedGensetIds = Array.from(new Set(assets.flatMap(asset => asset.assignedGensetIds || [])));
   const feederId = `${idSafe(primary.zone || 'zone')}-${idSafe(type)}-f${index + 1}`;
+  const review = currentA > FEEDER_ZONING_DEFAULTS.maxFeederCurrentA || voltageDropPct > FEEDER_ZONING_DEFAULTS.maxVoltageDropPct;
   return {
     feederId,
     zone: primary.zone || 'Common',
     type,
+    sourceBus: `${idSafe(primary.zone || 'zone').toUpperCase()}_${idSafe(assetGensetClusterKey(primary)).toUpperCase()}_CLUSTER_BUS`,
     assets: assets.map(asset => asset.id),
     assetNames: assets.map(asset => asset.name),
     assetCount: assets.reduce((sum, asset) => sum + asset.qty, 0),
@@ -907,7 +990,12 @@ function buildFeederRow(assets = [], index = 0, system = {}, splitReason = '') {
     meteringRequired,
     assignedGensetIds,
     splitReason,
-    status: currentA > FEEDER_ZONING_DEFAULTS.maxFeederCurrentA || voltageDropPct > FEEDER_ZONING_DEFAULTS.maxVoltageDropPct ? 'REVIEW' : 'PASS',
+    assumed: assumptionMeta.assumed,
+    confidenceScore: assumptionMeta.confidenceScore,
+    confidenceBand: assumptionMeta.confidenceBand,
+    assumption: assumptionMeta.assumption,
+    needsVerification: assumptionMeta.needsVerification,
+    status: review ? 'REVIEW' : assumptionMeta.assumed ? 'ASSUMED' : 'PASS',
     source: 'feeder-zoning'
   };
 }
@@ -971,6 +1059,7 @@ function buildFeederZoning(assetInputs = [], gensets = [], options = {}) {
   });
   const gensetGeneration = buildGensetGenerationSummary(gensetRows, {
     powerFactor: system.powerFactor,
+    runtimeHours: options.operationHoursPerDay,
     sfcLPerKwh: options.sfcLPerKwh || EPC_DESIGN_DEFAULTS.dieselSfcLPerKwh
   });
   const zones = Array.from(new Set(assets.map(asset => asset.zone || 'Common')));
@@ -1179,6 +1268,10 @@ function normalizeLoadSplits(value = [], count = 1) {
 }
 
 function defaultLoadSplitsForTopology(loads = {}) {
+  if (loads.manualLoadSplits || String(loads.loadSplitSource || '').trim().toLowerCase() === 'manual') {
+    const manualCount = normalizeLoadCount(loads.loadCount ?? (Array.isArray(loads.loadSplits) ? loads.loadSplits.length : 1));
+    return normalizeLoadSplits(loads.loadSplits || [], manualCount);
+  }
   const assetSplits = loadSplitsFromAssetGroups(loads.assetGroups || []);
   if (assetSplits.length) return normalizeLoadSplits(assetSplits, assetSplits.length);
   const count = normalizeLoadCount(loads.loadCount ?? (Array.isArray(loads.loadSplits) ? loads.loadSplits.length : 1));
@@ -2015,10 +2108,16 @@ export function normalizeEpcDesignProject(raw = {}, options = {}) {
         : loadSplitsFromAssetGroups(assetGroups);
     const inferredLoadCount = assetLoadSplits.length || (Array.isArray(loads.loadSplits) ? loads.loadSplits.length : 1);
     const requestedLoadCount = normalizeLoadCount(loads.loadCount ?? raw.loadCount ?? inferredLoadCount);
-    const loadCount = assetLoadSplits.length
+    const manualLoadSplits = Boolean(loads.manualLoadSplits ?? raw.manualLoadSplits)
+      || String(loads.loadSplitSource || raw.loadSplitSource || '').trim().toLowerCase() === 'manual';
+    const loadCount = manualLoadSplits
+        ? requestedLoadCount
+        : assetLoadSplits.length
         ? normalizeLoadCount(Math.max(requestedLoadCount, assetLoadSplits.length))
         : requestedLoadCount;
-    const loadSplits = assetLoadSplits.length
+    const loadSplits = manualLoadSplits
+        ? normalizeLoadSplits(loads.loadSplits || raw.loadSplits || [], loadCount)
+        : assetLoadSplits.length
         ? normalizeLoadSplits(assetLoadSplits, loadCount)
         : normalizeLoadSplits(loads.loadSplits || raw.loadSplits || [], loadCount);
   const scheduleWorkingHours = Math.min(24, Math.max(1, hoursBetweenTimes(operationStartTime, operationFinishTime)));
@@ -2087,6 +2186,8 @@ export function normalizeEpcDesignProject(raw = {}, options = {}) {
         criticalLoadKw: asNumber(loads.criticalLoadKw ?? raw.criticalLoadKw, 0),
         loadCount,
         loadSplits,
+        manualLoadSplits,
+        loadSplitSource: manualLoadSplits ? 'manual' : assetLoadSplits.length ? 'asset_feeder_zoning' : 'input',
         assets: assetInputs,
         assetGroups,
         assetFeederGroups: assetGroups,
@@ -2419,14 +2520,14 @@ function calculateAssetGensetFuelLoad(project, now) {
     const sfc = Math.max(0.001, asNumber(item.sfcLPerKwh, project.assumptions.dieselSfcLPerKwh));
     return sum + (dailyFuel > 0 ? dailyFuel / sfc : 0);
   }, 0);
-  const fuelDailyKwh = generation.totalDailyKwh || assetFuelDailyKwh;
-  const dailyLoadKwh = generation.totalDailyKwh > 0 ? generation.totalDailyKwh : assetDailyKwh > 0 ? assetDailyKwh : fuelDailyKwh;
-  const operatingHours = generation.maxRuntimeHours > 0
-    ? generation.maxRuntimeHours
+  const fuelDailyKwh = generation.energyBasisDailyKwh || assetFuelDailyKwh;
+  const dailyLoadKwh = generation.energyBasisDailyKwh > 0 ? generation.energyBasisDailyKwh : assetDailyKwh > 0 ? assetDailyKwh : fuelDailyKwh;
+  const operatingHours = generation.energyBasisRuntimeHours > 0
+    ? generation.energyBasisRuntimeHours
+    : generation.maxRuntimeHours > 0
+      ? generation.maxRuntimeHours
     : Math.max(1, assets.reduce((max, asset) => Math.max(max, asset.operationHours), project.loads.operationHoursPerDay || 0));
-  const averageLoadKw = generation.totalDailyKwh > 0 && generation.maxRuntimeHours > 0
-    ? dailyLoadKwh / generation.maxRuntimeHours
-    : dailyLoadKwh / operatingHours;
+  const averageLoadKw = dailyLoadKwh / operatingHours;
   const feederPeakKw = feeders.reduce((sum, row) => sum + Math.max(row.peakProfileKw || 0, row.operatingKw || 0, row.totalKw || 0), 0);
   const peakLoadKw = Math.max(averageLoadKw * Math.max(1, project.loads.peakLoadSafetyFactor || project.assumptions.peakLoadFactor), connectedPeakKw, feederPeakKw, generation.totalPeakSupportKw || 0);
   return decorateLoadResult(project, {
@@ -2442,8 +2543,8 @@ function calculateAssetGensetFuelLoad(project, now) {
     buildFormulaTrace({
       key: 'dailyLoadKwh',
       label: 'Daily Load',
-      formula: 'Σ Genset generation estimate, fallback to asset kWh if genset data is incomplete',
-      inputs: { assetCount: assets.length, assetDailyKwh: round(assetDailyKwh, 4), fuelDailyKwh: round(fuelDailyKwh, 4), gensetDailyKwh: round(generation.totalDailyKwh || 0, 4) },
+      formula: 'Σ Fuel/SFC genset generation estimate, fallback to kVA profile or asset kWh if fuel data is incomplete',
+      inputs: { assetCount: assets.length, assetDailyKwh: round(assetDailyKwh, 4), fuelDailyKwh: round(fuelDailyKwh, 4), gensetDailyKwh: round(generation.totalDailyKwh || 0, 4), energyBasisMethod: generation.energyBasisMethod || 'asset' },
       result: round(dailyLoadKwh, 4),
       unit: 'kWh/day',
       assumptionSource: 'Asset + Genset Fuel Mapping',

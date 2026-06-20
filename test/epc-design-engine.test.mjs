@@ -1178,10 +1178,12 @@ test('EPC asset genset fuel mapping uses genset generation methods and asset tim
   }, { now: '2026-06-20T00:00:00.000Z' });
 
   assert.equal(result.load.measurementMethod, 'asset_genset_fuel_mapping');
-  assert.equal(result.load.dailyLoadKwh.toFixed(2), '4400.00');
-  assert.equal(result.load.averageLoadKw.toFixed(2), '440.00');
+  assert.equal(result.load.dailyLoadKwh.toFixed(2), '2000.00');
+  assert.equal(result.load.averageLoadKw.toFixed(2), '222.22');
   assert.ok(result.load.peakLoadKw >= 776);
   assert.equal(result.feederZoning.gensetGeneration.totalDailyKwh.toFixed(2), '4400.00');
+  assert.equal(result.feederZoning.gensetGeneration.totalFuelProfileDailyKwh.toFixed(2), '2000.00');
+  assert.equal(result.feederZoning.gensetGeneration.energyBasisMethod, 'fuel_sfc');
   assert.equal(result.feederZoning.gensetGeneration.rows.map(row => row.estimateMethod).join(','), 'kva_profile,fuel_sfc');
   assert.equal(result.feederZoning.assets.find(asset => asset.id === 'A2').assignedGensetIds.includes('G1'), true);
   assert.equal(result.feederZoning.gensets.find(genset => genset.id === 'G1').supportedAssetIds.includes('A2'), true);
@@ -1195,6 +1197,94 @@ test('EPC asset genset fuel mapping uses genset generation methods and asset tim
   assert.equal(hour1.loadKw, 80);
   assert.ok(result.feederZoning.feeders.some(row => row.peakProfileKw >= row.operatingKw));
   assert.equal(result.loads.loadSplits.length, result.feederZoning.loadSplits.length);
+});
+
+test('EPC asset genset fuel mapping uses Fuel/SFC for energy and kVA profile for capacity checks', () => {
+  const result = calculateEpcDesignProject({
+    site: { gridMode: 'island' },
+    loads: {
+      measurementMethod: 'asset_genset_fuel_mapping',
+      operationHoursPerDay: 10,
+      assets: [
+        { id: 'C1', name: 'Crusher', type: 'crusher', zone: 'Pit A', kw: 250, qty: 1, startTime: '08:00', operationHours: 8, dutyFactor: 1, simultaneityFactor: 1, assignedGensetIds: ['G-FUEL', 'G-KVA'] }
+      ]
+    },
+    gensets: [
+      { id: 'G-FUEL', name: 'Fuel Profile DG', zone: 'Pit A', estimateMethod: 'fuel_sfc', ratedKva: 500, fuelLiters: 540, fuelPeriodDays: 1, runtimeHours: 9, sfcLPerKwh: 0.27, supportedAssetIds: ['C1'] },
+      { id: 'G-KVA', name: 'Capacity Check DG', zone: 'Pit A', estimateMethod: 'kva_profile', ratedKva: 1000, supportedAssetIds: ['C1'] }
+    ],
+    designTargets: { replacementPct: 80 }
+  }, { now: '2026-06-20T00:00:00.000Z' });
+
+  assert.equal(result.feederZoning.gensetGeneration.totalFuelProfileDailyKwh.toFixed(2), '2000.00');
+  assert.equal(result.feederZoning.gensetGeneration.totalKvaProfileDailyKwh.toFixed(2), '5600.00');
+  assert.equal(result.feederZoning.gensetGeneration.energyBasisMethod, 'fuel_sfc');
+  assert.equal(result.load.dailyLoadKwh.toFixed(2), '2000.00');
+  assert.equal(result.load.averageLoadKw.toFixed(2), '222.22');
+  assert.ok(result.load.peakLoadKw >= 760, 'kVA profile should still lift PCS/transformer/cable/protection capacity basis');
+});
+
+test('EPC inferred feeder grouping uses zone type genset cluster and distance when line details are missing', () => {
+  const result = calculateEpcDesignProject({
+    site: { gridMode: 'island' },
+    loads: {
+      measurementMethod: 'energy_meter',
+      energyMeterSummary: { dailyLoadKwh: 6000, averageLoadKw: 300, rawPeakKw: 500, smoothedPeakKw: 480 },
+      operationHoursPerDay: 8,
+      assets: [
+        { id: 'C3', name: 'Crusher C3', type: 'crusher', zone: 'TJQ1', kw: 160, qty: 1, distanceM: 50, operationHours: 8, assignedGensetIds: ['G3'] },
+        { id: 'C4', name: 'Crusher C4', type: 'crusher', zone: 'TJQ1', kw: 150, qty: 1, distanceM: 70, operationHours: 8, assignedGensetIds: ['G3'] },
+        { id: 'C5', name: 'Crusher C5', type: 'crusher', zone: 'TJQ1', kw: 150, qty: 1, distanceM: 65, operationHours: 8, assignedGensetIds: ['G4'] },
+        { id: 'S3', name: 'Screen S3', type: 'screen', zone: 'TJQ1', kw: 80, qty: 1, distanceM: 55, operationHours: 8, assignedGensetIds: ['G3'] },
+        { id: 'S4', name: 'Screen S4', type: 'screen', zone: 'TJQ1', kw: 85, qty: 1, distanceM: 75, operationHours: 8, assignedGensetIds: ['G3'] }
+      ]
+    },
+    gensets: [
+      { id: 'G3', name: 'G3', zone: 'TJQ1', ratedKva: 800 },
+      { id: 'G4', name: 'G4', zone: 'TJQ1', ratedKva: 500 }
+    ]
+  }, { now: '2026-06-20T00:00:00.000Z' });
+
+  const crusherG3 = result.feederZoning.feeders.find(row => row.assets.includes('C3'));
+  const crusherG4 = result.feederZoning.feeders.find(row => row.assets.includes('C5'));
+  const screenG3 = result.feederZoning.feeders.find(row => row.assets.includes('S3'));
+  assert.deepEqual(crusherG3.assets, ['C3', 'C4']);
+  assert.deepEqual(crusherG4.assets, ['C5']);
+  assert.deepEqual(screenG3.assets, ['S3', 'S4']);
+  assert.equal(crusherG3.sourceBus, 'TJQ1_G3_CLUSTER_BUS');
+  assert.equal(crusherG3.status, 'ASSUMED');
+  assert.equal(crusherG3.confidenceBand, 'medium');
+  assert.ok(crusherG3.assumption.includes('zone + type + genset cluster + distance'));
+});
+
+test('EPC explicit manual load splits override asset-derived topology branch count', () => {
+  const result = calculateEpcDesignProject({
+    site: { gridMode: 'island' },
+    loads: {
+      measurementMethod: 'energy_meter',
+      manualLoadSplits: true,
+      loadSplitSource: 'manual',
+      energyMeterSummary: { dailyLoadKwh: 9000, averageLoadKw: 450, rawPeakKw: 700, smoothedPeakKw: 680 },
+      loadCount: 4,
+      loadSplits: [
+        { id: 'load-1', label: 'Manual Pit A', ratioPct: 40 },
+        { id: 'load-2', label: 'Manual Pit B', ratioPct: 30 },
+        { id: 'load-3', label: 'Manual Pump', ratioPct: 20 },
+        { id: 'load-4', label: 'Manual Aux', ratioPct: 10 }
+      ],
+      assets: [
+        { id: 'C1', name: 'Crusher', type: 'crusher', zone: 'Pit A', kw: 250, qty: 1, line: 'L1', operationHours: 8, assignedGensetIds: ['G1'] },
+        { id: 'S1', name: 'Screen', type: 'screen', zone: 'Pit A', kw: 100, qty: 1, conveyorSystem: 'CV1', operationHours: 8, assignedGensetIds: ['G1'] }
+      ]
+    },
+    gensets: [{ id: 'G1', name: 'G1', zone: 'Pit A', ratedKva: 800 }]
+  }, { now: '2026-06-20T00:00:00.000Z' });
+
+  assert.equal(result.loads.loadCount, 4);
+  assert.equal(result.loads.loadSplits.map(split => split.label).join('|'), 'Manual Pit A|Manual Pit B|Manual Pump|Manual Aux');
+  assert.equal(result.loads.loadSplits.map(split => split.ratioPct).join(','), '40,30,20,10');
+  assert.equal(result.feederZoning.loadSplits.length, 2, 'asset-derived feeder suggestions should remain available separately');
+  assert.equal(result.topology.nodes.filter(node => node.type === 'LOAD').length, 4);
 });
 
 test('EPC non-asset load measurements keep their load source while asset list drives feeder zoning', () => {

@@ -516,9 +516,11 @@ test('EPC Assets List keeps genset fuel mapping conditional and searchable', () 
     'name="epc-asset-genset-load-basis"',
     'value="asset_list"',
     'value="genset_fuel_mapping"',
+    'Use Data',
     'selectEpcAssetGensetLoadBasis',
     'scheduleEpcAssetMappingLiveUpdate',
     'applyEpcAssetMappingLiveUpdate',
+    'syncEpcAssetGensetMappingInputs',
     'Save Genset Fuel'
   ]) {
     assert.match(assetsPage[0], new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing asset/genset mapping UI snippet: ${snippet}`);
@@ -583,6 +585,24 @@ test('EPC Assets List keeps genset fuel mapping conditional and searchable', () 
     'window.saveEpcGensetFuelRows'
   ]) {
     assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing mapping helper snippet: ${snippet}`);
+  }
+});
+
+test('EPC asset genset live updates write auto load count and mirrored mappings back to inputs', () => {
+  const liveUpdater = html.match(/function applyEpcAssetMappingLiveUpdate\(statusText = 'Draft changed locally'\)[\s\S]*?function scheduleEpcAssetMappingLiveUpdate\(\)/);
+  assert.ok(liveUpdater, 'asset mapping live updater should be found');
+  assert.match(liveUpdater[0], /setInputValue\('epc-load-count', normalized\.loads\.loadCount \|\| 1\)/);
+  assert.match(liveUpdater[0], /syncEpcAssetGensetMappingInputs\(synced\.assets, synced\.gensets\)/);
+
+  const mappingInputSync = html.match(/function syncEpcAssetGensetMappingInputs\(assets = \[\], gensets = \[\]\)[\s\S]*?function getEpcAssetGensetLoadBasis\(\)/);
+  assert.ok(mappingInputSync, 'asset/genset mapping input sync helper should be found');
+  for (const snippet of [
+    '[data-epc-asset-field="assignedGensetIds"]',
+    '[data-epc-genset-field="supportedAssetIds"]',
+    'csvListValue(asset.assignedGensetIds)',
+    'csvListValue(genset.supportedAssetIds)'
+  ]) {
+    assert.match(mappingInputSync[0], new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing mapping input sync snippet: ${snippet}`);
   }
 });
 

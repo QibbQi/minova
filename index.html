@@ -3132,7 +3132,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     </div>
                 </div>
             </div>
-            <div id="epc-assets-list-page" data-epc-detail-page="assets" data-epc-live-schedule="scheduleEpcAssetMappingLiveUpdate" data-epc-live-apply="applyEpcAssetMappingLiveUpdate" class="hidden p-4 space-y-4">
+            <div id="epc-assets-list-page" data-epc-detail-page="assets" data-epc-live-schedule="scheduleEpcAssetMappingLiveUpdate" data-epc-live-apply="applyEpcAssetMappingLiveUpdate" data-epc-mapping-sync="syncEpcAssetGensetMappingInputs" class="hidden p-4 space-y-4">
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
                     <div>
                         <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1 flex items-center gap-2" title="Number of downstream load branches in EMS Flow.">
@@ -3154,7 +3154,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <div class="flex gap-2 items-center">
                             <label data-epc-show-for-load-method="asset_genset_fuel_mapping" class="inline-flex items-center gap-1.5 rounded-lg border border-purple-100 bg-purple-50 px-2.5 py-1.5 text-[10px] font-black text-purple-700" title="Use Asset List as the main Daily Load input.">
                                 <input type="radio" name="epc-asset-genset-load-basis" value="asset_list" onchange="selectEpcAssetGensetLoadBasis('asset_list')" class="h-3.5 w-3.5 text-purple-700 focus:ring-purple-500">
-                                Use
+                                Use Data
                             </label>
                             <button type="button" onclick="addEpcAssetListRow()" class="px-3 py-1.5 rounded-lg border border-slate-200 text-[10px] font-black text-slate-600 hover:bg-slate-50">Add Asset</button>
                             <button type="button" onclick="saveEpcAssetListRows()" class="px-3 py-1.5 rounded-lg bg-purple-700 text-white text-[10px] font-black hover:bg-purple-800">Save Assets</button>
@@ -3202,7 +3202,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <div class="flex gap-2 items-center">
                             <label class="inline-flex items-center gap-1.5 rounded-lg border border-purple-100 bg-purple-50 px-2.5 py-1.5 text-[10px] font-black text-purple-700" title="Use Genset Fuel Mapping as the main Daily Load input.">
                                 <input type="radio" name="epc-asset-genset-load-basis" value="genset_fuel_mapping" onchange="selectEpcAssetGensetLoadBasis('genset_fuel_mapping')" class="h-3.5 w-3.5 text-purple-700 focus:ring-purple-500">
-                                Use
+                                Use Data
                             </label>
                             <button type="button" onclick="addEpcGensetListRow()" class="px-3 py-1.5 rounded-lg border border-slate-200 text-[10px] font-black text-slate-600 hover:bg-slate-50">Add Genset</button>
                             <button type="button" onclick="saveEpcGensetFuelRows()" class="px-3 py-1.5 rounded-lg bg-purple-700 text-white text-[10px] font-black hover:bg-purple-800">Save Genset Fuel</button>
@@ -10787,6 +10787,23 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return { assets: assetRows, gensets: gensetRows };
         }
 
+        function syncEpcAssetGensetMappingInputs(assets = [], gensets = []) {
+            const assetById = new Map((Array.isArray(assets) ? assets : []).map(asset => [String(asset.id || '').trim(), asset]));
+            const gensetById = new Map((Array.isArray(gensets) ? gensets : []).map(genset => [String(genset.id || '').trim(), genset]));
+            document.querySelectorAll('[data-epc-asset-row]').forEach(row => {
+                const id = String(row.querySelector('[data-epc-asset-field="id"]')?.value || '').trim();
+                const asset = assetById.get(id);
+                const input = row.querySelector('[data-epc-asset-field="assignedGensetIds"]');
+                if (asset && input) input.value = csvListValue(asset.assignedGensetIds);
+            });
+            document.querySelectorAll('[data-epc-genset-row]').forEach(row => {
+                const id = String(row.querySelector('[data-epc-genset-field="id"]')?.value || '').trim();
+                const genset = gensetById.get(id);
+                const input = row.querySelector('[data-epc-genset-field="supportedAssetIds"]');
+                if (genset && input) input.value = csvListValue(genset.supportedAssetIds);
+            });
+        }
+
         function epcAssetRowsFromDom() {
             return [...document.querySelectorAll('[data-epc-asset-row]')].map((row, index) => {
                 const field = name => row.querySelector(`[data-epc-asset-field="${name}"]`)?.value || '';
@@ -10964,6 +10981,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             setEpcStandardTopologyDirty(project);
             const normalized = updateEpcProject(project);
             renderEpcDesignResult(normalized);
+            setInputValue('epc-load-count', normalized.loads.loadCount || 1);
+            setInputValue('epc-manual-load-splits', normalized.loads.manualLoadSplits);
+            syncEpcAssetGensetMappingInputs(synced.assets, synced.gensets);
             renderEpcAssetMethodStatus(normalized, window.__lastEpcDesignResult || null);
             updateEpcAssetSuggestionDatalists(synced.assets, synced.gensets);
             const status = document.getElementById('epc-design-save-status');

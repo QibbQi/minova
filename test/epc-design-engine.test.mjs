@@ -1153,6 +1153,8 @@ test('EPC asset genset fuel mapping creates feeder zoning load splits and topolo
   assert.ok(result.feederZoning.transformers.every((row) => row.kva > 0));
   assert.ok(result.feederZoning.loadSplits.length >= 5);
   assert.equal(result.loads.loadSplits.length, result.feederZoning.loadSplits.length);
+  assert.ok(result.loads.loadSplits[0].assets.length >= 1, 'load split should keep linked asset ids for allocation mapping');
+  assert.ok(result.loads.loadSplits[0].assetNames.length >= 1, 'load split should keep linked asset names for allocation mapping');
   assert.ok(result.feederZoning.topologyRecommendations.some((item) => /VFD|metering|MV|transformer|split/i.test(item.recommendation)));
   assert.equal(Object.hasOwn(result, 'procurementAdvisory'), false);
 });

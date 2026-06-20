@@ -1145,7 +1145,9 @@ function buildFeederZoning(assetInputs = [], gensets = [], options = {}) {
         assetGroupId: row.feederId,
         feederId: row.feederId,
         zone: row.zone,
-        assetType: row.type
+        assetType: row.type,
+        assets: row.assets.slice(),
+        assetNames: row.assetNames.slice()
       };
     });
   })();
@@ -1307,7 +1309,9 @@ function normalizeLoadSplits(value = [], count = 1) {
       ...(item.assetGroupId ? { assetGroupId: String(item.assetGroupId) } : {}),
       ...(item.feederId ? { feederId: String(item.feederId) } : {}),
       ...(item.zone ? { zone: String(item.zone) } : {}),
-      ...(item.assetType ? { assetType: String(item.assetType) } : {})
+      ...(item.assetType ? { assetType: String(item.assetType) } : {}),
+      ...(Array.isArray(item.assets) ? { assets: normalizeIdList(item.assets) } : {}),
+      ...(Array.isArray(item.assetNames) ? { assetNames: item.assetNames.map(name => String(name || '').trim()).filter(Boolean) } : {})
     };
   });
   const total = rows.reduce((sum, row) => sum + row.ratioPct, 0);

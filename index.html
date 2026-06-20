@@ -11708,12 +11708,97 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return `${n.toLocaleString(undefined, { maximumFractionDigits: digits, minimumFractionDigits: digits })}${unit ? ` ${unit}` : ''}`;
         }
 
+        function getEpcEnergyFlowDisplayRowKey(row = {}) {
+            return String(row.flowKey || row.hour);
+        }
+
+        function getEpcSelectedEnergyFlowDisplayRow(result = {}) {
+            const rows = getEpcEnergyFlowDisplayRows(result);
+            if (!rows.length) return {};
+            const rowKey = row => getEpcEnergyFlowDisplayRowKey(row);
+            if (!rows.some(row => rowKey(row) === String(epcSelectedFlowHour))) epcSelectedFlowHour = rowKey(rows[0] || { hour: 13 });
+            return rows.find(row => rowKey(row) === String(epcSelectedFlowHour)) || rows[0] || {};
+        }
+
+        function getEpcLoadSplitAssetLookup(project = getActiveEpcDesignProject(), result = null) {
+            const rows = [
+                ...(Array.isArray(project.loads?.assets) ? project.loads.assets : []),
+                ...(Array.isArray(result?.loads?.assets) ? result.loads.assets : []),
+                ...(Array.isArray(result?.feederZoning?.assets) ? result.feederZoning.assets : [])
+            ];
+            const lookup = new Map();
+            rows.forEach(asset => {
+                const id = String(asset?.id || '').trim();
+                if (!id || lookup.has(id)) return;
+                lookup.set(id, {
+                    id,
+                    name: String(asset.name || asset.label || id).trim() || id
+                });
+            });
+            return lookup;
+        }
+
+        function getEpcLoadSplitDisplayRows(project = getActiveEpcDesignProject(), result = null) {
+            const splits = epcNormalizeLoadSplits(project.loads?.loadSplits || [], project.loads?.loadCount || 1);
+            const selectedRow = result ? getEpcSelectedEnergyFlowDisplayRow(result) : {};
+            const rowSplits = Array.isArray(selectedRow.loadSplits) ? selectedRow.loadSplits : [];
+            const rowSplitMap = new Map(rowSplits.map((split, index) => [String(split.id || `load-${index + 1}`), split]));
+            const feederMap = new Map((Array.isArray(result?.feederZoning?.feeders) ? result.feederZoning.feeders : []).map(row => [String(row.feederId || ''), row]));
+            const assetLookup = getEpcLoadSplitAssetLookup(project, result);
+            const fallbackLoadKw = Math.max(0, Number(selectedRow.loadKw) || result?.energyFlow?.rows?.find(row => Number(row.loadKw) > 0)?.loadKw || result?.load?.averageLoadKw || 0);
+            return splits.map((split, index) => {
+                const rowSplit = rowSplitMap.get(String(split.id || `load-${index + 1}`)) || rowSplits[index] || {};
+                const feeder = feederMap.get(String(rowSplit.feederId || split.feederId || split.assetGroupId || '')) || {};
+                const linkedAssetIds = uniqueEpcList([
+                    ...(Array.isArray(split.assets) ? split.assets : []),
+                    ...(Array.isArray(rowSplit.assets) ? rowSplit.assets : []),
+                    ...(Array.isArray(feeder.assets) ? feeder.assets : [])
+                ]);
+                const linkedAssetLabels = uniqueEpcList([
+                    ...(Array.isArray(split.assetNames) ? split.assetNames : []),
+                    ...(Array.isArray(rowSplit.assetNames) ? rowSplit.assetNames : []),
+                    ...(Array.isArray(feeder.assetNames) ? feeder.assetNames : []),
+                    ...linkedAssetIds.map(id => assetLookup.get(id)?.name || id)
+                ]);
+                const liveKw = Number(rowSplit.loadKw);
+                const loadKw = Number.isFinite(liveKw) && liveKw >= 0
+                    ? liveKw
+                    : fallbackLoadKw * (Number(split.ratioPct) || 0) / 100;
+                return {
+                    ...split,
+                    ...rowSplit,
+                    id: split.id || rowSplit.id || `load-${index + 1}`,
+                    label: split.label || rowSplit.label || `Load ${index + 1}`,
+                    ratioPct: Number(split.ratioPct) || Number(rowSplit.ratioPct) || 0,
+                    loadKw: epcChartRound(loadKw, 2),
+                    linkedAssetIds,
+                    linkedAssetLabels
+                };
+            });
+        }
+
+        function renderEpcLoadSplitAssetLinks(display = {}) {
+            const labels = Array.isArray(display.linkedAssetLabels) ? display.linkedAssetLabels : [];
+            const ids = Array.isArray(display.linkedAssetIds) ? display.linkedAssetIds : [];
+            if (!labels.length && !ids.length) {
+                return `<span data-epc-load-split-assets="" class="block truncate text-right text-[10px] font-black text-slate-300">--</span>`;
+            }
+            const visible = (labels.length ? labels : ids).slice(0, 2);
+            const remaining = Math.max(0, (labels.length || ids.length) - visible.length);
+            const title = (labels.length ? labels : ids).join(', ');
+            return `
+                <div data-epc-load-split-assets="${htmlSafe(ids.join(','))}" title="${htmlSafe(title)}" class="flex min-w-0 flex-wrap justify-end gap-1">
+                    ${visible.map(label => `<span class="max-w-[5.5rem] truncate rounded-md border border-purple-100 bg-purple-50 px-1.5 py-0.5 text-[9px] font-black text-purple-700">${htmlSafe(label)}</span>`).join('')}
+                    ${remaining ? `<span class="rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[9px] font-black text-slate-400">+${remaining}</span>` : ''}
+                </div>
+            `;
+        }
+
         function renderEpcLoadSplitControls(project = getActiveEpcDesignProject(), result = null) {
             const container = document.getElementById('epc-load-split-controls');
             if (!container) return;
-            const splits = epcNormalizeLoadSplits(project.loads?.loadSplits || [], project.loads?.loadCount || 1);
-            const totalPct = splits.reduce((sum, split) => sum + (Number(split.ratioPct) || 0), 0);
-            const rowLoadKw = result?.energyFlow?.rows?.find(row => Number(row.loadKw) > 0)?.loadKw || result?.load?.averageLoadKw || 0;
+            const displayRows = getEpcLoadSplitDisplayRows(project, result);
+            const totalPct = displayRows.reduce((sum, split) => sum + (Number(split.ratioPct) || 0), 0);
             const valid = Math.abs(totalPct - 100) < 0.01;
             const manual = Boolean(project.loads?.manualLoadSplits);
             const splitSourceLabel = manual ? 'Manual override' : 'Auto feeder split from Asset List';
@@ -11725,13 +11810,19 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     <div class="${valid ? 'text-green-700' : 'text-red-600'} text-[10px] font-black">Total ${formatEpcNumber(totalPct, 2, '%')} must equal 100%</div>
                 </div>
                 <div class="space-y-2">
-                    ${splits.map((split, index) => {
-                        const kw = rowLoadKw * (Number(split.ratioPct) || 0) / 100;
+                    <div class="grid grid-cols-[1fr_5rem_minmax(6rem,8.5rem)_5.5rem] items-center gap-2 px-1 text-[9px] font-black uppercase text-slate-400">
+                        <span>Load Branch</span>
+                        <span class="text-right">Allocation %</span>
+                        <span class="text-right">Linked Assets</span>
+                        <span class="text-right">kW</span>
+                    </div>
+                    ${displayRows.map((display, index) => {
                         return `
-                            <div data-epc-load-split-row="${index}" class="grid grid-cols-[1fr_5rem_5.5rem] items-center gap-2">
-                                <input data-epc-load-split-label value="${htmlSafe(split.label || `Load ${index + 1}`)}" oninput="updateEpcLoadSplitRatio(${index}, this.value, 'label')" ${disabledAttr} class="min-w-0 rounded-lg border border-slate-200 ${disabledClass} px-2 py-1 text-[11px] font-bold outline-none focus:border-purple-500">
-                                <input data-epc-load-split-ratio type="number" min="0" max="100" step="0.1" value="${htmlSafe(split.ratioPct)}" oninput="updateEpcLoadSplitRatio(${index}, this.value)" ${disabledAttr} class="rounded-lg border border-slate-200 ${disabledClass} px-2 py-1 text-right text-[11px] font-bold outline-none focus:border-purple-500" aria-label="Allocation %">
-                                <span class="text-right text-[11px] font-black text-slate-500">${formatEpcNumber(kw, 0, 'kW')}</span>
+                            <div data-epc-load-split-row="${index}" class="grid grid-cols-[1fr_5rem_minmax(6rem,8.5rem)_5.5rem] items-center gap-2">
+                                <input data-epc-load-split-label value="${htmlSafe(display.label || `Load ${index + 1}`)}" oninput="updateEpcLoadSplitRatio(${index}, this.value, 'label')" ${disabledAttr} class="min-w-0 rounded-lg border border-slate-200 ${disabledClass} px-2 py-1 text-[11px] font-bold outline-none focus:border-purple-500">
+                                <input data-epc-load-split-ratio type="number" min="0" max="100" step="0.1" value="${htmlSafe(display.ratioPct)}" oninput="updateEpcLoadSplitRatio(${index}, this.value)" ${disabledAttr} class="rounded-lg border border-slate-200 ${disabledClass} px-2 py-1 text-right text-[11px] font-bold outline-none focus:border-purple-500" aria-label="Allocation %">
+                                ${renderEpcLoadSplitAssetLinks(display)}
+                                <span class="text-right text-[11px] font-black text-slate-500">${formatEpcNumber(display.loadKw, 0, 'kW')}</span>
                             </div>
                         `;
                     }).join('')}
@@ -17879,12 +17970,24 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         label: String(split.label || `Load ${index + 1}`),
                         ratioPct: 0,
                         loadKwWeighted: 0,
-                        order: index
+                        order: index,
+                        feederId: '',
+                        assetGroupId: '',
+                        zone: '',
+                        assetType: '',
+                        assets: [],
+                        assetNames: []
                     };
                     current.label = String(split.label || current.label || `Load ${index + 1}`);
                     current.ratioPct = Number(split.ratioPct) || current.ratioPct || 0;
                     current.loadKwWeighted += (Number(split.loadKw) || 0) * duration;
                     current.order = Math.min(current.order, index);
+                    current.feederId = String(split.feederId || current.feederId || '');
+                    current.assetGroupId = String(split.assetGroupId || current.assetGroupId || '');
+                    current.zone = String(split.zone || current.zone || '');
+                    current.assetType = String(split.assetType || current.assetType || '');
+                    current.assets = uniqueEpcList([...current.assets, ...(Array.isArray(split.assets) ? split.assets : [])]);
+                    current.assetNames = uniqueEpcList([...current.assetNames, ...(Array.isArray(split.assetNames) ? split.assetNames : [])]);
                     splitMap.set(id, current);
                 });
             });
@@ -17894,7 +17997,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     id: split.id,
                     label: split.label,
                     ratioPct: epcChartRound(split.ratioPct, 2),
-                    loadKw: epcChartRound(split.loadKwWeighted / totalDuration, 2)
+                    loadKw: epcChartRound(split.loadKwWeighted / totalDuration, 2),
+                    ...(split.feederId ? { feederId: split.feederId } : {}),
+                    ...(split.assetGroupId ? { assetGroupId: split.assetGroupId } : {}),
+                    ...(split.zone ? { zone: split.zone } : {}),
+                    ...(split.assetType ? { assetType: split.assetType } : {}),
+                    ...(split.assets.length ? { assets: split.assets } : {}),
+                    ...(split.assetNames.length ? { assetNames: split.assetNames } : {})
                 }));
         }
 
@@ -17980,9 +18089,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const emsTableIntervalMinutes = Number(result.emsFlowDisplaySettings?.emsTableIntervalMinutes) === 5 ? 5 : 60;
             const profileApplied = getEpcDeviceWorkSettings(result).deviceWorkModel.applyToEmsFlow;
             const stringDesign = result.pvStringDesign || {};
-            const rowKey = row => String(row.flowKey || row.hour);
-            if (!rows.some(row => rowKey(row) === String(epcSelectedFlowHour))) epcSelectedFlowHour = rowKey(rows[0] || { hour: 13 });
-            const selectedRow = rows.find(row => rowKey(row) === String(epcSelectedFlowHour)) || rows[0] || {};
+            const rowKey = row => getEpcEnergyFlowDisplayRowKey(row);
+            const selectedRow = getEpcSelectedEnergyFlowDisplayRow(result);
             target.innerHTML = `
                 ${renderEpcTopologyFlowDiagram(result, selectedRow)}
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
@@ -18170,6 +18278,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             epcSelectedFlowHour = String(hour || epcSelectedFlowHour);
             if (window.__lastEpcDesignResult) {
                 renderEpcEnergyFlow(window.__lastEpcDesignResult);
+                renderEpcLoadSplitControls(getActiveEpcDesignProject(), window.__lastEpcDesignResult);
                 restoreEpcEmsFlowTableScroll(scrollPosition);
             }
         };

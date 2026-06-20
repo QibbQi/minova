@@ -1853,11 +1853,15 @@ test('EPC inputs expose split load count and ratio controls for EMS Flow', () =>
     'data-epc-field="loads.loadCount"',
     'id="epc-load-split-controls"',
     'function renderEpcLoadSplitControls(project',
+    'function getEpcSelectedEnergyFlowDisplayRow(result = {})',
+    'function getEpcLoadSplitDisplayRows(project = getActiveEpcDesignProject(), result = null)',
     'data-epc-load-split-ratio',
+    'data-epc-load-split-assets',
     'function epcLoadSplitsFromDom',
     'function updateEpcLoadSplitRatio',
     'Load Qty',
     'Allocation %',
+    'Linked Assets',
     'must equal 100%',
     'rebalanceEpcLoadSplits',
     'setEpcStandardTopologyDirty(project)',
@@ -1871,6 +1875,11 @@ test('EPC inputs expose split load count and ratio controls for EMS Flow', () =>
   const splitHandler = html.match(/function updateEpcLoadSplitRatio\(index, value, field = 'ratio'\)[\s\S]*?window\.updateEpcLoadSplitRatio/);
   assert.ok(splitHandler, 'split update handler should exist');
   assert.doesNotMatch(splitHandler[0], /const project = captureEpcDesignFromDom\(\);\s*project\.loads\.loadSplits = epcLoadSplitsFromDom/, 'split handler should apply the explicit edited value before rerendering');
+  const splitRenderer = html.match(/function renderEpcLoadSplitControls\(project = getActiveEpcDesignProject\(\), result = null\)[\s\S]*?function isEpcManualLoadSplitEnabled\(\)/);
+  assert.ok(splitRenderer, 'split renderer should exist');
+  assert.match(splitRenderer[0], /const displayRows = getEpcLoadSplitDisplayRows\(project, result\)/, 'split renderer should use current EMS display row values');
+  assert.match(splitRenderer[0], /formatEpcNumber\(display\.loadKw, 0, 'kW'\)/, 'split renderer kW should match display split kW');
+  assert.match(splitRenderer[0], /renderEpcLoadSplitAssetLinks\(display\)/, 'split renderer should show linked assets per feeder');
   const assetsPage = html.match(/data-epc-detail-page="assets"[\s\S]*?<\/section>/);
   assert.ok(assetsPage, 'assets list page should hold split controls');
   assert.match(assetsPage[0], /id="epc-load-count"/);

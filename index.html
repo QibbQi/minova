@@ -2740,7 +2740,6 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     </select>
                     <button type="button" onclick="createEpcDesignProject()" class="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-black hover:bg-black">New</button>
                     <button type="button" onclick="saveCurrentEpcDesignProject()" class="px-3 py-2 rounded-xl bg-purple-700 text-white text-xs font-black hover:bg-purple-800">Save</button>
-                    <button type="button" onclick="applyEpcQuarryProcurementProfile()" data-epc-profile-builder="buildEpcQuarryProcurementProfile" class="px-3 py-2 rounded-xl border border-purple-200 text-purple-700 text-xs font-black hover:bg-purple-50">Apply Quarry / TJQ Template</button>
                     <button type="button" onclick="downloadEpcDesignReport('customer')" data-epc-download="customer" class="px-3 py-2 rounded-xl brand-yellow-action border text-xs font-black">Customer Summary</button>
                     <button type="button" onclick="downloadEpcDesignReport('engineering')" data-epc-download="engineering" class="hidden px-3 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-black hover:bg-slate-50" aria-label="Download engineering calculation"></button>
                 </div>
@@ -2809,6 +2808,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <select id="epc-load-measurement-method" data-epc-field="loads.measurementMethod" onchange="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
                             <option value="energy_meter">Energy Meter</option>
                             <option value="equipment_schedule">Equipment Schedule</option>
+                            <option value="asset_genset_fuel_mapping">Asset + Genset Fuel Mapping</option>
                             <option value="genset_kva_load_factor">Genset kVA / load factor</option>
                             <option value="diesel_sfc_estimate">Diesel / SFC estimate</option>
                         </select>
@@ -2827,6 +2827,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     <div data-epc-load-method-panel="equipment_schedule" class="hidden rounded-2xl border border-amber-100 bg-amber-50/60 p-3 space-y-3">
                         <button type="button" onclick="openEpcEquipmentScheduleModal()" class="w-full px-3 py-2 rounded-xl brand-yellow-action border text-xs font-black">Edit Schedule</button>
                         <div id="epc-equipment-schedule-summary" class="text-[11px] font-bold text-slate-500">No equipment schedule rows.</div>
+                    </div>
+                    <div data-epc-load-method-panel="asset_genset_fuel_mapping" class="hidden rounded-2xl border border-purple-100 bg-purple-50/60 p-3 space-y-3">
+                        <button type="button" onclick="setEpcDetailInputsTab('assets')" class="w-full px-3 py-2 rounded-xl bg-purple-700 text-white text-xs font-black hover:bg-purple-800">Edit Assets List</button>
+                        <div id="epc-asset-method-status" class="text-[11px] font-bold text-slate-500">No asset rows.</div>
                     </div>
                     <div data-epc-load-method-panel="genset_kva_load_factor" class="hidden rounded-2xl border border-slate-200 bg-slate-50 p-3 space-y-3">
                         <div class="grid grid-cols-2 gap-2">
@@ -3020,9 +3024,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 <div>
                     <h3 class="epc-field-label text-sm font-black text-slate-800" title="Detailed Design uses Target % here as the calculation standard.">Detail Inputs <span data-epc-help="detail-inputs" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Detailed Design uses Target % here as the calculation standard.">i</span></h3>
                 </div>
-                <span class="text-[10px] font-black uppercase text-purple-700">Engineering</span>
+                <div class="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1" aria-label="Detail Inputs tabs">
+                    <button type="button" data-epc-detail-tab="settings" onclick="setEpcDetailInputsTab('settings')" class="px-3 py-1.5 rounded-lg text-[10px] font-black bg-purple-700 text-white">Detail Setting</button>
+                    <button type="button" data-epc-detail-tab="assets" onclick="setEpcDetailInputsTab('assets')" class="px-3 py-1.5 rounded-lg text-[10px] font-black text-slate-500 hover:text-purple-700">Assets List</button>
+                </div>
             </div>
-            <div id="epc-detailed-fields" data-epc-engineering-section="true">
+            <div id="epc-detailed-fields" data-epc-engineering-section="true" data-epc-detail-page="settings">
                 <div id="epc-advanced-inputs" data-epc-advanced-section="true" class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-3 p-4">
                     <div class="md:col-span-3 xl:col-span-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2">
                         <div data-epc-detail-group="load-site" class="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-[10px] font-black uppercase text-slate-500">Load & Site</div>
@@ -3109,17 +3116,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Power factor used for AC current and voltage architecture checks.">PF <span data-epc-help="power-factor" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Power factor used for AC current and voltage architecture checks.">i</span></label>
                         <input id="epc-power-factor" data-epc-field="electrical.powerFactor" type="number" step="0.01" min="0.1" max="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                     </div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <div>
-                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Must-run load for backup or island mode; blank falls back to average load.">Critical Load kW <span data-epc-help="critical-load" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Must-run load for backup or island mode; blank falls back to average load.">i</span></label>
-                            <input id="epc-critical-load" data-epc-field="loads.criticalLoadKw" type="number" min="0" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
-                        </div>
-                        <div>
-                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Number of downstream load branches in EMS Flow.">Load Qty <span data-epc-help="load-count" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Number of downstream load branches in EMS Flow.">i</span></label>
-                            <input id="epc-load-count" data-epc-field="loads.loadCount" type="number" min="1" max="12" step="1" oninput="onEpcLoadCountChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
-                        </div>
+                    <div>
+                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Must-run load for backup or island mode; blank falls back to average load.">Critical Load kW <span data-epc-help="critical-load" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Must-run load for backup or island mode; blank falls back to average load.">i</span></label>
+                        <input id="epc-critical-load" data-epc-field="loads.criticalLoadKw" type="number" min="0" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                     </div>
-                    <div id="epc-load-split-controls" class="rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs"></div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="PV modules per string used for string count and combiner sizing.">/ String <span data-epc-help="modules-per-string" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="PV modules per string used for string count and combiner sizing.">i</span></label>
@@ -3129,6 +3129,86 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Combiner input count used to estimate combiner quantity from total strings.">Combiner <span data-epc-help="combiner-inputs" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Combiner input count used to estimate combiner quantity from total strings.">i</span></label>
                             <input id="epc-combiner-inputs" data-epc-field="assumptions.combinerInputs" type="number" min="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                         </div>
+                    </div>
+                </div>
+            </div>
+            <div id="epc-assets-list-page" data-epc-detail-page="assets" class="hidden p-4 space-y-4">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                    <div>
+                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Number of downstream load branches in EMS Flow.">Load Qty <span data-epc-help="load-count" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Number of downstream load branches in EMS Flow.">i</span></label>
+                        <input id="epc-load-count" data-epc-field="loads.loadCount" type="number" min="1" max="12" step="1" oninput="onEpcLoadCountChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                    </div>
+                    <div class="lg:col-span-2">
+                        <div id="epc-load-split-controls" class="rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs"></div>
+                    </div>
+                </div>
+                <div class="rounded-2xl border border-slate-200 overflow-hidden">
+                    <div class="px-3 py-2 border-b border-slate-100 flex items-center justify-between gap-2">
+                        <div>
+                            <div class="text-[10px] font-black uppercase text-purple-700">Asset List</div>
+                            <div class="text-[11px] font-bold text-slate-400">Zone, feeder grouping, kW, start type, distance, genset mapping and fuel basis.</div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button type="button" onclick="addEpcAssetListRow()" class="px-3 py-1.5 rounded-lg border border-slate-200 text-[10px] font-black text-slate-600 hover:bg-slate-50">Add Asset</button>
+                            <button type="button" onclick="saveEpcAssetListRows()" class="px-3 py-1.5 rounded-lg bg-purple-700 text-white text-[10px] font-black hover:bg-purple-800">Save Assets</button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-[11px]">
+                            <thead class="bg-slate-50 text-[9px] uppercase text-slate-400">
+                                <tr>
+                                    <th class="px-2 py-2 text-left">ID</th>
+                                    <th class="px-2 py-2 text-left">Name</th>
+                                    <th class="px-2 py-2 text-left">Type</th>
+                                    <th class="px-2 py-2 text-left">Zone</th>
+                                    <th class="px-2 py-2 text-left">Line</th>
+                                    <th class="px-2 py-2 text-left">Area</th>
+                                    <th class="px-2 py-2 text-left">Conveyor</th>
+                                    <th class="px-2 py-2 text-right">kW</th>
+                                    <th class="px-2 py-2 text-right">Qty</th>
+                                    <th class="px-2 py-2 text-left">Start</th>
+                                    <th class="px-2 py-2 text-right">Distance m</th>
+                                    <th class="px-2 py-2 text-right">Hours</th>
+                                    <th class="px-2 py-2 text-right">Duty</th>
+                                    <th class="px-2 py-2 text-right">Simult.</th>
+                                    <th class="px-2 py-2 text-left">Gensets</th>
+                                    <th class="px-2 py-2 text-right">Fuel L</th>
+                                    <th class="px-2 py-2 text-right">Fuel Days</th>
+                                    <th class="px-2 py-2 text-right">Fuel h</th>
+                                    <th class="px-2 py-2"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="epc-asset-list-rows" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="rounded-2xl border border-slate-200 overflow-hidden">
+                    <div class="px-3 py-2 border-b border-slate-100 flex items-center justify-between gap-2">
+                        <div>
+                            <div class="text-[10px] font-black uppercase text-purple-700">Genset Fuel Mapping</div>
+                            <div class="text-[11px] font-bold text-slate-400">Map gensets to supported assets and fuel/runtime for load validation.</div>
+                        </div>
+                        <button type="button" onclick="addEpcGensetListRow()" class="px-3 py-1.5 rounded-lg border border-slate-200 text-[10px] font-black text-slate-600 hover:bg-slate-50">Add Genset</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-[11px]">
+                            <thead class="bg-slate-50 text-[9px] uppercase text-slate-400">
+                                <tr>
+                                    <th class="px-2 py-2 text-left">ID</th>
+                                    <th class="px-2 py-2 text-left">Name</th>
+                                    <th class="px-2 py-2 text-left">Zone</th>
+                                    <th class="px-2 py-2 text-right">kVA</th>
+                                    <th class="px-2 py-2 text-right">kW</th>
+                                    <th class="px-2 py-2 text-left">Supported Assets</th>
+                                    <th class="px-2 py-2 text-right">Fuel L</th>
+                                    <th class="px-2 py-2 text-right">Fuel Days</th>
+                                    <th class="px-2 py-2 text-right">Runtime h</th>
+                                    <th class="px-2 py-2 text-right">SFC</th>
+                                    <th class="px-2 py-2"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="epc-genset-list-rows" class="divide-y divide-slate-100"></tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -5542,7 +5622,6 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         const {
             EPC_DESIGN_DEFAULTS,
             buildGlobalSolarAtlasApiUrls,
-            buildEpcQuarryProcurementProfile,
             buildGlobalSolarAtlasUrl,
             calculateEpcDesignProject,
             calculatePvStringDesign,
@@ -10623,6 +10702,150 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             }), loadCount);
         }
 
+        function csvListValue(value = []) {
+            return Array.isArray(value) ? value.join(', ') : String(value || '');
+        }
+
+        function splitCsvList(value = '') {
+            return String(value || '').split(/[,;|/]+/).map(item => item.trim()).filter(Boolean);
+        }
+
+        function epcAssetRowsFromDom() {
+            return [...document.querySelectorAll('[data-epc-asset-row]')].map((row, index) => {
+                const field = name => row.querySelector(`[data-epc-asset-field="${name}"]`)?.value || '';
+                const hasContent = ['name', 'kw', 'fuelLiters'].some(name => String(field(name)).trim());
+                if (!hasContent) return null;
+                return {
+                    id: field('id') || `asset-${index + 1}`,
+                    name: field('name') || `Asset ${index + 1}`,
+                    type: field('type') || 'load',
+                    zone: field('zone') || 'Common',
+                    line: field('line'),
+                    area: field('area'),
+                    conveyorSystem: field('conveyorSystem'),
+                    kw: Number(field('kw')) || 0,
+                    qty: Number(field('qty')) || 1,
+                    startType: field('startType'),
+                    distanceM: Number(field('distanceM')) || 0,
+                    operationHours: Number(field('operationHours')) || 0,
+                    dutyFactor: Number(field('dutyFactor')) || 1,
+                    simultaneityFactor: Number(field('simultaneityFactor')) || 1,
+                    assignedGensetIds: splitCsvList(field('assignedGensetIds')),
+                    fuelLiters: Number(field('fuelLiters')) || 0,
+                    fuelPeriodDays: Number(field('fuelPeriodDays')) || 1,
+                    fuelRuntimeHours: Number(field('fuelRuntimeHours')) || 0
+                };
+            }).filter(Boolean).filter(row => row.kw > 0 || row.fuelLiters > 0 || row.name.trim() !== `Asset ${row.id}`);
+        }
+
+        function epcGensetRowsFromDom() {
+            return [...document.querySelectorAll('[data-epc-genset-row]')].map((row, index) => {
+                const field = name => row.querySelector(`[data-epc-genset-field="${name}"]`)?.value || '';
+                const hasContent = ['name', 'ratedKva', 'ratedKw', 'fuelLiters'].some(name => String(field(name)).trim());
+                if (!hasContent) return null;
+                return {
+                    id: field('id') || `genset-${index + 1}`,
+                    name: field('name') || `Genset ${index + 1}`,
+                    label: field('name') || `Genset ${index + 1}`,
+                    zone: field('zone') || 'Common',
+                    ratedKva: Number(field('ratedKva')) || 0,
+                    ratedKw: Number(field('ratedKw')) || 0,
+                    supportedAssetIds: splitCsvList(field('supportedAssetIds')),
+                    fuelLiters: Number(field('fuelLiters')) || 0,
+                    fuelPeriodDays: Number(field('fuelPeriodDays')) || 1,
+                    runtimeHours: Number(field('runtimeHours')) || 0,
+                    sfcLPerKwh: Number(field('sfcLPerKwh')) || 0.27
+                };
+            }).filter(Boolean).filter(row => row.ratedKva > 0 || row.ratedKw > 0 || row.fuelLiters > 0 || row.name.trim() !== `Genset ${row.id}`);
+        }
+
+        function epcInputCell(kind, field, value = '', attrs = '') {
+            return `<input data-epc-${kind}-field="${field}" value="${htmlSafe(value ?? '')}" ${attrs} class="w-24 min-w-0 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold outline-none focus:border-purple-500">`;
+        }
+
+        function renderEpcAssetListRows(rows = []) {
+            const body = document.getElementById('epc-asset-list-rows');
+            if (!body) return;
+            const safeRows = rows.length ? rows : [{ id: 'asset-1', name: '', type: 'load', zone: 'Common', qty: 1, dutyFactor: 1, simultaneityFactor: 1, fuelPeriodDays: 1 }];
+            body.innerHTML = safeRows.map((row, index) => `
+                <tr data-epc-asset-row="${htmlSafe(row.id || `asset-${index + 1}`)}">
+                    <td class="px-2 py-2">${epcInputCell('asset', 'id', row.id || `asset-${index + 1}`)}</td>
+                    <td class="px-2 py-2">${epcInputCell('asset', 'name', row.name || row.label || '')}</td>
+                    <td class="px-2 py-2">
+                        <select data-epc-asset-field="type" class="w-28 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold outline-none focus:border-purple-500">
+                            ${['crusher', 'screen', 'pump', 'vfd', 'auxiliary', 'load'].map(type => `<option value="${type}" ${String(row.type || row.assetType || 'load') === type ? 'selected' : ''}>${type}</option>`).join('')}
+                        </select>
+                    </td>
+                    <td class="px-2 py-2">${epcInputCell('asset', 'zone', row.zone || 'Common')}</td>
+                    <td class="px-2 py-2">${epcInputCell('asset', 'line', row.line || '')}</td>
+                    <td class="px-2 py-2">${epcInputCell('asset', 'area', row.area || '')}</td>
+                    <td class="px-2 py-2">${epcInputCell('asset', 'conveyorSystem', row.conveyorSystem || '')}</td>
+                    <td class="px-2 py-2">${epcInputCell('asset', 'kw', row.kw ?? row.ratedKw ?? '', 'type="number" min="0" step="0.1"')}</td>
+                    <td class="px-2 py-2">${epcInputCell('asset', 'qty', row.qty ?? row.quantity ?? 1, 'type="number" min="1" step="1"')}</td>
+                    <td class="px-2 py-2">${epcInputCell('asset', 'startType', row.startType || '')}</td>
+                    <td class="px-2 py-2">${epcInputCell('asset', 'distanceM', row.distanceM ?? '', 'type="number" min="0" step="1"')}</td>
+                    <td class="px-2 py-2">${epcInputCell('asset', 'operationHours', row.operationHours ?? '', 'type="number" min="0" max="24" step="0.1"')}</td>
+                    <td class="px-2 py-2">${epcInputCell('asset', 'dutyFactor', row.dutyFactor ?? 1, 'type="number" min="0" max="1" step="0.01"')}</td>
+                    <td class="px-2 py-2">${epcInputCell('asset', 'simultaneityFactor', row.simultaneityFactor ?? 1, 'type="number" min="0" max="1" step="0.01"')}</td>
+                    <td class="px-2 py-2">${epcInputCell('asset', 'assignedGensetIds', csvListValue(row.assignedGensetIds))}</td>
+                    <td class="px-2 py-2">${epcInputCell('asset', 'fuelLiters', row.fuelLiters ?? '', 'type="number" min="0" step="0.1"')}</td>
+                    <td class="px-2 py-2">${epcInputCell('asset', 'fuelPeriodDays', row.fuelPeriodDays ?? 1, 'type="number" min="1" step="1"')}</td>
+                    <td class="px-2 py-2">${epcInputCell('asset', 'fuelRuntimeHours', row.fuelRuntimeHours ?? '', 'type="number" min="0" max="24" step="0.1"')}</td>
+                    <td class="px-2 py-2 text-right"><button type="button" onclick="this.closest('tr')?.remove()" class="px-2 py-1 rounded-lg border border-slate-200 text-[10px] font-black text-slate-500 hover:bg-slate-50">Delete</button></td>
+                </tr>
+            `).join('');
+        }
+
+        function renderEpcGensetListRows(rows = []) {
+            const body = document.getElementById('epc-genset-list-rows');
+            if (!body) return;
+            const safeRows = rows.length ? rows : [{ id: 'genset-1', name: '', zone: 'Common', fuelPeriodDays: 1, sfcLPerKwh: 0.27 }];
+            body.innerHTML = safeRows.map((row, index) => `
+                <tr data-epc-genset-row="${htmlSafe(row.id || `genset-${index + 1}`)}">
+                    <td class="px-2 py-2">${epcInputCell('genset', 'id', row.id || `genset-${index + 1}`)}</td>
+                    <td class="px-2 py-2">${epcInputCell('genset', 'name', row.name || row.label || '')}</td>
+                    <td class="px-2 py-2">${epcInputCell('genset', 'zone', row.zone || 'Common')}</td>
+                    <td class="px-2 py-2">${epcInputCell('genset', 'ratedKva', row.ratedKva ?? '', 'type="number" min="0" step="0.1"')}</td>
+                    <td class="px-2 py-2">${epcInputCell('genset', 'ratedKw', row.ratedKw ?? '', 'type="number" min="0" step="0.1"')}</td>
+                    <td class="px-2 py-2">${epcInputCell('genset', 'supportedAssetIds', csvListValue(row.supportedAssetIds))}</td>
+                    <td class="px-2 py-2">${epcInputCell('genset', 'fuelLiters', row.fuelLiters ?? '', 'type="number" min="0" step="0.1"')}</td>
+                    <td class="px-2 py-2">${epcInputCell('genset', 'fuelPeriodDays', row.fuelPeriodDays ?? 1, 'type="number" min="1" step="1"')}</td>
+                    <td class="px-2 py-2">${epcInputCell('genset', 'runtimeHours', row.runtimeHours ?? '', 'type="number" min="0" max="24" step="0.1"')}</td>
+                    <td class="px-2 py-2">${epcInputCell('genset', 'sfcLPerKwh', row.sfcLPerKwh ?? 0.27, 'type="number" min="0" step="0.01"')}</td>
+                    <td class="px-2 py-2 text-right"><button type="button" onclick="this.closest('tr')?.remove()" class="px-2 py-1 rounded-lg border border-slate-200 text-[10px] font-black text-slate-500 hover:bg-slate-50">Delete</button></td>
+                </tr>
+            `).join('');
+        }
+
+        function renderEpcAssetMethodStatus(project = getActiveEpcDesignProject(), result = window.__lastEpcDesignResult || null) {
+            const status = document.getElementById('epc-asset-method-status');
+            if (!status) return;
+            const assets = Array.isArray(project.loads?.assets) ? project.loads.assets : [];
+            const gensets = Array.isArray(project.gensets) ? project.gensets : Array.isArray(project.loads?.gensets) ? project.loads.gensets : [];
+            const feeders = Array.isArray(result?.feederZoning?.feeders) ? result.feederZoning.feeders : [];
+            status.textContent = assets.length
+                ? `${assets.length} assets · ${gensets.length} gensets · ${feeders.length || project.loads?.loadCount || 0} feeder branches`
+                : 'No asset rows.';
+        }
+        window.renderEpcAssetListRows = renderEpcAssetListRows;
+        window.renderEpcGensetListRows = renderEpcGensetListRows;
+        window.addEpcAssetListRow = () => renderEpcAssetListRows([...epcAssetRowsFromDom(), { id: `asset-${Date.now()}`, name: '', type: 'load', zone: 'Common', qty: 1, dutyFactor: 1, simultaneityFactor: 1, fuelPeriodDays: 1 }]);
+        window.addEpcGensetListRow = () => renderEpcGensetListRows([...epcGensetRowsFromDom(), { id: `genset-${Date.now()}`, name: '', zone: 'Common', fuelPeriodDays: 1, sfcLPerKwh: 0.27 }]);
+        window.saveEpcAssetListRows = () => {
+            const project = captureEpcDesignFromDom();
+            project.loads.measurementMethod = 'asset_genset_fuel_mapping';
+            project.loads.assets = epcAssetRowsFromDom();
+            project.gensets = epcGensetRowsFromDom();
+            project.loads.gensets = project.gensets;
+            setEpcStandardTopologyDirty(project);
+            updateEpcProject(project);
+            syncEpcDesignInputs(project);
+            renderEpcDesignResult(project);
+            setEpcDetailInputsTab('assets');
+            const status = document.getElementById('epc-design-save-status');
+            if (status) status.textContent = 'Asset list updated locally';
+        };
+
         function captureEpcDesignFromDom() {
             const current = getActiveEpcDesignProject();
             const draft = JSON.parse(JSON.stringify(current));
@@ -10638,6 +10861,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             draft.loads = draft.loads || {};
             draft.loads.loadCount = epcNormalizeLoadCount(draft.loads.loadCount || current.loads?.loadCount || 1);
             draft.loads.loadSplits = epcLoadSplitsFromDom(draft.loads.loadCount, current.loads?.loadSplits || []);
+            const assetRows = epcAssetRowsFromDom();
+            const gensetRows = epcGensetRowsFromDom();
+            if (assetRows.length || draft.loads.measurementMethod === 'asset_genset_fuel_mapping') draft.loads.assets = assetRows;
+            if (gensetRows.length || draft.loads.measurementMethod === 'asset_genset_fuel_mapping') {
+                draft.gensets = gensetRows;
+                draft.loads.gensets = gensetRows;
+            }
             draft.assumptions = { ...(draft.assumptions || {}), bessDod: readEpcDodPercentInput() };
             draft.mode = epcDesignMode;
             draft.updatedAt = new Date().toISOString();
@@ -10707,19 +10937,39 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (check) check.checked = !!project.loads.changeWorkingTime;
         }
 
+        let epcDetailInputsTab = 'settings';
+
+        function setEpcDetailInputsTab(tab = 'settings') {
+            epcDetailInputsTab = tab === 'assets' ? 'assets' : 'settings';
+            document.querySelectorAll('[data-epc-detail-page]').forEach(page => {
+                page.classList.toggle('hidden', page.dataset.epcDetailPage !== epcDetailInputsTab);
+            });
+            document.querySelectorAll('[data-epc-detail-tab]').forEach(button => {
+                const active = button.dataset.epcDetailTab === epcDetailInputsTab;
+                button.classList.toggle('bg-purple-700', active);
+                button.classList.toggle('text-white', active);
+                button.classList.toggle('text-slate-500', !active);
+                button.classList.toggle('hover:text-purple-700', !active);
+            });
+        }
+        window.setEpcDetailInputsTab = setEpcDetailInputsTab;
+
         function updateEpcModeSpecificUi() {
             const canViewEngineering = canReadEpcEngineering();
             const detailed = epcDesignMode === 'detailed' && canViewEngineering;
             document.getElementById('epc-detail-inputs-panel')?.classList.toggle('hidden', !detailed);
             document.getElementById('epc-advanced-inputs')?.classList.toggle('hidden', !detailed);
             document.getElementById('epc-detailed-fields')?.classList.toggle('hidden', !detailed);
+            document.getElementById('epc-assets-list-page')?.classList.toggle('hidden', !detailed || epcDetailInputsTab !== 'assets');
             document.getElementById('epc-recommendation-target-toggle')?.classList.toggle('hidden', epcDesignMode === 'detailed');
+            if (detailed) setEpcDetailInputsTab(epcDetailInputsTab);
         }
 
         function epcLoadMethodLabel(method = 'diesel_sfc_estimate') {
             const labels = {
                 energy_meter: 'Energy Meter',
                 equipment_schedule: 'Equipment Schedule',
+                asset_genset_fuel_mapping: 'Asset + Genset Fuel Mapping',
                 genset_kva_load_factor: 'Genset kVA / load factor',
                 diesel_sfc_estimate: 'Diesel / SFC estimate'
             };
@@ -10763,6 +11013,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     ? `${rows.length} rows · ${formatEpcNumber(load.dailyLoadKwh, 0, 'kWh/day')} · peak ${formatEpcNumber(load.peakLoadKw, 0, 'kW')}${avgBasis}${flowBasis}`
                     : 'No equipment schedule rows.';
             }
+            renderEpcAssetMethodStatus(project, result);
         }
 
         const epcWizardHintTimers = {};
@@ -10787,6 +11038,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 if (!rows.length || !rows.some(row => positive(row.ratedKw) && positive(row.quantity))) {
                     loadMissing.push('add equipment schedule rows with kW and quantity');
                     loadTargets.push('epc-equipment-schedule-summary');
+                }
+            } else if (measurementMethod === 'asset_genset_fuel_mapping') {
+                const assets = Array.isArray(loads.assets) ? loads.assets : [];
+                if (!assets.length || !assets.some(row => positive(row.kw) && positive(row.qty))) {
+                    loadMissing.push('add asset rows with kW and quantity');
+                    loadTargets.push('epc-asset-method-status');
                 }
             } else if (measurementMethod === 'genset_kva_load_factor') {
                 const genset = loads.gensetKvaInput || {};
@@ -11155,8 +11412,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             setInputValue('epc-solar-ghi', project.solarResource.ghiKwhM2Day || '');
             setInputValue('epc-solar-dni', project.solarResource.dniKwhM2Day || '');
             setInputValue('epc-solar-temp', project.solarResource.temperatureC || '');
+            renderEpcAssetListRows(project.loads.assets || []);
+            renderEpcGensetListRows(project.gensets || project.loads.gensets || []);
             renderEpcLoadMeasurementPanels(project);
             renderEpcLoadSplitControls(project, window.__lastEpcDesignResult || null);
+            renderEpcAssetMethodStatus(project, window.__lastEpcDesignResult || null);
+            setEpcDetailInputsTab(epcDetailInputsTab);
         }
 
         function formatEpcNumber(value, digits = 2, unit = '') {
@@ -17512,6 +17773,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 `;
             }
             window.__lastEpcDesignResult = result;
+            renderEpcAssetMethodStatus(project, result);
             setEpcPanelTab(epcDesignPanelTab);
             return result;
         }
@@ -17537,17 +17799,6 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             project.project.name = `Hybrid EPC Design ${new Date().toISOString().slice(0, 10)}`;
             updateEpcProject(project);
             renderEpcDesignWorkspace();
-        };
-
-        window.applyEpcQuarryProcurementProfile = () => {
-            const current = captureEpcDesignFromDom();
-            const project = buildEpcQuarryProcurementProfile(current, { defaults: epcDesignDefaults });
-            epcDesignMode = project.mode || 'detailed';
-            clearEpcSldHistory();
-            updateEpcProject(project);
-            renderEpcDesignWorkspace();
-            const status = document.getElementById('epc-design-save-status');
-            if (status) status.textContent = 'Quarry / TJQ template applied locally';
         };
 
         window.selectEpcDesignProject = (id) => {
@@ -18075,6 +18326,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
         window.onEpcDesignInputChanged = (options = {}) => {
             const project = captureEpcDesignFromDom();
+            if (project.loads?.measurementMethod === 'asset_genset_fuel_mapping') setEpcDetailInputsTab('assets');
             renderEpcDesignResult(project);
             if (options.map) updateEpcMapMarker(project.site);
             const status = document.getElementById('epc-design-save-status');
@@ -18560,46 +18812,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             `;
         }
 
-        function renderEpcReportProcurementAdvisory(result = {}) {
-            const findings = Array.isArray(result.procurementAdvisory?.findings) ? result.procurementAdvisory.findings : [];
-            const summary = result.procurementAdvisory?.summary || {};
-            return `
-                <div class="grid grid-cols-4 gap-2 mb-3">
-                    ${[
-                        ['Findings', formatEpcNumber(summary.findingCount || findings.length, 0)],
-                        ['High Priority', formatEpcNumber(summary.highCount || findings.filter(item => item.severity === 'high').length, 0)],
-                        ['Full String Module Delta', formatEpcNumber(summary.fullStringModuleDelta || result.pvStringDesign?.stringRoundingGapModules || 0, 0)],
-                        ['Genset Count', formatEpcNumber(summary.gensetCount || result.loadAssetSummary?.gensetCount || 0, 0)]
-                    ].map(([label, value]) => `
-                        <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                            <div class="text-[9px] font-black uppercase text-slate-400">${htmlSafe(label)}</div>
-                            <div class="mt-1 text-sm font-black text-slate-900">${htmlSafe(value)}</div>
-                        </div>
-                    `).join('')}
-                </div>
-                <table class="epc-report-table">
-                    <thead>
-                        <tr><th>Finding ID</th><th>Severity</th><th>Domain</th><th>Evidence</th><th>Recommendation</th><th class="num">Delta</th></tr>
-                    </thead>
-                    <tbody>
-                        ${findings.map(item => `
-                            <tr>
-                                <td class="package">${htmlSafe(item.id || '-')}</td>
-                                <td>${htmlSafe(item.severity || '-')}</td>
-                                <td>${htmlSafe(item.domain || '-')}</td>
-                                <td>${htmlSafe(item.evidence || item.title || '-')}</td>
-                                <td>${htmlSafe(item.recommendation || '-')}</td>
-                                <td class="num">${formatEpcNumber(item.quantityDelta, 2)}</td>
-                            </tr>
-                        `).join('') || '<tr><td colspan="6" class="empty">No procurement advisory findings.</td></tr>'}
-                    </tbody>
-                </table>
-            `;
-        }
-
         function renderEpcReportAssetMapping(result = {}) {
             const groups = Array.isArray(result.loadAssetSummary?.assetGroups) ? result.loadAssetSummary.assetGroups : [];
             const gensets = Array.isArray(result.loadAssetSummary?.gensets) ? result.loadAssetSummary.gensets : [];
+            const feeders = Array.isArray(result.feederZoning?.feeders) ? result.feederZoning.feeders : [];
             return `
                 <div class="grid grid-cols-5 gap-2 mb-3">
                     ${[
@@ -18617,20 +18833,23 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 </div>
                 <table class="epc-report-table">
                     <thead>
-                        <tr><th>Zone</th><th>Asset Group</th><th>Type</th><th class="num">Assets</th><th class="num">Feeder</th><th class="num">VFD</th><th class="num">Metering</th></tr>
+                        <tr><th>Zone</th><th>Feeder ID</th><th>Type</th><th class="num">Assets</th><th class="num">kW</th><th class="num">Current A</th><th>Breaker</th><th>Cable</th><th>Metering</th><th>Assigned Genset</th></tr>
                     </thead>
                     <tbody>
-                        ${groups.map(row => `
+                        ${(feeders.length ? feeders : groups).map((row, index) => `
                             <tr>
                                 <td class="package">${htmlSafe(row.zone || '-')}</td>
-                                <td>${htmlSafe(row.label || row.id || '-')}</td>
-                                <td>${htmlSafe(row.assetType || row.feederType || '-')}</td>
+                                <td>${htmlSafe(row.feederId || row.id || row.label || '-')}</td>
+                                <td>${htmlSafe(row.type || row.assetType || row.feederType || '-')}</td>
                                 <td class="num">${formatEpcNumber(row.assetCount, 0)}</td>
-                                <td class="num">${formatEpcNumber(row.feederCabinetQty, 0)}</td>
-                                <td class="num">${formatEpcNumber(row.vfdCabinetQty, 0)}</td>
-                                <td class="num">${formatEpcNumber(row.meteringCabinetQty, 0)}</td>
+                                <td class="num">${formatEpcNumber(row.totalKw ?? row.ratedKw, 0)}</td>
+                                <td class="num">${formatEpcNumber(row.currentA, 0)}</td>
+                                <td>${htmlSafe(row.breakerA ? `${Math.ceil(Number(row.breakerA) / 50) * 50}A` : '-')}</td>
+                                <td>${htmlSafe(row.cableStatus || '-')}</td>
+                                <td>${htmlSafe(row.meteringRequired || row.meteringCabinetQty ? 'Yes' : 'No')}</td>
+                                <td>${htmlSafe((row.assignedGensetIds || []).join(', ') || '-')}</td>
                             </tr>
-                        `).join('') || '<tr><td colspan="7" class="empty">No asset mapping rows.</td></tr>'}
+                        `).join('') || '<tr><td colspan="10" class="empty">No asset mapping rows.</td></tr>'}
                     </tbody>
                 </table>
                 ${gensets.length ? `<div class="epc-report-note">Genset Count: ${formatEpcNumber(gensets.length, 0)}. EMS BOQ expands remote control and metering/runtime monitoring per genset.</div>` : ''}
@@ -18727,19 +18946,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     body: renderEpcReportArchitectureDecision(result)
                 });
             }
-            if ((Array.isArray(result.procurementAdvisory?.findings) ? result.procurementAdvisory.findings : []).length) {
-                pageBodies.push({
-                    title: 'Procurement Gap Review',
-                    subtitle: 'Automated comparison of concept design, full-string PV procurement and asset-level EMS/BOQ scope.',
-                    className: 'epc-report-boq-page epc-report-procurement-page',
-                    result,
-                    body: renderEpcReportProcurementAdvisory(result)
-                });
-            }
             if ((Array.isArray(result.loadAssetSummary?.assetGroups) ? result.loadAssetSummary.assetGroups : []).length) {
                 pageBodies.push({
-                    title: 'Asset Mapping',
-                    subtitle: 'Load branch, feeder cabinet, VFD, metering and genset scope derived from the asset list.',
+                    title: 'Asset / Feeder Mapping',
+                    subtitle: 'Load branch, feeder cabinet, VFD, metering, genset and feeder zoning scope derived from the asset list.',
                     className: 'epc-report-boq-page epc-report-asset-page',
                     result,
                     body: renderEpcReportAssetMapping(result)
@@ -18948,42 +19158,80 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return [headers, ...(rows.length ? rows : [['', 'No architecture comparison rows', '', '', '', '', '', '', '', '']])];
         }
 
-        function epcBoqWorkbookProcurementAdvisorRows(result = {}) {
-            const headers = ['Finding ID', 'Severity', 'Domain', 'Title', 'Evidence', 'Recommendation', 'Quantity Delta', 'Action', 'Full String Module Delta', 'Genset Count'];
-            const findings = Array.isArray(result.procurementAdvisory?.findings) ? result.procurementAdvisory.findings : [];
-            const summary = result.procurementAdvisory?.summary || {};
-            const rows = findings.map(item => [
-                item.id || '',
-                item.severity || '',
-                item.domain || '',
-                item.title || '',
-                item.evidence || '',
-                item.recommendation || '',
-                Number.isFinite(Number(item.quantityDelta)) ? Number(item.quantityDelta) : '',
-                item.action || '',
-                Number.isFinite(Number(summary.fullStringModuleDelta)) ? Number(summary.fullStringModuleDelta) : '',
-                Number.isFinite(Number(summary.gensetCount)) ? Number(summary.gensetCount) : ''
+        function epcBoqWorkbookAssetListRows(result = {}) {
+            const headers = ['Asset ID', 'Name', 'Type', 'Zone', 'Line', 'Area', 'Conveyor System', 'kW', 'Qty', 'Start Type', 'Distance m', 'Operation Hours', 'Duty Factor', 'Simultaneity Factor', 'Assigned Genset', 'Fuel Liters', 'Fuel Period Days', 'Fuel Runtime Hours'];
+            const assets = Array.isArray(result.loads?.assets) ? result.loads.assets : [];
+            const rows = assets.map(row => [
+                row.id || '',
+                row.name || row.label || '',
+                row.type || row.assetType || '',
+                row.zone || '',
+                row.line || '',
+                row.area || '',
+                row.conveyorSystem || '',
+                Number.isFinite(Number(row.kw)) ? Number(row.kw) : '',
+                Number.isFinite(Number(row.qty)) ? Number(row.qty) : '',
+                row.startType || '',
+                Number.isFinite(Number(row.distanceM)) ? Number(row.distanceM) : '',
+                Number.isFinite(Number(row.operationHours)) ? Number(row.operationHours) : '',
+                Number.isFinite(Number(row.dutyFactor)) ? Number(row.dutyFactor) : '',
+                Number.isFinite(Number(row.simultaneityFactor)) ? Number(row.simultaneityFactor) : '',
+                (row.assignedGensetIds || []).join(', '),
+                Number.isFinite(Number(row.fuelLiters)) ? Number(row.fuelLiters) : '',
+                Number.isFinite(Number(row.fuelPeriodDays)) ? Number(row.fuelPeriodDays) : '',
+                Number.isFinite(Number(row.fuelRuntimeHours)) ? Number(row.fuelRuntimeHours) : ''
             ]);
-            return [headers, ...(rows.length ? rows : [['', '', '', 'No procurement advisory findings', '', '', '', '', summary.fullStringModuleDelta || 0, summary.gensetCount || 0]])];
+            return [headers, ...(rows.length ? rows : [['', 'No asset rows', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '']])];
+        }
+
+        function epcBoqWorkbookFeederZoningRows(result = {}) {
+            const headers = ['Feeder ID', 'Zone', 'Type', 'Assets', 'Asset Count', 'Total kW', 'Operating kW', 'Current A', 'Breaker A', 'Cable Ampacity A', 'Voltage Drop %', 'Cable Status', 'Metering', 'Assigned Genset', 'Split Reason', 'Recommendation'];
+            const feeders = Array.isArray(result.feederZoning?.feeders) ? result.feederZoning.feeders : [];
+            const recommendations = Array.isArray(result.feederZoning?.topologyRecommendations) ? result.feederZoning.topologyRecommendations : [];
+            const recommendationText = recommendations.map(item => item.recommendation).join(' | ');
+            const rows = feeders.map(row => [
+                row.feederId || '',
+                row.zone || '',
+                row.type || '',
+                (row.assets || []).join(', '),
+                Number.isFinite(Number(row.assetCount)) ? Number(row.assetCount) : '',
+                Number.isFinite(Number(row.totalKw)) ? Number(row.totalKw) : '',
+                Number.isFinite(Number(row.operatingKw)) ? Number(row.operatingKw) : '',
+                Number.isFinite(Number(row.currentA)) ? Number(row.currentA) : '',
+                Number.isFinite(Number(row.breakerA)) ? Number(row.breakerA) : '',
+                Number.isFinite(Number(row.cableAmpacityA)) ? Number(row.cableAmpacityA) : '',
+                Number.isFinite(Number(row.voltageDropPct)) ? Number(row.voltageDropPct) : '',
+                row.cableStatus || '',
+                row.meteringRequired ? 'Yes' : 'No',
+                (row.assignedGensetIds || []).join(', '),
+                row.splitReason || '',
+                recommendationText
+            ]);
+            return [headers, ...(rows.length ? rows : [['', 'No feeder zoning rows', '', '', '', '', '', '', '', '', '', '', '', '', '', recommendationText]])];
         }
 
         function epcBoqWorkbookAssetMappingRows(result = {}) {
-            const headers = ['Asset Group ID', 'Zone', 'Label', 'Asset Type', 'Asset Count', 'Feeder Cabinet Qty', 'VFD Cabinet Qty', 'Metering Cabinet Qty', 'Genset Count', 'Source'];
+            const headers = ['Asset Group ID', 'Zone', 'Label', 'Asset Type', 'Asset Count', 'Feeder Cabinet Qty', 'VFD Cabinet Qty', 'Metering Cabinet Qty', 'Genset Count', 'Feeder ID', 'Current A', 'Cable Status', 'Assigned Genset', 'Source'];
             const groups = Array.isArray(result.loadAssetSummary?.assetGroups) ? result.loadAssetSummary.assetGroups : [];
+            const feeders = Array.isArray(result.feederZoning?.feeders) ? result.feederZoning.feeders : [];
             const summary = result.loadAssetSummary || {};
-            const rows = groups.map(row => [
-                row.id || '',
+            const rows = (feeders.length ? feeders : groups).map(row => [
+                row.id || row.feederId || '',
                 row.zone || '',
-                row.label || '',
-                row.assetType || row.feederType || '',
+                row.label || row.feederId || '',
+                row.assetType || row.feederType || row.type || '',
                 Number.isFinite(Number(row.assetCount)) ? Number(row.assetCount) : '',
-                Number.isFinite(Number(row.feederCabinetQty)) ? Number(row.feederCabinetQty) : '',
-                Number.isFinite(Number(row.vfdCabinetQty)) ? Number(row.vfdCabinetQty) : '',
-                Number.isFinite(Number(row.meteringCabinetQty)) ? Number(row.meteringCabinetQty) : '',
+                Number.isFinite(Number(row.feederCabinetQty)) ? Number(row.feederCabinetQty) : (row.feederId ? 1 : ''),
+                Number.isFinite(Number(row.vfdCabinetQty)) ? Number(row.vfdCabinetQty) : (row.requiresVfd ? 1 : 0),
+                Number.isFinite(Number(row.meteringCabinetQty)) ? Number(row.meteringCabinetQty) : (row.meteringRequired ? 1 : 0),
                 Number.isFinite(Number(summary.gensetCount)) ? Number(summary.gensetCount) : '',
+                row.feederId || '',
+                Number.isFinite(Number(row.currentA)) ? Number(row.currentA) : '',
+                row.cableStatus || '',
+                (row.assignedGensetIds || []).join(', '),
                 row.source || 'asset-mapping'
             ]);
-            return [headers, ...(rows.length ? rows : [['', '', 'No asset mapping rows', '', '', '', '', '', summary.gensetCount || 0, '']])];
+            return [headers, ...(rows.length ? rows : [['', '', 'No asset mapping rows', '', '', '', '', '', summary.gensetCount || 0, '', '', '', '', '']])];
         }
 
         function formatEpcWorksheetColumns(worksheet, widths = []) {
@@ -19027,20 +19275,23 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const engineeringWorksheet = XLSX.utils.aoa_to_sheet(epcBoqWorkbookEngineeringRows(result));
             const productWorksheet = XLSX.utils.aoa_to_sheet(epcBoqWorkbookProductRows(result));
             const architectureWorksheet = XLSX.utils.aoa_to_sheet(epcBoqWorkbookArchitectureComparisonRows(result));
-            const procurementWorksheet = XLSX.utils.aoa_to_sheet(epcBoqWorkbookProcurementAdvisorRows(result));
+            const assetListWorksheet = XLSX.utils.aoa_to_sheet(epcBoqWorkbookAssetListRows(result));
+            const feederZoningWorksheet = XLSX.utils.aoa_to_sheet(epcBoqWorkbookFeederZoningRows(result));
             const assetWorksheet = XLSX.utils.aoa_to_sheet(epcBoqWorkbookAssetMappingRows(result));
             formatEpcWorksheetColumns(customerWorksheet, [20, 28, 54, 12, 10, 20, 28, 42]);
             formatEpcWorksheetColumns(engineeringWorksheet, [20, 28, 54, 12, 10, 20, 28, 16, 12, 18, 10, 42]);
             formatEpcWorksheetColumns(productWorksheet, [22, 20, 28, 20, 34, 24, 54, 16, 42]);
             formatEpcWorksheetColumns(architectureWorksheet, [22, 24, 18, 14, 16, 16, 12, 14, 54, 64]);
-            formatEpcWorksheetColumns(procurementWorksheet, [24, 12, 14, 34, 54, 64, 16, 28, 24, 16]);
-            formatEpcWorksheetColumns(assetWorksheet, [24, 18, 34, 18, 14, 20, 18, 20, 16, 20]);
+            formatEpcWorksheetColumns(assetListWorksheet, [14, 24, 14, 14, 14, 14, 18, 10, 8, 12, 12, 12, 10, 12, 18, 12, 12, 12]);
+            formatEpcWorksheetColumns(feederZoningWorksheet, [18, 14, 14, 28, 12, 12, 14, 12, 12, 16, 16, 14, 10, 18, 14, 64]);
+            formatEpcWorksheetColumns(assetWorksheet, [24, 18, 34, 18, 14, 20, 18, 20, 16, 18, 12, 14, 18, 20]);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, customerWorksheet, 'Customer Summary');
             XLSX.utils.book_append_sheet(workbook, engineeringWorksheet, 'Engineering Detail');
             XLSX.utils.book_append_sheet(workbook, productWorksheet, 'Product Binding');
             XLSX.utils.book_append_sheet(workbook, architectureWorksheet, 'Architecture Comparison');
-            XLSX.utils.book_append_sheet(workbook, procurementWorksheet, 'Procurement Advisor');
+            XLSX.utils.book_append_sheet(workbook, assetListWorksheet, 'Asset List');
+            XLSX.utils.book_append_sheet(workbook, feederZoningWorksheet, 'Feeder Zoning');
             XLSX.utils.book_append_sheet(workbook, assetWorksheet, 'Asset Mapping');
             XLSX.writeFile(workbook, `${safeName}-complete-boq.xlsx`);
         };

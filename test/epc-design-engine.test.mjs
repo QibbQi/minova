@@ -5,7 +5,6 @@ import {
   EPC_DESIGN_DEFAULTS,
   buildGlobalSolarAtlasApiUrls,
   buildEpcDesignProjectFromQuickInputs,
-  buildEpcQuarryProcurementProfile,
   buildGlobalSolarAtlasUrl,
   calculateEpcDesignProject,
   calculatePvStringDesign,
@@ -1114,97 +1113,48 @@ test('EPC asset mapping expands quarry MV ring BOQ to procurement-grade feeder a
   assert.equal(row('zone-metering-cabinet')?.quantity, 4);
   assert.equal(row('genset-remote-control')?.quantity, 9);
   assert.equal(row('genset-metering-runtime')?.quantity, 9);
-  assert.equal(result.procurementAdvisory.findings.some((item) => item.id === 'genset-asset-mapping' && item.severity === 'high'), true);
-  assert.equal(result.procurementAdvisory.findings.some((item) => item.id === 'pv-string-rounding' && item.quantityDelta === 19), true);
+  assert.equal(Object.hasOwn(result, 'procurementAdvisory'), false);
 });
 
-test('EPC quarry procurement profile seeds TJQ loads gensets and fixed default architecture', () => {
-  const project = buildEpcQuarryProcurementProfile({}, {
-    now: '2026-06-19T00:00:00.000Z'
-  });
-  const result = calculateEpcDesignProject(project, {
-    now: '2026-06-19T00:00:00.000Z'
-  });
-
-  assert.equal(project.procurementProfileId, 'quarry_tjq');
-  assert.equal(project.loads.loadCount, 8);
-  assert.equal(project.loads.assetGroups.length, 8);
-  assert.equal(project.gensets.length, 9);
-  assert.equal(project.designTargets.capacityOverrides.pvMwp, 4);
-  assert.equal(project.designTargets.capacityOverrides.bessMwh, 5);
-  assert.equal(project.designTargets.capacityOverrides.pcsMw, 2.5);
-  assert.equal(project.electrical.selectedArchitectureId, 'mv_11_ring');
-  assert.equal(project.electrical.localReferenceArchitecture, 'lv_800_microgrid');
-  assert.equal(result.loadAssetSummary.branchCount, 8);
-  assert.equal(result.loadAssetSummary.assetCount, 30);
-  assert.equal(result.loadAssetSummary.gensetCount, 9);
-  assert.equal(result.loadAssetSummary.assetGroups.length, 8);
-  assert.equal(result.boq.find((item) => item.id === 'genset-remote-control')?.quantity, 9);
-  assert.equal(result.architectureComparison.recommendedId, 'mv_11_ring');
-});
-
-test('EPC architecture comparison keeps 800V as local reference and 11kV ring recommended for quarry', () => {
-  const result = calculateEpcDesignProject(buildEpcQuarryProcurementProfile({
-    electrical: { distanceToInterconnectionM: 650 }
-  }, {
-    now: '2026-06-19T00:00:00.000Z'
-  }), { now: '2026-06-19T00:00:00.000Z' });
-  const candidate = (id) => result.architectureComparison.candidates.find((item) => item.id === id);
-  const lv415 = candidate('lv_415_centralized');
-  const lv800 = candidate('lv_800_microgrid');
-  const ring = candidate('mv_11_ring');
-
-  assert.ok(lv415, '415V candidate should be present');
-  assert.ok(lv800, '800V local BOQ reference candidate should be present');
-  assert.ok(ring, '11kV ring candidate should be present');
-  assert.equal(result.architectureComparison.localReference.id, 'lv_800_microgrid');
-  assert.equal(result.architectureComparison.recommendedId, 'mv_11_ring');
-  assert.equal(lv800.status, 'REVIEW');
-  assert.ok(lv800.currentA < lv415.currentA);
-  assert.ok(lv800.currentA > ring.currentA);
-  assert.ok(lv800.riskNotes.some((note) => /protection|supply|O&M|transformer/i.test(note)));
-  assert.match(ring.recommendation, /recommended/i);
-});
-
-test('EPC procurement advisory emits quarry architecture and data-gap findings', () => {
-  const emptyMapping = calculateEpcDesignProject({
-    project: { name: 'Quarry without asset data' },
-    electrical: {
-      selectedArchitectureId: 'mv_11_ring',
-      localReferenceArchitecture: 'lv_800_microgrid',
-      distanceToInterconnectionM: 650,
-      newMvSystem: true
-    },
+test('EPC asset genset fuel mapping creates feeder zoning load splits and topology recommendations', () => {
+  const result = calculateEpcDesignProject({
+    site: { gridMode: 'island' },
     loads: {
-      dailyLoadKwh: 15452,
-      operationHoursPerDay: 8
+      measurementMethod: 'asset_genset_fuel_mapping',
+      operationHoursPerDay: 8,
+      assets: [
+        { id: 'C1', name: 'Primary Crusher 1', type: 'crusher', zone: 'TJQ1', line: 'L1', kw: 230, qty: 1, startType: 'DOL', distanceM: 80, operationHours: 8, dutyFactor: 0.9, simultaneityFactor: 1, assignedGensetIds: ['G1'], fuelLiters: 460, fuelPeriodDays: 1, fuelRuntimeHours: 8 },
+        { id: 'C2', name: 'Primary Crusher 2', type: 'crusher', zone: 'TJQ1', line: 'L1', kw: 230, qty: 1, startType: 'DOL', distanceM: 90, operationHours: 8, dutyFactor: 0.9, simultaneityFactor: 1, assignedGensetIds: ['G1'] },
+        { id: 'C3', name: 'Remote Crusher', type: 'crusher', zone: 'TJQ1', line: 'L1', kw: 220, qty: 1, startType: 'DOL', distanceM: 230, operationHours: 8, dutyFactor: 0.8, simultaneityFactor: 1, assignedGensetIds: ['G2'] },
+        { id: 'S1', name: 'Screen A', type: 'screen', zone: 'TJQ1', conveyorSystem: 'CV1', kw: 120, qty: 1, startType: 'soft_start', distanceM: 120, operationHours: 8, dutyFactor: 0.7, simultaneityFactor: 1, assignedGensetIds: ['G1'] },
+        { id: 'S2', name: 'Screen B', type: 'screen', zone: 'TJQ1', conveyorSystem: 'CV1', kw: 100, qty: 1, startType: 'soft_start', distanceM: 130, operationHours: 8, dutyFactor: 0.7, simultaneityFactor: 1, assignedGensetIds: ['G1'] },
+        { id: 'P1', name: 'Water Pump 1', type: 'pump', zone: 'Common', area: 'pond', kw: 60, qty: 1, startType: 'soft_start', distanceM: 70, operationHours: 10, dutyFactor: 0.8, simultaneityFactor: 1, assignedGensetIds: ['G3'] },
+        { id: 'V1', name: 'VFD Pump', type: 'vfd', zone: 'Common', area: 'pond', kw: 600, qty: 1, startType: 'vfd', distanceM: 80, operationHours: 10, dutyFactor: 0.8, simultaneityFactor: 1, assignedGensetIds: ['G3'] }
+      ]
     },
-    designTargets: {
-      replacementPct: 80,
-      capacityOverrides: { pvMwp: 4, bessMwh: 5, pcsMw: 2.5 }
-    }
-  }, { now: '2026-06-19T00:00:00.000Z' });
-  const emptyIds = new Set(emptyMapping.procurementAdvisory.findings.map((finding) => finding.id));
+    gensets: [
+      { id: 'G1', name: 'TJQ1 Genset', zone: 'TJQ1', ratedKva: 750, fuelLiters: 700, fuelPeriodDays: 1, runtimeHours: 8, supportedAssetIds: ['C1', 'C2', 'S1', 'S2'] },
+      { id: 'G2', name: 'Remote Genset', zone: 'TJQ1', ratedKva: 350, fuelLiters: 260, fuelPeriodDays: 1, runtimeHours: 8, supportedAssetIds: ['C3'] },
+      { id: 'G3', name: 'Common Genset', zone: 'Common', ratedKva: 300, fuelLiters: 150, fuelPeriodDays: 1, runtimeHours: 10, supportedAssetIds: ['P1', 'V1'] }
+    ],
+    designTargets: { replacementPct: 80 }
+  }, { now: '2026-06-20T00:00:00.000Z' });
 
-  assert.ok(emptyIds.has('empty-asset-mapping'));
-
-  const quarry = calculateEpcDesignProject(buildEpcQuarryProcurementProfile({}, {
-    now: '2026-06-19T00:00:00.000Z'
-  }), { now: '2026-06-19T00:00:00.000Z' });
-  const quarryFindings = new Map(quarry.procurementAdvisory.findings.map((finding) => [finding.id, finding]));
-
-  for (const id of [
-    'local-boq-high-pcs',
-    'local-boq-800v-review',
-    'transformer-rating-missing',
-    'cable-schedule-missing'
-  ]) {
-    assert.ok(quarryFindings.has(id), `missing procurement advisory finding: ${id}`);
-  }
-  assert.equal(quarryFindings.get('local-boq-high-pcs').severity, 'medium');
-  assert.equal(quarryFindings.get('local-boq-800v-review').severity, 'high');
-  assert.equal(quarryFindings.get('transformer-rating-missing').severity, 'medium');
-  assert.equal(quarryFindings.get('cable-schedule-missing').severity, 'medium');
+  assert.equal(result.load.measurementMethod, 'asset_genset_fuel_mapping');
+  assert.ok(result.load.dailyLoadKwh > 4800);
+  assert.ok(result.load.averageLoadKw > 600);
+  assert.ok(result.load.peakLoadKw > result.load.averageLoadKw);
+  assert.equal(result.feederZoning.zones.length, 2);
+  assert.equal(result.feederZoning.feeders.some((row) => row.type === 'vfd' && row.assets.includes('V1')), true);
+  assert.equal(result.feederZoning.feeders.some((row) => row.assets.includes('C1') && row.assets.includes('C2')), true);
+  assert.equal(result.feederZoning.feeders.some((row) => row.assets.includes('S1') && row.assets.includes('S2')), true);
+  assert.equal(result.feederZoning.feeders.some((row) => row.splitReason === 'current-limit'), true);
+  assert.equal(result.feederZoning.metering.some((row) => row.level === 'Feeder' && row.feederId), true);
+  assert.ok(result.feederZoning.transformers.every((row) => row.kva > 0));
+  assert.ok(result.feederZoning.loadSplits.length >= 5);
+  assert.equal(result.loads.loadSplits.length, result.feederZoning.loadSplits.length);
+  assert.ok(result.feederZoning.topologyRecommendations.some((item) => /VFD|metering|MV|transformer|split/i.test(item.recommendation)));
+  assert.equal(Object.hasOwn(result, 'procurementAdvisory'), false);
 });
 
 test('EPC off-grid projects default to the C5 standard topology with LV and MV buses', () => {

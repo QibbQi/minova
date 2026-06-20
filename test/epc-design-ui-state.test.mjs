@@ -46,9 +46,6 @@ test('EPC design workspace exposes quick detailed map solar and report surfaces'
     'data-epc-recommendation-target="100"',
     'setEpcRecommendationTarget(50)',
     'setEpcRecommendationTarget(100)',
-    'Apply Quarry / TJQ Template',
-    'applyEpcQuarryProcurementProfile',
-    'buildEpcQuarryProcurementProfile',
     'epc-design-schemes',
     'epc-design-formula-trace',
     'epc-design-boq',
@@ -61,6 +58,9 @@ test('EPC design workspace exposes quick detailed map solar and report surfaces'
   assert.doesNotMatch(source, /Data quality:/);
   assert.doesNotMatch(source, /id="epc-design-quality"/);
   assert.doesNotMatch(source, />Engineering Calc</);
+  assert.doesNotMatch(source, /Apply Quarry \/ TJQ Template/);
+  assert.doesNotMatch(source, /applyEpcQuarryProcurementProfile/);
+  assert.doesNotMatch(source, /buildEpcQuarryProcurementProfile/);
   assert.match(source, /<button[^>]*data-epc-download="engineering"[^>]*class="[^"]*\bhidden\b/);
 });
 
@@ -183,39 +183,42 @@ test('EPC Reports are fixed-page PDF downloads with full diagrams and XLSX BOQ e
   assert.match(html, /epc-report-rendering-overlay/);
 });
 
-test('EPC reports and BOQ workbook expose procurement advisory and asset mapping outputs', () => {
+test('EPC reports and BOQ workbook expose architecture and asset feeder outputs without procurement advisor', () => {
   for (const snippet of [
-    'renderEpcReportProcurementAdvisory',
     'renderEpcReportAssetMapping',
     'renderEpcReportArchitectureDecision',
-    'Procurement Gap Review',
     'Architecture Decision',
     '800V Microgrid',
     '11kV Ring',
-    'Asset Mapping',
+    'Asset / Feeder Mapping',
     'result.architectureComparison?.candidates',
-    'result.procurementAdvisory?.findings',
+    'result.feederZoning?.feeders',
     'result.loadAssetSummary?.assetGroups',
     'epcBoqWorkbookArchitectureComparisonRows',
-    'epcBoqWorkbookProcurementAdvisorRows',
+    'epcBoqWorkbookAssetListRows',
+    'epcBoqWorkbookFeederZoningRows',
     'epcBoqWorkbookAssetMappingRows',
     'Voltage / Bus',
     'Parallel Runs',
-    'Finding ID',
-    'Full String Module Delta',
-    'Genset Count',
+    'Feeder ID',
+    'Assigned Genset',
     "XLSX.utils.book_append_sheet(workbook, architectureWorksheet, 'Architecture Comparison')",
-    "XLSX.utils.book_append_sheet(workbook, procurementWorksheet, 'Procurement Advisor')",
+    "XLSX.utils.book_append_sheet(workbook, assetListWorksheet, 'Asset List')",
+    "XLSX.utils.book_append_sheet(workbook, feederZoningWorksheet, 'Feeder Zoning')",
     "XLSX.utils.book_append_sheet(workbook, assetWorksheet, 'Asset Mapping')"
   ]) {
-    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing procurement advisory snippet: ${snippet}`);
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing asset feeder report snippet: ${snippet}`);
   }
 
   const reportPages = html.match(/function renderEpcCustomerReportPages\(result = \{\}, kind = 'customer'\)[\s\S]*?function buildEpcReportFixedPageElement/);
   assert.ok(reportPages, 'customer report page builder should be found');
   assert.match(reportPages[0], /renderEpcReportArchitectureDecision\(result\)/);
-  assert.match(reportPages[0], /renderEpcReportProcurementAdvisory\(result\)/);
   assert.match(reportPages[0], /renderEpcReportAssetMapping\(result\)/);
+  assert.doesNotMatch(html, /renderEpcReportProcurementAdvisory/);
+  assert.doesNotMatch(html, /Procurement Gap Review/);
+  assert.doesNotMatch(html, /epcBoqWorkbookProcurementAdvisorRows/);
+  assert.doesNotMatch(html, /Procurement Advisor/);
+  assert.doesNotMatch(html, /procurementAdvisory/);
 });
 
 test('EPC report-only EMS Flow uses a static connection map instead of an operating hour', () => {
@@ -383,6 +386,12 @@ test('EPC detailed inputs expose title pointers instead of inline helper paragra
   assert.ok(section, 'Detail Inputs section exists');
   const detailSection = section[0];
   for (const snippet of [
+    'Detail Setting',
+    'Assets List',
+    'data-epc-detail-tab="settings"',
+    'data-epc-detail-tab="assets"',
+    'data-epc-detail-page="settings"',
+    'data-epc-detail-page="assets"',
     'data-epc-help="detail-inputs"',
     'data-epc-help="target-replacement"',
     'data-epc-help="available-area"',
@@ -416,7 +425,6 @@ test('EPC detailed inputs expose title pointers instead of inline helper paragra
     'Minimum battery state of charge reserved in EMS Flow.',
     'Usable battery depth of discharge applied to BESS sizing and EMS Flow SOC upper limit.',
     'Power factor used for AC current and voltage architecture checks.',
-    'Must-run load for backup or island mode; blank falls back to average load.',
     'PV modules per string used for string count and combiner sizing.',
     'Combiner input count used to estimate combiner quantity from total strings.'
   ]) {
@@ -426,7 +434,16 @@ test('EPC detailed inputs expose title pointers instead of inline helper paragra
   assert.doesNotMatch(detailSection, /data-tip=/);
   assert.match(detailSection, /title="Detailed Design uses Target % here as the calculation standard\."/);
   assert.match(detailSection, /title="Target diesel replacement percentage used as the detailed design standard\."/);
-  assert.match(detailSection, /title="Must-run load for backup or island mode; blank falls back to average load\."/);
+  const settingsPage = detailSection.match(/data-epc-detail-page="settings"[\s\S]*?data-epc-detail-page="assets"/);
+  const assetsPage = detailSection.match(/data-epc-detail-page="assets"[\s\S]*/);
+  assert.ok(settingsPage, 'settings detail page should be found');
+  assert.ok(assetsPage, 'assets detail page should be found');
+  assert.doesNotMatch(settingsPage[0], /Load Qty|id="epc-load-count"|id="epc-load-split-controls"/);
+  assert.match(assetsPage[0], /Load Qty/);
+  assert.match(assetsPage[0], /id="epc-load-count"/);
+  assert.match(assetsPage[0], /id="epc-load-split-controls"/);
+  assert.match(assetsPage[0], /id="epc-asset-list-rows"/);
+  assert.match(assetsPage[0], /id="epc-genset-list-rows"/);
   assert.doesNotMatch(detailSection, /<p class="mt-1 text-\[10px\] leading-snug text-slate-400">Peak Load = Avg Load x Safety Factor/);
   assert.doesNotMatch(detailSection, /<p class="mt-1 text-\[10px\] leading-snug text-slate-400">Diesel power intentionally kept online/);
   assert.doesNotMatch(detailSection, /<p class="mt-1 text-\[10px\] leading-snug text-slate-400">Must-run load for backup or island mode/);
@@ -443,7 +460,10 @@ test('EPC load measurement modes expose method-specific inputs and state', () =>
     'data-epc-load-method-panel="energy_meter"',
     'data-epc-load-method-panel="equipment_schedule"',
     'data-epc-load-method-panel="genset_kva_load_factor"',
+    'data-epc-load-method-panel="asset_genset_fuel_mapping"',
     'data-epc-load-method-panel="diesel_sfc_estimate"',
+    'Asset + Genset Fuel Mapping',
+    'epc-asset-method-status',
     'Upload Energy Meter File',
     'Raw Peak',
     'Smoothed Peak',
@@ -471,6 +491,9 @@ test('EPC load measurement modes expose method-specific inputs and state', () =>
     'renderEpcLoadMeasurementPanels',
     'openEpcEquipmentScheduleModal',
     'saveEpcEquipmentScheduleRows',
+    'renderEpcAssetListRows',
+    'renderEpcGensetListRows',
+    'saveEpcAssetListRows',
     'energyMeterSummary',
     'equipmentSchedule',
     'equipmentScheduleOperatingHours',
@@ -1723,6 +1746,10 @@ test('EPC inputs expose split load count and ratio controls for EMS Flow', () =>
   const splitHandler = html.match(/function updateEpcLoadSplitRatio\(index, value, field = 'ratio'\)[\s\S]*?window\.updateEpcLoadSplitRatio/);
   assert.ok(splitHandler, 'split update handler should exist');
   assert.doesNotMatch(splitHandler[0], /const project = captureEpcDesignFromDom\(\);\s*project\.loads\.loadSplits = epcLoadSplitsFromDom/, 'split handler should apply the explicit edited value before rerendering');
+  const assetsPage = html.match(/data-epc-detail-page="assets"[\s\S]*?<\/section>/);
+  assert.ok(assetsPage, 'assets list page should hold split controls');
+  assert.match(assetsPage[0], /id="epc-load-count"/);
+  assert.match(assetsPage[0], /id="epc-load-split-controls"/);
 });
 
 test('EPC topology-aware flow can label per-branch split load power', () => {

@@ -119,7 +119,6 @@ const EPC_BOQ_PACKAGES = Object.freeze([
   'Documents & Certification'
 ]);
 
-const EPC_QUARRY_TJQ_PROFILE_ID = 'quarry_tjq';
 const EPC_LOCAL_800V_REFERENCE = Object.freeze({
   id: 'lv_800_microgrid',
   name: '800V Microgrid',
@@ -129,27 +128,25 @@ const EPC_LOCAL_800V_REFERENCE = Object.freeze({
   source: 'Local procurement BOQ reference',
   recommendation: 'Use as a high-reliability procurement reference, not as the default economic architecture.'
 });
-const EPC_QUARRY_TJQ_ASSET_GROUPS = Object.freeze([
-  { id: 'tjq1-primary', zone: 'TJQ1', label: 'TJQ1 primary crusher', assetType: 'crusher', assetCount: 1, feederCabinetQty: 1, ratioPct: 14, source: EPC_QUARRY_TJQ_PROFILE_ID },
-  { id: 'tjq1-secondary', zone: 'TJQ1', label: 'TJQ1 cone and VSI crushers', assetType: 'crusher', assetCount: 4, feederCabinetQty: 2, vfdCabinetQty: 1, ratioPct: 19, source: EPC_QUARRY_TJQ_PROFILE_ID },
-  { id: 'tjq1-screen', zone: 'TJQ1', label: 'TJQ1 screen and conveyor', assetType: 'screen', assetCount: 4, feederCabinetQty: 2, meteringCabinetQty: 1, ratioPct: 13, source: EPC_QUARRY_TJQ_PROFILE_ID },
-  { id: 'tjq2-primary', zone: 'TJQ2', label: 'TJQ2 primary crushers', assetType: 'crusher', assetCount: 2, feederCabinetQty: 1, ratioPct: 15, source: EPC_QUARRY_TJQ_PROFILE_ID },
-  { id: 'tjq2-secondary', zone: 'TJQ2', label: 'TJQ2 cone and mobile crushers', assetType: 'crusher', assetCount: 4, feederCabinetQty: 2, vfdCabinetQty: 2, ratioPct: 18, source: EPC_QUARRY_TJQ_PROFILE_ID },
-  { id: 'tjq2-screen', zone: 'TJQ2', label: 'TJQ2 screen and conveyor', assetType: 'screen', assetCount: 4, feederCabinetQty: 3, meteringCabinetQty: 1, ratioPct: 12, source: EPC_QUARRY_TJQ_PROFILE_ID },
-  { id: 'common-water-pump', zone: 'Common', label: 'Water pump branch', assetType: 'pump', assetCount: 7, feederCabinetQty: 7, meteringCabinetQty: 1, ratioPct: 5, source: EPC_QUARRY_TJQ_PROFILE_ID },
-  { id: 'common-aux-workshop', zone: 'Common', label: 'Auxiliary lighting and maintenance', assetType: 'auxiliary', assetCount: 4, feederCabinetQty: 4, meteringCabinetQty: 1, ratioPct: 4, source: EPC_QUARRY_TJQ_PROFILE_ID }
-]);
-const EPC_QUARRY_TJQ_GENSETS = Object.freeze([
-  { id: 'tjq1-g1', zone: 'TJQ1', label: 'CAT 350 kVA', ratedKva: 350, source: EPC_QUARRY_TJQ_PROFILE_ID },
-  { id: 'tjq1-g2', zone: 'TJQ1', label: 'CAT 750 kVA', ratedKva: 750, source: EPC_QUARRY_TJQ_PROFILE_ID },
-  { id: 'tjq1-g3', zone: 'TJQ1', label: 'Volvo Penta', ratedKva: 0, source: EPC_QUARRY_TJQ_PROFILE_ID },
-  { id: 'tjq1-g4', zone: 'TJQ1', label: 'CAT 365 kVA', ratedKva: 365, source: EPC_QUARRY_TJQ_PROFILE_ID },
-  { id: 'tjq2-g1', zone: 'TJQ2', label: 'Volvo Penta', ratedKva: 0, source: EPC_QUARRY_TJQ_PROFILE_ID },
-  { id: 'tjq2-g2', zone: 'TJQ2', label: 'Volvo Penta', ratedKva: 0, source: EPC_QUARRY_TJQ_PROFILE_ID },
-  { id: 'tjq2-g3', zone: 'TJQ2', label: 'KTA50-G1', ratedKva: 0, source: EPC_QUARRY_TJQ_PROFILE_ID },
-  { id: 'tjq2-g4', zone: 'TJQ2', label: 'CAT 3508 DITA', ratedKva: 0, source: EPC_QUARRY_TJQ_PROFILE_ID },
-  { id: 'tjq2-g5', zone: 'TJQ2', label: 'MarelliMotori AC Genset', ratedKva: 0, source: EPC_QUARRY_TJQ_PROFILE_ID }
-]);
+const FEEDER_ZONING_DEFAULTS = Object.freeze({
+  voltageLv: 415,
+  powerFactor: 0.85,
+  maxVoltageDropPct: 5,
+  maxFeederCurrentA: 800,
+  mandatoryMeteringKw: 200,
+  breakerMargin: 1.25,
+  cableAmpacityMargin: 1.1,
+  upstreamBreakerRatio: 1.6,
+  cableResistanceOhmPerKm: 0.125
+});
+const FEEDER_DIVERSITY_FACTORS = Object.freeze({
+  crusher: 0.9,
+  screen: 0.7,
+  pump: 0.8,
+  vfd: 0.8,
+  auxiliary: 0.5,
+  load: 0.75
+});
 const EMS_FLOW_SERIES_DEFAULT_COLORS = {
   pv: '#f59e0b',
   load: '#2563eb',
@@ -274,6 +271,7 @@ function normalizeMeasurementMethod(value) {
   const raw = String(value || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
   if (raw.includes('energy') || raw.includes('meter')) return 'energy_meter';
   if (raw.includes('equipment') || raw.includes('schedule')) return 'equipment_schedule';
+  if (raw.includes('asset') || raw.includes('feeder') || raw.includes('fuel_mapping')) return 'asset_genset_fuel_mapping';
   if (raw.includes('kva') || raw.includes('load_factor')) return 'genset_kva_load_factor';
   return 'diesel_sfc_estimate';
 }
@@ -452,6 +450,7 @@ function normalizeEmsFlowDisplaySettings(value = {}) {
 function loadSourceForMethod(method, loads = {}) {
   if (method === 'energy_meter') return loads.energyMeterSummary?.dataSource || 'Energy Meter';
   if (method === 'equipment_schedule') return 'Equipment Schedule';
+  if (method === 'asset_genset_fuel_mapping') return 'Asset + Genset Fuel Mapping';
   if (method === 'genset_kva_load_factor') return 'Genset kVA / load factor';
   return 'Diesel / SFC estimate';
 }
@@ -645,11 +644,303 @@ function normalizeGensetAssets(value = []) {
       id: String(row?.id || `genset-${index + 1}`).trim() || `genset-${index + 1}`,
       zone: String(row?.zone || row?.area || row?.plant || '').trim() || 'Common',
       label: String(row?.label || row?.name || `Genset ${index + 1}`).trim(),
+      name: String(row?.name || row?.label || `Genset ${index + 1}`).trim(),
       ratedKva: asNumber(row?.ratedKva ?? row?.kva, 0),
       ratedKw: asNumber(row?.ratedKw ?? row?.kw, 0),
-      assetCode: String(row?.assetCode || row?.code || '').trim()
+      assetCode: String(row?.assetCode || row?.code || '').trim(),
+      supportedAssetIds: normalizeIdList(row?.supportedAssetIds ?? row?.assetIds ?? row?.supportedAssets),
+      fuelLiters: asNumber(row?.fuelLiters ?? row?.dieselLiters, 0),
+      fuelPeriodDays: Math.max(1, asNumber(row?.fuelPeriodDays ?? row?.dieselPeriodDays, 1)),
+      runtimeHours: asNumber(row?.runtimeHours ?? row?.fuelRuntimeHours ?? row?.hours, 0),
+      sfcLPerKwh: asNumber(row?.sfcLPerKwh ?? row?.dieselSfcLPerKwh, EPC_DESIGN_DEFAULTS.dieselSfcLPerKwh)
     }))
     .filter(row => row.id || row.label);
+}
+
+function normalizeIdList(value = []) {
+  if (Array.isArray(value)) {
+    return value.map(item => String(item || '').trim()).filter(Boolean);
+  }
+  return String(value || '')
+    .split(/[,;|/]+/)
+    .map(item => item.trim())
+    .filter(Boolean);
+}
+
+function normalizeStartType(value = '') {
+  const raw = String(value || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+  if (raw.includes('vfd')) return 'vfd';
+  if (raw.includes('soft')) return 'soft_start';
+  if (raw.includes('dol')) return 'DOL';
+  return raw || '';
+}
+
+function normalizeAssetInputs(value = [], options = {}) {
+  const fallbackHours = asNumber(options.operationHoursPerDay, 8);
+  return (Array.isArray(value) ? value : [])
+    .map((row, index) => {
+      const type = normalizeAssetType(row?.assetType || row?.type || row?.equipmentType);
+      const quantity = Math.max(1, Math.round(asNumber(row?.qty ?? row?.quantity ?? row?.assetCount, 1)));
+      const name = String(row?.name || row?.label || row?.equipment || `${type} ${index + 1}`).trim();
+      const id = String(row?.id || row?.assetId || idSafe(name) || `asset-${index + 1}`).trim() || `asset-${index + 1}`;
+      const operationHours = clamp(row?.operationHours ?? row?.hours ?? row?.runtimeHours, 0, 24, fallbackHours);
+      return {
+        id,
+        name,
+        label: name,
+        type,
+        assetType: type,
+        zone: String(row?.zone || row?.areaZone || row?.plant || '').trim() || 'Common',
+        line: String(row?.line || row?.productionLine || '').trim(),
+        area: String(row?.area || row?.location || '').trim(),
+        conveyorSystem: String(row?.conveyorSystem || row?.conveyor || '').trim(),
+        kw: asNumber(row?.kw ?? row?.ratedKw ?? row?.powerKw, 0),
+        qty: quantity,
+        startType: normalizeStartType(row?.startType ?? row?.start_type),
+        distanceM: Math.max(0, asNumber(row?.distanceM ?? row?.distance_m, 0)),
+        operationHours,
+        dutyFactor: clamp(row?.dutyFactor ?? row?.duty ?? row?.loadFactor, 0, 1, 1),
+        simultaneityFactor: clamp(row?.simultaneityFactor ?? row?.simultaneity ?? row?.coincidenceFactor, 0, 1, 1),
+        assignedGensetIds: normalizeIdList(row?.assignedGensetIds ?? row?.gensetIds ?? row?.gensetId),
+        fuelLiters: asNumber(row?.fuelLiters ?? row?.dieselLiters, 0),
+        fuelPeriodDays: Math.max(1, asNumber(row?.fuelPeriodDays ?? row?.dieselPeriodDays, 1)),
+        fuelRuntimeHours: asNumber(row?.fuelRuntimeHours ?? row?.runtimeHours, 0)
+      };
+    })
+    .filter(row => row.kw > 0 && row.qty > 0);
+}
+
+function feederDiversityFactor(type = 'load') {
+  return FEEDER_DIVERSITY_FACTORS[normalizeAssetType(type)] ?? FEEDER_DIVERSITY_FACTORS.load;
+}
+
+function calculateFeederCurrentA(totalKw = 0, system = {}) {
+  const voltage = Math.max(1, asNumber(system.voltageLv, FEEDER_ZONING_DEFAULTS.voltageLv));
+  const pf = Math.max(0.1, asNumber(system.powerFactor, FEEDER_ZONING_DEFAULTS.powerFactor));
+  return (Math.max(0, totalKw) * 1000) / (Math.sqrt(3) * voltage * pf);
+}
+
+function calculateFeederVoltageDropPct(currentA = 0, distanceM = 0, system = {}) {
+  const voltage = Math.max(1, asNumber(system.voltageLv, FEEDER_ZONING_DEFAULTS.voltageLv));
+  const resistance = asNumber(system.cableResistanceOhmPerKm, FEEDER_ZONING_DEFAULTS.cableResistanceOhmPerKm);
+  return (Math.max(0, currentA) * resistance * (Math.max(0, distanceM) / 1000) / voltage) * 100;
+}
+
+function feederGroupingKey(asset = {}) {
+  const zone = asset.zone || 'Common';
+  const type = normalizeAssetType(asset.type);
+  if (type === 'vfd' || asset.startType === 'vfd') return `vfd:${asset.id}`;
+  if (type === 'crusher') {
+    const line = asset.line || 'line';
+    return asset.distanceM > 0 && asset.distanceM < 100 ? `crusher:${zone}:${line}:near` : `crusher:${zone}:${line}:${asset.id}`;
+  }
+  if (type === 'screen') return `screen:${zone}:${asset.conveyorSystem || asset.line || asset.area || 'screen'}`;
+  if (type === 'pump') return `pump:${zone}:${asset.area || asset.line || 'pump'}`;
+  return `${type}:${zone}:${asset.area || asset.line || asset.id}`;
+}
+
+function buildFeederRow(assets = [], index = 0, system = {}, splitReason = '') {
+  const primary = assets[0] || {};
+  const type = normalizeAssetType(primary.type || 'load');
+  const connectedKw = assets.reduce((sum, asset) => sum + asset.kw * asset.qty, 0);
+  const operatingKw = assets.reduce((sum, asset) => sum + asset.kw * asset.qty * asset.dutyFactor * asset.simultaneityFactor, 0);
+  const dailyKwh = assets.reduce((sum, asset) => sum + asset.kw * asset.qty * asset.operationHours * asset.dutyFactor * asset.simultaneityFactor, 0);
+  const distanceM = assets.reduce((max, asset) => Math.max(max, asset.distanceM), 0);
+  const currentA = calculateFeederCurrentA(connectedKw, system);
+  const breakerA = currentA * FEEDER_ZONING_DEFAULTS.breakerMargin;
+  const cableAmpacityA = breakerA * FEEDER_ZONING_DEFAULTS.cableAmpacityMargin;
+  const voltageDropPct = calculateFeederVoltageDropPct(currentA, distanceM, system);
+  const meteringRequired = connectedKw > FEEDER_ZONING_DEFAULTS.mandatoryMeteringKw;
+  const assignedGensetIds = Array.from(new Set(assets.flatMap(asset => asset.assignedGensetIds || [])));
+  const feederId = `${idSafe(primary.zone || 'zone')}-${idSafe(type)}-f${index + 1}`;
+  return {
+    feederId,
+    zone: primary.zone || 'Common',
+    type,
+    assets: assets.map(asset => asset.id),
+    assetNames: assets.map(asset => asset.name),
+    assetCount: assets.reduce((sum, asset) => sum + asset.qty, 0),
+    totalKw: round(connectedKw, 2),
+    operatingKw: round(operatingKw, 2),
+    dailyKwh: round(dailyKwh, 2),
+    currentA: round(currentA, 2),
+    breakerA: round(breakerA, 2),
+    cableAmpacityA: round(cableAmpacityA, 2),
+    voltageDropPct: round(voltageDropPct, 2),
+    cableStatus: voltageDropPct > FEEDER_ZONING_DEFAULTS.maxVoltageDropPct ? 'REVIEW' : 'PASS',
+    distanceM: round(distanceM, 2),
+    requiresVfd: type === 'vfd' || assets.some(asset => asset.startType === 'vfd'),
+    meteringRequired,
+    assignedGensetIds,
+    splitReason,
+    status: currentA > FEEDER_ZONING_DEFAULTS.maxFeederCurrentA || voltageDropPct > FEEDER_ZONING_DEFAULTS.maxVoltageDropPct ? 'REVIEW' : 'PASS',
+    source: 'feeder-zoning'
+  };
+}
+
+function buildFeederRowsFromAssets(assets = [], system = {}) {
+  const grouped = new Map();
+  assets.forEach(asset => {
+    const key = feederGroupingKey(asset);
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key).push(asset);
+  });
+  const rows = [];
+  let index = 0;
+  for (const groupAssets of grouped.values()) {
+    const row = buildFeederRow(groupAssets, index, system);
+    if (row.type === 'pump' && row.assetCount > 3) {
+      groupAssets.forEach(asset => {
+        rows.push(buildFeederRow([asset], index, system, 'pump-count'));
+        index += 1;
+      });
+      continue;
+    }
+    if (row.currentA > FEEDER_ZONING_DEFAULTS.maxFeederCurrentA && groupAssets.length > 1) {
+      groupAssets.forEach(asset => {
+        rows.push(buildFeederRow([asset], index, system, 'current-limit'));
+        index += 1;
+      });
+      continue;
+    }
+    rows.push({
+      ...row,
+      splitReason: row.currentA > FEEDER_ZONING_DEFAULTS.maxFeederCurrentA ? 'current-limit' : row.splitReason
+    });
+    index += 1;
+  }
+  return rows;
+}
+
+function buildFeederZoning(assetInputs = [], gensets = [], options = {}) {
+  const assets = normalizeAssetInputs(assetInputs, options);
+  const gensetRows = normalizeGensetAssets(gensets);
+  const system = {
+    voltageLv: asNumber(options.voltageLv ?? options.voltage_lv, FEEDER_ZONING_DEFAULTS.voltageLv),
+    powerFactor: asNumber(options.powerFactor ?? options.pf, FEEDER_ZONING_DEFAULTS.powerFactor),
+    maxVoltageDropPct: asNumber(options.maxVoltageDropPct ?? options.max_voltage_drop, FEEDER_ZONING_DEFAULTS.maxVoltageDropPct),
+    cableResistanceOhmPerKm: asNumber(options.cableResistanceOhmPerKm, FEEDER_ZONING_DEFAULTS.cableResistanceOhmPerKm)
+  };
+  const feeders = buildFeederRowsFromAssets(assets, system);
+  const zones = Array.from(new Set(assets.map(asset => asset.zone || 'Common')));
+  const zoneDistances = Object.fromEntries(zones.map(zone => [
+    zone,
+    Math.max(0, ...assets.filter(asset => asset.zone === zone).map(asset => asset.distanceM))
+  ]));
+  const loadSplits = (() => {
+    const total = feeders.reduce((sum, row) => sum + Math.max(0, row.operatingKw || row.totalKw), 0);
+    if (!(total > 0)) return [];
+    let assigned = 0;
+    return feeders.map((row, index) => {
+      const ratioPct = index === feeders.length - 1
+        ? round(Math.max(0, 100 - assigned), 2)
+        : round(((row.operatingKw || row.totalKw) / total) * 100, 2);
+      assigned += ratioPct;
+      return {
+        id: `load-${index + 1}`,
+        label: `${row.zone} ${row.type} ${index + 1}`,
+        ratioPct,
+        assetGroupId: row.feederId,
+        feederId: row.feederId,
+        zone: row.zone,
+        assetType: row.type
+      };
+    });
+  })();
+  const assetGroups = feeders.map((row, index) => ({
+    id: row.feederId,
+    zone: row.zone,
+    label: `${row.zone} ${row.type} feeder ${index + 1}`,
+    assetType: row.type,
+    assetCount: row.assetCount,
+    ratedKw: row.totalKw,
+    ratedKva: round((row.operatingKw * feederDiversityFactor(row.type) * 1.25) / Math.max(0.1, system.powerFactor), 2),
+    feederType: row.type,
+    feederCabinetQty: 1,
+    vfdCabinetQty: row.requiresVfd ? 1 : 0,
+    meteringCabinetQty: row.meteringRequired ? 1 : 0,
+    ratioPct: loadSplits[index]?.ratioPct || 0,
+    source: 'feeder-zoning',
+    feederId: row.feederId
+  }));
+  const transformers = feeders.map(row => ({
+    feederId: row.feederId,
+    zone: row.zone,
+    kva: round((row.operatingKw * feederDiversityFactor(row.type) * 1.25) / Math.max(0.1, system.powerFactor), 2),
+    diversityFactor: feederDiversityFactor(row.type)
+  }));
+  const cables = feeders.map(row => ({
+    feederId: row.feederId,
+    cable: `${Math.max(1, Math.ceil(row.cableAmpacityA / 400))}x(3C cable, final mm2 by vendor)`,
+    ampacityA: row.cableAmpacityA,
+    voltageDropPct: row.voltageDropPct,
+    status: row.cableStatus
+  }));
+  const metering = feeders
+    .filter(row => row.meteringRequired)
+    .map(row => ({
+      level: 'Feeder',
+      pointId: `${row.feederId.toUpperCase()}_METER`,
+      feederId: row.feederId,
+      zone: row.zone,
+      loadKw: row.totalKw
+    }));
+  const topologyRecommendations = [];
+  if (zones.length > 1 || Object.values(zoneDistances).some(distance => distance > 200)) {
+    topologyRecommendations.push({
+      id: 'zone-split',
+      severity: 'medium',
+      recommendation: 'Use zone-aware feeder branches because assets are distributed across zones or long routes.'
+    });
+  }
+  if (feeders.some(row => row.splitReason === 'current-limit')) {
+    topologyRecommendations.push({
+      id: 'split-high-current-feeder',
+      severity: 'high',
+      recommendation: 'Split feeder or move to MV/transformer branch where 415V feeder current exceeds 800A.'
+    });
+  }
+  if (feeders.some(row => row.requiresVfd)) {
+    topologyRecommendations.push({
+      id: 'vfd-isolation',
+      severity: 'medium',
+      recommendation: 'Keep VFD loads on independent feeders with reactor, bypass/isolation and harmonic review.'
+    });
+  }
+  if (metering.length) {
+    topologyRecommendations.push({
+      id: 'feeder-metering',
+      severity: 'medium',
+      recommendation: 'Add feeder-level metering for loads above 200kW and expose those points in EMS.'
+    });
+  }
+  if (transformers.length) {
+    topologyRecommendations.push({
+      id: 'load-transformers',
+      severity: 'medium',
+      recommendation: 'Create per-zone load transformer schedule from feeder kVA and diversity factors.'
+    });
+  }
+  return {
+    system,
+    zones,
+    assets,
+    gensets: gensetRows,
+    feeders,
+    transformers,
+    cables,
+    metering,
+    boq: feeders.map(row => ({
+      feeder: row.feederId,
+      breaker: `${Math.ceil(row.breakerA / 50) * 50}A ${row.breakerA >= 800 ? 'ACB' : 'MCCB'}`,
+      cable: cables.find(item => item.feederId === row.feederId)?.cable || '',
+      metering: row.meteringRequired,
+      zone: row.zone
+    })),
+    assetGroups,
+    loadSplits,
+    topologyRecommendations
+  };
 }
 
 function loadSplitsFromAssetGroups(assetGroups = []) {
@@ -1549,14 +1840,26 @@ export function normalizeEpcDesignProject(raw = {}, options = {}) {
     const dayHours = clamp(loads.operationHoursPerDay ?? raw.operationHoursPerDay, 1, 24, 8);
     const operationStartTime = normalizeTime(loads.operationStartTime ?? raw.operationStartTime, '09:00');
     const operationFinishTime = normalizeTime(loads.operationFinishTime ?? raw.operationFinishTime, addHoursToTime(operationStartTime, dayHours));
-  const assetGroups = normalizeAssetGroups(loads.assetGroups || raw.assetGroups || []);
-  const gensetAssets = normalizeGensetAssets(loads.gensets || raw.gensets || []);
-  const assetLoadSplits = loadSplitsFromAssetGroups(assetGroups);
-  const inferredLoadCount = assetLoadSplits.length || (Array.isArray(loads.loadSplits) ? loads.loadSplits.length : 1);
-  const loadCount = normalizeLoadCount(loads.loadCount ?? raw.loadCount ?? inferredLoadCount);
-  const loadSplits = assetLoadSplits.length
-    ? normalizeLoadSplits(assetLoadSplits, Math.max(loadCount, assetLoadSplits.length))
-    : normalizeLoadSplits(loads.loadSplits || raw.loadSplits || [], loadCount);
+    const gensetAssets = normalizeGensetAssets(loads.gensets || raw.gensets || []);
+    const assetInputs = normalizeAssetInputs(loads.assets || raw.assets || [], { operationHoursPerDay: dayHours });
+    const feederZoning = buildFeederZoning(assetInputs, gensetAssets, {
+        operationHoursPerDay: dayHours,
+        voltageLv: asNumber(electrical.voltageLv ?? electrical.lvVoltageV ?? raw.voltageLv, FEEDER_ZONING_DEFAULTS.voltageLv),
+        powerFactor: asNumber(electrical.powerFactor ?? raw.powerFactor, FEEDER_ZONING_DEFAULTS.powerFactor),
+        maxVoltageDropPct: asNumber(electrical.maxVoltageDropPct ?? raw.maxVoltageDropPct, FEEDER_ZONING_DEFAULTS.maxVoltageDropPct)
+    });
+    const assetGroups = assetInputs.length
+        ? normalizeAssetGroups(feederZoning.assetGroups)
+        : normalizeAssetGroups(loads.assetGroups || raw.assetGroups || []);
+    const assetLoadSplits = loadSplitsFromAssetGroups(assetGroups);
+    const inferredLoadCount = assetLoadSplits.length || (Array.isArray(loads.loadSplits) ? loads.loadSplits.length : 1);
+    const requestedLoadCount = normalizeLoadCount(loads.loadCount ?? raw.loadCount ?? inferredLoadCount);
+    const loadCount = assetLoadSplits.length
+        ? normalizeLoadCount(Math.max(requestedLoadCount, assetLoadSplits.length))
+        : requestedLoadCount;
+    const loadSplits = assetLoadSplits.length
+        ? normalizeLoadSplits(assetLoadSplits, loadCount)
+        : normalizeLoadSplits(loads.loadSplits || raw.loadSplits || [], loadCount);
   const scheduleWorkingHours = Math.min(24, Math.max(1, hoursBetweenTimes(operationStartTime, operationFinishTime)));
   const normalizedAssumptions = { ...defaults, ...assumptions };
   const hasLegacySocDefaults = asNumber(assumptions.minSocPct, defaults.minSocPct) === 25
@@ -1587,7 +1890,6 @@ export function normalizeEpcDesignProject(raw = {}, options = {}) {
   return {
     id,
     mode: String(raw.mode || 'quick'),
-    procurementProfileId: String(raw.procurementProfileId || raw.project?.procurementProfileId || '').trim(),
     project: {
       id,
       name: String(project.name || raw.projectName || 'New Hybrid EPC Design').trim(),
@@ -1624,7 +1926,10 @@ export function normalizeEpcDesignProject(raw = {}, options = {}) {
         criticalLoadKw: asNumber(loads.criticalLoadKw ?? raw.criticalLoadKw, 0),
         loadCount,
         loadSplits,
+        assets: assetInputs,
         assetGroups,
+        assetFeederGroups: assetGroups,
+        feederZoning,
         gensets: gensetAssets,
         gensetCount: gensetAssets.length,
         allowedGensetLoadKw: asNumber(loads.allowedGensetLoadKw ?? raw.allowedGensetLoadKw, 0),
@@ -1711,94 +2016,12 @@ export function buildEpcDesignProjectFromQuickInputs(inputs = {}, options = {}) 
   }, options);
 }
 
-export function buildEpcQuarryProcurementProfile(baseProject = {}, options = {}) {
-  const base = baseProject && typeof baseProject === 'object' ? baseProject : {};
-  const site = base.site || {};
-  const loads = base.loads || {};
-  const designTargets = base.designTargets || {};
-  const electrical = base.electrical || {};
-  const assumptions = base.assumptions || {};
-  return normalizeEpcDesignProject({
-    ...base,
-    procurementProfileId: EPC_QUARRY_TJQ_PROFILE_ID,
-    mode: 'detailed',
-    project: {
-      ...(base.project || {}),
-      name: base.project?.name || 'TJQ Quarry Hybrid EPC Design',
-      stage: base.project?.stage || 'Concept',
-      scenario: 'Quarry PV + BESS + diesel microgrid'
-    },
-    site: {
-      ...site,
-      country: site.country || 'Malaysia',
-      state: site.state || '',
-      availableAreaM2: site.availableAreaM2 || 52000,
-      distanceToInterconnectionM: site.distanceToInterconnectionM || electrical.distanceToInterconnectionM || 650,
-      gridMode: 'island'
-    },
-    selectedTopologyId: 'C7',
-    loads: {
-      ...loads,
-      measurementMethod: 'diesel_sfc_estimate',
-      dieselTotalLiters: loads.dieselTotalLiters || 622259,
-      dieselPeriodDays: loads.dieselPeriodDays || 151,
-      dieselPricePerLiter: loads.dieselPricePerLiter || 4.67,
-      measuredDailyLoadKwh: loads.measuredDailyLoadKwh || 15452,
-      operationHoursPerDay: 8,
-      operationStartTime: loads.operationStartTime || '09:00',
-      operationFinishTime: loads.operationFinishTime || '17:00',
-      peakLoadSafetyFactor: loads.peakLoadSafetyFactor || 1.3,
-      loadCount: 8,
-      assetGroups: EPC_QUARRY_TJQ_ASSET_GROUPS.map(row => ({ ...row })),
-      gensets: EPC_QUARRY_TJQ_GENSETS.map(row => ({ ...row }))
-    },
-    gensets: EPC_QUARRY_TJQ_GENSETS.map(row => ({ ...row })),
-    solarResource: {
-      ...(base.solarResource || {}),
-      specificYieldKwhPerKwpDay: base.solarResource?.specificYieldKwhPerKwpDay || 3.6,
-      dataSource: base.solarResource?.dataSource || 'Malaysia Default'
-    },
-    designTargets: {
-      ...designTargets,
-      replacementPct: 80,
-      bessRole: designTargets.bessRole || 'diesel_replacement',
-      supportHours: designTargets.supportHours || 1.9,
-      roundUpSizing: false,
-      capacityOverrides: {
-        ...(designTargets.capacityOverrides || {}),
-        pvMwp: 4,
-        bessMwh: 5,
-        pcsMw: 2.5
-      }
-    },
-    electrical: {
-      ...electrical,
-      voltageKv: electrical.voltageKv || 0.415,
-      powerFactor: electrical.powerFactor || 0.95,
-      distanceToInterconnectionM: electrical.distanceToInterconnectionM || site.distanceToInterconnectionM || 650,
-      newMvSystem: true,
-      selectedArchitectureId: 'mv_11_ring',
-      selectedArchitectureSource: 'quarry-template',
-      localReferenceArchitecture: EPC_LOCAL_800V_REFERENCE.id
-    },
-    assumptions: {
-      ...assumptions,
-      moduleWp: assumptions.moduleWp || 580,
-      modulesPerString: assumptions.modulesPerString || 26,
-      combinerInputs: assumptions.combinerInputs || 16,
-      bessAutonomyHours: assumptions.bessAutonomyHours || 1.9,
-      pcsSafetyFactor: assumptions.pcsSafetyFactor || 1.5
-    },
-    createdAt: base.createdAt || options.now,
-    updatedAt: options.now || base.updatedAt
-  }, options);
-}
-
 function dataQualityScore(project) {
   let score = 0;
   if (project.site.latitude && project.site.longitude) score += 18;
   if (project.loads.measurementMethod === 'energy_meter' && project.loads.energyMeterSummary.dailyLoadKwh > 0) score += 30;
   else if (project.loads.measurementMethod === 'equipment_schedule' && project.loads.equipmentSchedule.length) score += 24;
+  else if (project.loads.measurementMethod === 'asset_genset_fuel_mapping' && project.loads.assets.length) score += 26;
   else if (project.loads.measurementMethod === 'genset_kva_load_factor' && project.loads.gensetKvaInput.gensetKva > 0) score += 20;
   else if (project.loads.measuredDailyLoadKwh > 0) score += 30;
   else if (project.loads.dieselTotalLiters > 0 && project.loads.dieselPeriodDays > 0) score += 22;
@@ -2016,6 +2239,76 @@ function calculateEquipmentScheduleLoad(project, now) {
   ]);
 }
 
+function calculateAssetGensetFuelLoad(project, now) {
+  const assets = Array.isArray(project.loads.assets) ? project.loads.assets : [];
+  const feeders = Array.isArray(project.loads.feederZoning?.feeders) ? project.loads.feederZoning.feeders : [];
+  const assetDailyKwh = assets.reduce((sum, asset) => {
+    return sum + asset.kw * asset.qty * asset.operationHours * asset.dutyFactor * asset.simultaneityFactor;
+  }, 0);
+  const assetOperatingKw = assets.reduce((sum, asset) => {
+    return sum + asset.kw * asset.qty * asset.dutyFactor * asset.simultaneityFactor;
+  }, 0);
+  const connectedPeakKw = assets.reduce((sum, asset) => sum + asset.kw * asset.qty, 0);
+  const fuelDailyKwh = [
+    ...assets.map(asset => ({
+      fuelLiters: asset.fuelLiters,
+      fuelPeriodDays: asset.fuelPeriodDays,
+      sfcLPerKwh: project.assumptions.dieselSfcLPerKwh
+    })),
+    ...(Array.isArray(project.gensets) ? project.gensets : [])
+  ].reduce((sum, item) => {
+    const dailyFuel = asNumber(item.fuelLiters, 0) / Math.max(1, asNumber(item.fuelPeriodDays, 1));
+    const sfc = Math.max(0.001, asNumber(item.sfcLPerKwh, project.assumptions.dieselSfcLPerKwh));
+    return sum + (dailyFuel > 0 ? dailyFuel / sfc : 0);
+  }, 0);
+  const dailyLoadKwh = assetDailyKwh > 0 ? assetDailyKwh : fuelDailyKwh;
+  const operatingHours = Math.max(1, assets.reduce((max, asset) => Math.max(max, asset.operationHours), project.loads.operationHoursPerDay || 0));
+  const averageLoadKw = dailyLoadKwh / operatingHours;
+  const feederPeakKw = feeders.reduce((sum, row) => sum + Math.max(row.operatingKw || 0, row.totalKw || 0), 0);
+  const peakLoadKw = Math.max(averageLoadKw * Math.max(1, project.loads.peakLoadSafetyFactor || project.assumptions.peakLoadFactor), connectedPeakKw, feederPeakKw);
+  return decorateLoadResult(project, {
+    dailyLoadKwh: round(dailyLoadKwh, 4),
+    averageLoadKw: round(averageLoadKw, 4),
+    peakLoadKw: round(peakLoadKw, 4),
+    operatingHours: round(operatingHours, 4),
+    assetDailyKwh: round(assetDailyKwh, 4),
+    fuelDailyKwh: round(fuelDailyKwh, 4),
+    assetOperatingKw: round(assetOperatingKw, 4),
+    loadSource: 'Asset + Genset Fuel Mapping'
+  }, [
+    buildFormulaTrace({
+      key: 'dailyLoadKwh',
+      label: 'Daily Load',
+      formula: 'Σ Asset kW x Qty x Operating Hours x Duty x Simultaneity',
+      inputs: { assetCount: assets.length, assetDailyKwh: round(assetDailyKwh, 4), fuelDailyKwh: round(fuelDailyKwh, 4) },
+      result: round(dailyLoadKwh, 4),
+      unit: 'kWh/day',
+      assumptionSource: 'Asset + Genset Fuel Mapping',
+      now
+    }),
+    buildFormulaTrace({
+      key: 'averageLoadKw',
+      label: 'Average Load',
+      formula: 'Asset/Fuel Daily kWh / Asset Operating Window',
+      inputs: { dailyLoadKwh: round(dailyLoadKwh, 4), operatingHours: round(operatingHours, 4) },
+      result: round(averageLoadKw, 4),
+      unit: 'kW',
+      assumptionSource: 'Asset + Genset Fuel Mapping',
+      now
+    }),
+    buildFormulaTrace({
+      key: 'peakLoadKw',
+      label: 'Peak Load',
+      formula: 'Max connected asset kW, feeder peak kW and average load safety factor',
+      inputs: { connectedPeakKw: round(connectedPeakKw, 4), feederPeakKw: round(feederPeakKw, 4), peakLoadSafetyFactor: project.loads.peakLoadSafetyFactor },
+      result: round(peakLoadKw, 4),
+      unit: 'kW',
+      assumptionSource: 'Asset + Genset Fuel Mapping',
+      now
+    })
+  ]);
+}
+
 function calculateGensetKvaLoad(project, now) {
   const input = project.loads.gensetKvaInput || {};
   const ratedKw = input.gensetKva * input.powerFactor;
@@ -2066,6 +2359,7 @@ function calculateGensetKvaLoad(project, now) {
 function calculateLoad(project, now) {
   if (project.loads.measurementMethod === 'energy_meter') return calculateEnergyMeterLoad(project, now);
   if (project.loads.measurementMethod === 'equipment_schedule') return calculateEquipmentScheduleLoad(project, now);
+  if (project.loads.measurementMethod === 'asset_genset_fuel_mapping') return calculateAssetGensetFuelLoad(project, now);
   if (project.loads.measurementMethod === 'genset_kva_load_factor') return calculateGensetKvaLoad(project, now);
   return calculateDieselSfcLoad(project, now);
 }
@@ -3220,159 +3514,6 @@ function buildBoq(project, recommended, context = {}) {
   return sortBoqRows([...selectedRows, ...manualRows], project.boq?.lineOrder || []);
 }
 
-function buildProcurementAdvisory(project, context = {}) {
-  const loadAssetSummary = context.loadAssetSummary || buildLoadAssetSummary(project.loads?.assetGroups || [], project.gensets || project.loads?.gensets || []);
-  const topology = context.topology || project.topology || {};
-  const pvStringDesign = context.pvStringDesign || {};
-  const architectureComparison = context.architectureComparison || {};
-  const recommended = context.recommended || {};
-  const findings = [];
-  const addFinding = (finding = {}) => {
-    if (!finding.id || findings.some(item => item.id === finding.id)) return;
-    findings.push({
-      id: String(finding.id),
-      severity: finding.severity || 'medium',
-      domain: finding.domain || 'boq',
-      title: String(finding.title || '').trim(),
-      evidence: String(finding.evidence || '').trim(),
-      recommendation: String(finding.recommendation || '').trim(),
-      quantityDelta: round(asNumber(finding.quantityDelta, 0), 2),
-      action: String(finding.action || '').trim()
-    });
-  };
-
-  if (!loadAssetSummary.branchCount && !loadAssetSummary.gensetCount) {
-    addFinding({
-      id: 'empty-asset-mapping',
-      severity: 'high',
-      domain: 'asset-mapping',
-      title: 'Asset mapping is empty',
-      evidence: 'No load asset groups or genset rows are available for procurement expansion.',
-      recommendation: 'Apply the Quarry / TJQ template or import assetGroups and gensets before issuing the customer BOQ.',
-      action: 'apply-quarry-template'
-    });
-  }
-
-  const localReference = architectureComparison.localReference || {};
-  const uses800vReference = localReference.id === EPC_LOCAL_800V_REFERENCE.id || project.electrical?.localReferenceArchitecture === EPC_LOCAL_800V_REFERENCE.id;
-  if (uses800vReference && asNumber(recommended.pcsRecommendedMw, 0) > 0 && EPC_LOCAL_800V_REFERENCE.pcsMw > recommended.pcsRecommendedMw) {
-    addFinding({
-      id: 'local-boq-high-pcs',
-      severity: 'medium',
-      domain: 'architecture',
-      title: 'Local BOQ 8MW PCS is a high-reliability option',
-      evidence: `Local reference lists ${EPC_LOCAL_800V_REFERENCE.pcsMw}MW PCS; New-Hybrid recommendation is ${round(recommended.pcsRecommendedMw, 2)}MW.`,
-      recommendation: 'Keep 8MW PCS as an uptime/redundancy alternate, but do not use it as the default economic BOQ unless the customer accepts the CAPEX premium.',
-      quantityDelta: EPC_LOCAL_800V_REFERENCE.pcsMw - recommended.pcsRecommendedMw,
-      action: 'compare-pcs-capex-option'
-    });
-  }
-
-  if (uses800vReference) {
-    addFinding({
-      id: 'local-boq-800v-review',
-      severity: 'high',
-      domain: 'electrical',
-      title: '800V bus requires electrical review',
-      evidence: `${localReference.name || EPC_LOCAL_800V_REFERENCE.name} is marked ${localReference.status || 'REVIEW'} with ${localReference.parallelRuns || 'multiple'} parallel run screening.`,
-      recommendation: 'Review protection selectivity, equipment supply, local EPC familiarity, O&M spares and multi-transformer interfaces before accepting the 800V BOQ architecture.',
-      action: 'review-800v-architecture'
-    });
-  }
-
-  if (loadAssetSummary.branchCount > 0 && loadAssetSummary.assetGroups.some(group => !(asNumber(group.ratedKva, 0) > 0))) {
-    addFinding({
-      id: 'transformer-rating-missing',
-      severity: 'medium',
-      domain: 'electrical',
-      title: 'Load transformer kVA ratings are missing',
-      evidence: `${loadAssetSummary.branchCount} load branch(es) require downstream transformer kVA confirmation by zone.`,
-      recommendation: 'Add a per-zone transformer schedule with kVA, impedance, vector group, tapping range and enclosure/protection requirements.',
-      quantityDelta: loadAssetSummary.branchCount,
-      action: 'add-load-transformer-schedule'
-    });
-  }
-
-  if (loadAssetSummary.branchCount > 0 || project.procurementProfileId === EPC_QUARRY_TJQ_PROFILE_ID) {
-    addFinding({
-      id: 'cable-schedule-missing',
-      severity: 'medium',
-      domain: 'electrical',
-      title: 'Cable schedule is still concept-level',
-      evidence: 'The BOQ has feeder counts but no route length, cable section, installation method or final voltage-drop schedule.',
-      recommendation: 'Add a cable schedule by source, destination, voltage class, route length, conductor size, parallel runs, derating and voltage-drop result before procurement release.',
-      action: 'add-cable-schedule'
-    });
-  }
-
-  if (asNumber(pvStringDesign.stringRoundingGapModules, 0) > 0) {
-    addFinding({
-      id: 'pv-string-rounding',
-      severity: 'medium',
-      domain: 'boq',
-      title: 'PV module count does not close on full strings',
-      evidence: `${pvStringDesign.strings || 0} strings x ${pvStringDesign.modulesPerString || 0} modules = ${pvStringDesign.fullStringModuleCount || 0} modules.`,
-      recommendation: 'Use the full-string module count for procurement, or adjust target MWp/module/string assumptions before issuing the RFQ.',
-      quantityDelta: pvStringDesign.stringRoundingGapModules,
-      action: 'apply-full-string-module-count'
-    });
-  }
-
-  const topologyGensetCount = topologyNodeTypeCount(topology, 'GENSET');
-  if (loadAssetSummary.gensetCount > topologyGensetCount) {
-    addFinding({
-      id: 'genset-asset-mapping',
-      severity: 'high',
-      domain: 'ems',
-      title: 'Expand genset controls from station symbol to asset-level scope',
-      evidence: `Asset list has ${loadAssetSummary.gensetCount} genset(s); topology has ${topologyGensetCount} genset station node(s).`,
-      recommendation: 'Keep one DG station in the concept topology, but expand BOQ and EMS monitoring to every genset controller, breaker status and runtime meter.',
-      quantityDelta: loadAssetSummary.gensetCount - topologyGensetCount,
-      action: 'add-genset-remote-and-metering'
-    });
-  }
-
-  if (loadAssetSummary.branchCount >= 4) {
-    addFinding({
-      id: 'asset-branch-mapping',
-      severity: 'medium',
-      domain: 'topology',
-      title: 'Use zone-aware load branch mapping',
-      evidence: `${loadAssetSummary.branchCount} load branch(es) across ${loadAssetSummary.zoneCount} zone(s), covering ${loadAssetSummary.assetCount} asset(s).`,
-      recommendation: 'Map each production branch to its own MV/LV feeder, transformer and EMS metering point instead of using a single aggregate load block.',
-      quantityDelta: loadAssetSummary.branchCount,
-      action: 'expand-load-branches'
-    });
-  }
-
-  if (loadAssetSummary.vfdCabinetCount > 0) {
-    addFinding({
-      id: 'vfd-procurement-scope',
-      severity: 'medium',
-      domain: 'electrical',
-      title: 'Separate VFD feeder cabinet scope',
-      evidence: `${loadAssetSummary.vfdCabinetCount} VFD cabinet(s) appear in the equipment mapping.`,
-      recommendation: 'List VFD cabinets separately so vendors include bypass, reactors, ventilation and motor protection details in the RFQ response.',
-      quantityDelta: loadAssetSummary.vfdCabinetCount,
-      action: 'list-vfd-cabinets'
-    });
-  }
-
-  const severityWeight = { high: 3, medium: 2, low: 1 };
-  findings.sort((a, b) => (severityWeight[b.severity] || 0) - (severityWeight[a.severity] || 0));
-  return {
-    summary: {
-      findingCount: findings.length,
-      highCount: findings.filter(item => item.severity === 'high').length,
-      mediumCount: findings.filter(item => item.severity === 'medium').length,
-      assetBranchCount: loadAssetSummary.branchCount,
-      gensetCount: loadAssetSummary.gensetCount,
-      fullStringModuleDelta: asNumber(pvStringDesign.stringRoundingGapModules, 0)
-    },
-    findings
-  };
-}
-
 function applyRiskStatuses(project, risks = [], context = {}) {
   const acknowledgements = normalizeRiskAcknowledgements(project.riskAcknowledgements || {});
   return risks.map((risk) => {
@@ -3713,6 +3854,11 @@ export function calculateEpcDesignProject(rawProject = {}, options = {}) {
   const topologyValidation = validatePowerTopology(topologyProject.topology);
   const topologyFlow = buildTopologyFlowAdapter(topologyProject.topology, topologyValidation);
   const loadAssetSummary = buildLoadAssetSummary(topologyProject.loads?.assetGroups || [], topologyProject.gensets || topologyProject.loads?.gensets || []);
+  const feederZoning = topologyProject.loads?.feederZoning || buildFeederZoning(topologyProject.loads?.assets || [], topologyProject.gensets || topologyProject.loads?.gensets || [], {
+    operationHoursPerDay: topologyProject.loads?.operationHoursPerDay,
+    voltageLv: FEEDER_ZONING_DEFAULTS.voltageLv,
+    powerFactor: topologyProject.electrical?.powerFactor || FEEDER_ZONING_DEFAULTS.powerFactor
+  });
   const protectionMatrix = buildProtectionMatrix(project, electrical);
   const emsStateMachine = buildEmsStateMachine(project);
   const pvStringDesign = calculatePvStringDesign({
@@ -3728,15 +3874,8 @@ export function calculateEpcDesignProject(rawProject = {}, options = {}) {
     topologyFlow,
     electricalArchitecture,
     pvStringDesign,
-    loadAssetSummary
-  });
-  const procurementAdvisory = buildProcurementAdvisory(topologyProject, {
-    topology: topologyProject.topology,
-    pvStringDesign,
     loadAssetSummary,
-    architectureComparison,
-    recommended,
-    boq
+    feederZoning
   });
   const risks = buildRisks(project, load, electrical, recommended, { electricalArchitecture });
   const reportGate = buildReportGate(risks);
@@ -3808,6 +3947,7 @@ export function calculateEpcDesignProject(rawProject = {}, options = {}) {
     topologyFlow,
     topologySelection,
     loadAssetSummary,
+    feederZoning,
     electrical,
     electricalArchitecture,
     architectureComparison,
@@ -3817,7 +3957,6 @@ export function calculateEpcDesignProject(rawProject = {}, options = {}) {
     energyFlow,
     pvStringDesign,
     boq,
-    procurementAdvisory,
     risks,
     reportGate,
     dataQualityScore: dataQualityScore(project),

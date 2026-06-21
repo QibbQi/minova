@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const epcEngineSource = readFileSync(new URL('../epc-design-engine.global.js', import.meta.url), 'utf8');
+const appSource = `${html}\n${epcEngineSource}`;
 const mergeSource = readFileSync(new URL('../github-sync/merge.js', import.meta.url), 'utf8');
 
 function extractFunction(name, untilName) {
@@ -189,7 +191,12 @@ test('EPC reports and BOQ workbook expose architecture and asset feeder outputs 
     'renderEpcReportArchitectureDecision',
     'Architecture Decision',
     '800V Microgrid',
+    '1.14kV Industrial LV',
+    '3.3kV Radial',
+    '4.16kV Radial',
     '11kV Ring',
+    '800V Reference',
+    'Final Decision',
     'Asset / Feeder Mapping',
     'result.architectureComparison?.candidates',
     'result.feederZoning?.feeders',
@@ -199,6 +206,10 @@ test('EPC reports and BOQ workbook expose architecture and asset feeder outputs 
     'epcBoqWorkbookFeederZoningRows',
     'epcBoqWorkbookAssetMappingRows',
     'Voltage / Bus',
+    'Standard A',
+    'Utilization %',
+    'CAPEX Index',
+    'Why Not Selected',
     'Parallel Runs',
     'Feeder ID',
     'Assigned Genset',
@@ -207,7 +218,7 @@ test('EPC reports and BOQ workbook expose architecture and asset feeder outputs 
     "XLSX.utils.book_append_sheet(workbook, feederZoningWorksheet, 'Feeder Zoning')",
     "XLSX.utils.book_append_sheet(workbook, assetWorksheet, 'Asset Mapping')"
   ]) {
-    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing asset feeder report snippet: ${snippet}`);
+    assert.match(appSource, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing asset feeder report snippet: ${snippet}`);
   }
 
   const reportPages = html.match(/function renderEpcCustomerReportPages\(result = \{\}, kind = 'customer'\)[\s\S]*?function buildEpcReportFixedPageElement/);
@@ -1493,6 +1504,7 @@ test('EPC Electrical workspace exposes PASS architecture choose controls', () =>
   ]) {
     assert.match(electricalRenderer[0], new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing electrical choose snippet: ${snippet}`);
   }
+  assert.doesNotMatch(electricalRenderer[0], /Local BOQ Reference/);
 });
 
 test('EPC SLD workspace exposes move route save and reset controls', () => {
@@ -1781,7 +1793,7 @@ test('EPC EMS Flow renders topology-aware standard components and validation sta
     'topologyFlow.validationBlocked',
     'renderEpcTopologyFlowZoneSummary',
     'zone-aware grouping',
-    '11kV ring selected to reduce MW-level LV current and support distributed quarry loads.',
+    'Compare LV, intermediate MV and 11kV options before final design.',
     '9 units / TJQ1 4 / TJQ2 5',
     'epc-flow-line-blocked',
     'renderEpcTopologyFlowDiagram(result, selectedRow)'

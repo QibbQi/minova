@@ -1683,14 +1683,36 @@ test('EPC electrical architecture returns LV MV candidates cable screening and p
   const candidateIds = result.electricalArchitecture.candidates.map((candidate) => candidate.id);
   const cableStatuses = result.cableScreening.candidates.map((candidate) => candidate.status);
 
-  assert.deepEqual(candidateIds, ['lv_415_centralized', 'lv_415_distributed', 'lv_800_microgrid', 'mv_6_6_radial', 'mv_11_radial', 'mv_11_ring']);
+  assert.deepEqual(candidateIds, [
+    'lv_415_centralized',
+    'lv_415_distributed',
+    'lv_800_microgrid',
+    'lv_114_industrial',
+    'mv_3_3_radial',
+    'mv_4_16_radial',
+    'mv_6_6_radial',
+    'mv_11_radial',
+    'mv_11_ring'
+  ]);
   assert.equal(result.electricalArchitecture.recommendedId, 'mv_11_ring');
   assert.equal(result.electricalArchitecture.candidates.find((candidate) => candidate.id === 'mv_11_ring').voltageKv, 11);
   assert.equal(result.electricalArchitecture.candidates.find((candidate) => candidate.id === 'lv_800_microgrid').status, 'REVIEW');
+  assert.equal(result.electricalArchitecture.candidates.find((candidate) => candidate.id === 'lv_114_industrial').status, 'REVIEW');
+  assert.equal(result.electricalArchitecture.candidates.find((candidate) => candidate.id === 'mv_3_3_radial').status, 'REVIEW');
+  assert.equal(result.electricalArchitecture.candidates.find((candidate) => candidate.id === 'mv_4_16_radial').status, 'PASS');
+  assert.equal(result.electricalArchitecture.candidates.find((candidate) => candidate.id === 'mv_6_6_radial').status, 'PASS');
+  assert.equal(result.electricalArchitecture.candidates.find((candidate) => candidate.id === 'mv_11_radial').status, 'PASS');
+  assert.equal(result.electricalArchitecture.candidates.find((candidate) => candidate.id === 'mv_11_ring').status, 'PASS');
+  for (const field of ['standardA', 'utilizationPct', 'capexIndex', 'expandability', 'bestFor', 'faultRisk', 'protectionComplexity', 'whyNotSelected', 'decisionStatus']) {
+    assert.ok(Object.hasOwn(result.architectureComparison.candidates.find((candidate) => candidate.id === 'mv_4_16_radial'), field), `missing architecture decision field ${field}`);
+  }
   assert.ok(result.electrical.transformerSizing.requiredKva > 4900);
   assert.equal(result.electrical.transformerSizing.selectedStandardKva, 5000);
   assert.ok(result.cableScreening.candidates.some((candidate) => candidate.voltageClass === '415V'));
   assert.ok(result.cableScreening.candidates.some((candidate) => candidate.voltageClass === '800V'));
+  assert.ok(result.cableScreening.candidates.some((candidate) => candidate.voltageClass === '1.14kV'));
+  assert.ok(result.cableScreening.candidates.some((candidate) => candidate.voltageClass === '3.3kV'));
+  assert.ok(result.cableScreening.candidates.some((candidate) => candidate.voltageClass === '4.16kV'));
   assert.ok(result.cableScreening.candidates.some((candidate) => candidate.voltageClass === '11kV'));
   assert.ok(cableStatuses.includes('PASS') || cableStatuses.includes('REVIEW'));
   assert.ok(result.protectionMatrix.functions.some((item) => item.code === 'SYNC_CHECK'));
@@ -2065,7 +2087,7 @@ test('EPC saved custom topology templates use generated IDs and remain architect
     selectedTopologyId: 'R4',
     site: { gridMode: 'island', distanceToInterconnectionM: 650 },
     electrical: { selectedArchitectureId: 'mv_11_ring', selectedArchitectureSource: 'user', newMvSystem: true },
-    loads: { dieselTotalLiters: 6000, dieselPeriodDays: 1, operationHoursPerDay: 8 }
+    loads: { dieselTotalLiters: 4000, dieselPeriodDays: 1, operationHoursPerDay: 8 }
   }, { now: '2026-06-17T00:00:00.000Z', defaults });
   const normalized = normalizeEpcDesignProject({}, { defaults });
 
@@ -2255,7 +2277,7 @@ test('EPC chosen PASS architecture overrides recommendation and drives topology 
       existingMvVoltageKv: 6.6,
       newMvSystem: true
     },
-    loads: { dieselTotalLiters: 6000, dieselPeriodDays: 1, operationHoursPerDay: 8 }
+    loads: { dieselTotalLiters: 4000, dieselPeriodDays: 1, operationHoursPerDay: 8 }
   }, { now: '2026-06-17T00:00:00.000Z' });
 
   assert.equal(radial66.electricalArchitecture.recommendedId, 'mv_6_6_radial');
@@ -2264,6 +2286,42 @@ test('EPC chosen PASS architecture overrides recommendation and drives topology 
   assert.equal(radial66.selectedTopologyId, 'C5');
   assert.equal(radial66.topology.nodes.some((node) => node.id === 'ring-rmu'), false);
   assert.equal(radial66.topology.nodes.find((node) => node.id === 'mv-switchboard')?.electrical.voltageV, 6600);
+
+  const radial416 = calculateEpcDesignProject({
+    selectedTopologyId: 'C7',
+    site: { gridMode: 'island', distanceToInterconnectionM: 650 },
+    electrical: {
+      selectedArchitectureId: 'mv_4_16_radial',
+      selectedArchitectureSource: 'user',
+      selectedArchitectureChosenAt: '2026-06-17T00:00:00.000Z',
+      newMvSystem: true
+    },
+    loads: { dieselTotalLiters: 4000, dieselPeriodDays: 1, operationHoursPerDay: 8 }
+  }, { now: '2026-06-17T00:00:00.000Z' });
+
+  assert.equal(radial416.electricalArchitecture.recommendedId, 'mv_4_16_radial');
+  assert.equal(radial416.electrical.selectedArchitectureId, 'mv_4_16_radial');
+  assert.equal(radial416.topologySelection.architectureTopologyId, 'C5');
+  assert.equal(radial416.selectedTopologyId, 'C5');
+  assert.equal(radial416.topology.nodes.some((node) => node.id === 'ring-rmu'), false);
+  assert.equal(radial416.topology.nodes.find((node) => node.id === 'mv-switchboard')?.electrical.voltageV, 4160);
+
+  const review33 = calculateEpcDesignProject({
+    selectedTopologyId: 'C5',
+    site: { gridMode: 'island', distanceToInterconnectionM: 650 },
+    electrical: {
+      selectedArchitectureId: 'mv_3_3_radial',
+      selectedArchitectureSource: 'user',
+      selectedArchitectureChosenAt: '2026-06-17T00:00:00.000Z',
+      newMvSystem: true
+    },
+    loads: { dieselTotalLiters: 4000, dieselPeriodDays: 1, operationHoursPerDay: 8 }
+  }, { now: '2026-06-17T00:00:00.000Z' });
+
+  assert.equal(review33.electricalArchitecture.candidates.find((candidate) => candidate.id === 'mv_3_3_radial')?.status, 'REVIEW');
+  assert.equal(review33.electricalArchitecture.selectedArchitectureValid, false);
+  assert.equal(review33.electricalArchitecture.recommendedId, 'mv_11_ring');
+  assert.match(review33.electrical.selectedArchitectureWarning, /falling back/i);
 
   const ring11 = calculateEpcDesignProject({
     selectedTopologyId: 'C5',

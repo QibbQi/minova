@@ -84,6 +84,9 @@ const ARCHITECTURE_TOPOLOGY_MAP = {
   lv_415_centralized: { topologyId: 'C3', voltageV: 415, variantId: 'lv_415_centralized' },
   lv_415_distributed: { topologyId: 'C3', voltageV: 415, variantId: 'lv_415_distributed' },
   lv_800_microgrid: { topologyId: 'C3', voltageV: 800, variantId: 'lv_800_microgrid' },
+  lv_114_industrial: { topologyId: 'C3', voltageV: 1140, variantId: 'lv_114_industrial' },
+  mv_3_3_radial: { topologyId: 'C5', voltageV: 3300, variantId: 'mv_3_3_radial' },
+  mv_4_16_radial: { topologyId: 'C5', voltageV: 4160, variantId: 'mv_4_16_radial' },
   mv_6_6_radial: { topologyId: 'C5', voltageV: 6600, variantId: 'mv_6_6_radial' },
   mv_11_radial: { topologyId: 'C5', voltageV: 11000, variantId: 'mv_11_radial' },
   mv_11_ring: { topologyId: 'C7', voltageV: 11000, variantId: 'mv_11_ring' }
@@ -126,7 +129,7 @@ const EPC_LOCAL_800V_REFERENCE = Object.freeze({
   pvMwp: 4,
   bessMwh: 10,
   pcsMw: 8,
-  source: 'Local procurement BOQ reference',
+  source: '800V procurement reference',
   recommendation: 'Use as a high-reliability procurement reference, not as the default economic architecture.'
 });
 const FEEDER_ZONING_DEFAULTS = Object.freeze({
@@ -1376,6 +1379,16 @@ function voltageForArchitecture(architectureId, fallback = 11000) {
   return ARCHITECTURE_TOPOLOGY_MAP[normalizeArchitectureId(architectureId)]?.voltageV || fallback;
 }
 
+function formatVoltageLabel(voltageV = 0) {
+  const value = asNumber(voltageV, 0);
+  if (value >= 1000) {
+    const kv = value / 1000;
+    const label = Number.isInteger(kv) ? String(kv) : String(round(kv, 2)).replace(/\.?0+$/, '');
+    return `${label}kV`;
+  }
+  return `${Math.round(value)}V`;
+}
+
 function componentRoleForNode(node = {}) {
   if (node.componentRole) return String(node.componentRole).trim().toUpperCase();
   const type = String(node.type || '').trim().toUpperCase();
@@ -1701,6 +1714,8 @@ function appendLvLoadBranchTopology(nodes, edges, node, edge, splits = [], optio
   const startX = asNumber(options.startX, 650);
   const startY = asNumber(options.startY, 90);
   const gapY = asNumber(options.gapY, 130);
+  const lvVoltageV = asNumber(options.voltageV, 415) || 415;
+  const lvLabel = options.voltageLabel || formatVoltageLabel(lvVoltageV);
   splits.forEach((split, index) => {
     const branch = index + 1;
     const y = startY + index * gapY;
@@ -1708,12 +1723,12 @@ function appendLvLoadBranchTopology(nodes, edges, node, edge, splits = [], optio
     const lvBusId = `lv-load-bus-${branch}`;
     const loadId = `load-${branch}`;
     nodes.push(
-      node(lvBusId, 'LV_BUS', `LV BUS ${branch}`, startX, y, 415, { loadSplitId }),
-      node(loadId, 'LOAD', split.label || `Load ${branch}`, startX + 190, y, 415, { loadSplitId })
+      node(lvBusId, 'LV_BUS', `${lvLabel} LV BUS ${branch}`, startX, y, lvVoltageV, { loadSplitId }),
+      node(loadId, 'LOAD', split.label || `Load ${branch}`, startX + 190, y, lvVoltageV, { loadSplitId })
     );
     edges.push(
-      edge(`${sourceId}-load-${branch}`, sourceId, lvBusId, 'AC_LV_POWER', 'ONE_WAY', 415, { loadSplitId }),
-      edge(`${lvBusId}-${loadId}`, lvBusId, loadId, 'AC_LV_POWER', 'ONE_WAY', 415, { loadSplitId })
+      edge(`${sourceId}-load-${branch}`, sourceId, lvBusId, 'AC_LV_POWER', 'ONE_WAY', lvVoltageV, { loadSplitId }),
+      edge(`${lvBusId}-${loadId}`, lvBusId, loadId, 'AC_LV_POWER', 'ONE_WAY', lvVoltageV, { loadSplitId })
     );
   });
 }
@@ -1786,28 +1801,30 @@ function buildStandardTopologyGraph(id = 'C5', loads = {}, options = {}) {
     });
   }
   if (topologyId === 'C3') {
+    const lvVoltageV = architectureTopologyId === 'C3' ? voltageForArchitecture(architectureId, 415) : 415;
+    const lvLabel = formatVoltageLabel(lvVoltageV);
     const nodes = [
       node('pv-array', 'PV_ARRAY', 'PV Array', 40, 50, 1000),
-      node('pv-inverter', 'PV_INVERTER', 'PV Inverter', 220, 50, 415),
-      node('curtailment', 'CURTAILMENT', 'Curtailment', 450, 20, 415),
+      node('pv-inverter', 'PV_INVERTER', 'PV Inverter', 220, 50, lvVoltageV),
+      node('curtailment', 'CURTAILMENT', 'Curtailment', 450, 20, lvVoltageV),
       node('battery', 'BATTERY', 'Battery', 40, 210, 800),
-      node('pcs', 'PCS', 'PCS', 220, 210, 415),
-      node('genset', 'GENSET', gensetLabel, 220, 340, 415),
-      node('lv-bus', 'LV_BUS', 'Common 415V Bus', 450, 160, 415, { busOrientation: 'vertical' }),
+      node('pcs', 'PCS', 'PCS', 220, 210, lvVoltageV),
+      node('genset', 'GENSET', gensetLabel, 220, 340, lvVoltageV),
+      node('lv-bus', 'LV_BUS', `Common ${lvLabel} Bus`, 450, 160, lvVoltageV, { busOrientation: 'vertical' }),
       commonEms
     ];
     const edges = [
       edge('pv-dc', 'pv-array', 'pv-inverter', 'DC_POWER', 'ONE_WAY', 1000),
-      edge('pv-curtailment', 'pv-inverter', 'curtailment', 'AC_LV_POWER', 'ONE_WAY', 415),
-      edge('pv-lv', 'pv-inverter', 'lv-bus', 'AC_LV_POWER', 'ONE_WAY', 415),
-      edge('lv-pcs-charge', 'lv-bus', 'pcs', 'AC_LV_POWER', 'ONE_WAY', 415),
+      edge('pv-curtailment', 'pv-inverter', 'curtailment', 'AC_LV_POWER', 'ONE_WAY', lvVoltageV),
+      edge('pv-lv', 'pv-inverter', 'lv-bus', 'AC_LV_POWER', 'ONE_WAY', lvVoltageV),
+      edge('lv-pcs-charge', 'lv-bus', 'pcs', 'AC_LV_POWER', 'ONE_WAY', lvVoltageV),
       edge('pcs-battery-charge', 'pcs', 'battery', 'DC_POWER', 'ONE_WAY', 800),
       edge('battery-pcs-discharge', 'battery', 'pcs', 'DC_POWER', 'ONE_WAY', 800),
-      edge('pcs-lv-discharge', 'pcs', 'lv-bus', 'AC_LV_POWER', 'ONE_WAY', 415),
-      edge('genset-lv', 'genset', 'lv-bus', 'AC_LV_POWER', 'ONE_WAY', 415),
+      edge('pcs-lv-discharge', 'pcs', 'lv-bus', 'AC_LV_POWER', 'ONE_WAY', lvVoltageV),
+      edge('genset-lv', 'genset', 'lv-bus', 'AC_LV_POWER', 'ONE_WAY', lvVoltageV),
       edge('ems-pcs', 'ems', 'pcs', 'COMMUNICATION', 'BIDIRECTIONAL', 0)
     ];
-    appendLvLoadBranchTopology(nodes, edges, node, edge, loadSplits, { sourceId: 'lv-bus', startX: 670, startY: 90, gapY: 130 });
+    appendLvLoadBranchTopology(nodes, edges, node, edge, loadSplits, { sourceId: 'lv-bus', startX: 670, startY: 90, gapY: 130, voltageV: lvVoltageV, voltageLabel: lvLabel });
     return finalize({
       nodes,
       edges
@@ -1848,9 +1865,9 @@ function buildStandardTopologyGraph(id = 'C5', loads = {}, options = {}) {
       edges
     });
   }
-  if (topologyId === 'C5' && ['mv_6_6_radial', 'mv_11_radial'].includes(architectureId)) {
+  if (topologyId === 'C5' && ['mv_3_3_radial', 'mv_4_16_radial', 'mv_6_6_radial', 'mv_11_radial'].includes(architectureId)) {
     const mvVoltageV = voltageForArchitecture(architectureId, 11000);
-    const mvLabel = mvVoltageV === 6600 ? '6.6kV' : '11kV';
+    const mvLabel = formatVoltageLabel(mvVoltageV);
     const nodes = [
       node('pv-array', 'PV_ARRAY', 'PV Array', 40, 40, 1000),
       node('pv-inverter', 'PV_INVERTER', 'PV Inverter', 220, 40, 415),
@@ -3023,6 +3040,9 @@ function buildCableScreening(project, designKw, pf) {
       buildCableCandidate({ voltageClass: '415V', voltageKv: 0.415, designKw, distanceM, pf, conductor: 'CU', sizeMm2: 630, ampacityA: 850, derating: 0.8 }),
       buildCableCandidate({ voltageClass: '415V', voltageKv: 0.415, designKw, distanceM, pf, conductor: 'AL', sizeMm2: 630, ampacityA: 720, derating: 0.8 }),
       buildCableCandidate({ voltageClass: '800V', voltageKv: 0.8, designKw, distanceM, pf, conductor: 'CU', sizeMm2: 630, ampacityA: 850, derating: 0.8 }),
+      buildCableCandidate({ voltageClass: '1.14kV', voltageKv: 1.14, designKw, distanceM, pf, conductor: 'CU', sizeMm2: 630, ampacityA: 850, derating: 0.85 }),
+      buildCableCandidate({ voltageClass: '3.3kV', voltageKv: 3.3, designKw, distanceM, pf, conductor: 'AL', sizeMm2: 300, ampacityA: 420, derating: 0.85 }),
+      buildCableCandidate({ voltageClass: '4.16kV', voltageKv: 4.16, designKw, distanceM, pf, conductor: 'AL', sizeMm2: 300, ampacityA: 420, derating: 0.85 }),
       buildCableCandidate({ voltageClass: '6.6kV', voltageKv: 6.6, designKw, distanceM, pf, conductor: 'AL', sizeMm2: 240, ampacityA: 360, derating: 0.85 }),
       buildCableCandidate({ voltageClass: '11kV', voltageKv: 11, designKw, distanceM, pf, conductor: 'AL', sizeMm2: 240, ampacityA: 360, derating: 0.85 })
     ],
@@ -3034,23 +3054,28 @@ function buildElectricalArchitecture(project, designKw, pf, distance, lvCurrentA
   const existingMv = asNumber(project.electrical.existingMvVoltageKv, 0);
   const newMvSystem = Boolean(project.electrical.newMvSystem);
   const candidateSpecs = [
-    ['lv_415_centralized', '415V Centralized', 0.415, 'LV', 1],
-    ['lv_415_distributed', 'Distributed 415V', 0.415, 'LV', 2],
-    ['lv_800_microgrid', '800V Microgrid', 0.8, 'LV800', 2.5],
-    ['mv_6_6_radial', '6.6kV Radial', 6.6, 'MV', 3],
-    ['mv_11_radial', '11kV Radial', 11, 'MV', 4],
-    ['mv_11_ring', '11kV Ring', 11, 'MV', 5]
+    { id: 'lv_415_centralized', name: '415V Centralized', voltageKv: 0.415, voltageClass: 'LV', reliabilityScore: 1, standardA: 1200, capexIndex: 1, expandability: 'Low', bestFor: 'Small compact loads with short LV routes.', faultRisk: 'High', protectionComplexity: 'Medium' },
+    { id: 'lv_415_distributed', name: 'Distributed 415V', voltageKv: 0.415, voltageClass: 'LV', reliabilityScore: 2, standardA: 1200, capexIndex: 1.08, expandability: 'Medium', bestFor: 'Short-route multi-load LV sites.', faultRisk: 'High', protectionComplexity: 'Medium' },
+    { id: 'lv_800_microgrid', name: '800V Microgrid', voltageKv: 0.8, voltageClass: 'LV800', reliabilityScore: 2.5, standardA: 1600, capexIndex: 1.18, expandability: 'Medium', bestFor: 'BESS/PCS local bus concepts where vendor and O&M support are confirmed.', faultRisk: 'Medium', protectionComplexity: 'Medium-high' },
+    { id: 'lv_114_industrial', name: '1.14kV Industrial LV', voltageKv: 1.14, voltageClass: 'LV_PLUS', reliabilityScore: 2.7, standardA: 1600, capexIndex: 1.25, expandability: 'Medium', bestFor: 'Industrial LV-plus packages and short-to-medium BESS/PCS feeders.', faultRisk: 'Medium', protectionComplexity: 'Medium-high' },
+    { id: 'mv_3_3_radial', name: '3.3kV Radial', voltageKv: 3.3, voltageClass: 'MV', reliabilityScore: 3.1, standardA: 630, capexIndex: 1.3, expandability: 'Medium', bestFor: 'Existing 3.3kV equipment bases needing intermediate MV review.', faultRisk: 'Medium-low', protectionComplexity: 'Medium' },
+    { id: 'mv_4_16_radial', name: '4.16kV Radial', voltageKv: 4.16, voltageClass: 'MV', reliabilityScore: 3.3, standardA: 800, capexIndex: 1.33, expandability: 'Medium', bestFor: 'Existing 4.16kV mining or industrial load packages.', faultRisk: 'Medium-low', protectionComplexity: 'Medium' },
+    { id: 'mv_6_6_radial', name: '6.6kV Radial', voltageKv: 6.6, voltageClass: 'MV', reliabilityScore: 3.6, standardA: 630, capexIndex: 1.35, expandability: 'Medium-good', bestFor: 'Cost-sensitive mature MV radial feeders.', faultRisk: 'Low', protectionComplexity: 'Medium' },
+    { id: 'mv_11_radial', name: '11kV Radial', voltageKv: 11, voltageClass: 'MV', reliabilityScore: 4, standardA: 630, capexIndex: 1.45, expandability: 'Good', bestFor: 'Malaysia new-build MV radial screening.', faultRisk: 'Low', protectionComplexity: 'Medium' },
+    { id: 'mv_11_ring', name: '11kV Ring', voltageKv: 11, voltageClass: 'MV', reliabilityScore: 5, standardA: 630, capexIndex: 1.6, expandability: 'Excellent', bestFor: 'Multi-zone quarry, plantation and mine expansion cases.', faultRisk: 'Low', protectionComplexity: 'Higher but reliable' }
   ];
-  const candidates = candidateSpecs.map(([id, name, voltageKv, voltageClass, reliabilityScore]) => {
+  const candidates = candidateSpecs.map((spec) => {
+    const { id, name, voltageKv, voltageClass, reliabilityScore, standardA } = spec;
     const currentA = calculateCurrentA(designKw, voltageKv, pf);
     const is800vReference = id === EPC_LOCAL_800V_REFERENCE.id;
+    const isLvConcept = voltageClass === 'LV' || voltageClass === 'LV800' || voltageClass === 'LV_PLUS';
     const voltageDropPct = estimateVoltageDropPct({
       currentA,
       voltageKv,
       distanceM: Math.max(1, distance),
-      conductor: voltageClass === 'LV' || is800vReference ? 'CU' : 'AL',
-      sizeMm2: voltageClass === 'LV' || is800vReference ? 630 : 240,
-      parallelRuns: voltageClass === 'LV' || is800vReference ? Math.max(1, Math.ceil(currentA / 680)) : 1,
+      conductor: isLvConcept ? 'CU' : 'AL',
+      sizeMm2: isLvConcept ? 630 : id === 'mv_3_3_radial' || id === 'mv_4_16_radial' ? 300 : 240,
+      parallelRuns: isLvConcept ? Math.max(1, Math.ceil(currentA / 680)) : Math.max(1, Math.ceil(currentA / standardA)),
       pf
     });
     let status = is800vReference ? 'REVIEW' : 'PASS';
@@ -3067,9 +3092,24 @@ function buildElectricalArchitecture(project, designKw, pf, distance, lvCurrentA
       riskNotes.push('Long LV route needs voltage-drop and fault-level validation.');
     }
     if (is800vReference) {
-      reasons.push('Local BOQ reference option');
+      reasons.push('800V reference option');
       riskNotes.push('800V reduces current versus 415V but still requires protection selectivity review.');
       riskNotes.push('Equipment supply, local EPC familiarity, O&M spares and multiple transformer interfaces must be confirmed.');
+    }
+    if (voltageClass === 'LV_PLUS') {
+      status = currentA > standardA || voltageDropPct > 5 || distance > 300 || designKw > 1500 ? 'REVIEW' : status;
+      reasons.push('Industrial LV-plus review option');
+      riskNotes.push('Confirm 1.14kV equipment standardization, PCS output basis, fault level and local service capability.');
+    }
+    if (id === 'mv_3_3_radial') {
+      if (currentA > standardA || voltageDropPct > 5 || designKw > 3000) status = 'REVIEW';
+      reasons.push('Intermediate MV review option');
+      riskNotes.push('3.3kV remains higher-current than 4.16kV/6.6kV and needs switchgear availability confirmation.');
+    }
+    if (id === 'mv_4_16_radial') {
+      if (currentA > standardA * 1.05 || voltageDropPct > 5) status = 'REVIEW';
+      reasons.push('Intermediate MV option');
+      riskNotes.push('Confirm 4.16kV equipment support, spares and Malaysia project acceptance before procurement.');
     }
     if (id === 'mv_6_6_radial' && existingMv === 6.6) reasons.push('Matches existing 6.6kV system');
     if (id === 'mv_11_radial' && newMvSystem) reasons.push('Malaysia new MV system screening option');
@@ -3089,7 +3129,16 @@ function buildElectricalArchitecture(project, designKw, pf, distance, lvCurrentA
       currentA: round(currentA, 2),
       voltageDropPct: round(voltageDropPct, 2),
       reliabilityScore,
+      standardA,
+      utilizationPct: round((currentA / Math.max(1, standardA)) * 100, 1),
+      capexIndex: spec.capexIndex,
+      expandability: spec.expandability,
+      bestFor: spec.bestFor,
+      faultRisk: spec.faultRisk,
+      protectionComplexity: spec.protectionComplexity,
       status,
+      decisionStatus: status,
+      whyNotSelected: '',
       score,
       reasons,
       riskNotes,
@@ -3125,9 +3174,7 @@ function buildElectricalArchitecture(project, designKw, pf, distance, lvCurrentA
 }
 
 function pickArchitectureCableCandidate(candidate = {}, cableScreening = {}) {
-  const voltageLabel = asNumber(candidate.voltageKv, 0) >= 1
-    ? `${asNumber(candidate.voltageKv, 0)}kV`
-    : `${Math.round(asNumber(candidate.voltageKv, 0) * 1000)}V`;
+  const voltageLabel = formatVoltageLabel(asNumber(candidate.voltageKv, 0) * 1000);
   const matches = (cableScreening.candidates || []).filter(cable => cable.voltageClass === voltageLabel);
   if (!matches.length) return null;
   return matches.reduce((best, item) => {
@@ -3136,43 +3183,76 @@ function pickArchitectureCableCandidate(candidate = {}, cableScreening = {}) {
   }, matches[0]);
 }
 
+function architectureWhyNotSelected(candidate = {}, decisionId = '') {
+  if (candidate.id === decisionId) return 'Final decision for current design basis.';
+  if (candidate.status === 'FAIL') return (candidate.riskNotes || [])[0] || 'Fails current or voltage-drop concept limit.';
+  if (candidate.id === EPC_LOCAL_800V_REFERENCE.id) return 'Reference only: still high-current LV scope and needs EPC/O&M confirmation.';
+  if (candidate.id === 'lv_114_industrial') return 'LV-plus review option; use only when equipment/vendor basis is fixed.';
+  if (candidate.id === 'mv_3_3_radial') return 'Intermediate MV review option; higher current than 4.16kV, 6.6kV and 11kV.';
+  if (candidate.id === 'mv_4_16_radial') return 'Good where 4.16kV equipment exists; verify local spares and acceptance.';
+  if (candidate.id === 'mv_6_6_radial') return 'Cost-sensitive MV option; less expansion/reliability than 11kV ring.';
+  if (candidate.id === 'mv_11_radial') return 'Strong MV option; ring topology is stronger for multi-zone expansion.';
+  return candidate.bestFor || 'Comparison option; validate with detailed engineering.';
+}
+
 function buildArchitectureComparison(project, electricalArchitecture = {}, cableScreening = {}) {
   const localReferenceId = normalizeArchitectureId(project.electrical.localReferenceArchitecture) || EPC_LOCAL_800V_REFERENCE.id;
+  const recommendedId = electricalArchitecture.recommendedId || '';
+  const selectedArchitectureId = electricalArchitecture.selectedArchitectureId || '';
+  const selectedArchitectureValid = Boolean(electricalArchitecture.selectedArchitectureValid);
+  const decisionId = selectedArchitectureValid && selectedArchitectureId ? selectedArchitectureId : recommendedId;
   const candidates = (electricalArchitecture.candidates || []).map((candidate) => {
     const cable = pickArchitectureCableCandidate(candidate, cableScreening);
     const riskNotes = Array.isArray(candidate.riskNotes) && candidate.riskNotes.length
       ? candidate.riskNotes
       : candidate.reasons || [];
     const localReference = candidate.id === localReferenceId;
-    const recommended = candidate.id === electricalArchitecture.recommendedId;
+    const recommended = candidate.id === recommendedId;
+    const selected = selectedArchitectureValid && candidate.id === selectedArchitectureId;
+    const decisionStatus = selected
+      ? 'SELECTED'
+      : recommended
+        ? 'PREFERRED'
+        : candidate.status;
     return {
       ...candidate,
       localReference,
       recommended,
-      parallelRuns: cable?.parallelRuns || (candidate.voltageClass === 'LV' || candidate.voltageClass === 'LV800'
+      selected,
+      decisionStatus,
+      parallelRuns: cable?.parallelRuns || (candidate.voltageClass === 'LV' || candidate.voltageClass === 'LV800' || candidate.voltageClass === 'LV_PLUS'
         ? Math.max(1, Math.ceil(asNumber(candidate.currentA, 0) / 680))
         : 1),
       cableStatus: cable?.status || '',
       cableVoltageDropPct: cable ? round(cable.voltageDropPct, 2) : round(candidate.voltageDropPct, 2),
       riskNotes,
+      whyNotSelected: architectureWhyNotSelected(candidate, decisionId),
       recommendation: recommended
         ? `${candidate.name} is recommended for this concept case.`
         : localReference
           ? EPC_LOCAL_800V_REFERENCE.recommendation
-          : candidate.recommendation || 'Comparison option; validate with detailed engineering before procurement.'
+        : candidate.recommendation || 'Comparison option; validate with detailed engineering before procurement.'
     };
   });
+  const finalDecision = candidates.find(candidate => candidate.id === decisionId)
+    || candidates.find(candidate => candidate.id === recommendedId)
+    || candidates[0]
+    || null;
   const localReference = candidates.find(candidate => candidate.id === localReferenceId)
     || candidates.find(candidate => candidate.id === EPC_LOCAL_800V_REFERENCE.id)
     || null;
   return {
-    recommendedId: electricalArchitecture.recommendedId || '',
+    recommendedId,
     calculatedRecommendedId: electricalArchitecture.calculatedRecommendedId || '',
-    selectedArchitectureId: electricalArchitecture.selectedArchitectureId || '',
+    selectedArchitectureId,
+    decisionId: finalDecision?.id || '',
+    decisionName: finalDecision?.name || '',
     localReference,
     candidates,
-    basis: 'Concept comparison of New-Hybrid recommendation against the local 800V procurement BOQ reference.',
-    recommendation: '11kV ring selected to reduce MW-level LV current and support distributed quarry loads.',
+    basis: 'Concept comparison across 415V, 800V reference, 1.14kV industrial LV, intermediate MV, 6.6kV and 11kV architectures.',
+    recommendation: finalDecision
+      ? `${finalDecision.name} is the current architecture decision for this concept screen; compare CAPEX, cable count, protection complexity and local O&M before final design.`
+      : 'Compare LV, intermediate MV and 11kV options before final design.',
     localReferenceMeta: EPC_LOCAL_800V_REFERENCE
   };
 }
@@ -3540,7 +3620,7 @@ function calculateElectrical(project, recommended) {
   const designKw = Math.max(roundedPvMwp * 1000, (recommended?.pcsRecommendedMw || 0) * 1000);
   const lvCurrentA = calculateCurrentA(designKw, voltageKv, pf);
   const distance = Math.max(project.site.distanceToInterconnectionM || 0, project.electrical.distanceToInterconnectionM || 0);
-  const voltageOptions = [0.415, 0.8, 6.6, 11].map(optionVoltage => ({
+  const voltageOptions = [0.415, 0.8, 1.14, 3.3, 4.16, 6.6, 11].map(optionVoltage => ({
     voltageKv: optionVoltage,
     currentA: calculateCurrentA(designKw, optionVoltage, pf)
   }));

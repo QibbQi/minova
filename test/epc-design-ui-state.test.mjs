@@ -931,7 +931,7 @@ test('EPC Device Work profile renders realistic load and genset device behavior'
     'EPC_DEVICE_WORK_GENSET_PLATFORMS',
     'getEpcEmsFlowProfileRows(result)',
     'buildEpcDeviceWorkProfileRows(result.energyFlow?.rows || [], settings)',
-    'const sourceRows = getEpcEmsFlowProfileRows(result);',
+    'const rows = getEpcEnergyFlowDisplayRows(result);',
     'const path = (series.id === \'load\' || series.id === \'genset\')',
     'profile rows',
     'deviceWorkModel',
@@ -990,6 +990,18 @@ test('EPC Device Work profile renders realistic load and genset device behavior'
   assert.ok(flowRenderer, 'EMS Flow renderer should be found');
   assert.match(flowRenderer[0], /getEpcEnergyFlowDisplayRows\(result\)/, 'EMS Flow table should use profiled display rows');
   assert.doesNotMatch(flowRenderer[0], /const rows = result\.energyFlow\?\.rows \|\| \[\]/, 'EMS Flow table should not render raw rows directly');
+});
+
+test('EPC Apply profile to EMS Flow drives table and topology rows even with asset schedule rows', () => {
+  const profileRows = html.match(/function getEpcEmsFlowProfileRows\(result = \{\}\)[\s\S]*?function getEpcEnergyFlowDurationHours/);
+  assert.ok(profileRows, 'EMS Flow profile row source should be found');
+  assert.match(profileRows[0], /settings\.deviceWorkModel\.applyToEmsFlow[\s\S]*?buildEpcDeviceWorkProfileRows/, 'Apply profile to EMS Flow should route through Device Work load/genset profiling');
+  assert.doesNotMatch(profileRows[0], /!useExactAssetSchedule/, 'Asset List schedules should not bypass Device Work profile when Apply profile to EMS Flow is checked');
+
+  const flowRenderer = html.match(/function renderEpcEnergyFlow\(result\)[\s\S]*?function renderEpcReports\(result\)/);
+  assert.ok(flowRenderer, 'EMS Flow renderer should be found');
+  assert.match(flowRenderer[0], /const rows = getEpcEnergyFlowDisplayRows\(result\)/, 'EMS Flow table should use the same profiled display rows as topology selection');
+  assert.match(flowRenderer[0], /renderEpcTopologyFlowDiagram\(result, selectedRow\)/, 'Topology should render from the selected profiled display row');
 });
 
 test('EPC Battery Control is a standalone page between Device Work and PV Simulator', () => {
@@ -1284,16 +1296,15 @@ test('EPC sub-hourly EMS and Device Work profiles apply midnight SOC carry befor
   assert.match(emsProfile[0], /return carryEpcZeroFlowSocRows\(profileRows, \{ wrapDay: true \}\)/, 'EMS sub-hourly rows should use the same SOC carry as hourly rows');
 });
 
-test('EPC EMS Flow preserves exact Asset List schedules before Device Work profile', () => {
-  const emsProfile = html.match(/function hasEpcExactAssetScheduleRows\(rows = \[\]\)[\s\S]*?function getEpcEnergyFlowDurationHours/);
-  assert.ok(emsProfile, 'EMS Flow exact Asset List schedule guard should be found');
-  assert.match(emsProfile[0], /String\(row\.flowKey \|\| ''\)\.startsWith\('asset-list-'\)/, 'Asset List EMS rows should be detected by source key');
-  assert.match(emsProfile[0], /const useExactAssetSchedule = hasEpcExactAssetScheduleRows\(sourceRows\)/, 'EMS Flow should identify exact Asset List schedules before profiling');
-  assert.match(emsProfile[0], /settings\.deviceWorkModel\.applyToEmsFlow\s*&&\s*!useExactAssetSchedule/, 'Device Work profile should be skipped for exact Asset List schedules');
+test('EPC EMS Flow applies Device Work profile to Asset List schedule rows when enabled', () => {
+  const emsProfile = html.match(/function getEpcEmsFlowProfileRows\(result = \{\}\)[\s\S]*?function getEpcEnergyFlowDurationHours/);
+  assert.ok(emsProfile, 'EMS Flow profile row source should be found');
+  assert.match(emsProfile[0], /settings\.deviceWorkModel\.applyToEmsFlow\s*\?\s*buildEpcDeviceWorkProfileRows\(sourceRows/, 'Asset List schedules should be profiled when Apply profile to EMS Flow is enabled');
+  assert.doesNotMatch(emsProfile[0], /hasEpcExactAssetScheduleRows|useExactAssetSchedule/, 'Asset schedule rows should not bypass Device Work profiling');
 
   const flowRenderer = html.match(/function renderEpcEnergyFlow\(result\)[\s\S]*?function renderEpcReports\(result\)/);
   assert.ok(flowRenderer, 'EMS Flow renderer should be found');
-  assert.match(flowRenderer[0], /const profileApplied = getEpcDeviceWorkSettings\(result\)\.deviceWorkModel\.applyToEmsFlow\s*&&\s*!hasEpcExactAssetScheduleRows\(sourceRows\)/, 'EMS Flow footer should describe the actual displayed profile source');
+  assert.match(flowRenderer[0], /const profileApplied = getEpcDeviceWorkSettings\(result\)\.deviceWorkModel\.applyToEmsFlow;/, 'EMS Flow footer should follow the Apply profile to EMS Flow switch');
 });
 
 test('EPC Load Work Profile exposes PV battery charge and preserves charging SOC', () => {

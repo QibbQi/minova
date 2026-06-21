@@ -17891,17 +17891,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         };
 
         function hasEpcExactAssetScheduleRows(rows = []) {
-            const result = Array.isArray(rows) ? null : rows;
-            const sourceRows = Array.isArray(rows) ? rows : (result?.energyFlow?.rows || []);
-            const method = String(result?.energyFlow?.method || '');
-            return method.includes('Load profile source: Asset List timetable.')
-                || sourceRows.some(row => String(row.flowKey || '').startsWith('asset-list-') && Number(row.loadKw) > 0);
+            return (Array.isArray(rows) ? rows : []).some(row => String(row.flowKey || '').startsWith('asset-list-') && Number(row.loadKw) > 0);
         }
 
         function getEpcEmsFlowProfileRows(result = {}) {
             const sourceRows = result.energyFlow?.rows || [];
             const settings = getEpcDeviceWorkSettings(result);
-            const useExactAssetSchedule = hasEpcExactAssetScheduleRows(result);
+            const useExactAssetSchedule = hasEpcExactAssetScheduleRows(sourceRows);
             const profileRows = settings.deviceWorkModel.applyToEmsFlow && !useExactAssetSchedule
                 ? buildEpcDeviceWorkProfileRows(sourceRows, { ...settings, selectedRange: null })
                 : sourceRows;
@@ -18096,7 +18092,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const sourceRows = getEpcEmsFlowProfileRows(result);
             const rows = getEpcEnergyFlowDisplayRows(result);
             const emsTableIntervalMinutes = Number(result.emsFlowDisplaySettings?.emsTableIntervalMinutes) === 5 ? 5 : 60;
-            const profileApplied = getEpcDeviceWorkSettings(result).deviceWorkModel.applyToEmsFlow && !hasEpcExactAssetScheduleRows(result);
+            const profileApplied = getEpcDeviceWorkSettings(result).deviceWorkModel.applyToEmsFlow && !hasEpcExactAssetScheduleRows(sourceRows);
             const stringDesign = result.pvStringDesign || {};
             const rowKey = row => getEpcEnergyFlowDisplayRowKey(row);
             const selectedRow = getEpcSelectedEnergyFlowDisplayRow(result);

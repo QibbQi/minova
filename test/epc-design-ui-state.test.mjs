@@ -1288,23 +1288,12 @@ test('EPC EMS Flow preserves exact Asset List schedules before Device Work profi
   const emsProfile = html.match(/function hasEpcExactAssetScheduleRows\(rows = \[\]\)[\s\S]*?function getEpcEnergyFlowDurationHours/);
   assert.ok(emsProfile, 'EMS Flow exact Asset List schedule guard should be found');
   assert.match(emsProfile[0], /String\(row\.flowKey \|\| ''\)\.startsWith\('asset-list-'\)/, 'Asset List EMS rows should be detected by source key');
-  assert.match(emsProfile[0], /const useExactAssetSchedule = hasEpcExactAssetScheduleRows\(result\)/, 'EMS Flow should identify exact Asset List schedules before profiling');
+  assert.match(emsProfile[0], /const useExactAssetSchedule = hasEpcExactAssetScheduleRows\(sourceRows\)/, 'EMS Flow should identify exact Asset List schedules before profiling');
   assert.match(emsProfile[0], /settings\.deviceWorkModel\.applyToEmsFlow\s*&&\s*!useExactAssetSchedule/, 'Device Work profile should be skipped for exact Asset List schedules');
-
-  const guardSource = emsProfile[0].replace(/\n        function getEpcEmsFlowProfileRows[\s\S]*$/, '\nreturn hasEpcExactAssetScheduleRows;');
-  const hasExactAssetScheduleRows = Function(guardSource)();
-  assert.equal(hasExactAssetScheduleRows({
-    energyFlow: {
-      method: 'EMS order: PV -> Load. PV profile source: PV Simulator. Load profile source: Asset List timetable.',
-      rows: [
-        { flowKey: 'pv-simulator-12-60', loadKw: 1100, intervalMinutes: 5 }
-      ]
-    }
-  }), true, 'Asset List timetable should be detected even when dense PV rows own the flow keys');
 
   const flowRenderer = html.match(/function renderEpcEnergyFlow\(result\)[\s\S]*?function renderEpcReports\(result\)/);
   assert.ok(flowRenderer, 'EMS Flow renderer should be found');
-  assert.match(flowRenderer[0], /const profileApplied = getEpcDeviceWorkSettings\(result\)\.deviceWorkModel\.applyToEmsFlow\s*&&\s*!hasEpcExactAssetScheduleRows\(result\)/, 'EMS Flow footer should describe the actual displayed profile source');
+  assert.match(flowRenderer[0], /const profileApplied = getEpcDeviceWorkSettings\(result\)\.deviceWorkModel\.applyToEmsFlow\s*&&\s*!hasEpcExactAssetScheduleRows\(sourceRows\)/, 'EMS Flow footer should describe the actual displayed profile source');
 });
 
 test('EPC Load Work Profile exposes PV battery charge and preserves charging SOC', () => {

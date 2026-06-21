@@ -3030,112 +3030,120 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 </div>
             </div>
             <div id="epc-detailed-fields" data-epc-engineering-section="true" data-epc-detail-page="settings">
-                <div id="epc-advanced-inputs" data-epc-advanced-section="true" class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-3 p-4">
-                    <div class="md:col-span-3 xl:col-span-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2">
-                        <div data-epc-detail-group="load-site" class="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-[10px] font-black uppercase text-slate-500">Load & Site</div>
-                        <div data-epc-detail-group="battery-soc" class="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-[10px] font-black uppercase text-slate-500">Battery & SOC</div>
-                        <div data-epc-detail-group="solar-string" class="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-[10px] font-black uppercase text-slate-500">Solar & Strings</div>
-                        <div data-epc-detail-group="electrical-protection" class="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-[10px] font-black uppercase text-slate-500">Electrical & Protection</div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <div>
-                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Target diesel replacement percentage used as the detailed design standard.">Target % <span data-epc-help="target-replacement" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Target diesel replacement percentage used as the detailed design standard.">i</span></label>
-                            <input id="epc-target-replacement" data-epc-field="designTargets.replacementPct" type="number" min="0" max="100" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                <div id="epc-advanced-inputs" data-epc-advanced-section="true" class="grid grid-cols-1 xl:grid-cols-2 gap-3 p-4">
+                    <div data-epc-detail-group="solar-strings" class="rounded-2xl border border-slate-100 bg-slate-50/60 p-3">
+                        <div class="mb-3 rounded-xl border border-slate-100 bg-white px-3 py-2 text-[10px] font-black uppercase text-slate-500">Solar & Strings</div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div data-epc-detail-field="pv-yield">
+                                <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Daily PV yield used for PV sizing; this should follow GSA PVOUT when solar data is fetched.">PV Yield <span data-epc-help="pv-yield" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Daily PV yield used for PV sizing; this should follow GSA PVOUT when solar data is fetched.">i</span></label>
+                                <input id="epc-pv-yield" data-epc-field="solarResource.specificYieldKwhPerKwpDay" type="number" step="0.1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
+                            </div>
+                            <div data-epc-detail-field="dc-ac-ratio">
+                                <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="PV array DC rating divided by inverter AC rating. PV Simulator reads this project engineering value automatically.">DC/AC Ratio <span data-epc-help="pv-dc-ac-ratio" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="PV array DC rating divided by inverter AC rating. PV Simulator reads this project engineering value automatically.">i</span></label>
+                                <input id="epc-design-dc-ac-ratio" data-epc-field="assumptions.pvDcAcRatio" type="number" step="0.05" min="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
+                            </div>
+                            <div data-epc-detail-field="modules-per-string">
+                                <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="PV modules per string used for string count and combiner sizing.">String <span data-epc-help="modules-per-string" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="PV modules per string used for string count and combiner sizing.">i</span></label>
+                                <input id="epc-modules-per-string" data-epc-field="assumptions.modulesPerString" type="number" min="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
+                            </div>
+                            <div data-epc-detail-field="combiner-inputs">
+                                <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Combiner input count used to estimate combiner quantity from total strings.">Combiner <span data-epc-help="combiner-inputs" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Combiner input count used to estimate combiner quantity from total strings.">i</span></label>
+                                <input id="epc-combiner-inputs" data-epc-field="assumptions.combinerInputs" type="number" min="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
+                            </div>
                         </div>
+                    </div>
+                    <div data-epc-detail-group="load-electrical" class="rounded-2xl border border-slate-100 bg-slate-50/60 p-3">
+                        <div class="mb-3 rounded-xl border border-slate-100 bg-white px-3 py-2 text-[10px] font-black uppercase text-slate-500">Load & Electrical</div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div data-epc-detail-field="peak-load-factor">
+                                <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Peak Load = Avg Load x Safety Factor; PCS is then rounded up to the next 0.5MW.">Peak Load Factor <span data-epc-help="peak-load-factor" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Peak Load = Avg Load x Safety Factor; PCS is then rounded up to the next 0.5MW.">i</span></label>
+                                <select id="epc-peak-load-factor" data-epc-field="loads.peakLoadSafetyFactor" data-epc-number="true" onchange="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
+                                    <option value="1.1">Stable load - 1.10x</option>
+                                    <option value="1.3">Normal variation - 1.30x</option>
+                                    <option value="1.5">High surge - 1.50x</option>
+                                </select>
+                            </div>
+                            <div data-epc-detail-field="electrical-load-basis">
+                                <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Select which live engineering value is used for electrical architecture current, cable and transformer screening.">Electrical Load Basis <span data-epc-help="electrical-load-basis" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Select which live engineering value is used for electrical architecture current, cable and transformer screening.">i</span></label>
+                                <select id="epc-electrical-load-basis-mode" data-epc-field="electrical.loadBasisMode" onchange="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
+                                    <option value="pv_ac_kw">PV AC kW (PV DC / DC/AC)</option>
+                                    <option value="average_peak_factor">Average load kW x peak load factor</option>
+                                    <option value="genset_capacity_peak">Genset capacity peak load kW</option>
+                                </select>
+                            </div>
+                            <div data-epc-detail-field="power-factor">
+                                <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Power factor used for AC current and voltage architecture checks.">PF <span data-epc-help="power-factor" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Power factor used for AC current and voltage architecture checks.">i</span></label>
+                                <input id="epc-power-factor" data-epc-field="electrical.powerFactor" type="number" step="0.01" min="0.1" max="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
+                            </div>
+                            <div data-epc-detail-field="operating-equipment">
+                                <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Select the operating load type so the model can keep recommendations tied to the site duty.">Operating Equipment <span data-epc-help="load-equipment-type" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Select the operating load type so the model can keep recommendations tied to the site duty.">i</span></label>
+                                <select id="epc-load-equipment-type" data-epc-field="loads.equipmentType" onchange="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
+                                    <option value="water_pump">Water Pump</option>
+                                    <option value="crusher">Crusher</option>
+                                    <option value="conveyor">Conveyor</option>
+                                    <option value="mining_machine">Mining Machine</option>
+                                    <option value="processing_line">Processing Line</option>
+                                    <option value="quarry_load">General Quarry Load</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div data-epc-detail-group="battery-soc" class="rounded-2xl border border-slate-100 bg-slate-50/60 p-3">
+                        <div class="mb-3 rounded-xl border border-slate-100 bg-white px-3 py-2 text-[10px] font-black uppercase text-slate-500">Battery & SOC</div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div data-epc-detail-field="min-soc">
+                                <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Minimum battery state of charge reserved in EMS Flow.">Min SOC % <span data-epc-help="min-soc" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Minimum battery state of charge reserved in EMS Flow.">i</span></label>
+                                <input id="epc-min-soc" data-epc-field="assumptions.minSocPct" type="number" step="1" min="0" max="99" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
+                            </div>
+                            <div data-epc-detail-field="bess-dod">
+                                <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Usable battery depth of discharge applied to BESS sizing and EMS Flow SOC upper limit.">DoD % <span data-epc-help="bess-dod" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Usable battery depth of discharge applied to BESS sizing and EMS Flow SOC upper limit.">i</span></label>
+                                <input id="epc-bess-dod" type="number" step="1" min="0" max="100" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
+                            </div>
+                            <div data-epc-detail-field="bess-role" class="sm:col-span-2">
+                                <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Defines the battery operating purpose used by sizing, recommendation, and risk notes.">BESS Role <span data-epc-help="bess-role" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Defines the battery operating purpose used by sizing, recommendation, and risk notes.">i</span></label>
+                                <select id="epc-bess-role" data-epc-field="designTargets.bessRole" onchange="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
+                                    <option value="diesel_replacement">Diesel Replacement</option>
+                                    <option value="peak_shaving">Peak Shaving</option>
+                                    <option value="pv_smoothing">PV Smoothing</option>
+                                    <option value="backup">Backup</option>
+                                    <option value="island_mode">Island Mode</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div data-epc-detail-group="sizing-targets" class="rounded-2xl border border-slate-100 bg-slate-50/60 p-3">
+                        <div class="mb-3 rounded-xl border border-slate-100 bg-white px-3 py-2 text-[10px] font-black uppercase text-slate-500">Sizing Targets</div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div data-epc-detail-field="target-replacement">
+                                <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Target diesel replacement percentage used as the detailed design standard.">Target % <span data-epc-help="target-replacement" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Target diesel replacement percentage used as the detailed design standard.">i</span></label>
+                                <input id="epc-target-replacement" data-epc-field="designTargets.replacementPct" type="number" min="0" max="100" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
+                            </div>
+                            <div data-epc-detail-field="final-pv-mwp">
+                                <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Optional final PV capacity used across Hybrid EPC Design; leave blank to follow the calculated recommendation.">Final PV MWp <span data-epc-help="final-pv-mwp" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Optional final PV capacity used across Hybrid EPC Design; leave blank to follow the calculated recommendation.">i</span></label>
+                                <input id="epc-final-pv-mwp" data-epc-field="designTargets.capacityOverrides.pvMwp" type="number" min="0" step="0.01" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white" placeholder="auto">
+                            </div>
+                            <div data-epc-detail-field="final-pcs-mw">
+                                <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Optional final PCS capacity used by EMS Flow, Device Work, BOQ and recommendation outputs.">Final PCS MW <span data-epc-help="final-pcs-mw" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Optional final PCS capacity used by EMS Flow, Device Work, BOQ and recommendation outputs.">i</span></label>
+                                <input id="epc-final-pcs-mw" data-epc-field="designTargets.capacityOverrides.pcsMw" type="number" min="0" step="0.01" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white" placeholder="auto">
+                            </div>
+                            <div data-epc-detail-field="final-bess-mwh">
+                                <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Optional final BESS capacity used by EMS Flow, Device Work, BOQ and recommendation outputs.">Final BESS MWh <span data-epc-help="final-bess-mwh" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Optional final BESS capacity used by EMS Flow, Device Work, BOQ and recommendation outputs.">i</span></label>
+                                <input id="epc-final-bess-mwh" data-epc-field="designTargets.capacityOverrides.bessMwh" type="number" min="0" step="0.01" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white" placeholder="auto">
+                            </div>
+                        </div>
+                    </div>
+                    <div id="epc-detail-hidden-fields" class="hidden">
                         <div>
                             <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Available site area for PV layout feasibility and land-use checks.">Area m2 <span data-epc-help="available-area" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Available site area for PV layout feasibility and land-use checks.">i</span></label>
                             <input id="epc-available-area" data-epc-field="site.availableAreaM2" type="number" min="0" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <div>
-                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Peak Load = Avg Load x Safety Factor; PCS is then rounded up to the next 0.5MW.">Peak Load Factor <span data-epc-help="peak-load-factor" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Peak Load = Avg Load x Safety Factor; PCS is then rounded up to the next 0.5MW.">i</span></label>
-                            <select id="epc-peak-load-factor" data-epc-field="loads.peakLoadSafetyFactor" data-epc-number="true" onchange="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
-                                <option value="1.1">Stable load - 1.10x</option>
-                                <option value="1.3">Normal variation - 1.30x</option>
-                                <option value="1.5">High surge - 1.50x</option>
-                            </select>
                         </div>
                         <div>
                             <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Diesel power intentionally kept online; Peak Shaving PCS covers Peak minus this value.">Genset Allowed kW <span data-epc-help="allowed-genset-load" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Diesel power intentionally kept online; Peak Shaving PCS covers Peak minus this value.">i</span></label>
                             <input id="epc-allowed-genset-load" data-epc-field="loads.allowedGensetLoadKw" type="number" min="0" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                         </div>
-                    </div>
-                    <div>
-                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Select which live engineering value is used for electrical architecture current, cable and transformer screening.">Electrical Load Basis <span data-epc-help="electrical-load-basis" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Select which live engineering value is used for electrical architecture current, cable and transformer screening.">i</span></label>
-                        <select id="epc-electrical-load-basis-mode" data-epc-field="electrical.loadBasisMode" onchange="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
-                            <option value="pv_ac_kw">PV AC kW (PV DC / DC/AC)</option>
-                            <option value="average_peak_factor">Average load kW x peak load factor</option>
-                            <option value="genset_capacity_peak">Genset capacity peak load kW</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Select the operating load type so the model can keep recommendations tied to the site duty.">Operating Equipment <span data-epc-help="load-equipment-type" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Select the operating load type so the model can keep recommendations tied to the site duty.">i</span></label>
-                        <select id="epc-load-equipment-type" data-epc-field="loads.equipmentType" onchange="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
-                            <option value="water_pump">Water Pump</option>
-                            <option value="crusher">Crusher</option>
-                            <option value="conveyor">Conveyor</option>
-                            <option value="mining_machine">Mining Machine</option>
-                            <option value="processing_line">Processing Line</option>
-                            <option value="quarry_load">General Quarry Load</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Defines the battery operating purpose used by sizing, recommendation, and risk notes.">BESS Role <span data-epc-help="bess-role" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Defines the battery operating purpose used by sizing, recommendation, and risk notes.">i</span></label>
-                        <select id="epc-bess-role" data-epc-field="designTargets.bessRole" onchange="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
-                            <option value="diesel_replacement">Diesel Replacement</option>
-                            <option value="peak_shaving">Peak Shaving</option>
-                            <option value="pv_smoothing">PV Smoothing</option>
-                            <option value="backup">Backup</option>
-                            <option value="island_mode">Island Mode</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Daily PV yield used for PV sizing; this should follow GSA PVOUT when solar data is fetched.">PV Yield <span data-epc-help="pv-yield" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Daily PV yield used for PV sizing; this should follow GSA PVOUT when solar data is fetched.">i</span></label>
-                        <input id="epc-pv-yield" data-epc-field="solarResource.specificYieldKwhPerKwpDay" type="number" step="0.1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
-                    </div>
-                    <div>
-                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="PV array DC rating divided by inverter AC rating. PV Simulator reads this project engineering value automatically.">DC/AC Ratio <span data-epc-help="pv-dc-ac-ratio" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="PV array DC rating divided by inverter AC rating. PV Simulator reads this project engineering value automatically.">i</span></label>
-                        <input id="epc-design-dc-ac-ratio" data-epc-field="assumptions.pvDcAcRatio" type="number" step="0.05" min="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
-                    </div>
-                    <div>
-                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Optional final PV capacity used across Hybrid EPC Design; leave blank to follow the calculated recommendation.">Final PV MWp <span data-epc-help="final-pv-mwp" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Optional final PV capacity used across Hybrid EPC Design; leave blank to follow the calculated recommendation.">i</span></label>
-                        <input id="epc-final-pv-mwp" data-epc-field="designTargets.capacityOverrides.pvMwp" type="number" min="0" step="0.01" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" placeholder="auto">
-                    </div>
-                    <div>
-                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Optional final PCS capacity used by EMS Flow, Device Work, BOQ and recommendation outputs.">Final PCS MW <span data-epc-help="final-pcs-mw" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Optional final PCS capacity used by EMS Flow, Device Work, BOQ and recommendation outputs.">i</span></label>
-                        <input id="epc-final-pcs-mw" data-epc-field="designTargets.capacityOverrides.pcsMw" type="number" min="0" step="0.01" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" placeholder="auto">
-                    </div>
-                    <div>
-                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Optional final BESS capacity used by EMS Flow, Device Work, BOQ and recommendation outputs.">Final BESS MWh <span data-epc-help="final-bess-mwh" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Optional final BESS capacity used by EMS Flow, Device Work, BOQ and recommendation outputs.">i</span></label>
-                        <input id="epc-final-bess-mwh" data-epc-field="designTargets.capacityOverrides.bessMwh" type="number" min="0" step="0.01" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500" placeholder="auto">
-                    </div>
-                    <div class="grid grid-cols-2 gap-2">
                         <div>
-                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Minimum battery state of charge reserved in EMS Flow.">Min SOC % <span data-epc-help="min-soc" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Minimum battery state of charge reserved in EMS Flow.">i</span></label>
-                            <input id="epc-min-soc" data-epc-field="assumptions.minSocPct" type="number" step="1" min="0" max="99" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
-                        </div>
-                        <div>
-                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Usable battery depth of discharge applied to BESS sizing and EMS Flow SOC upper limit.">DoD % <span data-epc-help="bess-dod" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Usable battery depth of discharge applied to BESS sizing and EMS Flow SOC upper limit.">i</span></label>
-                            <input id="epc-bess-dod" type="number" step="1" min="0" max="100" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
-                        </div>
-                    </div>
-                    <div>
-                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Power factor used for AC current and voltage architecture checks.">PF <span data-epc-help="power-factor" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Power factor used for AC current and voltage architecture checks.">i</span></label>
-                        <input id="epc-power-factor" data-epc-field="electrical.powerFactor" type="number" step="0.01" min="0.1" max="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
-                    </div>
-                    <div>
-                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Must-run load for backup or island mode; blank falls back to average load.">Critical Load kW <span data-epc-help="critical-load" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Must-run load for backup or island mode; blank falls back to average load.">i</span></label>
-                        <input id="epc-critical-load" data-epc-field="loads.criticalLoadKw" type="number" min="0" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
-                    </div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <div>
-                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="PV modules per string used for string count and combiner sizing.">/ String <span data-epc-help="modules-per-string" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="PV modules per string used for string count and combiner sizing.">i</span></label>
-                            <input id="epc-modules-per-string" data-epc-field="assumptions.modulesPerString" type="number" min="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
-                        </div>
-                        <div>
-                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Combiner input count used to estimate combiner quantity from total strings.">Combiner <span data-epc-help="combiner-inputs" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Combiner input count used to estimate combiner quantity from total strings.">i</span></label>
-                            <input id="epc-combiner-inputs" data-epc-field="assumptions.combinerInputs" type="number" min="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
+                            <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Must-run load for backup or island mode; blank falls back to average load.">Critical Load kW <span data-epc-help="critical-load" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Must-run load for backup or island mode; blank falls back to average load.">i</span></label>
+                            <input id="epc-critical-load" data-epc-field="loads.criticalLoadKw" type="number" min="0" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500">
                         </div>
                     </div>
                 </div>

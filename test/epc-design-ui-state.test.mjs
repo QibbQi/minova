@@ -66,6 +66,49 @@ test('EPC design workspace exposes quick detailed map solar and report surfaces'
   assert.match(source, /<button[^>]*data-epc-download="engineering"[^>]*class="[^"]*\bhidden\b/);
 });
 
+test('EPC detail inputs are grouped by engineering workflow and hide inactive sizing fields', () => {
+  const section = html.match(/<section id="epc-detail-inputs-panel"[\s\S]*?<div id="epc-assets-list-page"/);
+  assert.ok(section, 'EPC detail inputs panel exists');
+  const source = section[0];
+
+  for (const group of [
+    'data-epc-detail-group="solar-strings"',
+    'data-epc-detail-group="load-electrical"',
+    'data-epc-detail-group="battery-soc"',
+    'data-epc-detail-group="sizing-targets"'
+  ]) {
+    assert.match(source, new RegExp(group.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing detail input group: ${group}`);
+  }
+
+  for (const fieldId of [
+    'epc-pv-yield',
+    'epc-design-dc-ac-ratio',
+    'epc-modules-per-string',
+    'epc-combiner-inputs',
+    'epc-peak-load-factor',
+    'epc-electrical-load-basis-mode',
+    'epc-power-factor',
+    'epc-min-soc',
+    'epc-bess-dod',
+    'epc-bess-role',
+    'epc-target-replacement',
+    'epc-final-pv-mwp',
+    'epc-final-pcs-mw',
+    'epc-final-bess-mwh'
+  ]) {
+    assert.match(source, new RegExp(`data-epc-detail-field="[^"]*"[\\s\\S]*id="${fieldId}"`), `missing grouped field: ${fieldId}`);
+  }
+
+  assert.match(source, /<label[^>]*>\s*String\s*<span data-epc-help="modules-per-string"/);
+  assert.doesNotMatch(source, />\s*\/ String\s*</);
+
+  const hiddenFields = source.match(/<div id="epc-detail-hidden-fields"[\s\S]*?<\/div>\s*<\/div>\s*<div id="epc-assets-list-page"/);
+  assert.ok(hiddenFields, 'hidden detail fields container exists');
+  for (const fieldId of ['epc-available-area', 'epc-allowed-genset-load', 'epc-critical-load']) {
+    assert.match(hiddenFields[0], new RegExp(`id="${fieldId}"`), `inactive field should remain wired but hidden: ${fieldId}`);
+  }
+});
+
 test('EPC formula trace shows formula data instead of a raw inputs column', () => {
   assert.match(html, /function formatEpcFormulaData\(inputs = \{\}\)/);
   assert.match(html, />Formula Data<\/th>/);
@@ -336,7 +379,7 @@ test('EPC quick inputs keep support hours and module wattage while detailed inpu
   assert.match(html, /setInputValue\('epc-load-measurement-method', project\.loads\.measurementMethod \|\| 'diesel_sfc_estimate'\)/);
   assert.doesNotMatch(html, /id="epc-project-name"/);
   assert.match(html, /id="epc-detail-inputs-panel"[^>]*class="hidden bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-5"/);
-  assert.match(html, /id="epc-advanced-inputs"[^>]*class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-3 p-4"/);
+  assert.match(html, /id="epc-advanced-inputs"[^>]*class="grid grid-cols-1 xl:grid-cols-2 gap-3 p-4"/);
   assert.doesNotMatch(html, /id="epc-advanced-inputs"[^>]*space-y-3/);
 });
 
@@ -463,14 +506,14 @@ test('EPC detailed inputs expose title pointers instead of inline helper paragra
     'data-epc-help="critical-load"',
     'data-epc-help="modules-per-string"',
     'data-epc-help="combiner-inputs"',
-    'data-epc-detail-group="load-site"',
+    'data-epc-detail-group="solar-strings"',
+    'data-epc-detail-group="load-electrical"',
     'data-epc-detail-group="battery-soc"',
-    'data-epc-detail-group="solar-string"',
-    'data-epc-detail-group="electrical-protection"',
-    'Load & Site',
+    'data-epc-detail-group="sizing-targets"',
+    'Load & Electrical',
     'Battery & SOC',
     'Solar & Strings',
-    'Electrical & Protection',
+    'Sizing Targets',
     'Detailed Design uses Target % here as the calculation standard.',
     'Target diesel replacement percentage used as the detailed design standard.',
     'Available site area for PV layout feasibility and land-use checks.',

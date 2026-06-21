@@ -453,6 +453,7 @@ test('EPC detailed inputs expose title pointers instead of inline helper paragra
     'data-epc-help="available-area"',
     'data-epc-help="peak-load-factor"',
     'data-epc-help="allowed-genset-load"',
+    'data-epc-help="electrical-load-basis"',
     'data-epc-help="load-equipment-type"',
     'data-epc-help="bess-role"',
     'data-epc-help="pv-yield"',
@@ -475,6 +476,11 @@ test('EPC detailed inputs expose title pointers instead of inline helper paragra
     'Available site area for PV layout feasibility and land-use checks.',
     'Peak Load = Avg Load x Safety Factor; PCS is then rounded up to the next 0.5MW.',
     'Diesel power intentionally kept online; Peak Shaving PCS covers Peak minus this value.',
+    'Electrical Load Basis',
+    'PV AC kW (PV DC / DC/AC)',
+    'Average load kW x peak load factor',
+    'Genset capacity peak load kW',
+    'data-epc-field="electrical.loadBasisMode"',
     'Select the operating load type so the model can keep recommendations tied to the site duty.',
     'Defines the battery operating purpose used by sizing, recommendation, and risk notes.',
     'Daily PV yield used for PV sizing; this should follow GSA PVOUT when solar data is fetched.',
@@ -503,6 +509,12 @@ test('EPC detailed inputs expose title pointers instead of inline helper paragra
   assert.doesNotMatch(detailSection, /<p class="mt-1 text-\[10px\] leading-snug text-slate-400">Peak Load = Avg Load x Safety Factor/);
   assert.doesNotMatch(detailSection, /<p class="mt-1 text-\[10px\] leading-snug text-slate-400">Diesel power intentionally kept online/);
   assert.doesNotMatch(detailSection, /<p class="mt-1 text-\[10px\] leading-snug text-slate-400">Must-run load for backup or island mode/);
+});
+
+test('EPC detail setting edits keep the active detail tab instead of forcing assets', () => {
+  const handler = html.match(/window\.onEpcDesignInputChanged = \(options = \{\}\) => \{[\s\S]*?\n        \};/);
+  assert.ok(handler, 'EPC input change handler should be found');
+  assert.doesNotMatch(handler[0], /setEpcDetailInputsTab\('assets'\)/);
 });
 
 test('EPC engine preserves the Load Measurement method', () => {

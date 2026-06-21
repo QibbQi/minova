@@ -54,7 +54,8 @@ test('EPC design engine reproduces the quarry workbook sizing baseline', () => {
   assert.equal(recommended.monthlyDieselSavedLiters.toFixed(0), '98902');
   assert.equal(recommended.monthlySavings.toFixed(2), '461872.77');
 
-  assert.ok(result.electrical.lvCurrentA > 5800 && result.electrical.lvCurrentA < 5900);
+  assert.equal(result.electrical.loadBasisMode, 'pv_ac_kw');
+  assert.ok(result.electrical.lvCurrentA > 4700 && result.electrical.lvCurrentA < 4800);
   assert.equal(result.electrical.mvRecommended, true);
   assert.match(result.electrical.recommendation, /11kV/);
   assert.ok(result.formulaTrace.some((item) => item.key === 'dailyLoadKwh' && item.formula.includes('Daily Diesel / SFC')));
@@ -1021,7 +1022,7 @@ test('EPC design engine makes PF and distance affect LV MV architecture output',
   const mediumVoltage = lowPf.electrical.voltageOptions.find((option) => option.voltageKv === 11);
   const lowVoltage = lowPf.electrical.voltageOptions.find((option) => option.voltageKv === 0.415);
 
-  assert.ok(lowVoltage.currentA > 6900);
+  assert.ok(lowVoltage.currentA > 5600);
   assert.ok(mediumVoltage.currentA < lowVoltage.currentA / 20);
   assert.equal(lowPf.electrical.architecture, '11kV Ring Main / MV Transformer');
   assert.ok(lowPf.electrical.flags.some((flag) => flag.includes('PF below 0.90')));
@@ -1664,6 +1665,71 @@ test('EPC topology validator reports illegal connections and advisory fixes', ()
   assert.ok(result.topologyValidation.errors.some((error) => error.suggestedFix?.insertNode === 'TRANSFORMER'));
 });
 
+test('EPC electrical load basis modes select PV AC average factor or genset capacity kW', () => {
+  const project = buildEpcDesignProjectFromQuickInputs(quarryInputs, {
+    defaults: EPC_DESIGN_DEFAULTS,
+    now: '2026-06-16T00:00:00.000Z'
+  });
+  const pvAcResult = calculateEpcDesignProject({
+    ...project,
+    assumptions: {
+      ...project.assumptions,
+      pvDcAcRatio: 1.25
+    },
+    electrical: {
+      ...project.electrical,
+      loadBasisMode: 'pv_ac_kw'
+    }
+  }, { now: '2026-06-16T00:00:00.000Z' });
+  const expectedPvAcKw = pvAcResult.schemes.find((scheme) => scheme.id === pvAcResult.recommendedSchemeId).pvRecommendedMwp * 1000 / 1.25;
+
+  assert.equal(pvAcResult.electrical.loadBasisMode, 'pv_ac_kw');
+  assert.equal(pvAcResult.electrical.loadBasisLabel, 'PV AC kW');
+  assert.equal(pvAcResult.electrical.designKw.toFixed(2), expectedPvAcKw.toFixed(2));
+  assert.deepEqual(pvAcResult.electrical.loadBasisOptions.map((option) => option.id), [
+    'pv_ac_kw',
+    'average_peak_factor',
+    'genset_capacity_peak'
+  ]);
+  assert.match(pvAcResult.electrical.loadBasisOptions.find((option) => option.id === 'pv_ac_kw').formula, /PV DC.*DC\/AC/i);
+
+  const averageResult = calculateEpcDesignProject({
+    ...project,
+    electrical: {
+      ...project.electrical,
+      loadBasisMode: 'average_peak_factor'
+    }
+  }, { now: '2026-06-16T00:00:00.000Z' });
+  const expectedAverageKw = averageResult.load.averageLoadKw * averageResult.loads.peakLoadSafetyFactor;
+  assert.equal(averageResult.electrical.loadBasisMode, 'average_peak_factor');
+  assert.equal(averageResult.electrical.loadBasisLabel, 'Average load x peak factor');
+  assert.equal(averageResult.electrical.designKw.toFixed(2), expectedAverageKw.toFixed(2));
+  assert.equal(averageResult.architectureComparison.designBasis.loadBasisMode, 'average_peak_factor');
+
+  const gensetResult = calculateEpcDesignProject({
+    loads: {
+      measurementMethod: 'genset_kva_load_factor',
+      gensetKvaInput: {
+        gensetKva: 5000,
+        powerFactor: 0.8,
+        loadFactor: 0.5,
+        runtimeHours: 8,
+        overloadFactor: 0.95
+      }
+    },
+    electrical: {
+      powerFactor: 0.95,
+      loadBasisMode: 'genset_capacity_peak'
+    }
+  }, { now: '2026-06-16T00:00:00.000Z' });
+
+  assert.equal(gensetResult.electrical.loadBasisMode, 'genset_capacity_peak');
+  assert.equal(gensetResult.electrical.loadBasisLabel, 'Genset capacity peak load');
+  assert.equal(gensetResult.electrical.designKw, 3800);
+  assert.equal(gensetResult.architectureComparison.designBasis.liveRecommendation.loadBasisKw, 3800);
+  assert.equal(gensetResult.architectureComparison.designBasis.loadBasisOptions.length, 3);
+});
+
 test('EPC electrical architecture returns LV MV candidates cable screening and protection matrix', () => {
   const project = buildEpcDesignProjectFromQuickInputs({
     ...quarryInputs,
@@ -1721,7 +1787,9 @@ test('EPC electrical architecture returns LV MV candidates cable screening and p
   assert.match(basis.currentFormula, /sqrt\(3\).*kV.*PF/);
   assert.ok(basis.energyCostRmPerKwh > 1.2 && basis.energyCostRmPerKwh < 1.3);
   assert.equal(basis.liveRecommendation.label, '80% Recommended Replacement');
-  assert.equal(basis.liveRecommendation.loadBasisKw, 4000);
+  assert.equal(basis.loadBasisMode, 'pv_ac_kw');
+  assert.equal(basis.loadBasisLabel, 'PV AC kW');
+  assert.equal(basis.liveRecommendation.loadBasisKw.toFixed(2), '3250.38');
   assert.ok(basis.liveRecommendation.averageLoadKw > 1900);
   assert.ok(basis.liveRecommendation.peakLoadKw > basis.liveRecommendation.averageLoadKw);
   assert.equal(basis.liveRecommendation.pvRecommendedMwp, 3.9);
@@ -1746,7 +1814,7 @@ test('EPC electrical architecture returns LV MV candidates cable screening and p
   assert.ok(mv416.annualLossKwh > 0);
   assert.ok(mv416.annualLossCost > 0);
   assert.ok(Array.isArray(mv416.decisionReasons) && mv416.decisionReasons.length >= 3);
-  assert.ok(result.electrical.transformerSizing.requiredKva > 4900);
+  assert.ok(result.electrical.transformerSizing.requiredKva > 4000);
   assert.equal(result.electrical.transformerSizing.selectedStandardKva, 5000);
   assert.ok(result.cableScreening.candidates.some((candidate) => candidate.voltageClass === '415V'));
   assert.ok(result.cableScreening.candidates.some((candidate) => candidate.voltageClass === '800V'));

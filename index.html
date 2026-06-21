@@ -3062,6 +3062,14 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         </div>
                     </div>
                     <div>
+                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Select which live engineering value is used for electrical architecture current, cable and transformer screening.">Electrical Load Basis <span data-epc-help="electrical-load-basis" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Select which live engineering value is used for electrical architecture current, cable and transformer screening.">i</span></label>
+                        <select id="epc-electrical-load-basis-mode" data-epc-field="electrical.loadBasisMode" onchange="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
+                            <option value="pv_ac_kw">PV AC kW (PV DC / DC/AC)</option>
+                            <option value="average_peak_factor">Average load kW x peak load factor</option>
+                            <option value="genset_capacity_peak">Genset capacity peak load kW</option>
+                        </select>
+                    </div>
+                    <div>
                         <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Select the operating load type so the model can keep recommendations tied to the site duty.">Operating Equipment <span data-epc-help="load-equipment-type" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Select the operating load type so the model can keep recommendations tied to the site duty.">i</span></label>
                         <select id="epc-load-equipment-type" data-epc-field="loads.equipmentType" onchange="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
                             <option value="water_pump">Water Pump</option>
@@ -11674,6 +11682,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             setInputValue('epc-available-area', project.site.availableAreaM2 || '');
             setInputValue('epc-peak-load-factor', project.loads.peakLoadSafetyFactor || EPC_DESIGN_DEFAULTS.peakLoadFactor);
             setInputValue('epc-allowed-genset-load', project.loads.allowedGensetLoadKw || '');
+            setInputValue('epc-electrical-load-basis-mode', project.electrical.loadBasisMode || 'pv_ac_kw');
             setInputValue('epc-load-equipment-type', project.loads.equipmentType || 'water_pump');
             setInputValue('epc-critical-load', project.loads.criticalLoadKw || '');
             setInputValue('epc-manual-load-splits', project.loads.manualLoadSplits);
@@ -14667,6 +14676,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 || candidates.find(candidate => candidate.id === architectureComparison.recommendedId)
                 || candidates[0]
                 || {};
+            const loadBasisLabel = liveRecommendation.loadBasisLabel || designBasis.loadBasisLabel || result.electrical?.loadBasisLabel || 'PV AC kW';
+            const loadBasisSource = liveRecommendation.loadBasisSource || designBasis.loadBasisSource || result.electrical?.loadBasisSource || '';
             const statusTone = (status = '') => {
                 const value = String(status || '').toUpperCase();
                 if (value.includes('SELECTED') || value.includes('PREFERRED') || value === 'PASS' || value === 'EXCELLENT') return 'text-emerald-700 bg-emerald-50 border-emerald-200';
@@ -14675,7 +14686,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             };
             const basisCards = [
                 ['Live Target', liveRecommendation.label || result.schemes?.find(scheme => scheme.id === result.recommendedSchemeId)?.label || 'Recommended Scheme'],
-                ['Load Basis', formatEpcNumber(liveRecommendation.loadBasisKw || designBasis.loadKw || result.electrical?.designKw || 0, 0, 'kW')],
+                ['Load Basis', formatEpcNumber(liveRecommendation.loadBasisKw || designBasis.loadKw || result.electrical?.designKw || 0, 0, 'kW'), loadBasisLabel],
                 ['Avg / Peak Load', `${formatEpcNumber(liveRecommendation.averageLoadKw || result.load?.averageLoadKw || 0, 0)} / ${formatEpcNumber(liveRecommendation.peakLoadKw || result.load?.peakLoadKw || 0, 0)} kW`],
                 ['PV DC', formatEpcNumber(liveRecommendation.pvRecommendedMwp || 0, 2, 'MWp')],
                 ['PCS AC', formatEpcNumber(liveRecommendation.pcsRecommendedMw || 0, 2, 'MW')],
@@ -14710,15 +14721,16 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             <div class="text-[10px] font-black uppercase text-slate-400">Engineering Assumptions</div>
                             <div class="mt-1 text-[11px] font-black uppercase text-purple-600">Live Recommendation Basis</div>
                             <div class="mt-2 grid grid-cols-2 md:grid-cols-3 gap-2">
-                                ${basisCards.map(([label, value]) => `
+                                ${basisCards.map(([label, value, detail]) => `
                                     <div class="rounded-lg bg-slate-50 px-3 py-2">
                                         <div class="text-[10px] font-black uppercase text-slate-400">${htmlSafe(label)}</div>
                                         <div class="mt-1 text-sm font-black text-slate-800">${htmlSafe(value)}</div>
+                                        ${detail ? `<div class="mt-0.5 text-[10px] font-bold leading-snug text-slate-500">${htmlSafe(detail)}</div>` : ''}
                                     </div>
                                 `).join('')}
                             </div>
                             <div class="mt-3 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-[11px] font-bold leading-relaxed text-slate-500">
-                                Design Basis: ${htmlSafe(designBasis.systemType || 'PV+BESS+Genset Hybrid')} · PF ${formatEpcNumber(designBasis.powerFactor || result.electrical?.powerFactor || 0, 2)} · Distance ${formatEpcNumber(designBasis.distanceM || 0, 0, 'm')} · Drop Limit ${formatEpcNumber(designBasis.voltageDropLimitPct || 5, 1, '%')} · ${htmlSafe(designBasis.currentFormula || 'Current A = kW / (sqrt(3) x kV x PF)')}
+                                Design Basis: ${htmlSafe(designBasis.systemType || 'PV+BESS+Genset Hybrid')} · Load Basis ${htmlSafe(loadBasisLabel)}${loadBasisSource ? ` (${htmlSafe(loadBasisSource)})` : ''} · PF ${formatEpcNumber(designBasis.powerFactor || result.electrical?.powerFactor || 0, 2)} · Distance ${formatEpcNumber(designBasis.distanceM || 0, 0, 'm')} · Drop Limit ${formatEpcNumber(designBasis.voltageDropLimitPct || 5, 1, '%')} · ${htmlSafe(designBasis.currentFormula || 'Current A = kW / (sqrt(3) x kV x PF)')}
                             </div>
                             <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
                                 <div class="rounded-lg border border-slate-100 px-3 py-2">
@@ -18929,7 +18941,6 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
         window.onEpcDesignInputChanged = (options = {}) => {
             const project = captureEpcDesignFromDom();
-            if (project.loads?.measurementMethod === 'asset_genset_fuel_mapping') setEpcDetailInputsTab('assets');
             renderEpcDesignResult(project);
             if (options.map) updateEpcMapMarker(project.site);
             const status = document.getElementById('epc-design-save-status');
@@ -19394,7 +19405,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 ? `${candidate.voltageKv}kV`
                 : `${Math.round((Number(candidate.voltageKv) || 0) * 1000)}V`;
             const basisItems = [
-                ['Load', formatEpcNumber(liveRecommendation.loadBasisKw || designBasis.loadKw || result.electrical?.designKw || 0, 0, 'kW')],
+                ['Load Basis', formatEpcNumber(liveRecommendation.loadBasisKw || designBasis.loadKw || result.electrical?.designKw || 0, 0, 'kW')],
                 ['PF', formatEpcNumber(designBasis.powerFactor || result.electrical?.powerFactor || 0, 2)],
                 ['Distance', formatEpcNumber(designBasis.distanceM || 0, 0, 'm')],
                 ['Drop Limit', formatEpcNumber(designBasis.voltageDropLimitPct || 5, 1, '%')],
@@ -19437,7 +19448,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     <section>
                         <h2>Engineering Assumptions</h2>
                         <ul class="epc-report-list">
-                            <li>Live Recommendation Basis: ${htmlSafe(liveRecommendation.label || 'Recommended Scheme')} · PV ${formatEpcNumber(liveRecommendation.pvRecommendedMwp || 0, 2, 'MWp')} · PCS ${formatEpcNumber(liveRecommendation.pcsRecommendedMw || 0, 2, 'MW')} · BESS ${formatEpcNumber(liveRecommendation.bessRecommendedMwh || 0, 2, 'MWh')}</li>
+                            <li>Live Recommendation Basis: ${htmlSafe(liveRecommendation.label || 'Recommended Scheme')} · Load Basis ${htmlSafe(liveRecommendation.loadBasisLabel || designBasis.loadBasisLabel || 'PV AC kW')} · ${formatEpcNumber(liveRecommendation.loadBasisKw || designBasis.loadKw || 0, 0, 'kW')}</li>
+                            <li>${htmlSafe(liveRecommendation.loadBasisSource || designBasis.loadBasisSource || designBasis.loadBasisFormula || 'PV DC / DC/AC ratio')}</li>
+                            <li>PV ${formatEpcNumber(liveRecommendation.pvRecommendedMwp || 0, 2, 'MWp')} · PCS ${formatEpcNumber(liveRecommendation.pcsRecommendedMw || 0, 2, 'MW')} · BESS ${formatEpcNumber(liveRecommendation.bessRecommendedMwh || 0, 2, 'MWh')}</li>
                             <li>${htmlSafe(designBasis.systemType || 'PV+BESS+Genset Hybrid')}</li>
                             <li>${htmlSafe(designBasis.currentFormula || 'Current A = kW / (sqrt(3) x kV x PF)')}</li>
                             <li>${htmlSafe(designBasis.cableSizeReference || 'LV/MV cable screening reference')}</li>
@@ -19478,7 +19491,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 || {};
             return `
                 <div class="epc-report-note epc-report-architecture-detail-note">
-                    Live Recommendation Basis: ${htmlSafe(liveRecommendation.label || 'Recommended Scheme')} · Load ${formatEpcNumber(liveRecommendation.loadBasisKw || designBasis.loadKw || 0, 0, 'kW')} · PV ${formatEpcNumber(liveRecommendation.pvRecommendedMwp || 0, 2, 'MWp')} · PCS ${formatEpcNumber(liveRecommendation.pcsRecommendedMw || 0, 2, 'MW')} · BESS ${formatEpcNumber(liveRecommendation.bessRecommendedMwh || 0, 2, 'MWh')} · ${htmlSafe(designBasis.currentFormula || 'Current A = kW / (sqrt(3) x kV x PF)')}.
+                    Live Recommendation Basis: ${htmlSafe(liveRecommendation.label || 'Recommended Scheme')} · Load Basis ${htmlSafe(liveRecommendation.loadBasisLabel || designBasis.loadBasisLabel || 'PV AC kW')} ${formatEpcNumber(liveRecommendation.loadBasisKw || designBasis.loadKw || 0, 0, 'kW')} · ${htmlSafe(liveRecommendation.loadBasisSource || designBasis.loadBasisSource || designBasis.loadBasisFormula || '')} · PV ${formatEpcNumber(liveRecommendation.pvRecommendedMwp || 0, 2, 'MWp')} · PCS ${formatEpcNumber(liveRecommendation.pcsRecommendedMw || 0, 2, 'MW')} · BESS ${formatEpcNumber(liveRecommendation.bessRecommendedMwh || 0, 2, 'MWh')} · ${htmlSafe(designBasis.currentFormula || 'Current A = kW / (sqrt(3) x kV x PF)')}.
                 </div>
                 <div class="epc-report-architecture-guidance">
                     <div>

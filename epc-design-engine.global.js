@@ -37,6 +37,47 @@ const EPC_DESIGN_DEFAULTS = Object.freeze({
   standardTopologyLibrary: null
 });
 
+const EPC_ELECTRICAL_LOAD_BASIS_OPTIONS = Object.freeze([
+  {
+    id: 'pv_ac_kw',
+    label: 'PV AC kW',
+    shortLabel: 'PV AC',
+    formula: 'PV DC MWp x 1000 / DC/AC ratio',
+    description: 'Use the live PV recommendation converted from DC MWp to AC kW.'
+  },
+  {
+    id: 'average_peak_factor',
+    label: 'Average load x peak factor',
+    shortLabel: 'Average x peak',
+    formula: 'Average load kW x selected peak load factor',
+    description: 'Use measured or calculated average load multiplied by the selected peak factor.'
+  },
+  {
+    id: 'genset_capacity_peak',
+    label: 'Genset capacity peak load',
+    shortLabel: 'Genset peak',
+    formula: 'Genset rated kVA x PF x peak / overload factor',
+    description: 'Use genset capacity or calculated peak load when genset capacity is the governing basis.'
+  }
+]);
+
+const EPC_ELECTRICAL_LOAD_BASIS_ALIAS = Object.freeze({
+  pv_ac: 'pv_ac_kw',
+  pv_ac_kw: 'pv_ac_kw',
+  pvac: 'pv_ac_kw',
+  pv: 'pv_ac_kw',
+  average_load_peak_factor: 'average_peak_factor',
+  average_peak: 'average_peak_factor',
+  average_peak_factor: 'average_peak_factor',
+  avg_peak: 'average_peak_factor',
+  load_peak_factor: 'average_peak_factor',
+  genset: 'genset_capacity_peak',
+  genset_capacity: 'genset_capacity_peak',
+  genset_capacity_peak: 'genset_capacity_peak',
+  genset_capacity_peak_load_kw: 'genset_capacity_peak',
+  genset_peak: 'genset_capacity_peak'
+});
+
 const SCHEME_TARGETS = [
   { id: 'replace-50', label: '50% Diesel Replacement', replacementPct: 50, priority: 'Conservative' },
   { id: 'replace-80', label: '80% Recommended Replacement', replacementPct: 80, priority: 'Recommended' },
@@ -281,6 +322,11 @@ function normalizeMeasurementMethod(value) {
   if (raw.includes('asset') || raw.includes('feeder') || raw.includes('fuel_mapping')) return 'asset_genset_fuel_mapping';
   if (raw.includes('kva') || raw.includes('load_factor')) return 'genset_kva_load_factor';
   return 'diesel_sfc_estimate';
+}
+
+function normalizeElectricalLoadBasisMode(value) {
+  const raw = String(value || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+  return EPC_ELECTRICAL_LOAD_BASIS_ALIAS[raw] || 'pv_ac_kw';
 }
 
 function normalizeEnergyMeterSummary(value = {}) {
@@ -2315,7 +2361,8 @@ function normalizeEpcDesignProject(raw = {}, options = {}) {
       selectedArchitectureId,
       localReferenceArchitecture: normalizeArchitectureId(electrical.localReferenceArchitecture || raw.localReferenceArchitecture),
       selectedArchitectureChosenAt: String(electrical.selectedArchitectureChosenAt || raw.selectedArchitectureChosenAt || ''),
-      selectedArchitectureSource: selectedArchitectureId ? String(electrical.selectedArchitectureSource || raw.selectedArchitectureSource || 'user') : ''
+      selectedArchitectureSource: selectedArchitectureId ? String(electrical.selectedArchitectureSource || raw.selectedArchitectureSource || 'user') : '',
+      loadBasisMode: normalizeElectricalLoadBasisMode(electrical.loadBasisMode || raw.loadBasisMode || raw.electricalLoadBasisMode)
     },
     assumptions: normalizedAssumptions,
     calculationAssumptions: normalizedCalculationAssumptions,
@@ -2362,6 +2409,9 @@ function buildEpcDesignProjectFromQuickInputs(inputs = {}, options = {}) {
     },
     designTargets: {
       replacementPct: inputs.targetReplacementPct
+    },
+    electrical: {
+      loadBasisMode: inputs.loadBasisMode || inputs.electricalLoadBasisMode
     },
     assumptions: options.defaults || {},
     createdAt: options.now,
@@ -3323,6 +3373,14 @@ function buildArchitectureComparison(project, electricalArchitecture = {}, cable
     : 1.25;
   const designBasis = {
     loadKw: round(designKw, 2),
+    loadBasisMode: electricalArchitecture.loadBasisMode || 'pv_ac_kw',
+    loadBasisLabel: electricalArchitecture.loadBasisLabel || 'PV AC kW',
+    loadBasisFormula: electricalArchitecture.loadBasisFormula || 'PV DC MWp x 1000 / DC/AC ratio',
+    loadBasisSource: electricalArchitecture.loadBasisSource || '',
+    loadBasisWarning: electricalArchitecture.loadBasisWarning || '',
+    loadBasisOptions: Array.isArray(electricalArchitecture.loadBasisOptions)
+      ? electricalArchitecture.loadBasisOptions.map(option => ({ ...option }))
+      : [],
     powerFactor: round(powerFactor, 3),
     distanceM: round(distanceM, 0),
     voltageDropLimitPct,
@@ -3334,6 +3392,10 @@ function buildArchitectureComparison(project, electricalArchitecture = {}, cable
     liveRecommendation: {
       label: electricalArchitecture.liveRecommendationLabel || '',
       loadBasisKw: round(asNumber(electricalArchitecture.liveRecommendationLoadKw, designKw), 2),
+      loadBasisMode: electricalArchitecture.loadBasisMode || 'pv_ac_kw',
+      loadBasisLabel: electricalArchitecture.loadBasisLabel || 'PV AC kW',
+      loadBasisFormula: electricalArchitecture.loadBasisFormula || 'PV DC MWp x 1000 / DC/AC ratio',
+      loadBasisSource: electricalArchitecture.loadBasisSource || '',
       averageLoadKw: round(asNumber(electricalArchitecture.averageLoadKw, 0), 2),
       peakLoadKw: round(asNumber(electricalArchitecture.peakLoadKw, 0), 2),
       pvRecommendedMwp: round(asNumber(electricalArchitecture.pvRecommendedMwp, 0), 3),
@@ -3790,11 +3852,77 @@ function buildTopologyFlowAdapter(topology = {}, validation = validatePowerTopol
   };
 }
 
-function calculateElectrical(project, recommended) {
+function buildElectricalLoadBasis(project = {}, recommended = {}, load = {}) {
+  const mode = normalizeElectricalLoadBasisMode(project.electrical?.loadBasisMode);
+  const dcAcRatio = Math.max(1, asNumber(project.assumptions?.pvDcAcRatio, 1.2));
+  const pvDcMwp = asNumber(recommended?.pvRecommendedMwp, 0);
+  const pvAcKw = pvDcMwp > 0 ? (pvDcMwp * 1000) / dcAcRatio : 0;
+  const averageLoadKw = asNumber(load?.averageLoadKw, 0);
+  const peakLoadFactor = Math.max(0, asNumber(project.loads?.peakLoadSafetyFactor, EPC_DESIGN_DEFAULTS.peakLoadFactor));
+  const averagePeakKw = averageLoadKw * peakLoadFactor;
+  const directGensetPeakKw = String(project.loads?.measurementMethod || '') === 'genset_kva_load_factor'
+    ? asNumber(load?.peakLoadKw, 0)
+    : 0;
+  const gensetCapacityPeakKw = Math.max(
+    0,
+    asNumber(load?.gensetCapacityPeakKw, 0),
+    directGensetPeakKw,
+    asNumber(project.loads?.allowedGensetLoadKw, 0)
+  );
+  const fallbackPeakKw = Math.max(
+    asNumber(load?.peakLoadKw, 0),
+    asNumber(recommended?.pcsRecommendedMw, 0) * 1000,
+    pvAcKw,
+    averagePeakKw
+  );
+  const rawOptions = {
+    pv_ac_kw: {
+      valueKw: pvAcKw,
+      source: `PV ${round(pvDcMwp, 3)} MWp / DC/AC ${round(dcAcRatio, 2)}`
+    },
+    average_peak_factor: {
+      valueKw: averagePeakKw,
+      source: `Average ${round(averageLoadKw, 2)} kW x peak factor ${round(peakLoadFactor, 2)}`
+    },
+    genset_capacity_peak: {
+      valueKw: gensetCapacityPeakKw || fallbackPeakKw,
+      source: gensetCapacityPeakKw > 0
+        ? `Genset capacity peak ${round(gensetCapacityPeakKw, 2)} kW`
+        : `Fallback peak load ${round(fallbackPeakKw, 2)} kW until genset capacity is entered`,
+      warning: gensetCapacityPeakKw > 0 ? '' : 'Genset capacity is not available; using calculated peak load fallback.'
+    }
+  };
+  const options = EPC_ELECTRICAL_LOAD_BASIS_OPTIONS.map(option => {
+    const calculated = rawOptions[option.id] || { valueKw: 0, source: '' };
+    return {
+      ...option,
+      valueKw: round(asNumber(calculated.valueKw, 0), 2),
+      source: calculated.source || option.description,
+      warning: calculated.warning || ''
+    };
+  });
+  const selected = options.find(option => option.id === mode) || options[0];
+  const fallbackKw = Math.max(...options.map(option => asNumber(option.valueKw, 0)), fallbackPeakKw, 0);
+  const selectedValueKw = asNumber(selected?.valueKw, 0);
+  const designKw = selectedValueKw > 0 ? selectedValueKw : fallbackKw;
+  return {
+    mode: selected.id,
+    label: selected.label,
+    shortLabel: selected.shortLabel,
+    formula: selected.formula,
+    source: selected.source,
+    warning: selectedValueKw > 0 ? selected.warning : 'Selected load basis has no value; using the strongest available load basis for screening.',
+    valueKw: round(designKw, 2),
+    options
+  };
+}
+
+function calculateElectrical(project, recommended, load = {}) {
   const pf = asNumber(project.electrical.powerFactor, EPC_DESIGN_DEFAULTS.powerFactor);
   const voltageKv = asNumber(project.electrical.voltageKv, EPC_DESIGN_DEFAULTS.lvVoltageKv);
   const roundedPvMwp = roundUpStep(recommended?.pvRecommendedMwp || 0, 0.5);
-  const designKw = Math.max(roundedPvMwp * 1000, (recommended?.pcsRecommendedMw || 0) * 1000);
+  const loadBasis = buildElectricalLoadBasis(project, recommended, load);
+  const designKw = loadBasis.valueKw;
   const lvCurrentA = calculateCurrentA(designKw, voltageKv, pf);
   const distance = Math.max(project.site.distanceToInterconnectionM || 0, project.electrical.distanceToInterconnectionM || 0);
   const voltageOptions = [0.415, 0.8, 1.14, 3.3, 4.16, 6.6, 11].map(optionVoltage => ({
@@ -3821,6 +3949,13 @@ function calculateElectrical(project, recommended) {
   const displayArchitecture = project.electrical.selectedArchitectureId && effectiveArchitecture ? effectiveArchitecture.name : architecture;
   return {
     designKw,
+    loadBasisMode: loadBasis.mode,
+    loadBasisLabel: loadBasis.label,
+    loadBasisShortLabel: loadBasis.shortLabel,
+    loadBasisFormula: loadBasis.formula,
+    loadBasisSource: loadBasis.source,
+    loadBasisWarning: loadBasis.warning,
+    loadBasisOptions: loadBasis.options,
     powerFactor: pf,
     distanceToInterconnectionM: distance,
     roundedPvMwp,
@@ -4457,7 +4592,7 @@ function calculateEpcDesignProject(rawProject = {}, options = {}) {
   const calculatedRecommended = pickRecommendedScheme(calculatedSchemes, project.designTargets.replacementPct);
   const recommended = applyCapacityOverridesToScheme(project, calculatedRecommended);
   const schemes = calculatedSchemes.map(scheme => scheme.id === recommended.id ? recommended : scheme);
-  const electrical = calculateElectrical(project, recommended);
+  const electrical = calculateElectrical(project, recommended, load);
   const electricalArchitecture = {
     candidates: electrical.architectureCandidates || [],
     recommendedId: electrical.architectureRecommendedId || '',
@@ -4466,6 +4601,13 @@ function calculateEpcDesignProject(rawProject = {}, options = {}) {
     selectedArchitectureValid: Boolean(electrical.selectedArchitectureValid),
     selectedArchitectureWarning: electrical.selectedArchitectureWarning || '',
     designKw: electrical.designKw || 0,
+    loadBasisMode: electrical.loadBasisMode || '',
+    loadBasisLabel: electrical.loadBasisLabel || '',
+    loadBasisShortLabel: electrical.loadBasisShortLabel || '',
+    loadBasisFormula: electrical.loadBasisFormula || '',
+    loadBasisSource: electrical.loadBasisSource || '',
+    loadBasisWarning: electrical.loadBasisWarning || '',
+    loadBasisOptions: electrical.loadBasisOptions || [],
     powerFactor: electrical.powerFactor || project.electrical.powerFactor,
     distanceM: electrical.distanceToInterconnectionM || 0,
     liveRecommendationLabel: recommended.label || '',

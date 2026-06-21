@@ -189,7 +189,12 @@ test('EPC reports and BOQ workbook expose architecture and asset feeder outputs 
   for (const snippet of [
     'renderEpcReportAssetMapping',
     'renderEpcReportArchitectureDecision',
+    'renderEpcReportArchitectureEngineeringDetail',
     'Architecture Decision',
+    'Architecture Engineering Detail',
+    'Automated Recommendation Matrix',
+    'Engineering Assumptions',
+    'Executive Decision',
     '800V Microgrid',
     '1.14kV Industrial LV',
     '3.3kV Radial',
@@ -207,6 +212,9 @@ test('EPC reports and BOQ workbook expose architecture and asset feeder outputs 
     'epcBoqWorkbookAssetMappingRows',
     'Voltage / Bus',
     'Standard A',
+    'A / Run',
+    'Cable Rating A',
+    'Annual Loss Cost',
     'Utilization %',
     'CAPEX Index',
     'Why Not Selected',
@@ -224,6 +232,7 @@ test('EPC reports and BOQ workbook expose architecture and asset feeder outputs 
   const reportPages = html.match(/function renderEpcCustomerReportPages\(result = \{\}, kind = 'customer'\)[\s\S]*?function buildEpcReportFixedPageElement/);
   assert.ok(reportPages, 'customer report page builder should be found');
   assert.match(reportPages[0], /renderEpcReportArchitectureDecision\(result\)/);
+  assert.match(reportPages[0], /renderEpcReportArchitectureEngineeringDetail\(result\)/);
   assert.match(reportPages[0], /renderEpcReportAssetMapping\(result\)/);
   assert.doesNotMatch(html, /renderEpcReportProcurementAdvisory/);
   assert.doesNotMatch(html, /Procurement Gap Review/);
@@ -1479,6 +1488,10 @@ test('EPC Topology and Electrical panels render graph validation LV MV and cable
     'topologyValidation.warnings',
     'Apply suggested fix manually',
     'function renderEpcElectricalWorkspace(result)',
+    'Engineering Assumptions',
+    'Automated Recommendation',
+    'Executive Decision',
+    'Engineering Detail',
     'Architecture Comparison',
     'Transformer Sizing',
     'Cable Sizing Screening',

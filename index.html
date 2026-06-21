@@ -14610,45 +14610,97 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const protectionFunctions = protectionMatrix.functions || [];
             const selectedArchitectureId = String(electricalArchitecture.selectedArchitectureId || result.electrical?.selectedArchitectureId || '').trim();
             const selectedArchitectureWarning = electricalArchitecture.selectedArchitectureWarning || result.electrical?.selectedArchitectureWarning || '';
+            const designBasis = architectureComparison.designBasis || {};
+            const decisionSummary = architectureComparison.decisionSummary || {};
+            const finalDecision = candidates.find(candidate => candidate.id === decisionSummary.finalDecisionId)
+                || candidates.find(candidate => candidate.id === architectureComparison.decisionId)
+                || candidates.find(candidate => candidate.id === architectureComparison.recommendedId)
+                || candidates[0]
+                || {};
+            const statusTone = (status = '') => {
+                const value = String(status || '').toUpperCase();
+                if (value.includes('SELECTED') || value.includes('PREFERRED') || value === 'PASS' || value === 'EXCELLENT') return 'text-emerald-700 bg-emerald-50 border-emerald-200';
+                if (value.includes('HARD') || value === 'FAIL') return 'text-red-700 bg-red-50 border-red-200';
+                return 'text-yellow-700 bg-yellow-50 border-yellow-200';
+            };
+            const basisCards = [
+                ['Load Power', formatEpcNumber(designBasis.loadKw || result.electrical?.designKw || 0, 0, 'kW')],
+                ['Power Factor', formatEpcNumber(designBasis.powerFactor || result.electrical?.powerFactor || 0, 2)],
+                ['Distance', formatEpcNumber(designBasis.distanceM || 0, 0, 'm')],
+                ['Drop Limit', formatEpcNumber(designBasis.voltageDropLimitPct || 5, 1, '%')],
+                ['Operation', formatEpcNumber(designBasis.operationHoursPerDay || result.loads?.operationHoursPerDay || 0, 1, 'h/day')],
+                ['Energy Cost', formatEpcNumber(designBasis.energyCostRmPerKwh || 0, 2, 'RM/kWh')]
+            ];
+            const dimensionCards = (decisionSummary.dimensionRecommendations || []).map(item => `
+                <div class="rounded-lg border ${statusTone(item.status)} px-3 py-2">
+                    <div class="text-[10px] font-black uppercase">${htmlSafe(item.dimension || '-')}</div>
+                    <div class="mt-1 text-[11px] font-bold leading-snug">${htmlSafe(item.opinion || item.status || '-')}</div>
+                </div>
+            `).join('');
             target.innerHTML = `
                 <div class="space-y-4">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <div class="rounded-xl border border-slate-200 p-3">
-                            <div class="text-[10px] font-black uppercase text-slate-400">Recommended Architecture</div>
-                            <div class="text-lg font-black text-slate-800">${htmlSafe(result.electrical?.architecture || '--')}</div>
-                            <div class="mt-1 text-xs font-bold text-slate-500">${htmlSafe(electricalArchitecture.recommendation || result.electrical?.recommendation || '')}</div>
+                    <div class="grid grid-cols-1 xl:grid-cols-[1.2fr_1fr] gap-3">
+                        <section class="rounded-xl border border-purple-200 bg-purple-50/50 p-4">
+                            <div class="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                    <div class="text-[10px] font-black uppercase text-purple-500">Automated Recommendation</div>
+                                    <div class="mt-1 text-2xl font-black text-slate-900">${htmlSafe(finalDecision.name || result.electrical?.architecture || '--')}</div>
+                                    <div class="mt-2 text-xs font-bold leading-relaxed text-slate-600">${htmlSafe(decisionSummary.customerRecommendation || architectureComparison.recommendation || electricalArchitecture.recommendation || result.electrical?.recommendation || '')}</div>
+                                </div>
+                                <div class="rounded-lg border ${statusTone(finalDecision.decisionStatus || finalDecision.status)} px-3 py-2 text-right">
+                                    <div class="text-[10px] font-black uppercase">Decision</div>
+                                    <div class="mt-1 text-sm font-black">${htmlSafe(finalDecision.decisionStatus || finalDecision.status || '-')}</div>
+                                </div>
+                            </div>
                             ${selectedArchitectureId ? `<div class="mt-2 text-[11px] font-black text-purple-700">Selected: ${htmlSafe(selectedArchitectureId)}</div>` : ''}
                             ${selectedArchitectureWarning ? `<div class="mt-2 rounded-lg border border-yellow-200 bg-yellow-50 px-2 py-1 text-[11px] font-bold text-yellow-700">${htmlSafe(selectedArchitectureWarning)}</div>` : ''}
-                        </div>
-                        <div class="rounded-xl border border-slate-200 p-3">
-                            <div class="text-[10px] font-black uppercase text-slate-400">Transformer Sizing</div>
-                            <div class="text-lg font-black text-slate-800">${formatEpcNumber(transformer.selectedStandardKva || 0, 0, 'kVA')}</div>
-                            <div class="mt-1 text-xs font-bold text-slate-500">${htmlSafe(transformer.formula || '')}</div>
-                        </div>
-                        <div class="rounded-xl border border-slate-200 p-3">
-                            <div class="text-[10px] font-black uppercase text-slate-400">Cable Sizing Screening</div>
-                            <div class="text-lg font-black text-slate-800">${htmlSafe((cableCandidates.find(item => item.status === 'PASS') || cableCandidates[0] || {}).voltageClass || '--')}</div>
-                            <div class="mt-1 text-xs font-bold text-slate-500">${htmlSafe(cableScreening.method || '')}</div>
-                        </div>
+                            ${dimensionCards ? `<div class="mt-3 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">${dimensionCards}</div>` : ''}
+                        </section>
+                        <section class="rounded-xl border border-slate-200 bg-white p-4">
+                            <div class="text-[10px] font-black uppercase text-slate-400">Engineering Assumptions</div>
+                            <div class="mt-2 grid grid-cols-2 md:grid-cols-3 gap-2">
+                                ${basisCards.map(([label, value]) => `
+                                    <div class="rounded-lg bg-slate-50 px-3 py-2">
+                                        <div class="text-[10px] font-black uppercase text-slate-400">${htmlSafe(label)}</div>
+                                        <div class="mt-1 text-sm font-black text-slate-800">${htmlSafe(value)}</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <div class="mt-3 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-[11px] font-bold leading-relaxed text-slate-500">
+                                Design Basis: ${htmlSafe(designBasis.systemType || 'PV+BESS+Genset Hybrid')} · ${htmlSafe(designBasis.currentFormula || 'Current A = kW / (sqrt(3) x kV x PF)')} · ${htmlSafe(designBasis.cableSizeReference || 'Cable reference from concept screening')}
+                            </div>
+                            <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
+                                <div class="rounded-lg border border-slate-100 px-3 py-2">
+                                    <div class="text-[10px] font-black uppercase text-slate-400">Transformer Sizing</div>
+                                    <div class="mt-1 text-lg font-black text-slate-800">${formatEpcNumber(transformer.selectedStandardKva || 0, 0, 'kVA')}</div>
+                                    <div class="text-[11px] font-bold text-slate-500">${htmlSafe(transformer.formula || '')}</div>
+                                </div>
+                                <div class="rounded-lg border border-slate-100 px-3 py-2">
+                                    <div class="text-[10px] font-black uppercase text-slate-400">Cable Sizing Screening</div>
+                                    <div class="mt-1 text-lg font-black text-slate-800">${htmlSafe((cableCandidates.find(item => item.status === 'PASS') || cableCandidates[0] || {}).voltageClass || '--')}</div>
+                                    <div class="text-[11px] font-bold text-slate-500">${htmlSafe(cableScreening.method || '')}</div>
+                                </div>
+                            </div>
+                        </section>
                     </div>
 	                    <section class="rounded-xl border border-slate-200 overflow-hidden">
-	                        <div class="bg-slate-50 px-3 py-2 text-[10px] font-black uppercase text-slate-500">Architecture Comparison</div>
+	                        <div class="bg-slate-50 px-3 py-2 text-[10px] font-black uppercase text-slate-500">Executive Decision - Architecture Comparison</div>
 	                        <div class="overflow-x-auto">
 	                            <table class="w-full text-xs">
-	                                <thead class="text-left text-slate-400 uppercase"><tr><th class="px-3 py-2">Architecture</th><th class="px-3 py-2 text-right">Voltage</th><th class="px-3 py-2 text-right">Current / Std A</th><th class="px-3 py-2 text-right">Util %</th><th class="px-3 py-2 text-right">Drop %</th><th class="px-3 py-2 text-right">Runs</th><th class="px-3 py-2 text-right">CAPEX</th><th class="px-3 py-2">Decision</th><th class="px-3 py-2">Choose</th><th class="px-3 py-2">Decision Notes</th></tr></thead>
+	                                <thead class="text-left text-slate-400 uppercase"><tr><th class="px-3 py-2">Architecture</th><th class="px-3 py-2 text-right">Voltage</th><th class="px-3 py-2 text-right">Current / Std A</th><th class="px-3 py-2 text-right">Drop</th><th class="px-3 py-2 text-right">Runs</th><th class="px-3 py-2 text-right">CAPEX</th><th class="px-3 py-2">Expand</th><th class="px-3 py-2">Decision</th><th class="px-3 py-2">Choose</th><th class="px-3 py-2">Risk Notes</th></tr></thead>
 	                                <tbody class="divide-y divide-slate-100">
 	                                    ${candidates.map(candidate => {
-	                                        const note = candidate.whyNotSelected || candidate.bestFor || (candidate.riskNotes || candidate.reasons || []).join('; ') || candidate.recommendation || '--';
+	                                        const note = candidate.whyNotSelected || candidate.bestFor || (candidate.decisionReasons || candidate.riskNotes || candidate.reasons || []).join('; ') || candidate.recommendation || '--';
 	                                        return `
 	                                        <tr class="${candidate.id === architectureComparison.recommendedId ? 'bg-yellow-50' : ''} ${candidate.id === selectedArchitectureId ? 'ring-1 ring-purple-200' : ''}">
 	                                            <td class="px-3 py-2 font-black text-slate-700">${htmlSafe(candidate.name)}</td>
 	                                            <td class="px-3 py-2 text-right">${formatEpcNumber(candidate.voltageKv, 3, 'kV')}</td>
 	                                            <td class="px-3 py-2 text-right">${formatEpcNumber(candidate.currentA, 0)} / ${formatEpcNumber(candidate.standardA || 0, 0)}</td>
-	                                            <td class="px-3 py-2 text-right">${formatEpcNumber(candidate.utilizationPct || 0, 1)}</td>
-	                                            <td class="px-3 py-2 text-right">${formatEpcNumber(candidate.cableVoltageDropPct ?? candidate.voltageDropPct, 2)}</td>
+	                                            <td class="px-3 py-2 text-right"><span class="rounded-full border px-2 py-1 ${statusTone(candidate.dropDecision)}">${formatEpcNumber(candidate.cableVoltageDropPct ?? candidate.voltageDropPct, 2)}% · ${htmlSafe(candidate.dropDecision || '-')}</span></td>
 	                                            <td class="px-3 py-2 text-right">${formatEpcNumber(candidate.parallelRuns || 0, 0)}</td>
 	                                            <td class="px-3 py-2 text-right">${formatEpcNumber(candidate.capexIndex || 0, 2)}</td>
-	                                            <td class="px-3 py-2 font-black">${htmlSafe(candidate.decisionStatus || candidate.status || '-')}${candidate.id === selectedArchitectureId ? ' · SELECTED' : ''}</td>
+	                                            <td class="px-3 py-2">${htmlSafe(candidate.expandability || '-')}</td>
+	                                            <td class="px-3 py-2 font-black"><span class="rounded-full border px-2 py-1 ${statusTone(candidate.decisionStatus || candidate.status)}">${htmlSafe(candidate.decisionStatus || candidate.status || '-')}</span></td>
 	                                            <td class="px-3 py-2">
 	                                                ${candidate.status === 'PASS'
 	                                                    ? `<button type="button" data-epc-architecture-choose="${htmlSafe(candidate.id)}" onclick="chooseEpcElectricalArchitecture('${htmlSafe(candidate.id)}')" ${!canEditEpcEngineering() ? 'disabled' : ''} class="rounded-lg border border-purple-200 bg-white px-3 py-1.5 text-[10px] font-black text-purple-700 hover:bg-purple-50 disabled:opacity-40">${candidate.id === selectedArchitectureId ? 'Chosen' : 'Choose'}</button>`
@@ -14661,6 +14713,31 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 	                                </tbody>
 	                            </table>
 	                        </div>
+                    </section>
+                    <section class="rounded-xl border border-slate-200 overflow-hidden">
+                        <div class="bg-slate-50 px-3 py-2 text-[10px] font-black uppercase text-slate-500">Engineering Detail</div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-xs">
+                                <thead class="text-left text-slate-400 uppercase"><tr><th class="px-3 py-2">Architecture</th><th class="px-3 py-2 text-right">Load kW</th><th class="px-3 py-2 text-right">PF</th><th class="px-3 py-2 text-right">Standard A</th><th class="px-3 py-2 text-right">A / Run</th><th class="px-3 py-2 text-right">Cable Rating A</th><th class="px-3 py-2 text-right">Margin %</th><th class="px-3 py-2 text-right">Drop Limit</th><th class="px-3 py-2 text-right">Loss kW</th><th class="px-3 py-2 text-right">Annual Loss Cost</th><th class="px-3 py-2">Fault / Protection</th></tr></thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    ${candidates.map(candidate => `
+                                        <tr>
+                                            <td class="px-3 py-2 font-black text-slate-700">${htmlSafe(candidate.name)}</td>
+                                            <td class="px-3 py-2 text-right">${formatEpcNumber(designBasis.loadKw || result.electrical?.designKw || 0, 0)}</td>
+                                            <td class="px-3 py-2 text-right">${formatEpcNumber(designBasis.powerFactor || 0, 2)}</td>
+                                            <td class="px-3 py-2 text-right">${formatEpcNumber(candidate.standardA || 0, 0)}</td>
+                                            <td class="px-3 py-2 text-right">${formatEpcNumber(candidate.perRunCurrentA || 0, 0)}</td>
+                                            <td class="px-3 py-2 text-right">${formatEpcNumber(candidate.cableRatingA || 0, 0)}</td>
+                                            <td class="px-3 py-2 text-right">${formatEpcNumber(candidate.ampacityMarginPct || 0, 1)}</td>
+                                            <td class="px-3 py-2 text-right">${formatEpcNumber(candidate.voltageDropLimitPct || designBasis.voltageDropLimitPct || 5, 1, '%')}</td>
+                                            <td class="px-3 py-2 text-right">${formatEpcNumber(candidate.lossKw || 0, 2)}</td>
+                                            <td class="px-3 py-2 text-right">${formatEpcNumber(candidate.annualLossCost || 0, 0, 'RM')}</td>
+                                            <td class="px-3 py-2 text-slate-500">${htmlSafe(`${candidate.faultRisk || '-'} / ${candidate.protectionComplexity || '-'}`)}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
                     </section>
                     <section class="rounded-xl border border-slate-200 overflow-hidden">
                         <div class="bg-slate-50 px-3 py-2 text-[10px] font-black uppercase text-slate-500">Cable Sizing Screening</div>
@@ -19252,6 +19329,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         function renderEpcReportArchitectureDecision(result = {}) {
             const candidates = Array.isArray(result.architectureComparison?.candidates) ? result.architectureComparison.candidates : [];
             const comparison = result.architectureComparison || {};
+            const designBasis = comparison.designBasis || {};
+            const decisionSummary = comparison.decisionSummary || {};
+            const dimensions = Array.isArray(decisionSummary.dimensionRecommendations) ? decisionSummary.dimensionRecommendations : [];
             const recommendedCandidate = candidates.find(candidate => candidate.id === comparison.recommendedId);
             const finalDecision = candidates.find(candidate => candidate.id === comparison.decisionId)
                 || recommendedCandidate
@@ -19261,8 +19341,24 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const voltageLabel = (candidate = {}) => Number(candidate.voltageKv) >= 1
                 ? `${candidate.voltageKv}kV`
                 : `${Math.round((Number(candidate.voltageKv) || 0) * 1000)}V`;
+            const basisItems = [
+                ['Load', formatEpcNumber(designBasis.loadKw || result.electrical?.designKw || 0, 0, 'kW')],
+                ['PF', formatEpcNumber(designBasis.powerFactor || result.electrical?.powerFactor || 0, 2)],
+                ['Distance', formatEpcNumber(designBasis.distanceM || 0, 0, 'm')],
+                ['Drop Limit', formatEpcNumber(designBasis.voltageDropLimitPct || 5, 1, '%')],
+                ['Operation', formatEpcNumber(designBasis.operationHoursPerDay || 0, 1, 'h/day')],
+                ['Energy Cost', formatEpcNumber(designBasis.energyCostRmPerKwh || 0, 2, 'RM/kWh')]
+            ];
             return `
-                <div class="grid grid-cols-3 gap-2 mb-3">
+                <div class="epc-report-architecture-basis">
+                    ${basisItems.map(([label, value]) => `
+                        <div>
+                            <span>${htmlSafe(label)}</span>
+                            <strong>${htmlSafe(value)}</strong>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="grid grid-cols-3 gap-2 mb-2">
                     ${[
                         ['New-Hybrid Recommendation', recommendedCandidate?.name || comparison.recommendedId || '11kV Ring'],
                         ['800V Reference', comparison.localReference?.name || '800V Microgrid'],
@@ -19274,9 +19370,31 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         </div>
                     `).join('')}
                 </div>
-                <table class="epc-report-table">
+                <div class="epc-report-architecture-summary">
+                    <section>
+                        <h2>Automated Recommendation Matrix</h2>
+                        <div class="epc-report-architecture-matrix">
+                            ${dimensions.map(item => `
+                                <div>
+                                    <strong>${htmlSafe(item.dimension || '-')}</strong>
+                                    <span>${htmlSafe(item.status || '-')}</span>
+                                    <p>${htmlSafe(item.opinion || '-')}</p>
+                                </div>
+                            `).join('') || '<div><strong>Decision</strong><span>Review</span><p>Run the EPC calculation to generate architecture recommendations.</p></div>'}
+                        </div>
+                    </section>
+                    <section>
+                        <h2>Engineering Assumptions</h2>
+                        <ul class="epc-report-list">
+                            <li>${htmlSafe(designBasis.systemType || 'PV+BESS+Genset Hybrid')}</li>
+                            <li>${htmlSafe(designBasis.currentFormula || 'Current A = kW / (sqrt(3) x kV x PF)')}</li>
+                            <li>${htmlSafe(designBasis.cableSizeReference || 'LV/MV cable screening reference')}</li>
+                        </ul>
+                    </section>
+                </div>
+                <table class="epc-report-table epc-report-architecture-exec-table">
                     <thead>
-                        <tr><th>Architecture</th><th>Voltage / Bus</th><th class="num">A / Std</th><th class="num">Util %</th><th class="num">Drop %</th><th class="num">Runs</th><th class="num">CAPEX</th><th>Decision</th><th>Why</th></tr>
+                        <tr><th>Architecture</th><th>Voltage / Bus</th><th class="num">A / Std</th><th class="num">Drop</th><th class="num">Runs</th><th class="num">CAPEX</th><th>Decision</th><th>Why</th></tr>
                     </thead>
                     <tbody>
                         ${candidates.map(candidate => `
@@ -19284,17 +19402,51 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                                 <td class="package">${htmlSafe(candidate.name || '-')}</td>
                                 <td>${htmlSafe(voltageLabel(candidate))}</td>
                                 <td class="num">${formatEpcNumber(candidate.currentA, 0)} / ${formatEpcNumber(candidate.standardA || 0, 0)}</td>
-                                <td class="num">${formatEpcNumber(candidate.utilizationPct || 0, 1)}</td>
-                                <td class="num">${formatEpcNumber(candidate.cableVoltageDropPct ?? candidate.voltageDropPct, 2)}</td>
+                                <td class="num">${formatEpcNumber(candidate.cableVoltageDropPct ?? candidate.voltageDropPct, 2)}% ${htmlSafe(candidate.dropDecision || '')}</td>
                                 <td class="num">${formatEpcNumber(candidate.parallelRuns, 0)}</td>
                                 <td class="num">${formatEpcNumber(candidate.capexIndex || 0, 2)}</td>
                                 <td>${htmlSafe(candidate.decisionStatus || candidate.status || '-')}</td>
                                 <td>${htmlSafe(candidate.whyNotSelected || candidate.bestFor || candidate.recommendation || (candidate.riskNotes || []).join('; ') || '-')}</td>
                             </tr>
-                        `).join('') || '<tr><td colspan="9" class="empty">No architecture comparison rows.</td></tr>'}
+                        `).join('') || '<tr><td colspan="8" class="empty">No architecture comparison rows.</td></tr>'}
                     </tbody>
                 </table>
                 <div class="epc-report-note">${htmlSafe(note)}</div>
+            `;
+        }
+
+        function renderEpcReportArchitectureEngineeringDetail(result = {}) {
+            const candidates = Array.isArray(result.architectureComparison?.candidates) ? result.architectureComparison.candidates : [];
+            const comparison = result.architectureComparison || {};
+            const designBasis = comparison.designBasis || {};
+            return `
+                <div class="epc-report-note epc-report-architecture-detail-note">
+                    Engineering Assumptions: ${htmlSafe(designBasis.currentFormula || 'Current A = kW / (sqrt(3) x kV x PF)')} · Voltage drop limit ${formatEpcNumber(designBasis.voltageDropLimitPct || 5, 1, '%')} · Annual loss cost uses ${formatEpcNumber(designBasis.operationHoursPerDay || 0, 1, 'h/day')} and ${formatEpcNumber(designBasis.energyCostRmPerKwh || 0, 2, 'RM/kWh')}.
+                </div>
+                <table class="epc-report-table epc-report-architecture-detail-table">
+                    <thead>
+                        <tr><th>Architecture</th><th class="num">Load kW</th><th class="num">PF</th><th class="num">Standard A</th><th class="num">A / Run</th><th class="num">Cable Rating A</th><th class="num">Margin %</th><th class="num">Drop Limit</th><th class="num">Loss kW</th><th class="num">Loss %</th><th class="num">Annual Loss Cost</th><th>Fault / Protection</th></tr>
+                    </thead>
+                    <tbody>
+                        ${candidates.map(candidate => `
+                            <tr>
+                                <td class="package">${htmlSafe(candidate.name || '-')}</td>
+                                <td class="num">${formatEpcNumber(designBasis.loadKw || result.electrical?.designKw || 0, 0)}</td>
+                                <td class="num">${formatEpcNumber(designBasis.powerFactor || 0, 2)}</td>
+                                <td class="num">${formatEpcNumber(candidate.standardA || 0, 0)}</td>
+                                <td class="num">${formatEpcNumber(candidate.perRunCurrentA || 0, 0)}</td>
+                                <td class="num">${formatEpcNumber(candidate.cableRatingA || 0, 0)}</td>
+                                <td class="num">${formatEpcNumber(candidate.ampacityMarginPct || 0, 1)}</td>
+                                <td class="num">${formatEpcNumber(candidate.voltageDropLimitPct || designBasis.voltageDropLimitPct || 5, 1, '%')}</td>
+                                <td class="num">${formatEpcNumber(candidate.lossKw || 0, 2)}</td>
+                                <td class="num">${formatEpcNumber(candidate.lossPct || 0, 2)}</td>
+                                <td class="num">${formatEpcNumber(candidate.annualLossCost || 0, 0, 'RM')}</td>
+                                <td>${htmlSafe(`${candidate.faultRisk || '-'} / ${candidate.protectionComplexity || '-'}`)}</td>
+                            </tr>
+                        `).join('') || '<tr><td colspan="12" class="empty">No engineering detail rows.</td></tr>'}
+                    </tbody>
+                </table>
+                <div class="epc-report-note">${htmlSafe(comparison.decisionSummary?.engineeringRecommendation || 'Validate short-circuit level, relay coordination, installation derating, local spares and EPC acceptance before procurement.')}</div>
             `;
         }
 
@@ -19439,6 +19591,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     className: 'epc-report-boq-page epc-report-architecture-page',
                     result,
                     body: renderEpcReportArchitectureDecision(result)
+                });
+                pageBodies.push({
+                    title: 'Architecture Engineering Detail',
+                    subtitle: 'Cable current, voltage drop, loss cost, protection and expansion evidence for architecture selection.',
+                    className: 'epc-report-boq-page epc-report-architecture-detail-page',
+                    result,
+                    body: renderEpcReportArchitectureEngineeringDetail(result)
                 });
             }
             if ((Array.isArray(result.loadAssetSummary?.assetGroups) ? result.loadAssetSummary.assetGroups : []).length) {
@@ -19585,6 +19744,34 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     .epc-report-asset-page .epc-report-asset-table th:nth-child(10){width:13%}
                     .epc-report-asset-table .asset-line-area{font-size:7px;line-height:1.08}
                     .epc-report-asset-table .asset-start-method,.epc-report-asset-table .asset-gensets{font-size:6.8px;line-height:1.08;overflow-wrap:anywhere}
+                    .epc-report-architecture-page .epc-report-page-body,.epc-report-architecture-detail-page .epc-report-page-body{padding-top:9px;display:flex;flex-direction:column;min-height:0}
+                    .epc-report-architecture-basis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;margin-bottom:7px}
+                    .epc-report-architecture-basis div{border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;padding:6px 7px;min-height:34px}
+                    .epc-report-architecture-basis span{display:block;font-size:6.8px;font-weight:900;text-transform:uppercase;color:#94a3b8;white-space:nowrap}
+                    .epc-report-architecture-basis strong{display:block;margin-top:3px;font-size:10.5px;line-height:1;font-weight:900;color:#0f172a}
+                    .epc-report-architecture-summary{display:grid;grid-template-columns:1.3fr .9fr;gap:8px;margin:7px 0}
+                    .epc-report-architecture-summary section{border:1px solid #e2e8f0;border-radius:9px;background:#fff;padding:7px}
+                    .epc-report-architecture-summary h2{font-size:10px;margin:0 0 5px}
+                    .epc-report-architecture-matrix{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+                    .epc-report-architecture-matrix div{border:1px solid #edf2f7;border-radius:7px;background:#f8fafc;padding:5px}
+                    .epc-report-architecture-matrix strong{display:block;font-size:6.8px;font-weight:900;text-transform:uppercase;color:#582C83}
+                    .epc-report-architecture-matrix span{display:block;margin-top:2px;font-size:7px;font-weight:900;color:#0f172a}
+                    .epc-report-architecture-matrix p{margin:2px 0 0;font-size:6.8px;line-height:1.15;font-weight:700;color:#64748b}
+                    .epc-report-architecture-page .epc-report-table,.epc-report-architecture-detail-page .epc-report-table{font-size:7.2px;line-height:1.12}
+                    .epc-report-architecture-page .epc-report-table th,.epc-report-architecture-detail-page .epc-report-table th{font-size:6.5px;line-height:1.05;padding:4px}
+                    .epc-report-architecture-page .epc-report-table td,.epc-report-architecture-detail-page .epc-report-table td{font-size:7.1px;line-height:1.1;padding:4px;vertical-align:middle}
+                    .epc-report-architecture-page .epc-report-note,.epc-report-architecture-detail-page .epc-report-note{margin-top:6px;padding:5px 7px;font-size:7px;line-height:1.2}
+                    .epc-report-architecture-exec-table th:nth-child(1){width:15%}
+                    .epc-report-architecture-exec-table th:nth-child(2){width:9%}
+                    .epc-report-architecture-exec-table th:nth-child(3){width:10%}
+                    .epc-report-architecture-exec-table th:nth-child(4){width:13%}
+                    .epc-report-architecture-exec-table th:nth-child(5){width:6%}
+                    .epc-report-architecture-exec-table th:nth-child(6){width:7%}
+                    .epc-report-architecture-exec-table th:nth-child(7){width:10%}
+                    .epc-report-architecture-exec-table th:nth-child(8){width:30%}
+                    .epc-report-architecture-detail-note{margin-top:0!important;margin-bottom:7px}
+                    .epc-report-architecture-detail-table th:nth-child(1){width:13%}
+                    .epc-report-architecture-detail-table th:nth-child(12){width:17%}
                     .epc-report-fixed-surface svg{max-width:100%}
                 </style>
                 ${renderEpcCustomerReportPages(result, kind)}
@@ -19659,17 +19846,26 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
 
         function epcBoqWorkbookArchitectureComparisonRows(result = {}) {
-            const headers = ['Architecture ID', 'Architecture', 'Voltage / Bus', 'Current A', 'Standard A', 'Utilization %', 'Voltage Drop %', 'Parallel Runs', 'CAPEX Index', 'Expandability', 'Best For', 'Fault Risk', 'Protection Complexity', 'Status', 'Decision Status', 'Cable Status', 'Recommendation', 'Why Not Selected', 'Risk Notes'];
+            const headers = ['Architecture ID', 'Architecture', 'Voltage / Bus', 'Current A', 'Standard A', 'A / Run', 'Cable Rating A', 'Ampacity Margin %', 'Utilization %', 'Voltage Drop %', 'Voltage Drop Limit %', 'Drop Decision', 'Parallel Runs', 'Loss kW', 'Loss %', 'Annual Loss Cost', 'CAPEX Index', 'O&M Index', 'Expandability', 'Best For', 'Fault Risk', 'Protection Complexity', 'Status', 'Decision Status', 'Cable Status', 'Recommendation', 'Why Not Selected', 'Risk Notes'];
             const rows = (Array.isArray(result.architectureComparison?.candidates) ? result.architectureComparison.candidates : []).map(candidate => [
                 candidate.id || '',
                 candidate.name || '',
                 Number(candidate.voltageKv) >= 1 ? `${candidate.voltageKv}kV` : `${Math.round((Number(candidate.voltageKv) || 0) * 1000)}V`,
                 Number.isFinite(Number(candidate.currentA)) ? Number(candidate.currentA) : '',
                 Number.isFinite(Number(candidate.standardA)) ? Number(candidate.standardA) : '',
+                Number.isFinite(Number(candidate.perRunCurrentA)) ? Number(candidate.perRunCurrentA) : '',
+                Number.isFinite(Number(candidate.cableRatingA)) ? Number(candidate.cableRatingA) : '',
+                Number.isFinite(Number(candidate.ampacityMarginPct)) ? Number(candidate.ampacityMarginPct) : '',
                 Number.isFinite(Number(candidate.utilizationPct)) ? Number(candidate.utilizationPct) : '',
                 Number.isFinite(Number(candidate.cableVoltageDropPct ?? candidate.voltageDropPct)) ? Number(candidate.cableVoltageDropPct ?? candidate.voltageDropPct) : '',
+                Number.isFinite(Number(candidate.voltageDropLimitPct)) ? Number(candidate.voltageDropLimitPct) : '',
+                candidate.dropDecision || '',
                 Number.isFinite(Number(candidate.parallelRuns)) ? Number(candidate.parallelRuns) : '',
+                Number.isFinite(Number(candidate.lossKw)) ? Number(candidate.lossKw) : '',
+                Number.isFinite(Number(candidate.lossPct)) ? Number(candidate.lossPct) : '',
+                Number.isFinite(Number(candidate.annualLossCost)) ? Number(candidate.annualLossCost) : '',
                 Number.isFinite(Number(candidate.capexIndex)) ? Number(candidate.capexIndex) : '',
+                candidate.omIndex || '',
                 candidate.expandability || '',
                 candidate.bestFor || '',
                 candidate.faultRisk || '',

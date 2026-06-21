@@ -1703,9 +1703,42 @@ test('EPC electrical architecture returns LV MV candidates cable screening and p
   assert.equal(result.electricalArchitecture.candidates.find((candidate) => candidate.id === 'mv_6_6_radial').status, 'PASS');
   assert.equal(result.electricalArchitecture.candidates.find((candidate) => candidate.id === 'mv_11_radial').status, 'PASS');
   assert.equal(result.electricalArchitecture.candidates.find((candidate) => candidate.id === 'mv_11_ring').status, 'PASS');
-  for (const field of ['standardA', 'utilizationPct', 'capexIndex', 'expandability', 'bestFor', 'faultRisk', 'protectionComplexity', 'whyNotSelected', 'decisionStatus']) {
+  for (const field of ['standardA', 'utilizationPct', 'capexIndex', 'expandability', 'bestFor', 'faultRisk', 'protectionComplexity', 'whyNotSelected', 'decisionStatus', 'perRunCurrentA', 'cableRatingA', 'ampacityMarginPct', 'voltageDropLimitPct', 'dropDecision', 'lossPct', 'annualLossKwh', 'annualLossCost', 'energyCostRmPerKwh', 'omIndex', 'decisionReasons']) {
     assert.ok(Object.hasOwn(result.architectureComparison.candidates.find((candidate) => candidate.id === 'mv_4_16_radial'), field), `missing architecture decision field ${field}`);
   }
+  const comparison = result.architectureComparison;
+  const basis = comparison.designBasis;
+  const decisionDimensions = comparison.decisionSummary.dimensionRecommendations.map((item) => item.dimension);
+  const lv415 = comparison.candidates.find((candidate) => candidate.id === 'lv_415_centralized');
+  const mv416 = comparison.candidates.find((candidate) => candidate.id === 'mv_4_16_radial');
+
+  assert.equal(basis.loadKw, result.electrical.designKw);
+  assert.equal(basis.powerFactor, 0.95);
+  assert.equal(basis.distanceM, 650);
+  assert.equal(basis.voltageDropLimitPct, 5);
+  assert.equal(basis.operationHoursPerDay, 8);
+  assert.equal(basis.systemType, 'PV+BESS+Genset Hybrid');
+  assert.match(basis.currentFormula, /sqrt\(3\).*kV.*PF/);
+  assert.ok(basis.energyCostRmPerKwh > 1.2 && basis.energyCostRmPerKwh < 1.3);
+  assert.ok(decisionDimensions.includes('Current Loading'));
+  assert.ok(decisionDimensions.includes('Voltage Drop'));
+  assert.ok(decisionDimensions.includes('Cable Runs'));
+  assert.ok(decisionDimensions.includes('Loss Cost'));
+  assert.ok(decisionDimensions.includes('Protection'));
+  assert.ok(decisionDimensions.includes('Expandability'));
+  assert.equal(comparison.decisionSummary.finalDecisionId, 'mv_11_ring');
+  assert.match(comparison.decisionSummary.customerRecommendation, /11kV Ring/i);
+  assert.equal(lv415.decisionStatus, 'HARD FAIL');
+  assert.ok(['FAIL', 'HARD FAIL'].includes(lv415.dropDecision));
+  assert.ok(mv416.perRunCurrentA > 0);
+  assert.ok(mv416.cableRatingA > 0);
+  assert.ok(mv416.ampacityMarginPct > 0);
+  assert.equal(mv416.voltageDropLimitPct, 5);
+  assert.ok(['EXCELLENT', 'ACCEPTABLE', 'REVIEW', 'FAIL', 'HARD FAIL'].includes(mv416.dropDecision));
+  assert.ok(mv416.lossPct > 0);
+  assert.ok(mv416.annualLossKwh > 0);
+  assert.ok(mv416.annualLossCost > 0);
+  assert.ok(Array.isArray(mv416.decisionReasons) && mv416.decisionReasons.length >= 3);
   assert.ok(result.electrical.transformerSizing.requiredKva > 4900);
   assert.equal(result.electrical.transformerSizing.selectedStandardKva, 5000);
   assert.ok(result.cableScreening.candidates.some((candidate) => candidate.voltageClass === '415V'));

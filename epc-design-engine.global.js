@@ -3195,12 +3195,143 @@ function architectureWhyNotSelected(candidate = {}, decisionId = '') {
   return candidate.bestFor || 'Comparison option; validate with detailed engineering.';
 }
 
+function architectureVoltageDropDecision(dropPct = 0, limitPct = 5) {
+  const drop = asNumber(dropPct, 0);
+  const limit = Math.max(0.1, asNumber(limitPct, 5));
+  if (drop <= 3) return 'EXCELLENT';
+  if (drop <= limit) return 'ACCEPTABLE';
+  if (drop <= 8) return 'FAIL';
+  return 'HARD FAIL';
+}
+
+function architectureOmIndex(candidate = {}) {
+  if (candidate.id === 'mv_11_ring') return 'Medium';
+  if (candidate.id === 'mv_11_radial' || candidate.id === 'mv_6_6_radial') return 'Medium-low';
+  if (String(candidate.id || '').startsWith('mv_')) return 'Medium';
+  if (candidate.id === EPC_LOCAL_800V_REFERENCE.id || candidate.id === 'lv_114_industrial') return 'Medium-high';
+  return 'High';
+}
+
+function architectureDecisionStatus(candidate = {}, metrics = {}) {
+  if (metrics.selected) return 'SELECTED';
+  if (metrics.recommended) return 'PREFERRED';
+  const hardFail = candidate.status === 'FAIL' && (
+    metrics.dropDecision === 'HARD FAIL'
+    || asNumber(metrics.parallelRuns, 0) > 6
+    || asNumber(metrics.utilizationPct, 0) > 200
+  );
+  if (hardFail) return 'HARD FAIL';
+  return candidate.status || 'REVIEW';
+}
+
+function buildArchitectureDecisionReasons(candidate = {}, metrics = {}) {
+  const reasons = [];
+  const utilization = asNumber(metrics.utilizationPct, 0);
+  const drop = asNumber(metrics.voltageDropPct, 0);
+  const runs = asNumber(metrics.parallelRuns, 0);
+  if (candidate.status === 'FAIL' || metrics.decisionStatus === 'HARD FAIL') {
+    if (utilization > 100) reasons.push(`Current exceeds standard bus reference (${round(utilization, 1)}%).`);
+    if (drop > metrics.voltageDropLimitPct) reasons.push(`Voltage drop exceeds ${metrics.voltageDropLimitPct}% concept limit.`);
+    if (runs > 6) reasons.push('Parallel cable runs become difficult to build and maintain.');
+  } else {
+    reasons.push(`Current loading is ${round(utilization, 1)}% of standard bus reference.`);
+    reasons.push(`${metrics.dropDecision} voltage-drop result at ${round(drop, 2)}%.`);
+    reasons.push(`${runs} cable run${runs === 1 ? '' : 's'} in the concept screen.`);
+  }
+  if (candidate.id === EPC_LOCAL_800V_REFERENCE.id) reasons.push('800V remains reference-only until local EPC/O&M support is confirmed.');
+  if (candidate.id === 'lv_114_industrial') reasons.push('1.14kV needs vendor package and service basis confirmation.');
+  if (candidate.id === 'mv_3_3_radial') reasons.push('3.3kV has higher current than 4.16kV, 6.6kV and 11kV alternatives.');
+  if (candidate.id === 'mv_4_16_radial') reasons.push('4.16kV is practical where site equipment and spares already support it.');
+  if (candidate.id === 'mv_6_6_radial') reasons.push('6.6kV is a cost-sensitive MV option with less expansion margin than 11kV ring.');
+  if (candidate.id === 'mv_11_radial') reasons.push('11kV radial suits new Malaysia MV where ring redundancy is not required.');
+  if (candidate.id === 'mv_11_ring') reasons.push('11kV ring provides the strongest expansion and multi-zone reliability basis.');
+  return Array.from(new Set(reasons)).slice(0, 4);
+}
+
+function buildArchitectureDecisionSummary(finalDecision = {}, candidates = [], designBasis = {}) {
+  const passCount = candidates.filter(candidate => candidate.status === 'PASS').length;
+  const reviewCount = candidates.filter(candidate => candidate.status === 'REVIEW').length;
+  const failCount = candidates.filter(candidate => candidate.status === 'FAIL').length;
+  const finalName = finalDecision.name || 'Architecture option';
+  const dimensionRecommendations = [
+    {
+      dimension: 'Current Loading',
+      status: asNumber(finalDecision.utilizationPct, 0) <= 100 ? 'PASS' : 'REVIEW',
+      opinion: `${round(asNumber(finalDecision.utilizationPct, 0), 1)}% of ${round(asNumber(finalDecision.standardA, 0), 0)}A bus reference.`
+    },
+    {
+      dimension: 'Voltage Drop',
+      status: finalDecision.dropDecision || 'REVIEW',
+      opinion: `${round(asNumber(finalDecision.cableVoltageDropPct ?? finalDecision.voltageDropPct, 0), 2)}% vs ${designBasis.voltageDropLimitPct || 5}% concept limit.`
+    },
+    {
+      dimension: 'Cable Runs',
+      status: asNumber(finalDecision.parallelRuns, 0) <= 1 ? 'PASS' : 'REVIEW',
+      opinion: `${round(asNumber(finalDecision.parallelRuns, 0), 0)} run${asNumber(finalDecision.parallelRuns, 0) === 1 ? '' : 's'} at ${round(asNumber(finalDecision.perRunCurrentA, 0), 0)}A/run.`
+    },
+    {
+      dimension: 'Loss Cost',
+      status: asNumber(finalDecision.lossPct, 0) <= 1 ? 'PASS' : 'REVIEW',
+      opinion: `${round(asNumber(finalDecision.lossPct, 0), 2)}% loss screen; annual loss cost ${round(asNumber(finalDecision.annualLossCost, 0), 0)} RM.`
+    },
+    {
+      dimension: 'CAPEX / O&M',
+      status: 'REVIEW',
+      opinion: `CAPEX index ${round(asNumber(finalDecision.capexIndex, 0), 2)} and O&M index ${finalDecision.omIndex || 'Review'}.`
+    },
+    {
+      dimension: 'Protection',
+      status: finalDecision.status === 'PASS' ? 'PASS' : 'REVIEW',
+      opinion: `${finalDecision.faultRisk || 'Fault risk review'} fault risk; ${finalDecision.protectionComplexity || 'protection study required'}.`
+    },
+    {
+      dimension: 'Expandability',
+      status: ['Good', 'Excellent'].includes(finalDecision.expandability) ? 'PASS' : 'REVIEW',
+      opinion: `${finalDecision.expandability || 'Review'} expandability for future load zones.`
+    }
+  ];
+  return {
+    finalDecisionId: finalDecision.id || '',
+    finalDecisionName: finalName,
+    customerRecommendation: `${finalName} is the current recommendation because it balances current, cable runs, voltage-drop risk, protection scope and expansion margin for the project basis.`,
+    engineeringRecommendation: `Use ${finalName} as the concept architecture, then verify short-circuit level, relay coordination, installation derating, local spares and EPC acceptance before procurement.`,
+    optionCounts: { pass: passCount, review: reviewCount, fail: failCount },
+    dimensionRecommendations
+  };
+}
+
 function buildArchitectureComparison(project, electricalArchitecture = {}, cableScreening = {}) {
   const localReferenceId = normalizeArchitectureId(project.electrical.localReferenceArchitecture) || EPC_LOCAL_800V_REFERENCE.id;
   const recommendedId = electricalArchitecture.recommendedId || '';
   const selectedArchitectureId = electricalArchitecture.selectedArchitectureId || '';
   const selectedArchitectureValid = Boolean(electricalArchitecture.selectedArchitectureValid);
   const decisionId = selectedArchitectureValid && selectedArchitectureId ? selectedArchitectureId : recommendedId;
+  const designKw = asNumber(electricalArchitecture.designKw, 0);
+  const powerFactor = asNumber(electricalArchitecture.powerFactor || project.electrical.powerFactor, EPC_DESIGN_DEFAULTS.powerFactor);
+  const distanceM = Math.max(
+    0,
+    asNumber(electricalArchitecture.distanceM, 0),
+    asNumber(project.site.distanceToInterconnectionM, 0),
+    asNumber(project.electrical.distanceToInterconnectionM, 0)
+  );
+  const voltageDropLimitPct = 5;
+  const operationHoursPerDay = asNumber(project.loads.operationHoursPerDay, 8);
+  const dieselPricePerLiter = asNumber(project.loads.dieselPricePerLiter, 0);
+  const dieselSfc = asNumber(project.assumptions.dieselSfcLPerKwh, EPC_DESIGN_DEFAULTS.dieselSfcLPerKwh);
+  const energyCostRmPerKwh = dieselPricePerLiter > 0
+    ? dieselPricePerLiter * Math.max(0.001, dieselSfc)
+    : 1.25;
+  const designBasis = {
+    loadKw: round(designKw, 2),
+    powerFactor: round(powerFactor, 3),
+    distanceM: round(distanceM, 0),
+    voltageDropLimitPct,
+    operationHoursPerDay: round(operationHoursPerDay, 2),
+    systemType: 'PV+BESS+Genset Hybrid',
+    cableSizeReference: 'LV CU 630mm2 / intermediate MV AL 300mm2 / MV AL 240mm2 screening',
+    currentFormula: 'Current A = kW / (sqrt(3) x kV x PF)',
+    energyCostRmPerKwh: round(energyCostRmPerKwh, 4)
+  };
   const candidates = (electricalArchitecture.candidates || []).map((candidate) => {
     const cable = pickArchitectureCableCandidate(candidate, cableScreening);
     const riskNotes = Array.isArray(candidate.riskNotes) && candidate.riskNotes.length
@@ -3209,22 +3340,55 @@ function buildArchitectureComparison(project, electricalArchitecture = {}, cable
     const localReference = candidate.id === localReferenceId;
     const recommended = candidate.id === recommendedId;
     const selected = selectedArchitectureValid && candidate.id === selectedArchitectureId;
-    const decisionStatus = selected
-      ? 'SELECTED'
-      : recommended
-        ? 'PREFERRED'
-        : candidate.status;
+    const parallelRuns = cable?.parallelRuns || (candidate.voltageClass === 'LV' || candidate.voltageClass === 'LV800' || candidate.voltageClass === 'LV_PLUS'
+      ? Math.max(1, Math.ceil(asNumber(candidate.currentA, 0) / 680))
+      : 1);
+    const cableVoltageDropPct = cable ? round(cable.voltageDropPct, 2) : round(candidate.voltageDropPct, 2);
+    const cableRatingA = cable
+      ? asNumber(cable.ampacityA, 0) * asNumber(cable.derating, 1)
+      : asNumber(candidate.standardA, 0);
+    const perRunCurrentA = parallelRuns > 0 ? asNumber(candidate.currentA, 0) / parallelRuns : asNumber(candidate.currentA, 0);
+    const ampacityMarginPct = cableRatingA > 0 ? ((cableRatingA - perRunCurrentA) / cableRatingA) * 100 : 0;
+    const dropDecision = architectureVoltageDropDecision(cableVoltageDropPct, voltageDropLimitPct);
+    const estimatedLossKw = cable
+      ? asNumber(cable.estimatedLossKw, 0)
+      : designKw > 0 ? designKw * (cableVoltageDropPct / 100) * 0.45 : 0;
+    const lossPct = designKw > 0 ? (estimatedLossKw / designKw) * 100 : 0;
+    const annualLossKwh = estimatedLossKw * Math.max(0, operationHoursPerDay) * 365;
+    const utilizationPct = asNumber(candidate.utilizationPct, asNumber(candidate.currentA, 0) / Math.max(1, asNumber(candidate.standardA, 1)) * 100);
+    const metrics = {
+      selected,
+      recommended,
+      parallelRuns,
+      utilizationPct,
+      voltageDropPct: cableVoltageDropPct,
+      voltageDropLimitPct,
+      dropDecision
+    };
+    const decisionStatus = architectureDecisionStatus(candidate, metrics);
+    const decisionReasons = buildArchitectureDecisionReasons(candidate, { ...metrics, decisionStatus });
     return {
       ...candidate,
       localReference,
       recommended,
       selected,
       decisionStatus,
-      parallelRuns: cable?.parallelRuns || (candidate.voltageClass === 'LV' || candidate.voltageClass === 'LV800' || candidate.voltageClass === 'LV_PLUS'
-        ? Math.max(1, Math.ceil(asNumber(candidate.currentA, 0) / 680))
-        : 1),
+      parallelRuns,
       cableStatus: cable?.status || '',
-      cableVoltageDropPct: cable ? round(cable.voltageDropPct, 2) : round(candidate.voltageDropPct, 2),
+      cableVoltageDropPct,
+      voltageDropLimitPct,
+      dropDecision,
+      cableRatingA: round(cableRatingA, 0),
+      rawCableAmpacityA: round(asNumber(cable?.ampacityA, asNumber(candidate.standardA, 0)), 0),
+      perRunCurrentA: round(perRunCurrentA, 2),
+      ampacityMarginPct: round(ampacityMarginPct, 1),
+      lossKw: round(estimatedLossKw, 2),
+      lossPct: round(lossPct, 3),
+      annualLossKwh: round(annualLossKwh, 0),
+      annualLossCost: round(annualLossKwh * energyCostRmPerKwh, 0),
+      energyCostRmPerKwh: round(energyCostRmPerKwh, 4),
+      omIndex: architectureOmIndex(candidate),
+      decisionReasons,
       riskNotes,
       whyNotSelected: architectureWhyNotSelected(candidate, decisionId),
       recommendation: recommended
@@ -3241,6 +3405,7 @@ function buildArchitectureComparison(project, electricalArchitecture = {}, cable
   const localReference = candidates.find(candidate => candidate.id === localReferenceId)
     || candidates.find(candidate => candidate.id === EPC_LOCAL_800V_REFERENCE.id)
     || null;
+  const decisionSummary = buildArchitectureDecisionSummary(finalDecision, candidates, designBasis);
   return {
     recommendedId,
     calculatedRecommendedId: electricalArchitecture.calculatedRecommendedId || '',
@@ -3249,6 +3414,8 @@ function buildArchitectureComparison(project, electricalArchitecture = {}, cable
     decisionName: finalDecision?.name || '',
     localReference,
     candidates,
+    designBasis,
+    decisionSummary,
     basis: 'Concept comparison across 415V, 800V reference, 1.14kV industrial LV, intermediate MV, 6.6kV and 11kV architectures.',
     recommendation: finalDecision
       ? `${finalDecision.name} is the current architecture decision for this concept screen; compare CAPEX, cable count, protection complexity and local O&M before final design.`
@@ -3644,6 +3811,8 @@ function calculateElectrical(project, recommended) {
   const displayArchitecture = project.electrical.selectedArchitectureId && effectiveArchitecture ? effectiveArchitecture.name : architecture;
   return {
     designKw,
+    powerFactor: pf,
+    distanceToInterconnectionM: distance,
     roundedPvMwp,
     lvCurrentA,
     voltageOptions,
@@ -4286,6 +4455,9 @@ function calculateEpcDesignProject(rawProject = {}, options = {}) {
     selectedArchitectureId: electrical.selectedArchitectureId || '',
     selectedArchitectureValid: Boolean(electrical.selectedArchitectureValid),
     selectedArchitectureWarning: electrical.selectedArchitectureWarning || '',
+    designKw: electrical.designKw || 0,
+    powerFactor: electrical.powerFactor || project.electrical.powerFactor,
+    distanceM: electrical.distanceToInterconnectionM || 0,
     recommendation: (electrical.architectureCandidates || []).some(candidate => candidate.id === electrical.architectureRecommendedId)
       ? `${(electrical.architectureCandidates || []).find(candidate => candidate.id === electrical.architectureRecommendedId).name} is preferred for this concept screen.`
       : electrical.recommendation,

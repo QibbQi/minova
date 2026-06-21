@@ -3329,7 +3329,17 @@ function buildArchitectureComparison(project, electricalArchitecture = {}, cable
     systemType: 'PV+BESS+Genset Hybrid',
     cableSizeReference: 'LV CU 630mm2 / intermediate MV AL 300mm2 / MV AL 240mm2 screening',
     currentFormula: 'Current A = kW / (sqrt(3) x kV x PF)',
-    energyCostRmPerKwh: round(energyCostRmPerKwh, 4)
+    energyCostRmPerKwh: round(energyCostRmPerKwh, 4),
+    liveRecommendation: {
+      label: electricalArchitecture.liveRecommendationLabel || '',
+      loadBasisKw: round(asNumber(electricalArchitecture.liveRecommendationLoadKw, designKw), 2),
+      averageLoadKw: round(asNumber(electricalArchitecture.averageLoadKw, 0), 2),
+      peakLoadKw: round(asNumber(electricalArchitecture.peakLoadKw, 0), 2),
+      pvRecommendedMwp: round(asNumber(electricalArchitecture.pvRecommendedMwp, 0), 3),
+      pcsRecommendedMw: round(asNumber(electricalArchitecture.pcsRecommendedMw, 0), 3),
+      bessRecommendedMwh: round(asNumber(electricalArchitecture.bessRecommendedMwh, 0), 3),
+      cRate: round(asNumber(electricalArchitecture.cRate, 0), 3)
+    }
   };
   const candidates = (electricalArchitecture.candidates || []).map((candidate) => {
     const cable = pickArchitectureCableCandidate(candidate, cableScreening);
@@ -4457,6 +4467,14 @@ export function calculateEpcDesignProject(rawProject = {}, options = {}) {
     designKw: electrical.designKw || 0,
     powerFactor: electrical.powerFactor || project.electrical.powerFactor,
     distanceM: electrical.distanceToInterconnectionM || 0,
+    liveRecommendationLabel: recommended.label || '',
+    liveRecommendationLoadKw: electrical.designKw || 0,
+    averageLoadKw: load.averageLoadKw || 0,
+    peakLoadKw: load.peakLoadKw || 0,
+    pvRecommendedMwp: recommended.pvRecommendedMwp || 0,
+    pcsRecommendedMw: recommended.pcsRecommendedMw || 0,
+    bessRecommendedMwh: recommended.bessRecommendedMwh || 0,
+    cRate: recommended.cRate || 0,
     recommendation: (electrical.architectureCandidates || []).some(candidate => candidate.id === electrical.architectureRecommendedId)
       ? `${(electrical.architectureCandidates || []).find(candidate => candidate.id === electrical.architectureRecommendedId).name} is preferred for this concept screen.`
       : electrical.recommendation,

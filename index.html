@@ -14597,6 +14597,55 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             `;
         }
 
+        function epcArchitectureDropText(candidate = {}, options = {}) {
+            const drop = formatEpcNumber(candidate.cableVoltageDropPct ?? candidate.voltageDropPct, 2, '%');
+            const decision = String(candidate.dropDecision || '').toUpperCase();
+            if (options.compact) {
+                if (decision === 'HARD FAIL') return `${drop} / HARD`;
+                if (decision === 'EXCELLENT') return `${drop} / OK`;
+                return `${drop} / ${decision || '-'}`;
+            }
+            return `${drop} / ${decision || '-'}`;
+        }
+
+        function epcArchitectureReportDropText(candidate = {}) {
+            const drop = formatEpcNumber(candidate.cableVoltageDropPct ?? candidate.voltageDropPct, 2, '%').replace(/\s+%$/, '%');
+            const decision = String(candidate.dropDecision || '').toUpperCase();
+            if (decision === 'HARD FAIL') return `${drop} Hard`;
+            if (decision === 'FAIL') return `${drop} Fail`;
+            if (decision === 'ACCEPTABLE') return `${drop} Accept.`;
+            if (decision === 'EXCELLENT') return `${drop} OK`;
+            return decision ? `${drop} ${decision}` : drop;
+        }
+
+        function epcArchitectureStatusText(status = '') {
+            const value = String(status || '').toUpperCase();
+            if (value === 'HARD FAIL') return 'HARD FAIL';
+            if (value === 'PREFERRED') return 'PREFERRED';
+            if (value === 'SELECTED') return 'SELECTED';
+            if (value === 'PASS') return 'PASS';
+            if (value === 'REVIEW') return 'REVIEW';
+            if (value === 'FAIL') return 'FAIL';
+            return value || '-';
+        }
+
+        function epcArchitectureCustomerMeaning(candidate = {}, finalDecisionId = '') {
+            const id = String(candidate.id || '');
+            const selected = id === finalDecisionId || candidate.selected || candidate.decisionStatus === 'SELECTED' || candidate.decisionStatus === 'PREFERRED';
+            if (selected) return 'Recommended basis: lowest customer-facing risk among the valid options, with stronger expansion and reliability margin.';
+            if (candidate.decisionStatus === 'HARD FAIL' || candidate.status === 'FAIL') return 'Not suitable for this project scale because current, cable count or voltage drop would become difficult to build safely.';
+            if (candidate.status === 'REVIEW') return 'Possible only with vendor, EPC, protection and O&M confirmation before it can be offered as a customer decision.';
+            return 'Technically feasible, but less aligned than the selected option for expansion, reliability or local project acceptance.';
+        }
+
+        function epcArchitectureCommercialMeaning(candidate = {}) {
+            if (candidate.decisionStatus === 'HARD FAIL' || candidate.status === 'FAIL') return 'Avoid quoting as the main scheme; hidden cable, switchboard and protection cost risk is high.';
+            if (candidate.status === 'REVIEW') return 'Keep as an alternate/reference option; cost and spares risk must be clarified before proposal.';
+            if (candidate.id === 'mv_11_ring') return 'Higher upfront CAPEX, but better customer story for uptime, future zones and long-distance feeders.';
+            if (candidate.id === 'mv_11_radial') return 'Balanced MV cost option where ring redundancy is not required.';
+            return 'Feasible option; compare local switchgear availability, transformer interfaces and service support.';
+        }
+
         function renderEpcElectricalWorkspace(result) {
             const target = document.getElementById('epc-electrical-workspace');
             if (!target) return;
@@ -14611,6 +14660,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const selectedArchitectureId = String(electricalArchitecture.selectedArchitectureId || result.electrical?.selectedArchitectureId || '').trim();
             const selectedArchitectureWarning = electricalArchitecture.selectedArchitectureWarning || result.electrical?.selectedArchitectureWarning || '';
             const designBasis = architectureComparison.designBasis || {};
+            const liveRecommendation = designBasis.liveRecommendation || {};
             const decisionSummary = architectureComparison.decisionSummary || {};
             const finalDecision = candidates.find(candidate => candidate.id === decisionSummary.finalDecisionId)
                 || candidates.find(candidate => candidate.id === architectureComparison.decisionId)
@@ -14624,12 +14674,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 return 'text-yellow-700 bg-yellow-50 border-yellow-200';
             };
             const basisCards = [
-                ['Load Power', formatEpcNumber(designBasis.loadKw || result.electrical?.designKw || 0, 0, 'kW')],
-                ['Power Factor', formatEpcNumber(designBasis.powerFactor || result.electrical?.powerFactor || 0, 2)],
-                ['Distance', formatEpcNumber(designBasis.distanceM || 0, 0, 'm')],
-                ['Drop Limit', formatEpcNumber(designBasis.voltageDropLimitPct || 5, 1, '%')],
-                ['Operation', formatEpcNumber(designBasis.operationHoursPerDay || result.loads?.operationHoursPerDay || 0, 1, 'h/day')],
-                ['Energy Cost', formatEpcNumber(designBasis.energyCostRmPerKwh || 0, 2, 'RM/kWh')]
+                ['Live Target', liveRecommendation.label || result.schemes?.find(scheme => scheme.id === result.recommendedSchemeId)?.label || 'Recommended Scheme'],
+                ['Load Basis', formatEpcNumber(liveRecommendation.loadBasisKw || designBasis.loadKw || result.electrical?.designKw || 0, 0, 'kW')],
+                ['Avg / Peak Load', `${formatEpcNumber(liveRecommendation.averageLoadKw || result.load?.averageLoadKw || 0, 0)} / ${formatEpcNumber(liveRecommendation.peakLoadKw || result.load?.peakLoadKw || 0, 0)} kW`],
+                ['PV DC', formatEpcNumber(liveRecommendation.pvRecommendedMwp || 0, 2, 'MWp')],
+                ['PCS AC', formatEpcNumber(liveRecommendation.pcsRecommendedMw || 0, 2, 'MW')],
+                ['BESS', formatEpcNumber(liveRecommendation.bessRecommendedMwh || 0, 2, 'MWh')]
             ];
             const dimensionCards = (decisionSummary.dimensionRecommendations || []).map(item => `
                 <div class="rounded-lg border ${statusTone(item.status)} px-3 py-2">
@@ -14658,6 +14708,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         </section>
                         <section class="rounded-xl border border-slate-200 bg-white p-4">
                             <div class="text-[10px] font-black uppercase text-slate-400">Engineering Assumptions</div>
+                            <div class="mt-1 text-[11px] font-black uppercase text-purple-600">Live Recommendation Basis</div>
                             <div class="mt-2 grid grid-cols-2 md:grid-cols-3 gap-2">
                                 ${basisCards.map(([label, value]) => `
                                     <div class="rounded-lg bg-slate-50 px-3 py-2">
@@ -14667,7 +14718,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                                 `).join('')}
                             </div>
                             <div class="mt-3 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-[11px] font-bold leading-relaxed text-slate-500">
-                                Design Basis: ${htmlSafe(designBasis.systemType || 'PV+BESS+Genset Hybrid')} · ${htmlSafe(designBasis.currentFormula || 'Current A = kW / (sqrt(3) x kV x PF)')} · ${htmlSafe(designBasis.cableSizeReference || 'Cable reference from concept screening')}
+                                Design Basis: ${htmlSafe(designBasis.systemType || 'PV+BESS+Genset Hybrid')} · PF ${formatEpcNumber(designBasis.powerFactor || result.electrical?.powerFactor || 0, 2)} · Distance ${formatEpcNumber(designBasis.distanceM || 0, 0, 'm')} · Drop Limit ${formatEpcNumber(designBasis.voltageDropLimitPct || 5, 1, '%')} · ${htmlSafe(designBasis.currentFormula || 'Current A = kW / (sqrt(3) x kV x PF)')}
                             </div>
                             <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
                                 <div class="rounded-lg border border-slate-100 px-3 py-2">
@@ -14696,11 +14747,11 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 	                                            <td class="px-3 py-2 font-black text-slate-700">${htmlSafe(candidate.name)}</td>
 	                                            <td class="px-3 py-2 text-right">${formatEpcNumber(candidate.voltageKv, 3, 'kV')}</td>
 	                                            <td class="px-3 py-2 text-right">${formatEpcNumber(candidate.currentA, 0)} / ${formatEpcNumber(candidate.standardA || 0, 0)}</td>
-	                                            <td class="px-3 py-2 text-right"><span class="rounded-full border px-2 py-1 ${statusTone(candidate.dropDecision)}">${formatEpcNumber(candidate.cableVoltageDropPct ?? candidate.voltageDropPct, 2)}% · ${htmlSafe(candidate.dropDecision || '-')}</span></td>
+	                                            <td class="px-3 py-2 text-right"><span class="epc-architecture-drop-badge inline-flex min-w-[6.75rem] justify-center rounded-md border px-1.5 py-0.5 text-[10px] leading-tight whitespace-nowrap ${statusTone(candidate.dropDecision)}">${htmlSafe(epcArchitectureDropText(candidate, { compact: true }))}</span></td>
 	                                            <td class="px-3 py-2 text-right">${formatEpcNumber(candidate.parallelRuns || 0, 0)}</td>
 	                                            <td class="px-3 py-2 text-right">${formatEpcNumber(candidate.capexIndex || 0, 2)}</td>
 	                                            <td class="px-3 py-2">${htmlSafe(candidate.expandability || '-')}</td>
-	                                            <td class="px-3 py-2 font-black"><span class="rounded-full border px-2 py-1 ${statusTone(candidate.decisionStatus || candidate.status)}">${htmlSafe(candidate.decisionStatus || candidate.status || '-')}</span></td>
+	                                            <td class="px-3 py-2 font-black"><span class="epc-architecture-status-badge inline-flex min-w-[5.75rem] justify-center rounded-md border px-1.5 py-0.5 text-[10px] leading-tight whitespace-nowrap ${statusTone(candidate.decisionStatus || candidate.status)}">${htmlSafe(epcArchitectureStatusText(candidate.decisionStatus || candidate.status))}</span></td>
 	                                            <td class="px-3 py-2">
 	                                                ${candidate.status === 'PASS'
 	                                                    ? `<button type="button" data-epc-architecture-choose="${htmlSafe(candidate.id)}" onclick="chooseEpcElectricalArchitecture('${htmlSafe(candidate.id)}')" ${!canEditEpcEngineering() ? 'disabled' : ''} class="rounded-lg border border-purple-200 bg-white px-3 py-1.5 text-[10px] font-black text-purple-700 hover:bg-purple-50 disabled:opacity-40">${candidate.id === selectedArchitectureId ? 'Chosen' : 'Choose'}</button>`
@@ -19330,6 +19381,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const candidates = Array.isArray(result.architectureComparison?.candidates) ? result.architectureComparison.candidates : [];
             const comparison = result.architectureComparison || {};
             const designBasis = comparison.designBasis || {};
+            const liveRecommendation = designBasis.liveRecommendation || {};
             const decisionSummary = comparison.decisionSummary || {};
             const dimensions = Array.isArray(decisionSummary.dimensionRecommendations) ? decisionSummary.dimensionRecommendations : [];
             const recommendedCandidate = candidates.find(candidate => candidate.id === comparison.recommendedId);
@@ -19342,7 +19394,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 ? `${candidate.voltageKv}kV`
                 : `${Math.round((Number(candidate.voltageKv) || 0) * 1000)}V`;
             const basisItems = [
-                ['Load', formatEpcNumber(designBasis.loadKw || result.electrical?.designKw || 0, 0, 'kW')],
+                ['Load', formatEpcNumber(liveRecommendation.loadBasisKw || designBasis.loadKw || result.electrical?.designKw || 0, 0, 'kW')],
                 ['PF', formatEpcNumber(designBasis.powerFactor || result.electrical?.powerFactor || 0, 2)],
                 ['Distance', formatEpcNumber(designBasis.distanceM || 0, 0, 'm')],
                 ['Drop Limit', formatEpcNumber(designBasis.voltageDropLimitPct || 5, 1, '%')],
@@ -19358,10 +19410,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         </div>
                     `).join('')}
                 </div>
-                <div class="grid grid-cols-3 gap-2 mb-2">
+                <div class="epc-report-architecture-decision-cards grid grid-cols-2 gap-2 mb-2">
                     ${[
                         ['New-Hybrid Recommendation', recommendedCandidate?.name || comparison.recommendedId || '11kV Ring'],
-                        ['800V Reference', comparison.localReference?.name || '800V Microgrid'],
                         ['Final Decision', comparison.decisionName || finalDecision.name || '11kV Ring']
                     ].map(([label, value]) => `
                         <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
@@ -19386,6 +19437,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     <section>
                         <h2>Engineering Assumptions</h2>
                         <ul class="epc-report-list">
+                            <li>Live Recommendation Basis: ${htmlSafe(liveRecommendation.label || 'Recommended Scheme')} · PV ${formatEpcNumber(liveRecommendation.pvRecommendedMwp || 0, 2, 'MWp')} · PCS ${formatEpcNumber(liveRecommendation.pcsRecommendedMw || 0, 2, 'MW')} · BESS ${formatEpcNumber(liveRecommendation.bessRecommendedMwh || 0, 2, 'MWh')}</li>
                             <li>${htmlSafe(designBasis.systemType || 'PV+BESS+Genset Hybrid')}</li>
                             <li>${htmlSafe(designBasis.currentFormula || 'Current A = kW / (sqrt(3) x kV x PF)')}</li>
                             <li>${htmlSafe(designBasis.cableSizeReference || 'LV/MV cable screening reference')}</li>
@@ -19402,7 +19454,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                                 <td class="package">${htmlSafe(candidate.name || '-')}</td>
                                 <td>${htmlSafe(voltageLabel(candidate))}</td>
                                 <td class="num">${formatEpcNumber(candidate.currentA, 0)} / ${formatEpcNumber(candidate.standardA || 0, 0)}</td>
-                                <td class="num">${formatEpcNumber(candidate.cableVoltageDropPct ?? candidate.voltageDropPct, 2)}% ${htmlSafe(candidate.dropDecision || '')}</td>
+                                <td class="num epc-report-drop">${htmlSafe(epcArchitectureReportDropText(candidate))}</td>
                                 <td class="num">${formatEpcNumber(candidate.parallelRuns, 0)}</td>
                                 <td class="num">${formatEpcNumber(candidate.capexIndex || 0, 2)}</td>
                                 <td>${htmlSafe(candidate.decisionStatus || candidate.status || '-')}</td>
@@ -19419,31 +19471,46 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const candidates = Array.isArray(result.architectureComparison?.candidates) ? result.architectureComparison.candidates : [];
             const comparison = result.architectureComparison || {};
             const designBasis = comparison.designBasis || {};
+            const liveRecommendation = designBasis.liveRecommendation || {};
+            const finalDecision = candidates.find(candidate => candidate.id === comparison.decisionId)
+                || candidates.find(candidate => candidate.id === comparison.recommendedId)
+                || candidates[0]
+                || {};
             return `
                 <div class="epc-report-note epc-report-architecture-detail-note">
-                    Engineering Assumptions: ${htmlSafe(designBasis.currentFormula || 'Current A = kW / (sqrt(3) x kV x PF)')} · Voltage drop limit ${formatEpcNumber(designBasis.voltageDropLimitPct || 5, 1, '%')} · Annual loss cost uses ${formatEpcNumber(designBasis.operationHoursPerDay || 0, 1, 'h/day')} and ${formatEpcNumber(designBasis.energyCostRmPerKwh || 0, 2, 'RM/kWh')}.
+                    Live Recommendation Basis: ${htmlSafe(liveRecommendation.label || 'Recommended Scheme')} · Load ${formatEpcNumber(liveRecommendation.loadBasisKw || designBasis.loadKw || 0, 0, 'kW')} · PV ${formatEpcNumber(liveRecommendation.pvRecommendedMwp || 0, 2, 'MWp')} · PCS ${formatEpcNumber(liveRecommendation.pcsRecommendedMw || 0, 2, 'MW')} · BESS ${formatEpcNumber(liveRecommendation.bessRecommendedMwh || 0, 2, 'MWh')} · ${htmlSafe(designBasis.currentFormula || 'Current A = kW / (sqrt(3) x kV x PF)')}.
+                </div>
+                <div class="epc-report-architecture-guidance">
+                    <div>
+                        <strong>Architecture Selection Guidance</strong>
+                        <p>${htmlSafe(comparison.decisionSummary?.customerRecommendation || `${finalDecision.name || 'Selected architecture'} is preferred for this concept screen.`)}</p>
+                    </div>
+                    <div>
+                        <strong>Customer Meaning</strong>
+                        <p>${htmlSafe(epcArchitectureCustomerMeaning(finalDecision, finalDecision.id))}</p>
+                    </div>
+                    <div>
+                        <strong>Commercial / O&M Meaning</strong>
+                        <p>${htmlSafe(epcArchitectureCommercialMeaning(finalDecision))}</p>
+                    </div>
                 </div>
                 <table class="epc-report-table epc-report-architecture-detail-table">
                     <thead>
-                        <tr><th>Architecture</th><th class="num">Load kW</th><th class="num">PF</th><th class="num">Standard A</th><th class="num">A / Run</th><th class="num">Cable Rating A</th><th class="num">Margin %</th><th class="num">Drop Limit</th><th class="num">Loss kW</th><th class="num">Loss %</th><th class="num">Annual Loss Cost</th><th>Fault / Protection</th></tr>
+                        <tr><th>Architecture</th><th>Customer Meaning</th><th>Key Engineering Check</th><th>Commercial / O&M Meaning</th><th>Use Case</th></tr>
                     </thead>
                     <tbody>
                         ${candidates.map(candidate => `
                             <tr>
-                                <td class="package">${htmlSafe(candidate.name || '-')}</td>
-                                <td class="num">${formatEpcNumber(designBasis.loadKw || result.electrical?.designKw || 0, 0)}</td>
-                                <td class="num">${formatEpcNumber(designBasis.powerFactor || 0, 2)}</td>
-                                <td class="num">${formatEpcNumber(candidate.standardA || 0, 0)}</td>
-                                <td class="num">${formatEpcNumber(candidate.perRunCurrentA || 0, 0)}</td>
-                                <td class="num">${formatEpcNumber(candidate.cableRatingA || 0, 0)}</td>
-                                <td class="num">${formatEpcNumber(candidate.ampacityMarginPct || 0, 1)}</td>
-                                <td class="num">${formatEpcNumber(candidate.voltageDropLimitPct || designBasis.voltageDropLimitPct || 5, 1, '%')}</td>
-                                <td class="num">${formatEpcNumber(candidate.lossKw || 0, 2)}</td>
-                                <td class="num">${formatEpcNumber(candidate.lossPct || 0, 2)}</td>
-                                <td class="num">${formatEpcNumber(candidate.annualLossCost || 0, 0, 'RM')}</td>
-                                <td>${htmlSafe(`${candidate.faultRisk || '-'} / ${candidate.protectionComplexity || '-'}`)}</td>
+                                <td class="package">
+                                    <div>${htmlSafe(candidate.name || '-')}</div>
+                                    <div class="epc-report-architecture-status">${htmlSafe(epcArchitectureStatusText(candidate.decisionStatus || candidate.status))}</div>
+                                </td>
+                                <td>${htmlSafe(epcArchitectureCustomerMeaning(candidate, finalDecision.id))}</td>
+                                <td>${htmlSafe(`Current ${formatEpcNumber(candidate.currentA, 0, 'A')} total / ${formatEpcNumber(candidate.perRunCurrentA || 0, 0, 'A per run')}; Drop ${epcArchitectureDropText(candidate, { compact: true })}; ${formatEpcNumber(candidate.parallelRuns || 0, 0)} run(s); margin ${formatEpcNumber(candidate.ampacityMarginPct || 0, 1, '%')}.`)}</td>
+                                <td>${htmlSafe(`${epcArchitectureCommercialMeaning(candidate)} Loss screen: ${formatEpcNumber(candidate.lossPct || 0, 2, '%')} / ${formatEpcNumber(candidate.annualLossCost || 0, 0, 'RM/yr')}.`)}</td>
+                                <td>${htmlSafe(candidate.bestFor || candidate.whyNotSelected || candidate.recommendation || '-')}</td>
                             </tr>
-                        `).join('') || '<tr><td colspan="12" class="empty">No engineering detail rows.</td></tr>'}
+                        `).join('') || '<tr><td colspan="5" class="empty">No engineering detail rows.</td></tr>'}
                     </tbody>
                 </table>
                 <div class="epc-report-note">${htmlSafe(comparison.decisionSummary?.engineeringRecommendation || 'Validate short-circuit level, relay coordination, installation derating, local spares and EPC acceptance before procurement.')}</div>
@@ -19587,7 +19654,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if ((Array.isArray(result.architectureComparison?.candidates) ? result.architectureComparison.candidates : []).length) {
                 pageBodies.push({
                     title: 'Architecture Decision',
-                    subtitle: 'Electrical architecture comparison across 800V reference and intermediate MV options.',
+                    subtitle: 'Electrical architecture comparison across LV, LV-plus and intermediate MV options.',
                     className: 'epc-report-boq-page epc-report-architecture-page',
                     result,
                     body: renderEpcReportArchitectureDecision(result)
@@ -19761,17 +19828,26 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     .epc-report-architecture-page .epc-report-table th,.epc-report-architecture-detail-page .epc-report-table th{font-size:6.5px;line-height:1.05;padding:4px}
                     .epc-report-architecture-page .epc-report-table td,.epc-report-architecture-detail-page .epc-report-table td{font-size:7.1px;line-height:1.1;padding:4px;vertical-align:middle}
                     .epc-report-architecture-page .epc-report-note,.epc-report-architecture-detail-page .epc-report-note{margin-top:6px;padding:5px 7px;font-size:7px;line-height:1.2}
+                    .epc-report-architecture-guidance{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:7px;margin-bottom:7px}
+                    .epc-report-architecture-guidance div{border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;padding:7px 8px;min-height:58px}
+                    .epc-report-architecture-guidance strong{display:block;font-size:7px;font-weight:900;text-transform:uppercase;color:#582C83}
+                    .epc-report-architecture-guidance p{margin:3px 0 0;font-size:7.2px;line-height:1.18;font-weight:700;color:#475569}
+                    .epc-report-architecture-status{margin-top:3px;font-size:6.5px;line-height:1;font-weight:900;color:#64748b;text-transform:uppercase}
                     .epc-report-architecture-exec-table th:nth-child(1){width:15%}
-                    .epc-report-architecture-exec-table th:nth-child(2){width:9%}
+                    .epc-report-architecture-exec-table .epc-report-drop{font-size:6.7px;white-space:nowrap;text-align:center}
+                    .epc-report-architecture-exec-table th:nth-child(2){width:8%}
                     .epc-report-architecture-exec-table th:nth-child(3){width:10%}
-                    .epc-report-architecture-exec-table th:nth-child(4){width:13%}
-                    .epc-report-architecture-exec-table th:nth-child(5){width:6%}
+                    .epc-report-architecture-exec-table th:nth-child(4){width:12%}
+                    .epc-report-architecture-exec-table th:nth-child(5){width:5%}
                     .epc-report-architecture-exec-table th:nth-child(6){width:7%}
-                    .epc-report-architecture-exec-table th:nth-child(7){width:10%}
-                    .epc-report-architecture-exec-table th:nth-child(8){width:30%}
+                    .epc-report-architecture-exec-table th:nth-child(7){width:9%}
+                    .epc-report-architecture-exec-table th:nth-child(8){width:34%}
                     .epc-report-architecture-detail-note{margin-top:0!important;margin-bottom:7px}
                     .epc-report-architecture-detail-table th:nth-child(1){width:13%}
-                    .epc-report-architecture-detail-table th:nth-child(12){width:17%}
+                    .epc-report-architecture-detail-table th:nth-child(2){width:24%}
+                    .epc-report-architecture-detail-table th:nth-child(3){width:22%}
+                    .epc-report-architecture-detail-table th:nth-child(4){width:22%}
+                    .epc-report-architecture-detail-table th:nth-child(5){width:19%}
                     .epc-report-fixed-surface svg{max-width:100%}
                 </style>
                 ${renderEpcCustomerReportPages(result, kind)}

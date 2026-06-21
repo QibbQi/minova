@@ -200,8 +200,18 @@ test('EPC reports and BOQ workbook expose architecture and asset feeder outputs 
     '3.3kV Radial',
     '4.16kV Radial',
     '11kV Ring',
-    '800V Reference',
     'Final Decision',
+    'Live Recommendation Basis',
+    'Architecture Selection Guidance',
+    'Customer Meaning',
+    'Commercial / O&M Meaning',
+    'Use Case',
+    'epcArchitectureReportDropText',
+    'epc-report-drop',
+    'epc-architecture-drop-badge',
+    'epc-architecture-status-badge',
+    'epc-report-architecture-decision-cards',
+    'epc-report-architecture-guidance',
     'Asset / Feeder Mapping',
     'result.architectureComparison?.candidates',
     'result.feederZoning?.feeders',
@@ -234,6 +244,13 @@ test('EPC reports and BOQ workbook expose architecture and asset feeder outputs 
   assert.match(reportPages[0], /renderEpcReportArchitectureDecision\(result\)/);
   assert.match(reportPages[0], /renderEpcReportArchitectureEngineeringDetail\(result\)/);
   assert.match(reportPages[0], /renderEpcReportAssetMapping\(result\)/);
+  const reportDecision = html.match(/function renderEpcReportArchitectureDecision\(result = \{\}\)[\s\S]*?function renderEpcReportArchitectureEngineeringDetail/);
+  assert.ok(reportDecision, 'architecture decision renderer should be found');
+  assert.doesNotMatch(reportDecision[0], /800V Reference/);
+  assert.doesNotMatch(reportDecision[0], /comparison\.localReference\?\.name/);
+  const reportEngineering = html.match(/function renderEpcReportArchitectureEngineeringDetail\(result = \{\}\)[\s\S]*?function renderEpcReportAssetMapping/);
+  assert.ok(reportEngineering, 'architecture engineering detail renderer should be found');
+  assert.doesNotMatch(reportEngineering[0], /<th class="num">Load kW<\/th>[\s\S]*<th>Fault \/ Protection<\/th>/);
   assert.doesNotMatch(html, /renderEpcReportProcurementAdvisory/);
   assert.doesNotMatch(html, /Procurement Gap Review/);
   assert.doesNotMatch(html, /epcBoqWorkbookProcurementAdvisorRows/);

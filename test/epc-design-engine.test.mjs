@@ -1720,6 +1720,13 @@ test('EPC electrical architecture returns LV MV candidates cable screening and p
   assert.equal(basis.systemType, 'PV+BESS+Genset Hybrid');
   assert.match(basis.currentFormula, /sqrt\(3\).*kV.*PF/);
   assert.ok(basis.energyCostRmPerKwh > 1.2 && basis.energyCostRmPerKwh < 1.3);
+  assert.equal(basis.liveRecommendation.label, '80% Recommended Replacement');
+  assert.equal(basis.liveRecommendation.loadBasisKw, 4000);
+  assert.ok(basis.liveRecommendation.averageLoadKw > 1900);
+  assert.ok(basis.liveRecommendation.peakLoadKw > basis.liveRecommendation.averageLoadKw);
+  assert.equal(basis.liveRecommendation.pvRecommendedMwp, 3.9);
+  assert.equal(basis.liveRecommendation.pcsRecommendedMw, 2.5);
+  assert.ok(basis.liveRecommendation.bessRecommendedMwh > 5);
   assert.ok(decisionDimensions.includes('Current Loading'));
   assert.ok(decisionDimensions.includes('Voltage Drop'));
   assert.ok(decisionDimensions.includes('Cable Runs'));

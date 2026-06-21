@@ -2,13 +2,16 @@
 
 本文件用于帮助后续 AI agent 或开发协作者快速理解当前仓库。修改代码前请先读这里，再按实际文件状态继续核对。
 
+当前 Git 跟踪文件名是 `agents.md`；在大小写不敏感的本机环境中 `AGENTS.md` 也能访问。后续编辑请优先改这个已跟踪文件，避免新增大小写重复副本。
+
 ## 项目定位
 
-Minova 是一个前端优先的新能源业务工具。GitHub Pages 承载主界面，Cloudflare Worker + D1 承载登录、权限、审批、审计和业务主数据。仓库仍承担前端代码、静态数据副本、附件、报价快照与发布载体，没有传统的本地构建流程。
+Minova 是一个前端优先的新能源业务工具。GitHub Pages 承载主界面，Cloudflare Worker + D1 承载登录、权限、审批、审计和业务主数据。仓库仍承担前端代码、Hybrid EPC 设计引擎、静态数据副本、附件、报价快照与发布载体，没有传统的本地构建流程。
 
 核心运行方式：
 
 - `index.html` 是生产入口，也是主要 UI、样式、状态和浏览器逻辑所在。
+- `epc-design-engine.mjs` 是 Hybrid EPC Design 的模块化计算/拓扑/报表引擎，`epc-design-engine.global.js` 是主页面加载的浏览器全局版本。
 - `worker/` 是 Cloudflare 后端，远程 D1 `minova-auth-db` 是当前业务主数据和权限数据的主要持久化层。
 - `auth/minova-auth-ui.mjs` 连接前端、Worker API、D1 写入队列和管理后台。
 - `minova-data/state.json` 是主业务状态的静态备份副本，结构为 `{ v, updatedAt, data }`。
@@ -35,8 +38,13 @@ Minova 是一个前端优先的新能源业务工具。GitHub Pages 承载主界
 
 - `index.html`
   - 主应用入口，体量很大，包含 Tailwind CDN 产物、品牌样式、打印样式、内嵌状态、GitHub 同步 bootstrap、业务逻辑和大量全局函数。
-  - 主要功能包括五页报价单、报价保存/加载/删除、PV/光储/ROI 计算、成本与利润设置、安装商报价设置、供应商信息表单与评级漏斗、产品清单、Price List、市场价趋势、库存管理、销售出库、历史库存、运输管理、认证附件、PDF 合并导出和 Site Overview 屋顶编辑器。
+  - 主要功能包括五页报价单、报价保存/加载/删除、PV/光储/ROI 计算、Hybrid EPC Design、成本与利润设置、安装商报价设置、供应商与渠道伙伴信息表、产品主数据、Price List、市场价趋势、库存管理、销售出库、历史库存、运输管理、认证附件、PDF 合并导出和 Site Overview 屋顶编辑器。
   - 修改前务必搜索相关 `id`、`window.*` 全局函数、localStorage key、内嵌状态字段和打印/PDF 逻辑。
+
+- `epc-design-engine.mjs` / `epc-design-engine.global.js`
+  - Hybrid EPC Design 的核心引擎。`.mjs` 供 Node 测试和模块化维护，`.global.js` 由 `index.html` 通过 `<script src="./epc-design-engine.global.js?v=epc-design-v2">` 加载。
+  - 覆盖 EPC sizing、柴油替代率、PV/BESS/PCS 推荐、EMS Flow、Device Work、Battery Control、PV Simulator、标准拓扑、SLD、LV/MV 架构、资产/馈线/发电机燃油映射、BOQ、风险和报表数据。
+  - 改引擎后通常要同步跑 `test/epc-design-engine.test.mjs`、`test/epc-design-ui-state.test.mjs` 和相关权限/报表测试。
 
 - `module_body.js`
   - 从主页面抽取或镜像的大段脚本主体，便于开发、比对或模块化处理。
@@ -54,6 +62,9 @@ Minova 是一个前端优先的新能源业务工具。GitHub Pages 承载主界
 
 - `logo.png` / `logo-horizontal.png`
   - 品牌图片资源，供页面、报价或 PDF 使用。
+
+- `minova-favicon.png`
+  - 当前网页 favicon 资源。改品牌/head 元信息时一并确认 `index.html` 引用。
 
 - `.trae/`
   - Trae/Codex 相关规则和历史文档。通常只读参考，不要把它当作运行时依赖。
@@ -86,8 +97,10 @@ Minova 是一个前端优先的新能源业务工具。GitHub Pages 承载主界
 - `worker/src/index.mjs`：Cloudflare Worker API，处理认证、会话、RBAC、用户管理、审批、审计、业务实体、设置与已保存报价。
 - `worker/wrangler.jsonc`：Worker 与 D1 配置。D1 名称为 `minova-auth-db`，binding 为 `minova_auth_db`。
 - `worker/migrations/`：D1 schema migration；远程 migration 前必须先完成 D1 备份。
+- `worker/README.md`：当前 Worker 名称、D1 名称、部署命令、初始化 admin 账号和恢复风险说明。
 - `auth/permission-core.mjs`：前后端共享的角色、权限、敏感字段和报价审批规则。
 - `auth/minova-auth-ui.mjs`：登录与管理后台 UI、D1 bootstrap、写入重试队列和业务数据 API。
+- `auth/minova-auth.css`：登录/权限相关样式和敏感字段隐藏规则。
 - `worker/scripts/backup-d1.sh`：标准远程 D1 备份入口，由 `worker/package.json` 的 `backup:d1` 调用。
 
 ### `minova-data/`
@@ -96,7 +109,8 @@ Minova 是一个前端优先的新能源业务工具。GitHub Pages 承载主界
 
 - `state.json`
   - 与 `index.html` 内嵌状态对应的主业务状态文件。
-  - `data` 通常包含：`products`、`inventory`、`inventoryHistory`、`marketPrices`、`salesRecords`、`historicalInventory`、`suppliers`、`companyCerts`、`transportRecords`、`fileDeleteLogs`、`subcategoriesByCategory`、`profitSettings`、`installerProfitSettings`、`installerQuoteSettings`。
+  - `data` 通常包含：`products`、`inventory`、`inventoryHistory`、`marketPrices`、`salesRecords`、`historicalInventory`、`suppliers`、`channelPartners`、`companyCerts`、`transportRecords`、`fileDeleteLogs`、`compatibilityRules`、`subcategoriesByCategory`、`profitSettings`、`installerProfitSettings`、`installerQuoteSettings`、`nonStockPricingStrategies`、`certificationRequirementsCatalog`、`productCertificationEvidence`、`productMasterDetailTemplates`、`epcDesignProjects`、`epcDesignDefaults`。
+  - 旧静态副本可能暂时缺少后加入的字段；判断持久化 shape 时以 `applyStateFromData()`、`saveToLocal()`、`window.getMinovaBusinessStateSnapshot()`、`window.buildUpdatedHtml()` 和 Worker bootstrap 为准。
 
 - `quotes/`
   - 保存报价单快照。`index.json` 存报价列表与元数据；每个 `<quote-id>.json` 存 `snapshot`。
@@ -113,18 +127,34 @@ Minova 是一个前端优先的新能源业务工具。GitHub Pages 承载主界
 
 ### `docs/`
 
-项目计划、设计说明和本项目专用 skill。
+项目计划、设计说明、代码审查记录和本项目专用 skill。
 
 - `docs/superpowers/plans/`
   - 历史开发计划和 bugfix 计划。
+
+- `docs/superpowers/specs/`
+  - EPC Device Work / EMS、grid-tied roadmap、off-grid core 等设计规格。大改 EPC 时先读相关 spec/plan，避免重复发明。
+
+- `docs/reviews/`
+  - 阶段性工作审查记录，例如 Hybrid EPC v4 review。用于理解风险和未完成事项，不是运行时代码。
 
 - `docs/skills/minova-web-optimizer/SKILL.md`
   - 面向 Minova 项目修改的专用 agent 指南。修改 Minova 网页、报价、同步、PDF、状态结构或前端体验时优先参考。
 
 ### `test/`
 
-- `test/installer-cost.test.mjs`
-  - 从 `index.html` 的 `INSTALLER_QUOTE_MODEL_START/END` 代码块提取安装商报价模型并验证 RESI / C&I 成本计算。
+- `test/admin-backend-management.test.mjs`、`test/permission-core.test.mjs`、`test/forgot-password.test.mjs`
+  - 覆盖 Worker/auth 管理后台、权限 schema、业务 domain/settings normalization、D1 bootstrap、quote CRUD、队列、健康检查与密码重置。
+- `test/epc-design-engine.test.mjs`、`test/epc-design-ui-state.test.mjs`、`test/epc-flow-summary-battery-controls.test.mjs`、`test/epc-design-permission.test.mjs`
+  - 覆盖 Hybrid EPC 计算引擎、EPC UI 状态、EMS/Device Work/Battery Control/PV Simulator、SLD/Topology/Electrical、报表和 EPC 权限。
+- `test/product-list-english-ui.test.mjs`、`test/hybrid-storage-spec.test.mjs`、`test/category-english-migration.test.mjs`
+  - 覆盖 Product Master、供应链/渠道伙伴、认证矩阵、兼容矩阵、产品类型/角色视图、英文类目迁移和混合储能字段。
+- `test/non-stock-pricing-strategy.test.mjs`、`test/pricing-unit-simplification.test.mjs`、`test/table-freeze-and-price-tooltip.test.mjs`
+  - 覆盖非库存价格策略、计价单位、Price List tooltip 和表格冻结交互。
+- `test/installer-cost.test.mjs`、`test/quote-price-list-picker.test.mjs`、`test/quote-solar-customer-mode.test.mjs`
+  - 覆盖安装商报价模型、报价页 Price List picker 和 RESI/C&I 客户模式。
+- `test/header-compact-ui.test.mjs`、`test/operations-english-ui.test.mjs`
+  - 覆盖顶部导航、操作页英文 UI 和紧凑布局。
 
 ## 关键数据流
 
@@ -134,6 +164,7 @@ Minova 是一个前端优先的新能源业务工具。GitHub Pages 承载主界
 4. `saveToLocal()` 与 localStorage 保留浏览器 fallback；GitHub Sync 主要用于静态备份、发布和附件维护。
 5. `window.buildUpdatedHtml()` 将当前状态重新序列化进 `index.html`，GitHub 发布流程可同时更新 `index.html` 和 `minova-data/state.json`。
 6. 已保存报价优先写入 D1，同时保留 `minova-data/quotes/` 与 IndexedDB 等兼容/备份路径。
+7. Hybrid EPC Design 使用 `epcDesignProjects` 和 `epcDesignDefaults` 作为状态入口，前端本地/发布状态、GitHub merge、Worker business snapshot 与权限资源必须一起核对。
 
 修改持久化字段时，通常要同时检查：
 
@@ -148,6 +179,19 @@ Minova 是一个前端优先的新能源业务工具。GitHub Pages 承载主界
 - `auth/minova-auth-ui.mjs` 的 business snapshot、D1 domain/settings mapping 与 retry queue
 - `worker/src/index.mjs` 的 payload normalization、权限检查、bootstrap shape 与 SQL 写入
 - `worker/migrations/` 是否需要 schema migration
+
+当前 D1 business domain/settings 常见映射：
+
+- `supplier`、`channel_partner` -> `suppliers`
+- `product`、`compatibility_rule` -> `products`
+- `certification_requirement`、`product_certification_evidence`、`product_master_detail_template` -> `engineering`
+- `epc_design_project` -> `epcDesign`
+- `epc_design_defaults` -> `epcDesignEngineering`
+- `inventory`、`inventory_history`、`sales_record`、`historical_inventory` -> `inventory`
+- `transport` -> `transport`
+- `market_price`、`market_price_settings`、`subcategories_by_category`、`non_stock_pricing_strategies` -> `priceList`
+- `profit_settings`、`installer_profit_settings`、`installer_quote_settings` -> `quoteSettings`
+- `saved_quote` -> `quotes`
 
 新增顶层页面必须同步权限维护，不能只增加导航按钮或页面 DOM：
 
@@ -187,6 +231,43 @@ Site Overview 位于报价第 5 页，是当前最复杂的交互区域：
 - 标注支持距离线、面积块、marker 样式、方向约束、网格、标尺、吸附、移动锁定、比例锁定和框选。
 - PDF 导出时可能使用 Site Overview 快照图和旋转设置；修改画布或 DOM 结构后要验证网页显示与 PDF 输出。
 
+## Hybrid EPC Design
+
+Hybrid EPC Design 是独立顶层页，tab/view 为 `epcdesign` / `#view-epcdesign`，导航位置在 Product List 和 Engineering Workspace 之间。
+
+- 引擎边界：
+  - `epc-design-engine.mjs` 是可测试源，`epc-design-engine.global.js` 是浏览器加载版本。
+  - `index.html` 负责 DOM、输入采集、面板渲染、D1/localStorage 保存、权限门禁、PDF/XLSX 导出和与引擎交互。
+  - 改引擎 API 后必须同步检查 `index.html` 中解构的导出名、`test/epc-design-engine.test.mjs` 和 `test/epc-design-ui-state.test.mjs`。
+- 状态与持久化：
+  - `epcDesignProjects` 保存项目列表，`epcDesignDefaults` 保存默认参数。
+  - localStorage keys 为 `minova_epc_design_projects_v1`、`minova_epc_design_defaults_v1`。
+  - GitHub merge 已合并 `epcDesignProjects` 并 overlay `epcDesignDefaults`；改字段时仍要检查 `github-sync/merge.js`。
+  - Worker domain/settings 为 `epc_design_project`、`epc_design_defaults`；权限资源分为 `epcDesign` 与 `epcDesignEngineering`。
+- 页面面板：
+  - 顶层面板包括 `schemes`、`formula`、`boq`、`risks`、`topology`、`electrical`、`flow`、`devicework`、`batterycontrol`、`pvsimulator`、`reports`。
+  - Quick design 与 detailed engineering 输入有不同权限和显隐逻辑，不能只改某一组 DOM。
+  - Topology/SLD 支持标准拓扑、自定义模板、节点/连线增删、选择、连接、route 拖拽、zoom、history、snap 与 validation card。
+- 报表门禁：
+  - Customer Summary / Engineering Report PDF 使用固定页面 `html2pdf.js` 导出；BOQ workbook 使用 `XLSX`。
+  - Open High risk 会阻止 Reports PDF，需要走现有 Risk UI：勾选、填写 mitigation reason 和 typed signature，再保存 acknowledgement。
+  - 不要把这个门禁误判为 PDF 渲染失败；验证时必须覆盖真实风险流程或明确说明被门禁阻止。
+- 相关测试：
+  - 改引擎：`node --test test/epc-design-engine.test.mjs`
+  - 改 UI/状态/报表：`node --test test/epc-design-ui-state.test.mjs test/epc-flow-summary-battery-controls.test.mjs`
+  - 改权限：`node --test test/epc-design-permission.test.mjs test/permission-core.test.mjs`
+
+## Product Master、Engineering Workspace 与供应链扩展
+
+Product List 已不只是旧产品表，而是 Product Master / Supplier Master / Engineering Workspace 共享的主数据入口。
+
+- 产品仍以 `products` 为 canonical 数据模型，旧字段如 `vendor`、`supplierCode`、`category`、`spec` 仍要兼容。
+- 新主数据字段包括 `masterData`、`technicalSpecs`、`sourcing`、base price、认证需求链接和兼容矩阵引用；不要用新结构替换旧字段，除非同时完成迁移。
+- `channelPartners` 是供应商的渠道伙伴表，产品 `sourcing.channelPartnerId` 可指向它。删除供应商时还要检查关联渠道伙伴，删除渠道伙伴时要处理产品引用。
+- `compatibilityRules` 支持兼容矩阵；`certificationRequirementsCatalog`、`productCertificationEvidence`、`productMasterDetailTemplates` 支持工程认证矩阵、证据和模板。
+- 导入/导出需要保留 legacy 中文表头兼容，同时覆盖 sourcing、compatibility、certification 和 Channel Partners sheets。
+- 改 Product Master 相关 UI 时重点跑 `test/product-list-english-ui.test.mjs`，并根据字段范围加跑 `test/category-english-migration.test.mjs`、`test/hybrid-storage-spec.test.mjs`、`test/admin-backend-management.test.mjs`。
+
 ## 供应商与评级
 
 供应商模块是产品档案的上游主数据，位于数据库页：
@@ -194,8 +275,10 @@ Site Overview 位于报价第 5 页，是当前最复杂的交互区域：
 - UI 入口：
   - `#supplier-panel` 供应商信息表，包含漏斗汇总、等级筛选、搜索、排序和供应商列表。
   - `#supplier-modal` 新增/编辑供应商弹窗，包含基础信息、LOGO、漏斗评估、证据项、评分项和备注。
+  - `#channel-partner-search` / 渠道伙伴表用于维护 Authorized Distributor、Dealer、Partner 等品牌渠道关系。
 - 产品关联：
   - 产品通过 `supplierCode` 关联供应商，同时保留 `vendor` 作为展示名快照。
+  - 产品 `sourcing` 可记录 Source Type、Channel Partner、Brand Supplier、Commercial Supplier、Factory Supplier、Brand Owner、授权状态和备注；主 Supplier 仍是报价/库存供应商。
   - 新建或编辑产品时必须从供应商信息表单选择供应商，不能再随意输入孤立供应商名。
   - `ensureSupplierData()` 会规范化供应商、为旧的 `vendor` 名称自动生成供应商记录，并同步产品的 `supplierCode` 与 `vendor`。
 - 供应商数据结构：
@@ -218,13 +301,14 @@ Site Overview 位于报价第 5 页，是当前最复杂的交互区域：
 - 不要绕过 `normalizeSupplierRecord()`、`normalizeSupplierEvaluation()`、`normalizeSupplierScores()` 和 `normalizeSupplierEvidence()`。
 - 调整阶段、评分项或权重时，同步检查列表表头、弹窗字段、筛选汇总、排序、预览文案、`state.json` 示例数据和本地缓存兼容。
 - 改供应商名称或编码时，要确认产品 `supplierCode`、产品 `vendor` 展示名、ISO 认证文件 vendor 绑定、报价行品牌展示和 Part Breakdown 自动 LOGO 仍然一致。
-- 删除供应商前当前逻辑会阻止删除已关联产品的供应商；不要移除这层保护，除非同时实现产品迁移流程。
+- 删除供应商前当前逻辑会阻止删除已关联产品或渠道伙伴的供应商；不要移除这层保护，除非同时实现产品/渠道迁移流程。
 
 ## 库存、市场价与成本
 
 - `marketPrices` 保存类目市场价记录、类目单位和删除记录 ID，Price List、产品 hover tooltip 和成本分析会引用它。
 - 产品/库存单位会通过 `normalizeUnitLabel()`、`normalizeMarketUnit()` 等函数规范化，例如 `个` 会转为 `pcs`。
 - 库存支持采购入库、批次、仓库、价格编辑、FIFO 销售出库、销售记录、库存历史和历史库存归档。
+- `nonStockPricingStrategies` 保存非库存价格策略，库存页和 Price List 会共用它。Authorized Distributor 非库存默认税费为 0 的规则有测试保护，不要顺手改掉。
 - 成本设置分为产品利润设置 `profitSettings`、安装商利润 `installerProfitSettings`、安装商报价参数 `installerQuoteSettings`。
 - 安装商报价模型在 `index.html` 的 `INSTALLER_QUOTE_MODEL_START/END` 块内，改动后要运行 `node --test test/installer-cost.test.mjs`。
 
@@ -264,6 +348,12 @@ http://localhost:8080/index.html
 
 ## 测试
 
+完整根目录测试：
+
+```bash
+node --test test/*.test.mjs
+```
+
 GitHub 同步模块：
 
 ```bash
@@ -277,14 +367,27 @@ node --test test/*.test.mjs
 node --test test/installer-cost.test.mjs
 ```
 
-修改 `github-sync/` 时优先运行 GitHub 同步测试。修改安装商报价模型时运行 installer 测试。修改 `index.html` UI、Site Overview 或 PDF 时，还需要启动本地静态服务并做浏览器人工/自动检查对应流程。
+Hybrid EPC：
+
+```bash
+node --test test/epc-design-engine.test.mjs test/epc-design-ui-state.test.mjs test/epc-flow-summary-battery-controls.test.mjs test/epc-design-permission.test.mjs
+```
+
+Product Master / Engineering Workspace：
+
+```bash
+node --test test/product-list-english-ui.test.mjs test/category-english-migration.test.mjs test/hybrid-storage-spec.test.mjs
+```
+
+修改 `github-sync/` 时优先运行 GitHub 同步测试。修改安装商报价模型时运行 installer 测试。修改 EPC 引擎/面板时运行 EPC 相关测试。修改权限、D1、业务状态、Product Master 或主页面时，优先运行完整根目录测试。修改 `index.html` UI、Site Overview、EPC Reports 或报价 PDF 时，还需要启动本地静态服务并做浏览器人工/自动检查对应流程。
 
 ### 隐藏页面与门禁检查
 
-Minova 会在未连接 GitHub/PAT 且通过 HTTP 访问时限制 `quotation`、`costcalc`、`database`、`pricelist`、`inventory`、`transport` 等 tab；`window.switchTab()` 中的 `localFileMode` 会在 `file:` 协议下绕过这层限制。检查报价页、From Inventory、Price List、弹窗、hover 菜单或其它默认隐藏区域时，不要只检查当前可见页面：
+Minova 会在未连接 GitHub/PAT 且通过 HTTP 访问时限制 `quotation`、`costcalc`、`database`、`epcdesign`、`engineering`、`pricelist`、`inventory`、`transport` 等 tab；`window.switchTab()` 中的 `localFileMode` 会在 `file:` 协议下绕过这层限制。检查报价页、Hybrid EPC、Engineering Workspace、From Inventory、Price List、弹窗、hover 菜单或其它默认隐藏区域时，不要只检查当前可见页面：
 
 - 首选直接用浏览器打开本地 `index.html` 文件（`file:///.../index.html`），或在控制台确认 `window.location.protocol === 'file:'` 后切换受限 tab。
 - 若必须通过 HTTP 预览，则先输入/解锁 GitHub PAT 连接，让受限 tab 实际可访问后再检查。
+- 如果 Browser Use/Chrome 因 `file://`、沙箱、缓存或进程权限连续失败超过三次，停止继续堆同一路线；改用本地静态服务、只读 DOM 检查或明确报告跳过原因。
 - 对“全局改名/文案替换”这类任务，还要额外跑全 HTML 扫描，覆盖隐藏 DOM、HTML entity、模板字符串和动态拼接文案，例如：
 
 ```bash
@@ -298,14 +401,17 @@ rg -ni "$LEGACY_LABEL" .
 2. 判断改动属于主页面 UI、持久化状态、GitHub 同步、报价快照、库存/运输、认证文件、报价 PDF 还是 Site Overview。
 3. 优先改最小拥有者文件，避免顺手重构大段 `index.html`。
 4. 涉及同步逻辑时，先改 `github-sync/` 模块和测试，再确认 `index.html` 是否有内联镜像需要同步。
-5. 涉及状态结构时，同步检查内嵌状态、`state.json`、localStorage、`buildUpdatedHtml()` 和 `mergeState()`。
+5. 涉及状态结构时，同步检查内嵌状态、`state.json`、localStorage、`buildUpdatedHtml()`、`window.getMinovaBusinessStateSnapshot()` 和 `mergeState()`。
 6. 涉及已保存报价时，同步检查 `captureQuoteSnapshot()`、`applyQuoteSnapshot()`、`minova-data/quotes/index.json` 和 IndexedDB fallback。
-7. 涉及附件文件时，注意 GitHub commit、删除日志、本地状态和中文路径编码。
-8. 完成后至少运行相关 Node 测试；UI/PDF/Site Overview 改动还要本地预览，并按“隐藏页面与门禁检查”覆盖默认隐藏区域。
+7. 涉及 Hybrid EPC 时，同步检查 `epc-design-engine.mjs`、`epc-design-engine.global.js`、EPC localStorage keys、EPC D1 domains/settings、权限资源和报表门禁。
+8. 涉及 Product Master/供应链时，同步检查供应商、渠道伙伴、sourcing、兼容矩阵、认证需求、导入导出和 D1 snapshot。
+9. 涉及附件文件时，注意 GitHub commit、删除日志、本地状态和中文路径编码。
+10. 完成后至少运行相关 Node 测试；UI/PDF/Site Overview/EPC Reports 改动还要本地预览，并按“隐藏页面与门禁检查”覆盖默认隐藏区域。
 
 ## 当前仓库观察
 
 - Git 跟踪路径里根指南文件名显示为 `agents.md`，但当前工作区可通过 `AGENTS.md` 访问；大小写敏感环境中要留意。
-- 当前工作树未看到 `Project_Wiki.md`、`BI_stats.html` 或 `module_body.mjs`。
+- 当前根目录有 `epc-design-engine.mjs` 与 `epc-design-engine.global.js`，Hybrid EPC 不再只是 `index.html` 内联逻辑。
+- 当前工作树未看到 `Project_Wiki.md`、`BI_stats.html`、`module_body.mjs` 或 `minova-data/certification-defaults.json`。
 - 根目录 `pages.yml` 与 `.github/workflows/pages.yml` 内容关系需要在改部署流程前重新确认。
-- `docs/skills/minova-web-optimizer/SKILL.md` 是本仓库最贴近实战的开发约束文档，后续修改 Minova 业务时建议优先参考。
+- 当前没有单独跟踪的 `skills.md`；`docs/skills/minova-web-optimizer/SKILL.md` 是本仓库最贴近实战的项目 skill，后续修改 Minova 业务时建议优先参考。

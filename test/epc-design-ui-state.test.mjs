@@ -221,6 +221,25 @@ test('EPC reports and BOQ workbook expose architecture and asset feeder outputs 
   assert.doesNotMatch(html, /procurementAdvisory/);
 });
 
+test('EPC Asset Feeder report page uses compact one-page PDF layout', () => {
+  for (const snippet of [
+    'epc-report-asset-summary',
+    'epc-report-asset-card',
+    'epc-report-asset-table-wrap',
+    'epc-report-table epc-report-asset-table',
+    'asset-line-area',
+    'asset-start-method',
+    'asset-gensets'
+  ]) {
+    assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing compact asset feeder report snippet: ${snippet}`);
+  }
+
+  assert.match(html, /\.epc-report-asset-summary\{display:grid;grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/, 'asset report KPI cards should render as one fixed five-column row in PDF');
+  assert.match(html, /\.epc-report-asset-page \.epc-report-table td\{[\s\S]*?padding:4px 4px[\s\S]*?font-size:7\.4px[\s\S]*?line-height:1\.12/, 'asset mapping table should use compact row spacing');
+  assert.match(html, /\.epc-report-asset-page \.epc-report-asset-table th:nth-child\(3\)\{width:8%\}/, 'Line / Area column should be narrow on the asset mapping page');
+  assert.match(html, /\.epc-report-asset-page \.epc-report-asset-table th:nth-child\(10\)\{width:13%\}/, 'Assigned genset column should have an explicit width instead of being squeezed');
+});
+
 test('EPC report-only EMS Flow uses a static connection map instead of an operating hour', () => {
   const reportRenderer = html.match(/function renderEpcReportOnlyTopologyFlowDiagram\(result = \{\}\)[\s\S]*?function renderEpcReportOnlyDeviceWorkDiagram/);
   assert.ok(reportRenderer, 'report-only EMS Flow renderer should be found');

@@ -19290,7 +19290,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 return asset ? `${asset.startTime || '-'} ${asset.startType || ''}`.trim() : '';
             })).join(', ') || '-';
             return `
-                <div class="grid grid-cols-5 gap-2 mb-3">
+                <div class="epc-report-asset-summary">
                     ${[
                         ['Zones', formatEpcNumber(result.loadAssetSummary?.zoneCount || 0, 0)],
                         ['Load Branches', formatEpcNumber(result.loadAssetSummary?.branchCount || groups.length, 0)],
@@ -19298,34 +19298,36 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         ['Feeder Cabinets', formatEpcNumber(result.loadAssetSummary?.feederCabinetCount || 0, 0)],
                         ['Gensets', formatEpcNumber(result.loadAssetSummary?.gensetCount || gensets.length, 0)]
                     ].map(([label, value]) => `
-                        <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                            <div class="text-[9px] font-black uppercase text-slate-400">${htmlSafe(label)}</div>
-                            <div class="mt-1 text-sm font-black text-slate-900">${htmlSafe(value)}</div>
+                        <div class="epc-report-asset-card">
+                            <div class="epc-report-asset-card-label">${htmlSafe(label)}</div>
+                            <div class="epc-report-asset-card-value">${htmlSafe(value)}</div>
                         </div>
                     `).join('')}
                 </div>
-                <table class="epc-report-table">
-                    <thead>
-                        <tr><th>Zone</th><th>Feeder ID</th><th>Line / Area</th><th>Type</th><th class="num">Assets</th><th class="num">kW</th><th class="num">Peak kW</th><th class="num">Current A</th><th>Start / Method</th><th>Assigned Genset</th></tr>
-                    </thead>
-                    <tbody>
-                        ${(feeders.length ? feeders : groups).map((row, index) => `
-                            <tr>
-                                <td class="package">${htmlSafe(row.zone || '-')}</td>
-                                <td>${htmlSafe(row.feederId || row.id || row.label || '-')}</td>
-                                <td>${htmlSafe(feeders.length ? `${feederAssetText(row, 'line')} / ${feederAssetText(row, 'area')}` : '-')}</td>
-                                <td>${htmlSafe(row.type || row.assetType || row.feederType || '-')}</td>
-                                <td class="num">${formatEpcNumber(row.assetCount, 0)}</td>
-                                <td class="num">${formatEpcNumber(row.totalKw ?? row.ratedKw, 0)}</td>
-                                <td class="num">${formatEpcNumber(row.peakProfileKw ?? row.operatingKw, 0)}</td>
-                                <td class="num">${formatEpcNumber(row.currentA, 0)}</td>
-                                <td>${htmlSafe(feeders.length ? feederStartText(row) : '-')}</td>
-                                <td>${htmlSafe((row.assignedGensetIds || []).join(', ') || '-')}</td>
-                            </tr>
-                        `).join('') || '<tr><td colspan="10" class="empty">No asset mapping rows.</td></tr>'}
-                    </tbody>
-                </table>
-                ${gensets.length ? `<div class="epc-report-note">Genset Count: ${formatEpcNumber(gensets.length, 0)}. EMS BOQ expands remote control and metering/runtime monitoring per genset.</div>` : ''}
+                <div class="epc-report-asset-table-wrap">
+                    <table class="epc-report-table epc-report-asset-table">
+                        <thead>
+                            <tr><th>Zone</th><th>Feeder ID</th><th>Line / Area</th><th>Type</th><th class="num">Assets</th><th class="num">kW</th><th class="num">Peak kW</th><th class="num">Current A</th><th>Start / Method</th><th>Assigned Genset</th></tr>
+                        </thead>
+                        <tbody>
+                            ${(feeders.length ? feeders : groups).map((row, index) => `
+                                <tr>
+                                    <td class="package">${htmlSafe(row.zone || '-')}</td>
+                                    <td>${htmlSafe(row.feederId || row.id || row.label || '-')}</td>
+                                    <td class="asset-line-area">${htmlSafe(feeders.length ? `${feederAssetText(row, 'line')} / ${feederAssetText(row, 'area')}` : '-')}</td>
+                                    <td>${htmlSafe(row.type || row.assetType || row.feederType || '-')}</td>
+                                    <td class="num">${formatEpcNumber(row.assetCount, 0)}</td>
+                                    <td class="num">${formatEpcNumber(row.totalKw ?? row.ratedKw, 0)}</td>
+                                    <td class="num">${formatEpcNumber(row.peakProfileKw ?? row.operatingKw, 0)}</td>
+                                    <td class="num">${formatEpcNumber(row.currentA, 0)}</td>
+                                    <td class="asset-start-method">${htmlSafe(feeders.length ? feederStartText(row) : '-')}</td>
+                                    <td class="asset-gensets">${htmlSafe((row.assignedGensetIds || []).join(', ') || '-')}</td>
+                                </tr>
+                            `).join('') || '<tr><td colspan="10" class="empty">No asset mapping rows.</td></tr>'}
+                        </tbody>
+                    </table>
+                </div>
+                ${gensets.length ? `<div class="epc-report-note epc-report-asset-note">Genset Count: ${formatEpcNumber(gensets.length, 0)}. EMS BOQ expands remote control and metering/runtime monitoring per genset.</div>` : ''}
             `;
         }
 
@@ -19541,6 +19543,28 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     .epc-report-boq-page .epc-report-table th:nth-child(5){width:7%}
                     .epc-report-boq-page .epc-report-table th:nth-child(6){width:12%}
                     .epc-report-boq-page .epc-report-table th:nth-child(7){width:12%}
+                    .epc-report-asset-page .epc-report-page-body{padding-top:10px;display:flex;flex-direction:column;min-height:0}
+                    .epc-report-asset-summary{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;margin-bottom:8px}
+                    .epc-report-asset-card{border:1px solid #e2e8f0;border-radius:9px;background:#f8fafc;padding:7px 9px;min-height:42px}
+                    .epc-report-asset-card-label{font-size:7px;line-height:1;font-weight:900;text-transform:uppercase;color:#94a3b8;white-space:nowrap}
+                    .epc-report-asset-card-value{margin-top:5px;font-size:14px;line-height:1;font-weight:900;color:#0f172a}
+                    .epc-report-asset-table-wrap{flex:1;min-height:0}
+                    .epc-report-asset-page .epc-report-table{font-size:7.4px;line-height:1.12}
+                    .epc-report-asset-page .epc-report-table th{padding:4px 4px;font-size:6.7px;line-height:1.05}
+                    .epc-report-asset-page .epc-report-table td{padding:4px 4px;font-size:7.4px;line-height:1.12;vertical-align:middle}
+                    .epc-report-asset-page .epc-report-note{margin-top:6px;padding:5px 7px;font-size:7px;line-height:1.15}
+                    .epc-report-asset-page .epc-report-asset-table th:nth-child(1){width:8%}
+                    .epc-report-asset-page .epc-report-asset-table th:nth-child(2){width:14%}
+                    .epc-report-asset-page .epc-report-asset-table th:nth-child(3){width:8%}
+                    .epc-report-asset-page .epc-report-asset-table th:nth-child(4){width:8%}
+                    .epc-report-asset-page .epc-report-asset-table th:nth-child(5){width:6%}
+                    .epc-report-asset-page .epc-report-asset-table th:nth-child(6){width:7%}
+                    .epc-report-asset-page .epc-report-asset-table th:nth-child(7){width:8%}
+                    .epc-report-asset-page .epc-report-asset-table th:nth-child(8){width:8%}
+                    .epc-report-asset-page .epc-report-asset-table th:nth-child(9){width:20%}
+                    .epc-report-asset-page .epc-report-asset-table th:nth-child(10){width:13%}
+                    .epc-report-asset-table .asset-line-area{font-size:7px;line-height:1.08}
+                    .epc-report-asset-table .asset-start-method,.epc-report-asset-table .asset-gensets{font-size:6.8px;line-height:1.08;overflow-wrap:anywhere}
                     .epc-report-fixed-surface svg{max-width:100%}
                 </style>
                 ${renderEpcCustomerReportPages(result, kind)}

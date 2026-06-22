@@ -29,6 +29,8 @@ export const EPC_DESIGN_DEFAULTS = Object.freeze({
   mvTriggerDistanceM: 500,
   groundPvAreaM2PerMwp: 11500,
   moduleWp: 580,
+  mpptVoltageLimitV: 1500,
+  moduleVocV: 52,
   modulesPerString: 26,
   combinerInputs: 16,
   inverterArchitecture: 'central',
@@ -2266,6 +2268,26 @@ export function normalizeEpcDesignProject(raw = {}, options = {}) {
   normalizedAssumptions.pvDcAcRatio = Number.isFinite(rawPvDcAcRatio) && rawPvDcAcRatio >= 1
     ? rawPvDcAcRatio
     : 1.2;
+  normalizedAssumptions.mpptVoltageLimitV = Math.max(1, asNumber(
+    assumptions.mpptVoltageLimitV ?? assumptions.mpptVoltageV ?? assumptions.maxDcVoltageV ?? defaults.mpptVoltageLimitV,
+    EPC_DESIGN_DEFAULTS.mpptVoltageLimitV
+  ));
+  normalizedAssumptions.moduleVocV = Math.max(0.1, asNumber(
+    assumptions.moduleVocV ?? assumptions.vocV ?? defaults.moduleVocV,
+    EPC_DESIGN_DEFAULTS.moduleVocV
+  ));
+  normalizedAssumptions.modulesPerString = Math.max(1, asNumber(
+    assumptions.modulesPerString ?? defaults.modulesPerString,
+    EPC_DESIGN_DEFAULTS.modulesPerString
+  ));
+  normalizedAssumptions.combinerInputs = Math.max(1, asNumber(
+    assumptions.combinerInputs ?? defaults.combinerInputs,
+    EPC_DESIGN_DEFAULTS.combinerInputs
+  ));
+  normalizedAssumptions.selectedModulesPerString = Math.max(0, Math.floor(asNumber(
+    assumptions.selectedModulesPerString ?? defaults.selectedModulesPerString,
+    0
+  )));
   delete normalizedAssumptions.standardTopologyLibrary;
   const normalizedCalculationAssumptions = {
     ...defaults,
@@ -4115,7 +4137,7 @@ function buildBoq(project, recommended, context = {}) {
     id: 'pv-module-count',
     package: 'PV System',
     item: 'PV modules',
-    spec: `${pvStringDesign.moduleWp || project.assumptions?.moduleWp || EPC_DESIGN_DEFAULTS.moduleWp}Wp module, ${pvStringDesign.modulesPerString || project.assumptions?.modulesPerString || EPC_DESIGN_DEFAULTS.modulesPerString} modules/string`,
+    spec: `${pvStringDesign.moduleWp || project.assumptions?.moduleWp || EPC_DESIGN_DEFAULTS.moduleWp}Wp module, ${pvStringDesign.modulesPerString || project.assumptions?.modulesPerString || EPC_DESIGN_DEFAULTS.modulesPerString} modules/string by ${pvStringDesign.mpptVoltageLimitV || project.assumptions?.mpptVoltageLimitV || EPC_DESIGN_DEFAULTS.mpptVoltageLimitV}V MPPT / ${pvStringDesign.moduleVocV || project.assumptions?.moduleVocV || EPC_DESIGN_DEFAULTS.moduleVocV}V Voc`,
     quantity: pvStringDesign.modules || 0,
     unit: 'pcs',
     protection: 'Junction box IP65 or above, C5-M frame if required',
@@ -4139,11 +4161,11 @@ function buildBoq(project, recommended, context = {}) {
     id: 'pv-string-count',
     package: 'PV System',
     item: 'PV strings',
-    spec: `${pvStringDesign.modulesPerString || project.assumptions?.modulesPerString || EPC_DESIGN_DEFAULTS.modulesPerString} modules per string`,
-    quantity: pvStringDesign.strings || 0,
+    spec: `${pvStringDesign.modulesPerString || project.assumptions?.modulesPerString || EPC_DESIGN_DEFAULTS.modulesPerString} modules per string from MPPT / Voc`,
+    quantity: pvStringDesign.totalStrings || pvStringDesign.combiners || 0,
     unit: 'string',
     protection: 'DC1500V design basis',
-    remark: 'String count from current module wattage',
+    remark: 'String count from current module wattage and voltage limit',
     source: 'calculated',
     mandatory: true
   });
@@ -4151,7 +4173,7 @@ function buildBoq(project, recommended, context = {}) {
     id: 'pv-combiner-box',
     package: 'PV System',
     item: 'Smart PV combiner box',
-    spec: `${pvStringDesign.combinerInputs || project.assumptions?.combinerInputs || EPC_DESIGN_DEFAULTS.combinerInputs} inputs, DC1500V, SPD and monitoring`,
+    spec: `Integer count from module quantity / ${pvStringDesign.modulesPerString || project.assumptions?.modulesPerString || EPC_DESIGN_DEFAULTS.modulesPerString} modules per string, DC1500V, SPD and monitoring`,
     quantity: pvStringDesign.combiners || 0,
     unit: 'pcs',
     protection: 'IP65, C5-M when outdoor',
@@ -4663,7 +4685,9 @@ export function calculateEpcDesignProject(rawProject = {}, options = {}) {
   const pvStringDesign = calculatePvStringDesign({
     targetPvMwp: recommended.pvRecommendedMwp,
     moduleWp: project.assumptions.moduleWp,
-    modulesPerString: project.assumptions.modulesPerString,
+    mpptVoltageLimitV: project.assumptions.mpptVoltageLimitV,
+    moduleVocV: project.assumptions.moduleVocV,
+    selectedModulesPerString: project.assumptions.selectedModulesPerString,
     combinerInputs: project.assumptions.combinerInputs,
     inverterArchitecture: project.assumptions.inverterArchitecture,
     totalStringInputs: project.assumptions.totalStringInputs
@@ -4773,22 +4797,41 @@ export function calculateEpcDesignProject(rawProject = {}, options = {}) {
 export function calculatePvStringDesign({
   targetPvMwp = 0,
   moduleWp = EPC_DESIGN_DEFAULTS.moduleWp,
-  modulesPerString = EPC_DESIGN_DEFAULTS.modulesPerString,
+  mpptVoltageLimitV = EPC_DESIGN_DEFAULTS.mpptVoltageLimitV,
+  moduleVocV = EPC_DESIGN_DEFAULTS.moduleVocV,
+  modulesPerString,
+  selectedModulesPerString,
   combinerInputs = EPC_DESIGN_DEFAULTS.combinerInputs,
   inverterArchitecture = 'central',
   totalStringInputs = 0,
   minimumExpectedModulesPerString = 18
 } = {}) {
   const moduleWpValue = Math.max(1, asNumber(moduleWp, EPC_DESIGN_DEFAULTS.moduleWp));
-  const modulesPerStringValue = Math.max(1, asNumber(modulesPerString, EPC_DESIGN_DEFAULTS.modulesPerString));
+  const mpptVoltageLimitValue = Math.max(1, asNumber(mpptVoltageLimitV, EPC_DESIGN_DEFAULTS.mpptVoltageLimitV));
+  const moduleVocValue = Math.max(0.1, asNumber(moduleVocV, EPC_DESIGN_DEFAULTS.moduleVocV));
+  const selectedModulesPerStringValue = Math.floor(asNumber(selectedModulesPerString, 0));
+  const legacyModulesPerStringValue = Math.floor(asNumber(modulesPerString, 0));
+  const voltageLimitedModulesPerString = Math.floor(mpptVoltageLimitValue / moduleVocValue);
+  const maxModulesPerString = Math.max(1, voltageLimitedModulesPerString || legacyModulesPerStringValue || EPC_DESIGN_DEFAULTS.modulesPerString);
+  const stringOptions = [maxModulesPerString, maxModulesPerString - 1, maxModulesPerString - 2]
+    .filter((value, index, values) => value >= 1 && values.indexOf(value) === index);
+  const requestedModulesPerString = selectedModulesPerStringValue > 0
+    ? selectedModulesPerStringValue
+    : legacyModulesPerStringValue > 0
+    ? legacyModulesPerStringValue
+    : maxModulesPerString;
+  const modulesPerStringValue = stringOptions.includes(requestedModulesPerString)
+    ? requestedModulesPerString
+    : maxModulesPerString;
   const modules = Math.ceil((asNumber(targetPvMwp, 0) * 1000000) / moduleWpValue);
-  const strings = Math.ceil(modules / modulesPerStringValue);
-  const fullStringModuleCount = strings * modulesPerStringValue;
+  const totalStrings = Math.ceil(modules / modulesPerStringValue);
+  const fullStringModuleCount = totalStrings * modulesPerStringValue;
   const stringRoundingGapModules = Math.max(0, fullStringModuleCount - modules);
   const architecture = String(inverterArchitecture || 'central');
+  const combinerInputsValue = Math.max(1, asNumber(combinerInputs, EPC_DESIGN_DEFAULTS.combinerInputs));
   const combiners = architecture === 'string'
     ? 0
-    : Math.ceil(strings / Math.max(1, asNumber(combinerInputs, EPC_DESIGN_DEFAULTS.combinerInputs)));
+    : totalStrings;
   const inputCount = asNumber(totalStringInputs, 0);
   const warnings = [];
   if (inputCount > 0 && modules / inputCount < asNumber(minimumExpectedModulesPerString, 18)) {
@@ -4801,12 +4844,20 @@ export function calculatePvStringDesign({
     targetPvMwp: asNumber(targetPvMwp, 0),
     moduleWp: moduleWpValue,
     modules,
+    mpptVoltageLimitV: mpptVoltageLimitValue,
+    moduleVocV: moduleVocValue,
+    maxModulesPerString,
+    selectedModulesPerString: modulesPerStringValue,
+    stringOptions,
     modulesPerString: modulesPerStringValue,
-    strings,
+    strings: modulesPerStringValue,
+    totalStrings,
     fullStringModuleCount,
+    finalModuleCount: fullStringModuleCount,
     stringRoundingGapModules,
-    combinerInputs: asNumber(combinerInputs, EPC_DESIGN_DEFAULTS.combinerInputs),
+    combinerInputs: combinerInputsValue,
     combiners,
+    combinerCalculationBasis: architecture === 'string' ? 'string-inverter' : 'module-count-over-string-length',
     inverterArchitecture: architecture,
     totalStringInputs: inputCount,
     warnings

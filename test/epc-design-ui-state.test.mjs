@@ -83,8 +83,9 @@ test('EPC detail inputs are grouped by engineering workflow and hide inactive si
   for (const fieldId of [
     'epc-pv-yield',
     'epc-design-dc-ac-ratio',
-    'epc-modules-per-string',
-    'epc-combiner-inputs',
+    'epc-mppt-voltage',
+    'epc-module-voc',
+    'epc-string-length',
     'epc-peak-load-factor',
     'epc-electrical-load-basis-mode',
     'epc-power-factor',
@@ -99,8 +100,11 @@ test('EPC detail inputs are grouped by engineering workflow and hide inactive si
     assert.match(source, new RegExp(`data-epc-detail-field="[^"]*"[\\s\\S]*id="${fieldId}"`), `missing grouped field: ${fieldId}`);
   }
 
-  assert.match(source, /<label[^>]*>\s*String\s*<span data-epc-help="modules-per-string"/);
-  assert.doesNotMatch(source, />\s*\/ String\s*</);
+  assert.match(source, /<label[^>]*>\s*MPPT\s*<span data-epc-help="mppt-voltage"/);
+  assert.match(source, /<label[^>]*>\s*Voc\s*<span data-epc-help="module-voc"/);
+  assert.match(source, /<label[^>]*>\s*Strings\s*<span data-epc-help="string-length"/);
+  assert.doesNotMatch(source, /id="epc-modules-per-string"/);
+  assert.doesNotMatch(source, /id="epc-combiner-inputs"/);
 
   const hiddenFields = source.match(/<div id="epc-detail-hidden-fields"[\s\S]*?<\/div>\s*<\/div>\s*<div id="epc-assets-list-page"/);
   assert.ok(hiddenFields, 'hidden detail fields container exists');
@@ -433,8 +437,9 @@ test('EPC workspace guides junior engineers through load PCS battery PV steps', 
     'Must-run load for backup or island mode',
     'epc-support-hours',
     'epc-module-wp',
-    'epc-modules-per-string',
-    'epc-combiner-inputs',
+    'epc-mppt-voltage',
+    'epc-module-voc',
+    'epc-string-length',
     'epc-energy-flow-table'
   ]) {
     assert.match(html, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing guided EPC UI snippet: ${snippet}`);
@@ -504,8 +509,9 @@ test('EPC detailed inputs expose title pointers instead of inline helper paragra
     'data-epc-help="bess-dod"',
     'data-epc-help="power-factor"',
     'data-epc-help="critical-load"',
-    'data-epc-help="modules-per-string"',
-    'data-epc-help="combiner-inputs"',
+    'data-epc-help="mppt-voltage"',
+    'data-epc-help="module-voc"',
+    'data-epc-help="string-length"',
     'data-epc-detail-group="solar-strings"',
     'data-epc-detail-group="load-electrical"',
     'data-epc-detail-group="battery-soc"',
@@ -530,8 +536,9 @@ test('EPC detailed inputs expose title pointers instead of inline helper paragra
     'Minimum battery state of charge reserved in EMS Flow.',
     'Usable battery depth of discharge applied to BESS sizing and EMS Flow SOC upper limit.',
     'Power factor used for AC current and voltage architecture checks.',
-    'PV modules per string used for string count and combiner sizing.',
-    'Combiner input count used to estimate combiner quantity from total strings.'
+    'MPPT voltage limit used with module Voc to calculate modules per string.',
+    'Module open-circuit voltage used for MPPT string-length calculation.',
+    'Selectable modules per string generated from the MPPT / Voc limit.'
   ]) {
     assert.match(detailSection, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing detail helper snippet: ${snippet}`);
   }

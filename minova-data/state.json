@@ -1976,6 +1976,8 @@
       "mvTriggerDistanceM": 500,
       "groundPvAreaM2PerMwp": 11500,
       "moduleWp": 580,
+      "mpptVoltageLimitV": 1500,
+      "moduleVocV": 52,
       "modulesPerString": 26,
       "combinerInputs": 16,
       "inverterArchitecture": "central",

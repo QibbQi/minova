@@ -389,29 +389,58 @@ test('EPC diesel replacement PCS follows selected peak load safety factor before
   assert.equal(pcsTrace.inputs.peakLoadKw, 2480.1837);
 });
 
-test('EPC PV string design follows the revised workbook module and combiner baseline', () => {
+test('EPC PV string design derives strings and combiners from MPPT voltage and module Voc', () => {
   const design = calculatePvStringDesign({
     targetPvMwp: 4,
     moduleWp: 580,
-    modulesPerString: 26,
-    combinerInputs: 16
+    mpptVoltageLimitV: 1500,
+    moduleVocV: 52
   });
 
   assert.deepEqual({
     moduleWp: design.moduleWp,
     modules: design.modules,
+    mpptVoltageLimitV: design.mpptVoltageLimitV,
+    moduleVocV: design.moduleVocV,
     modulesPerString: design.modulesPerString,
     strings: design.strings,
-    combinerInputs: design.combinerInputs,
-    combiners: design.combiners
+    maxModulesPerString: design.maxModulesPerString,
+    stringOptions: design.stringOptions,
+    combiners: design.combiners,
+    totalStrings: design.totalStrings,
+    finalModuleCount: design.finalModuleCount
   }, {
     moduleWp: 580,
     modules: 6897,
-    modulesPerString: 26,
-    strings: 266,
-    combinerInputs: 16,
-    combiners: 17
+    mpptVoltageLimitV: 1500,
+    moduleVocV: 52,
+    modulesPerString: 28,
+    strings: 28,
+    maxModulesPerString: 28,
+    stringOptions: [28, 27, 26],
+    combiners: 247,
+    totalStrings: 247,
+    finalModuleCount: 6916
   });
+});
+
+test('EPC PV string design supports selecting a lower string option', () => {
+  const design = calculatePvStringDesign({
+    targetPvMwp: 4,
+    moduleWp: 580,
+    mpptVoltageLimitV: 1500,
+    moduleVocV: 52,
+    selectedModulesPerString: 27
+  });
+
+  assert.equal(design.modules, 6897);
+  assert.deepEqual(design.stringOptions, [28, 27, 26]);
+  assert.equal(design.modulesPerString, 27);
+  assert.equal(design.strings, 27);
+  assert.equal(design.combiners, 256);
+  assert.equal(design.totalStrings, 256);
+  assert.equal(design.finalModuleCount, 6912);
+  assert.equal(design.stringRoundingGapModules, 15);
 });
 
 test('EPC design engine sizes BESS and PCS by selected operating role', () => {
@@ -1033,15 +1062,18 @@ test('EPC PV string design supports module specs and architecture warnings', () 
   const design = calculatePvStringDesign({
     targetPvMwp: 4,
     moduleWp: 710,
-    modulesPerString: 24,
-    combinerInputs: 18,
+    mpptVoltageLimitV: 1500,
+    moduleVocV: 58,
     inverterArchitecture: 'central',
     totalStringInputs: 672
   });
 
   assert.equal(design.modules, 5634);
-  assert.equal(design.strings, 235);
-  assert.equal(design.combiners, 14);
+  assert.equal(design.modulesPerString, 25);
+  assert.equal(design.strings, 25);
+  assert.equal(design.combiners, 226);
+  assert.equal(design.totalStrings, 226);
+  assert.equal(design.finalModuleCount, 5650);
   assert.equal(design.inverterArchitecture, 'central');
   assert.equal(design.totalStringInputs, 672);
   assert.ok(design.warnings.some((warning) => warning.includes('module/string ratio')));
@@ -1051,14 +1083,16 @@ test('EPC PV string design reports full-string rounding gap for procurement revi
   const design = calculatePvStringDesign({
     targetPvMwp: 4,
     moduleWp: 580,
-    modulesPerString: 26,
-    combinerInputs: 16,
+    mpptVoltageLimitV: 1500,
+    moduleVocV: 52,
     inverterArchitecture: 'central'
   });
 
   assert.equal(design.modules, 6897);
-  assert.equal(design.strings, 266);
+  assert.equal(design.modulesPerString, 28);
+  assert.equal(design.strings, 28);
   assert.equal(design.fullStringModuleCount, 6916);
+  assert.equal(design.finalModuleCount, 6916);
   assert.equal(design.stringRoundingGapModules, 19);
   assert.ok(design.warnings.some((warning) => /full string/i.test(warning)));
 });

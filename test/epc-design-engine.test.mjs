@@ -407,7 +407,9 @@ test('EPC PV string design derives string length and MPPT combiner groups from m
     maxModulesPerString: design.maxModulesPerString,
     stringOptions: design.stringOptions,
     combiners: design.combiners,
-    combinerInputStrings: design.combinerInputStrings,
+    inverterInputCount: design.inverterInputCount,
+    maxStringsPerInverter: design.maxStringsPerInverter,
+    inverterQuantity: design.inverterQuantity,
     totalStrings: design.totalStrings,
     finalModuleCount: design.finalModuleCount
   }, {
@@ -419,8 +421,10 @@ test('EPC PV string design derives string length and MPPT combiner groups from m
     strings: 28,
     maxModulesPerString: 28,
     stringOptions: [28, 27, 26],
-    combiners: 62,
-    combinerInputStrings: 4,
+    combiners: 0,
+    inverterInputCount: 28,
+    maxStringsPerInverter: 28,
+    inverterQuantity: 9,
     totalStrings: 247,
     finalModuleCount: 6916
   });
@@ -431,10 +435,12 @@ test('EPC PV string design applies cold-temperature DC-side checks and protectio
     targetPvMwp: 4,
     moduleWp: 580,
     temperatureC: 0,
-    maxDcVoltageV: 1500,
+    maxDcVoltageV: 1000,
     mpptVoltageMinV: 600,
     mpptVoltageMaxV: 1500,
     mpptNumber: 12,
+    inverterInputCount: 28,
+    combinerQuantity: 8,
     maxInputCurrentPerMpptA: 60,
     maxShortCircuitCurrentPerMpptA: 70,
     moduleVocV: 52,
@@ -454,19 +460,25 @@ test('EPC PV string design applies cold-temperature DC-side checks and protectio
   assert.equal(design.totalStrings, 256);
   assert.equal(design.fullStringModuleCount, 6912);
   assert.equal(design.maxStringsPerMppt, 4);
+  assert.equal(design.maxStringsPerMpptByCurrent, 4);
+  assert.equal(design.maxStringsPerInverterByMppt, 48);
+  assert.equal(design.maxStringsPerInverter, 28);
+  assert.equal(design.inverterQuantity, 10);
+  assert.equal(design.usedMpptGroupsPerInverter, 7);
   assert.equal(design.designStringsPerMppt, 4);
   assert.equal(design.requiredMpptGroups, 64);
   assert.equal(design.mpptShortCircuitA, 62);
   assert.equal(design.mpptShortCircuitStatus, 'PASS');
-  assert.equal(design.combinerQuantity, 64);
-  assert.equal(design.combinerInputStrings, 4);
-  assert.equal(design.combinerCurrentA, 62);
-  assert.equal(design.combinerRatingA, 63);
+  assert.equal(design.combinerQuantity, 8);
+  assert.equal(design.mpptGroupsPerCombiner, 8);
+  assert.equal(design.combinerShortCircuitA, 496);
+  assert.equal(design.combinerProtectionA, 500);
   assert.equal(design.fuseRatingA, 20);
   assert.equal(design.dcCableAssumptions.lengthM, 100);
   assert.equal(design.dcCableAssumptions.sizeMm2, 35);
   assert.equal(design.dcCableVoltageDropPct, 0.5);
   assert.equal(design.dcCableStatus, 'PASS');
+  assert.ok(!design.warnings.some((warning) => /MPPT groups|more than one|Full string procurement/i.test(warning)));
 });
 
 test('EPC PV string design clips string options below the MPPT minimum voltage window', () => {
@@ -474,7 +486,7 @@ test('EPC PV string design clips string options below the MPPT minimum voltage w
     targetPvMwp: 1,
     moduleWp: 580,
     temperatureC: 25,
-    maxDcVoltageV: 1000,
+    mpptVoltageMaxV: 1000,
     mpptVoltageMinV: 900,
     moduleVocV: 52,
     moduleVmpV: 43,
@@ -501,7 +513,7 @@ test('EPC PV string design supports selecting a lower string option', () => {
   assert.deepEqual(design.stringOptions, [28, 27, 26]);
   assert.equal(design.modulesPerString, 27);
   assert.equal(design.strings, 27);
-  assert.equal(design.combiners, 64);
+  assert.equal(design.combiners, 0);
   assert.equal(design.totalStrings, 256);
   assert.equal(design.finalModuleCount, 6912);
   assert.equal(design.stringRoundingGapModules, 15);
@@ -1135,7 +1147,7 @@ test('EPC PV string design supports module specs and architecture warnings', () 
   assert.equal(design.modules, 5634);
   assert.equal(design.modulesPerString, 25);
   assert.equal(design.strings, 25);
-  assert.equal(design.combiners, 57);
+  assert.equal(design.combiners, 0);
   assert.equal(design.totalStrings, 226);
   assert.equal(design.finalModuleCount, 5650);
   assert.equal(design.inverterArchitecture, 'central');
@@ -1143,7 +1155,7 @@ test('EPC PV string design supports module specs and architecture warnings', () 
   assert.ok(design.warnings.some((warning) => warning.includes('module/string ratio')));
 });
 
-test('EPC PV string design reports full-string rounding gap for procurement review', () => {
+test('EPC PV string design exposes full-string rounding gap for procurement review', () => {
   const design = calculatePvStringDesign({
     targetPvMwp: 4,
     moduleWp: 580,
@@ -1158,7 +1170,7 @@ test('EPC PV string design reports full-string rounding gap for procurement revi
   assert.equal(design.fullStringModuleCount, 6916);
   assert.equal(design.finalModuleCount, 6916);
   assert.equal(design.stringRoundingGapModules, 19);
-  assert.ok(design.warnings.some((warning) => /full string/i.test(warning)));
+  assert.ok(!design.warnings.some((warning) => /full string/i.test(warning)));
 });
 
 test('EPC asset mapping expands quarry MV ring BOQ to procurement-grade feeder and genset lines', () => {

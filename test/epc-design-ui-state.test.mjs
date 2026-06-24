@@ -83,7 +83,7 @@ test('EPC detail inputs are grouped by engineering workflow and hide inactive si
   for (const fieldId of [
     'epc-pv-yield',
     'epc-design-dc-ac-ratio',
-    'epc-max-dc-voltage',
+    'epc-inverter-input-count',
     'epc-mppt-voltage-min',
     'epc-mppt-voltage-max',
     'epc-mppt-number',
@@ -95,7 +95,7 @@ test('EPC detail inputs are grouped by engineering workflow and hide inactive si
     'epc-module-imp',
     'epc-module-beta-voc',
     'epc-module-beta-pmax',
-    'epc-string-length',
+    'epc-combiner-quantity',
     'epc-peak-load-factor',
     'epc-electrical-load-basis-mode',
     'epc-power-factor',
@@ -112,7 +112,7 @@ test('EPC detail inputs are grouped by engineering workflow and hide inactive si
 
   assert.match(source, /Module Parameters/);
   assert.match(source, /Inverter Parameters/);
-  assert.match(source, /<label[^>]*>\s*Max DC Voltage\s*<span data-epc-help="max-dc-voltage"/);
+  assert.match(source, /<label[^>]*>\s*Inputs\s*<span data-epc-help="inverter-input-count"/);
   assert.match(source, /<label[^>]*>\s*MPPT Min\s*<span data-epc-help="mppt-voltage-min"/);
   assert.match(source, /<label[^>]*>\s*MPPT Max\s*<span data-epc-help="mppt-voltage-max"/);
   assert.match(source, /<label[^>]*>\s*Voc\s*<span data-epc-help="module-voc"/);
@@ -121,7 +121,8 @@ test('EPC detail inputs are grouped by engineering workflow and hide inactive si
   assert.match(source, /<label[^>]*>\s*Imp\s*<span data-epc-help="module-imp"/);
   assert.match(source, /<label[^>]*>\s*βVoc\s*<span data-epc-help="module-beta-voc"/);
   assert.match(source, /<label[^>]*>\s*βPmax\s*<span data-epc-help="module-beta-pmax"/);
-  assert.match(source, /<label[^>]*>\s*Strings\s*<span data-epc-help="string-length"/);
+  assert.match(source, /<label[^>]*>\s*Combiner\s*<span data-epc-help="combiner-quantity"/);
+  assert.doesNotMatch(source, /id="epc-string-length"/);
   assert.doesNotMatch(source, /id="epc-modules-per-string"/);
   assert.doesNotMatch(source, /id="epc-combiner-inputs"/);
 
@@ -528,7 +529,7 @@ test('EPC detailed inputs expose title pointers instead of inline helper paragra
     'data-epc-help="bess-dod"',
     'data-epc-help="power-factor"',
     'data-epc-help="critical-load"',
-    'data-epc-help="max-dc-voltage"',
+    'data-epc-help="inverter-input-count"',
     'data-epc-help="mppt-voltage-min"',
     'data-epc-help="mppt-voltage-max"',
     'data-epc-help="mppt-number"',
@@ -540,7 +541,7 @@ test('EPC detailed inputs expose title pointers instead of inline helper paragra
     'data-epc-help="module-imp"',
     'data-epc-help="module-beta-voc"',
     'data-epc-help="module-beta-pmax"',
-    'data-epc-help="string-length"',
+    'data-epc-help="combiner-quantity"',
     'data-epc-detail-group="solar-strings"',
     'data-epc-detail-group="load-electrical"',
     'data-epc-detail-group="battery-soc"',
@@ -567,11 +568,11 @@ test('EPC detailed inputs expose title pointers instead of inline helper paragra
     'Power factor used for AC current and voltage architecture checks.',
     'Module Parameters',
     'Inverter Parameters',
-    'Maximum inverter DC voltage used for cold-temperature string-length calculation.',
+    'Physical inverter string input ports used to cap connected strings per inverter.',
     'Minimum MPPT operating voltage used to protect the minimum string length.',
-    'Maximum MPPT operating voltage shown as inverter design context.',
+    'Maximum MPPT operating voltage used as the cold-temperature string-length voltage limit.',
     'Module open-circuit voltage used for cold-temperature string-length calculation.',
-    'Selectable modules per string generated from cold-temperature Max DC Voltage and MPPT minimum voltage.'
+    'Optional combiner-box quantity for grouping MPPT groups; 0 hides combiner design.'
   ]) {
     assert.match(detailSection, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing detail helper snippet: ${snippet}`);
   }
@@ -834,6 +835,7 @@ test('EPC EMS flow exposes animated system diagram and clickable hour rows', () 
   assert.ok(flowRenderer, 'EMS Flow renderer should be found');
   assert.doesNotMatch(flowRenderer[0], /renderEpcDeviceWork/, 'Device Work should not be embedded inside EMS Flow');
   assert.doesNotMatch(flowRenderer[0], /epc-device-work-panel/, 'Device Work panel should live in its own tab');
+  assert.doesNotMatch(flowRenderer[0], /<div class="text-\[10px\][^"]*">Modules<\/div>/, 'Total module count should move from EMS Flow to Solar DC-side Design');
   assert.doesNotMatch(html, /class="[^"]*epc-flow-node[^"]*epc-flow-ems/, 'EMS should not be rendered as a flow node');
   assert.doesNotMatch(html, /<text[^>]*>EMS<\/text>/, 'PV should not terminate at an EMS node');
 });
@@ -1645,11 +1647,17 @@ test('EPC Electrical workspace places DC-side design output before architecture 
   assert.ok(comparisonIndex > dcIndex, 'architecture comparison should render after DC-side design');
   for (const snippet of [
     'epc-string-length-electrical',
+    'Total Modules',
     'Max String Length',
     'Min String Length',
     'Strings / MPPT',
+    'MPPT Groups',
+    'Inverters',
     'MPPT SCC Check',
     'Design Combiner',
+    'combinerQuantity > 0',
+    'mpptGroupsPerCombiner',
+    'combinerProtectionA',
     'Design Fuse',
     'Design DC Cable',
     'Voltage Drop Check',

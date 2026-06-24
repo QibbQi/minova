@@ -3031,28 +3031,80 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             </div>
             <div id="epc-detailed-fields" data-epc-engineering-section="true" data-epc-detail-page="settings">
                 <div id="epc-advanced-inputs" data-epc-advanced-section="true" class="grid grid-cols-1 xl:grid-cols-2 gap-3 p-4">
-                    <div data-epc-detail-group="solar-strings" class="rounded-2xl border border-slate-100 bg-slate-50/60 p-3">
-                        <div class="mb-3 rounded-xl border border-slate-100 bg-white px-3 py-2 text-[10px] font-black uppercase text-slate-500">Solar & Strings</div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div data-epc-detail-group="solar-strings" class="xl:col-span-2 rounded-2xl border border-slate-100 bg-slate-50/60 p-3">
+                        <div class="mb-2 rounded-xl border border-slate-100 bg-white px-3 py-2 text-[10px] font-black uppercase text-slate-500">Solar & Strings</div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
                             <div data-epc-detail-field="pv-yield">
                                 <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Daily PV yield used for PV sizing; this should follow GSA PVOUT when solar data is fetched.">PV Yield <span data-epc-help="pv-yield" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Daily PV yield used for PV sizing; this should follow GSA PVOUT when solar data is fetched.">i</span></label>
-                                <input id="epc-pv-yield" data-epc-field="solarResource.specificYieldKwhPerKwpDay" type="number" step="0.1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
+                                <input id="epc-pv-yield" data-epc-field="solarResource.specificYieldKwhPerKwpDay" type="number" step="0.1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:border-purple-500 bg-white">
                             </div>
                             <div data-epc-detail-field="dc-ac-ratio">
                                 <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="PV array DC rating divided by inverter AC rating. PV Simulator reads this project engineering value automatically.">DC/AC Ratio <span data-epc-help="pv-dc-ac-ratio" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="PV array DC rating divided by inverter AC rating. PV Simulator reads this project engineering value automatically.">i</span></label>
-                                <input id="epc-design-dc-ac-ratio" data-epc-field="assumptions.pvDcAcRatio" type="number" step="0.05" min="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
-                            </div>
-                            <div data-epc-detail-field="mppt-voltage">
-                                <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="MPPT voltage limit used with module Voc to calculate modules per string.">MPPT <span data-epc-help="mppt-voltage" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="MPPT voltage limit used with module Voc to calculate modules per string.">i</span></label>
-                                <input id="epc-mppt-voltage" data-epc-field="assumptions.mpptVoltageLimitV" type="number" min="1" step="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
-                            </div>
-                            <div data-epc-detail-field="module-voc">
-                                <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Module open-circuit voltage used for MPPT string-length calculation.">Voc <span data-epc-help="module-voc" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Module open-circuit voltage used for MPPT string-length calculation.">i</span></label>
-                                <input id="epc-module-voc" data-epc-field="assumptions.moduleVocV" type="number" min="0.1" step="0.1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white">
+                                <input id="epc-design-dc-ac-ratio" data-epc-field="assumptions.pvDcAcRatio" type="number" step="0.05" min="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:border-purple-500 bg-white">
                             </div>
                             <div data-epc-detail-field="string-length">
-                                <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Selectable modules per string generated from the MPPT / Voc limit.">Strings <span data-epc-help="string-length" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Selectable modules per string generated from the MPPT / Voc limit.">i</span></label>
-                                <select id="epc-string-length" data-epc-field="assumptions.selectedModulesPerString" data-epc-number="true" onchange="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-500 bg-white"></select>
+                                <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Selectable modules per string generated from cold-temperature Max DC Voltage and MPPT minimum voltage.">Strings <span data-epc-help="string-length" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Selectable modules per string generated from cold-temperature Max DC Voltage and MPPT minimum voltage.">i</span></label>
+                                <select id="epc-string-length" data-epc-field="assumptions.selectedModulesPerString" data-epc-number="true" onchange="syncEpcStringLengthSelection(this.value); onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:border-purple-500 bg-white"></select>
+                            </div>
+                        </div>
+                        <div class="mt-2 grid grid-cols-1 xl:grid-cols-2 gap-2">
+                            <div class="rounded-xl border border-slate-100 bg-white p-2">
+                                <div class="mb-2 text-[10px] font-black uppercase text-slate-500">Module Parameters</div>
+                                <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                    <div data-epc-detail-field="module-voc">
+                                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Module open-circuit voltage used for cold-temperature string-length calculation.">Voc <span data-epc-help="module-voc" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Module open-circuit voltage used for cold-temperature string-length calculation.">i</span></label>
+                                        <input id="epc-module-voc" data-epc-field="assumptions.moduleVocV" type="number" min="0.1" step="0.1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:border-purple-500 bg-white">
+                                    </div>
+                                    <div data-epc-detail-field="module-vmp">
+                                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Module maximum-power voltage used for MPPT minimum string-length calculation.">Vmp <span data-epc-help="module-vmp" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Module maximum-power voltage used for MPPT minimum string-length calculation.">i</span></label>
+                                        <input id="epc-module-vmp" data-epc-field="assumptions.moduleVmpV" type="number" min="0.1" step="0.1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:border-purple-500 bg-white">
+                                    </div>
+                                    <div data-epc-detail-field="module-isc">
+                                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Module short-circuit current used for MPPT SCC, combiner and fuse checks.">Isc <span data-epc-help="module-isc" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Module short-circuit current used for MPPT SCC, combiner and fuse checks.">i</span></label>
+                                        <input id="epc-module-isc" data-epc-field="assumptions.moduleIscA" type="number" min="0.1" step="0.1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:border-purple-500 bg-white">
+                                    </div>
+                                    <div data-epc-detail-field="module-imp">
+                                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Module maximum-power current used for strings per MPPT and DC cable voltage drop.">Imp <span data-epc-help="module-imp" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Module maximum-power current used for strings per MPPT and DC cable voltage drop.">i</span></label>
+                                        <input id="epc-module-imp" data-epc-field="assumptions.moduleImpA" type="number" min="0.1" step="0.1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:border-purple-500 bg-white">
+                                    </div>
+                                    <div data-epc-detail-field="module-beta-voc">
+                                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Voc temperature coefficient in % per C, for example -0.24.">βVoc <span data-epc-help="module-beta-voc" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Voc temperature coefficient in % per C, for example -0.24.">i</span></label>
+                                        <input id="epc-module-beta-voc" data-epc-field="assumptions.moduleBetaVocPctPerC" type="number" step="0.01" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:border-purple-500 bg-white">
+                                    </div>
+                                    <div data-epc-detail-field="module-beta-pmax">
+                                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Pmax temperature coefficient in % per C, for example -0.29.">βPmax <span data-epc-help="module-beta-pmax" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Pmax temperature coefficient in % per C, for example -0.29.">i</span></label>
+                                        <input id="epc-module-beta-pmax" data-epc-field="assumptions.moduleBetaPmaxPctPerC" type="number" step="0.01" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:border-purple-500 bg-white">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="rounded-xl border border-slate-100 bg-white p-2">
+                                <div class="mb-2 text-[10px] font-black uppercase text-slate-500">Inverter Parameters</div>
+                                <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                    <div data-epc-detail-field="max-dc-voltage">
+                                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Maximum inverter DC voltage used for cold-temperature string-length calculation.">Max DC Voltage <span data-epc-help="max-dc-voltage" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Maximum inverter DC voltage used for cold-temperature string-length calculation.">i</span></label>
+                                        <input id="epc-max-dc-voltage" data-epc-field="assumptions.maxDcVoltageV" type="number" min="1" step="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:border-purple-500 bg-white">
+                                    </div>
+                                    <div data-epc-detail-field="mppt-voltage-min">
+                                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Minimum MPPT operating voltage used to protect the minimum string length.">MPPT Min <span data-epc-help="mppt-voltage-min" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Minimum MPPT operating voltage used to protect the minimum string length.">i</span></label>
+                                        <input id="epc-mppt-voltage-min" data-epc-field="assumptions.mpptVoltageMinV" type="number" min="1" step="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:border-purple-500 bg-white">
+                                    </div>
+                                    <div data-epc-detail-field="mppt-voltage-max">
+                                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Maximum MPPT operating voltage shown as inverter design context.">MPPT Max <span data-epc-help="mppt-voltage-max" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Maximum MPPT operating voltage shown as inverter design context.">i</span></label>
+                                        <input id="epc-mppt-voltage-max" data-epc-field="assumptions.mpptVoltageMaxV" type="number" min="1" step="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:border-purple-500 bg-white">
+                                    </div>
+                                    <div data-epc-detail-field="mppt-number">
+                                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Number of MPPT channels available per inverter block.">MPPT Number <span data-epc-help="mppt-number" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Number of MPPT channels available per inverter block.">i</span></label>
+                                        <input id="epc-mppt-number" data-epc-field="assumptions.mpptNumber" type="number" min="1" step="1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:border-purple-500 bg-white">
+                                    </div>
+                                    <div data-epc-detail-field="max-input-current-per-mppt">
+                                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Maximum input current per MPPT used to calculate strings per MPPT.">Max Input Current / MPPT <span data-epc-help="max-input-current-per-mppt" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Maximum input current per MPPT used to calculate strings per MPPT.">i</span></label>
+                                        <input id="epc-max-input-current-per-mppt" data-epc-field="assumptions.maxInputCurrentPerMpptA" type="number" min="0.1" step="0.1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:border-purple-500 bg-white">
+                                    </div>
+                                    <div data-epc-detail-field="max-short-circuit-current-per-mppt">
+                                        <label class="epc-field-label text-[10px] font-black text-slate-400 uppercase mb-1" title="Maximum short-circuit current per MPPT used for SCC pass/fail check.">Max SCC / MPPT <span data-epc-help="max-short-circuit-current-per-mppt" class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-400" title="Maximum short-circuit current per MPPT used for SCC pass/fail check.">i</span></label>
+                                        <input id="epc-max-short-circuit-current-per-mppt" data-epc-field="assumptions.maxShortCircuitCurrentPerMpptA" type="number" min="0.1" step="0.1" oninput="onEpcDesignInputChanged()" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:border-purple-500 bg-white">
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -11676,15 +11728,30 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const resultOptions = result?.pvStringDesign?.stringOptions;
             if (Array.isArray(resultOptions) && resultOptions.length) return resultOptions;
             const assumptions = project.assumptions || {};
-            const mppt = Number(assumptions.mpptVoltageLimitV || EPC_DESIGN_DEFAULTS.mpptVoltageLimitV);
+            const maxDc = Number(assumptions.maxDcVoltageV || assumptions.mpptVoltageLimitV || EPC_DESIGN_DEFAULTS.maxDcVoltageV || EPC_DESIGN_DEFAULTS.mpptVoltageLimitV);
             const voc = Number(assumptions.moduleVocV || EPC_DESIGN_DEFAULTS.moduleVocV);
-            const max = Math.max(1, Math.floor(mppt / Math.max(0.1, voc)) || EPC_DESIGN_DEFAULTS.modulesPerString);
-            return [max, max - 1, max - 2].filter((value, index, values) => value >= 1 && values.indexOf(value) === index);
+            const vmp = Number(assumptions.moduleVmpV || EPC_DESIGN_DEFAULTS.moduleVmpV);
+            const betaVoc = Number(assumptions.moduleBetaVocPctPerC ?? EPC_DESIGN_DEFAULTS.moduleBetaVocPctPerC);
+            const temp = Number(project.solarResource?.temperatureC);
+            const tempC = Number.isFinite(temp) ? temp : 25;
+            const vocCold = Math.max(0.1, voc * (1 + (betaVoc / 100) * (tempC - 25)));
+            const max = Math.max(1, Math.floor(maxDc / vocCold) || EPC_DESIGN_DEFAULTS.modulesPerString);
+            const min = Math.max(1, Math.ceil(Number(assumptions.mpptVoltageMinV || EPC_DESIGN_DEFAULTS.mpptVoltageMinV) / Math.max(0.1, vmp)));
+            const options = [max, max - 1, max - 2].filter((value, index, values) => value >= min && values.indexOf(value) === index);
+            return options.length ? options : [min];
         }
 
+        function syncEpcStringLengthSelection(value) {
+            for (const select of [
+                document.getElementById('epc-string-length'),
+                document.getElementById('epc-string-length-electrical')
+            ].filter(Boolean)) {
+                select.value = String(value || '');
+            }
+        }
+        window.syncEpcStringLengthSelection = syncEpcStringLengthSelection;
+
         function renderEpcStringLengthOptions(project = getActiveEpcDesignProject(), result = null) {
-            const select = document.getElementById('epc-string-length');
-            if (!select) return;
             const options = buildEpcStringLengthOptions(project, result);
             const resultSelection = Number(result?.pvStringDesign?.selectedModulesPerString || result?.pvStringDesign?.modulesPerString);
             const projectSelection = Number(project.assumptions?.selectedModulesPerString);
@@ -11693,8 +11760,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 : options.includes(projectSelection)
                 ? projectSelection
                 : options[0];
-            select.innerHTML = options.map(value => `<option value="${value}">${value}</option>`).join('');
-            select.value = String(selected || options[0] || '');
+            for (const select of [
+                document.getElementById('epc-string-length'),
+                document.getElementById('epc-string-length-electrical')
+            ].filter(Boolean)) {
+                select.innerHTML = options.map(value => `<option value="${value}">${value}</option>`).join('');
+                select.value = String(selected || options[0] || '');
+            }
         }
 
         function syncEpcDesignInputs(project) {
@@ -11744,8 +11816,18 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             setInputValue('epc-power-factor', project.electrical.powerFactor || EPC_DESIGN_DEFAULTS.powerFactor);
             setInputValue('epc-bess-role', project.designTargets.bessRole || '');
             setInputValue('epc-module-wp', project.assumptions.moduleWp || EPC_DESIGN_DEFAULTS.moduleWp);
-            setInputValue('epc-mppt-voltage', project.assumptions.mpptVoltageLimitV || EPC_DESIGN_DEFAULTS.mpptVoltageLimitV);
+            setInputValue('epc-max-dc-voltage', project.assumptions.maxDcVoltageV || project.assumptions.mpptVoltageLimitV || EPC_DESIGN_DEFAULTS.maxDcVoltageV);
+            setInputValue('epc-mppt-voltage-min', project.assumptions.mpptVoltageMinV || EPC_DESIGN_DEFAULTS.mpptVoltageMinV);
+            setInputValue('epc-mppt-voltage-max', project.assumptions.mpptVoltageMaxV || EPC_DESIGN_DEFAULTS.mpptVoltageMaxV);
+            setInputValue('epc-mppt-number', project.assumptions.mpptNumber || EPC_DESIGN_DEFAULTS.mpptNumber);
+            setInputValue('epc-max-input-current-per-mppt', project.assumptions.maxInputCurrentPerMpptA || EPC_DESIGN_DEFAULTS.maxInputCurrentPerMpptA);
+            setInputValue('epc-max-short-circuit-current-per-mppt', project.assumptions.maxShortCircuitCurrentPerMpptA || EPC_DESIGN_DEFAULTS.maxShortCircuitCurrentPerMpptA);
             setInputValue('epc-module-voc', project.assumptions.moduleVocV || EPC_DESIGN_DEFAULTS.moduleVocV);
+            setInputValue('epc-module-vmp', project.assumptions.moduleVmpV || EPC_DESIGN_DEFAULTS.moduleVmpV);
+            setInputValue('epc-module-isc', project.assumptions.moduleIscA || EPC_DESIGN_DEFAULTS.moduleIscA);
+            setInputValue('epc-module-imp', project.assumptions.moduleImpA || EPC_DESIGN_DEFAULTS.moduleImpA);
+            setInputValue('epc-module-beta-voc', project.assumptions.moduleBetaVocPctPerC ?? EPC_DESIGN_DEFAULTS.moduleBetaVocPctPerC);
+            setInputValue('epc-module-beta-pmax', project.assumptions.moduleBetaPmaxPctPerC ?? EPC_DESIGN_DEFAULTS.moduleBetaPmaxPctPerC);
             renderEpcStringLengthOptions(project, window.__lastEpcDesignResult || null);
             setInputValue('epc-solar-ghi', project.solarResource.ghiKwhM2Day || '');
             setInputValue('epc-solar-dni', project.solarResource.dniKwhM2Day || '');
@@ -14721,12 +14803,28 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 || {};
             const loadBasisLabel = liveRecommendation.loadBasisLabel || designBasis.loadBasisLabel || result.electrical?.loadBasisLabel || 'PV AC kW';
             const loadBasisSource = liveRecommendation.loadBasisSource || designBasis.loadBasisSource || result.electrical?.loadBasisSource || '';
+            const pvStringDesign = result.pvStringDesign || {};
+            const dcCableAssumptions = pvStringDesign.dcCableAssumptions || {};
             const statusTone = (status = '') => {
                 const value = String(status || '').toUpperCase();
                 if (value.includes('SELECTED') || value.includes('PREFERRED') || value === 'PASS' || value === 'EXCELLENT') return 'text-emerald-700 bg-emerald-50 border-emerald-200';
                 if (value.includes('HARD') || value === 'FAIL') return 'text-red-700 bg-red-50 border-red-200';
                 return 'text-yellow-700 bg-yellow-50 border-yellow-200';
             };
+            const stringOptions = Array.isArray(pvStringDesign.stringOptions) && pvStringDesign.stringOptions.length
+                ? pvStringDesign.stringOptions
+                : buildEpcStringLengthOptions(getActiveEpcDesignProject(), result);
+            const dcDesignCards = [
+                ['Max String Length', formatEpcNumber(pvStringDesign.maxStringLength || pvStringDesign.maxModulesPerString || 0, 0), `Cold Voc ${formatEpcNumber(pvStringDesign.vocColdV || 0, 2, 'V')} @ ${formatEpcNumber(pvStringDesign.temperatureC ?? 25, 1, 'C')}`],
+                ['Min String Length', formatEpcNumber(pvStringDesign.minStringLength || 0, 0), `MPPT min ${formatEpcNumber(pvStringDesign.mpptVoltageMinV || 0, 0, 'V')}`],
+                ['Strings / MPPT', `${formatEpcNumber(pvStringDesign.designStringsPerMppt || 0, 0)} / ${formatEpcNumber(pvStringDesign.maxStringsPerMppt || 0, 0)}`, `Required groups ${formatEpcNumber(pvStringDesign.requiredMpptGroups || 0, 0)}`],
+                ['MPPT SCC Check', formatEpcNumber(pvStringDesign.mpptShortCircuitA || 0, 1, 'A'), pvStringDesign.mpptShortCircuitStatus || 'REVIEW'],
+                ['Design Combiner', `${formatEpcNumber(pvStringDesign.combinerQuantity || 0, 0)} x ${formatEpcNumber(pvStringDesign.combinerRatingA || 0, 0, 'A')}`, `${formatEpcNumber(pvStringDesign.combinerInputStrings || 0, 0)} strings/group`],
+                ['Design Fuse', formatEpcNumber(pvStringDesign.fuseRatingA || 0, 0, 'A'), `1.25 x Isc ${formatEpcNumber(pvStringDesign.moduleIscA || 0, 1, 'A')}`],
+                ['Design DC Cable', `${formatEpcNumber(dcCableAssumptions.sizeMm2 || 0, 0, 'mm2')} / ${formatEpcNumber(dcCableAssumptions.lengthM || 0, 0, 'm')}`, `Design current ${formatEpcNumber(pvStringDesign.dcCableDesignCurrentA || 0, 1, 'A')}`],
+                ['Voltage Drop Check', formatEpcNumber(pvStringDesign.dcCableVoltageDropPct || 0, 2, '%'), pvStringDesign.dcCableStatus || 'REVIEW']
+            ];
+            const dcWarnings = (pvStringDesign.warnings || []).filter(Boolean);
             const basisCards = [
                 ['Live Target', liveRecommendation.label || result.schemes?.find(scheme => scheme.id === result.recommendedSchemeId)?.label || 'Recommended Scheme'],
                 ['Load Basis', formatEpcNumber(liveRecommendation.loadBasisKw || designBasis.loadKw || result.electrical?.designKw || 0, 0, 'kW'), loadBasisLabel],
@@ -14789,6 +14887,36 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                             </div>
                         </section>
                     </div>
+                    <section class="rounded-xl border border-slate-200 bg-white p-4">
+                        <div class="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                                <div class="text-[10px] font-black uppercase text-slate-400">Solar DC-side Design</div>
+                                <div class="mt-1 text-sm font-black text-slate-800">String, MPPT, Combiner & Cable Check</div>
+                            </div>
+                            <div class="min-w-[8rem]">
+                                <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Strings</label>
+                                <select id="epc-string-length-electrical" data-epc-field="assumptions.selectedModulesPerString" data-epc-number="true" onchange="syncEpcStringLengthSelection(this.value); onEpcDesignInputChanged()" class="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm font-bold text-slate-800 outline-none focus:border-purple-500">
+                                    ${stringOptions.map(value => `<option value="${value}" ${Number(value) === Number(pvStringDesign.selectedModulesPerString || pvStringDesign.modulesPerString) ? 'selected' : ''}>${value}</option>`).join('')}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2">
+                            ${dcDesignCards.map(([label, value, detail]) => {
+                                const tone = /Check/.test(label) ? statusTone(detail) : 'border-slate-100 bg-slate-50 text-slate-700';
+                                return `
+                                    <div class="rounded-lg border ${tone} px-3 py-2">
+                                        <div class="text-[10px] font-black uppercase text-slate-400">${htmlSafe(label)}</div>
+                                        <div class="mt-1 text-sm font-black text-slate-800">${htmlSafe(value)}</div>
+                                        <div class="mt-0.5 text-[10px] font-bold leading-snug text-slate-500">${htmlSafe(detail || '')}</div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                        <div class="mt-3 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-[11px] font-bold leading-relaxed text-slate-500">
+                            DC Cable Assumption: conceptual ${formatEpcNumber(dcCableAssumptions.lengthM || 0, 0, 'm')} one-way copper run, ${formatEpcNumber(dcCableAssumptions.sizeMm2 || 0, 0, 'mm2')}, rho ${formatEpcNumber(dcCableAssumptions.resistivity || 0, 4)}, drop limit ${formatEpcNumber(dcCableAssumptions.voltageDropLimitPct || 0, 1, '%')}. Final cable schedule requires route and local code review.
+                        </div>
+                        ${dcWarnings.length ? `<div class="mt-2 rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-2 text-[11px] font-bold leading-relaxed text-yellow-700">${dcWarnings.map(htmlSafe).join('<br>')}</div>` : ''}
+                    </section>
 	                    <section class="rounded-xl border border-slate-200 overflow-hidden">
 	                        <div class="bg-slate-50 px-3 py-2 text-[10px] font-black uppercase text-slate-500">Executive Decision - Architecture Comparison</div>
 	                        <div class="overflow-x-auto">

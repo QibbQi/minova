@@ -30,11 +30,26 @@ export const EPC_DESIGN_DEFAULTS = Object.freeze({
   groundPvAreaM2PerMwp: 11500,
   moduleWp: 580,
   mpptVoltageLimitV: 1500,
+  maxDcVoltageV: 1500,
+  mpptVoltageMinV: 600,
+  mpptVoltageMaxV: 1500,
+  mpptNumber: 12,
+  maxInputCurrentPerMpptA: 60,
+  maxShortCircuitCurrentPerMpptA: 70,
   moduleVocV: 52,
+  moduleVmpV: 43,
+  moduleIscA: 15.5,
+  moduleImpA: 14.5,
+  moduleBetaVocPctPerC: -0.24,
+  moduleBetaPmaxPctPerC: -0.29,
   modulesPerString: 26,
   combinerInputs: 16,
   inverterArchitecture: 'central',
   totalStringInputs: 0,
+  dcCableLengthM: 100,
+  dcCableSizeMm2: 35,
+  dcCableResistivity: 0.0175,
+  dcCableVoltageDropLimitPct: 1,
   standardTopologyLibrary: null
 });
 
@@ -2272,10 +2287,55 @@ export function normalizeEpcDesignProject(raw = {}, options = {}) {
     assumptions.mpptVoltageLimitV ?? assumptions.mpptVoltageV ?? assumptions.maxDcVoltageV ?? defaults.mpptVoltageLimitV,
     EPC_DESIGN_DEFAULTS.mpptVoltageLimitV
   ));
+  normalizedAssumptions.maxDcVoltageV = Math.max(1, asNumber(
+    assumptions.maxDcVoltageV ?? assumptions.mpptVoltageLimitV ?? assumptions.mpptVoltageV ?? defaults.maxDcVoltageV ?? normalizedAssumptions.mpptVoltageLimitV,
+    EPC_DESIGN_DEFAULTS.maxDcVoltageV
+  ));
+  normalizedAssumptions.mpptVoltageLimitV = normalizedAssumptions.maxDcVoltageV;
+  normalizedAssumptions.mpptVoltageMinV = Math.max(1, asNumber(
+    assumptions.mpptVoltageMinV ?? assumptions.mpptMinVoltageV ?? defaults.mpptVoltageMinV,
+    EPC_DESIGN_DEFAULTS.mpptVoltageMinV
+  ));
+  normalizedAssumptions.mpptVoltageMaxV = Math.max(normalizedAssumptions.mpptVoltageMinV, asNumber(
+    assumptions.mpptVoltageMaxV ?? assumptions.mpptMaxVoltageV ?? defaults.mpptVoltageMaxV ?? normalizedAssumptions.maxDcVoltageV,
+    EPC_DESIGN_DEFAULTS.mpptVoltageMaxV
+  ));
+  normalizedAssumptions.mpptNumber = Math.max(1, Math.floor(asNumber(
+    assumptions.mpptNumber ?? assumptions.mpptCount ?? defaults.mpptNumber,
+    EPC_DESIGN_DEFAULTS.mpptNumber
+  )));
+  normalizedAssumptions.maxInputCurrentPerMpptA = Math.max(0.1, asNumber(
+    assumptions.maxInputCurrentPerMpptA ?? assumptions.mpptMaxInputCurrentA ?? defaults.maxInputCurrentPerMpptA,
+    EPC_DESIGN_DEFAULTS.maxInputCurrentPerMpptA
+  ));
+  normalizedAssumptions.maxShortCircuitCurrentPerMpptA = Math.max(0.1, asNumber(
+    assumptions.maxShortCircuitCurrentPerMpptA ?? assumptions.mpptMaxShortCircuitCurrentA ?? defaults.maxShortCircuitCurrentPerMpptA,
+    EPC_DESIGN_DEFAULTS.maxShortCircuitCurrentPerMpptA
+  ));
   normalizedAssumptions.moduleVocV = Math.max(0.1, asNumber(
     assumptions.moduleVocV ?? assumptions.vocV ?? defaults.moduleVocV,
     EPC_DESIGN_DEFAULTS.moduleVocV
   ));
+  normalizedAssumptions.moduleVmpV = Math.max(0.1, asNumber(
+    assumptions.moduleVmpV ?? assumptions.vmpV ?? defaults.moduleVmpV,
+    EPC_DESIGN_DEFAULTS.moduleVmpV
+  ));
+  normalizedAssumptions.moduleIscA = Math.max(0.1, asNumber(
+    assumptions.moduleIscA ?? assumptions.iscA ?? defaults.moduleIscA,
+    EPC_DESIGN_DEFAULTS.moduleIscA
+  ));
+  normalizedAssumptions.moduleImpA = Math.max(0.1, asNumber(
+    assumptions.moduleImpA ?? assumptions.impA ?? defaults.moduleImpA,
+    EPC_DESIGN_DEFAULTS.moduleImpA
+  ));
+  normalizedAssumptions.moduleBetaVocPctPerC = asNumber(
+    assumptions.moduleBetaVocPctPerC ?? assumptions.betaVocPctPerC ?? defaults.moduleBetaVocPctPerC,
+    EPC_DESIGN_DEFAULTS.moduleBetaVocPctPerC
+  );
+  normalizedAssumptions.moduleBetaPmaxPctPerC = asNumber(
+    assumptions.moduleBetaPmaxPctPerC ?? assumptions.betaPmaxPctPerC ?? defaults.moduleBetaPmaxPctPerC,
+    EPC_DESIGN_DEFAULTS.moduleBetaPmaxPctPerC
+  );
   normalizedAssumptions.modulesPerString = Math.max(1, asNumber(
     assumptions.modulesPerString ?? defaults.modulesPerString,
     EPC_DESIGN_DEFAULTS.modulesPerString
@@ -2288,6 +2348,22 @@ export function normalizeEpcDesignProject(raw = {}, options = {}) {
     assumptions.selectedModulesPerString ?? defaults.selectedModulesPerString,
     0
   )));
+  normalizedAssumptions.dcCableLengthM = Math.max(0, asNumber(
+    assumptions.dcCableLengthM ?? defaults.dcCableLengthM,
+    EPC_DESIGN_DEFAULTS.dcCableLengthM
+  ));
+  normalizedAssumptions.dcCableSizeMm2 = Math.max(0.1, asNumber(
+    assumptions.dcCableSizeMm2 ?? defaults.dcCableSizeMm2,
+    EPC_DESIGN_DEFAULTS.dcCableSizeMm2
+  ));
+  normalizedAssumptions.dcCableResistivity = Math.max(0.0001, asNumber(
+    assumptions.dcCableResistivity ?? defaults.dcCableResistivity,
+    EPC_DESIGN_DEFAULTS.dcCableResistivity
+  ));
+  normalizedAssumptions.dcCableVoltageDropLimitPct = Math.max(0.1, asNumber(
+    assumptions.dcCableVoltageDropLimitPct ?? defaults.dcCableVoltageDropLimitPct,
+    EPC_DESIGN_DEFAULTS.dcCableVoltageDropLimitPct
+  ));
   delete normalizedAssumptions.standardTopologyLibrary;
   const normalizedCalculationAssumptions = {
     ...defaults,
@@ -4137,7 +4213,7 @@ function buildBoq(project, recommended, context = {}) {
     id: 'pv-module-count',
     package: 'PV System',
     item: 'PV modules',
-    spec: `${pvStringDesign.moduleWp || project.assumptions?.moduleWp || EPC_DESIGN_DEFAULTS.moduleWp}Wp module, ${pvStringDesign.modulesPerString || project.assumptions?.modulesPerString || EPC_DESIGN_DEFAULTS.modulesPerString} modules/string by ${pvStringDesign.mpptVoltageLimitV || project.assumptions?.mpptVoltageLimitV || EPC_DESIGN_DEFAULTS.mpptVoltageLimitV}V MPPT / ${pvStringDesign.moduleVocV || project.assumptions?.moduleVocV || EPC_DESIGN_DEFAULTS.moduleVocV}V Voc`,
+    spec: `${pvStringDesign.moduleWp || project.assumptions?.moduleWp || EPC_DESIGN_DEFAULTS.moduleWp}Wp module, ${pvStringDesign.modulesPerString || project.assumptions?.modulesPerString || EPC_DESIGN_DEFAULTS.modulesPerString} modules/string by ${pvStringDesign.maxDcVoltageV || project.assumptions?.maxDcVoltageV || EPC_DESIGN_DEFAULTS.maxDcVoltageV}V max DC / ${pvStringDesign.vocColdV || pvStringDesign.moduleVocV || project.assumptions?.moduleVocV || EPC_DESIGN_DEFAULTS.moduleVocV}V cold Voc`,
     quantity: pvStringDesign.modules || 0,
     unit: 'pcs',
     protection: 'Junction box IP65 or above, C5-M frame if required',
@@ -4161,7 +4237,7 @@ function buildBoq(project, recommended, context = {}) {
     id: 'pv-string-count',
     package: 'PV System',
     item: 'PV strings',
-    spec: `${pvStringDesign.modulesPerString || project.assumptions?.modulesPerString || EPC_DESIGN_DEFAULTS.modulesPerString} modules per string from MPPT / Voc`,
+    spec: `${pvStringDesign.modulesPerString || project.assumptions?.modulesPerString || EPC_DESIGN_DEFAULTS.modulesPerString} modules per string from Max DC / cold Voc and MPPT minimum voltage`,
     quantity: pvStringDesign.totalStrings || pvStringDesign.combiners || 0,
     unit: 'string',
     protection: 'DC1500V design basis',
@@ -4173,8 +4249,8 @@ function buildBoq(project, recommended, context = {}) {
     id: 'pv-combiner-box',
     package: 'PV System',
     item: 'Smart PV combiner box',
-    spec: `Integer count from module quantity / ${pvStringDesign.modulesPerString || project.assumptions?.modulesPerString || EPC_DESIGN_DEFAULTS.modulesPerString} modules per string, DC1500V, SPD and monitoring`,
-    quantity: pvStringDesign.combiners || 0,
+    spec: `${pvStringDesign.combinerInputStrings || 0} strings per MPPT combiner group, ${pvStringDesign.combinerRatingA || 0}A DC rating, SPD and monitoring`,
+    quantity: pvStringDesign.combinerQuantity || pvStringDesign.combiners || 0,
     unit: 'pcs',
     protection: 'IP65, C5-M when outdoor',
     remark: 'Connect monitoring to EMS where applicable',
@@ -4685,12 +4761,28 @@ export function calculateEpcDesignProject(rawProject = {}, options = {}) {
   const pvStringDesign = calculatePvStringDesign({
     targetPvMwp: recommended.pvRecommendedMwp,
     moduleWp: project.assumptions.moduleWp,
+    temperatureC: project.solarResource.temperatureC,
+    maxDcVoltageV: project.assumptions.maxDcVoltageV,
     mpptVoltageLimitV: project.assumptions.mpptVoltageLimitV,
+    mpptVoltageMinV: project.assumptions.mpptVoltageMinV,
+    mpptVoltageMaxV: project.assumptions.mpptVoltageMaxV,
+    mpptNumber: project.assumptions.mpptNumber,
+    maxInputCurrentPerMpptA: project.assumptions.maxInputCurrentPerMpptA,
+    maxShortCircuitCurrentPerMpptA: project.assumptions.maxShortCircuitCurrentPerMpptA,
     moduleVocV: project.assumptions.moduleVocV,
+    moduleVmpV: project.assumptions.moduleVmpV,
+    moduleIscA: project.assumptions.moduleIscA,
+    moduleImpA: project.assumptions.moduleImpA,
+    moduleBetaVocPctPerC: project.assumptions.moduleBetaVocPctPerC,
+    moduleBetaPmaxPctPerC: project.assumptions.moduleBetaPmaxPctPerC,
     selectedModulesPerString: project.assumptions.selectedModulesPerString,
     combinerInputs: project.assumptions.combinerInputs,
     inverterArchitecture: project.assumptions.inverterArchitecture,
-    totalStringInputs: project.assumptions.totalStringInputs
+    totalStringInputs: project.assumptions.totalStringInputs,
+    dcCableLengthM: project.assumptions.dcCableLengthM,
+    dcCableSizeMm2: project.assumptions.dcCableSizeMm2,
+    dcCableResistivity: project.assumptions.dcCableResistivity,
+    dcCableVoltageDropLimitPct: project.assumptions.dcCableVoltageDropLimitPct
   });
   const boq = buildBoq(topologyProject, recommended, {
     topology: topologyProject.topology,
@@ -4798,23 +4890,58 @@ export function calculatePvStringDesign({
   targetPvMwp = 0,
   moduleWp = EPC_DESIGN_DEFAULTS.moduleWp,
   mpptVoltageLimitV = EPC_DESIGN_DEFAULTS.mpptVoltageLimitV,
+  maxDcVoltageV,
+  mpptVoltageMinV = EPC_DESIGN_DEFAULTS.mpptVoltageMinV,
+  mpptVoltageMaxV = EPC_DESIGN_DEFAULTS.mpptVoltageMaxV,
+  mpptNumber = EPC_DESIGN_DEFAULTS.mpptNumber,
+  maxInputCurrentPerMpptA = EPC_DESIGN_DEFAULTS.maxInputCurrentPerMpptA,
+  maxShortCircuitCurrentPerMpptA = EPC_DESIGN_DEFAULTS.maxShortCircuitCurrentPerMpptA,
   moduleVocV = EPC_DESIGN_DEFAULTS.moduleVocV,
+  moduleVmpV = EPC_DESIGN_DEFAULTS.moduleVmpV,
+  moduleIscA = EPC_DESIGN_DEFAULTS.moduleIscA,
+  moduleImpA = EPC_DESIGN_DEFAULTS.moduleImpA,
+  moduleBetaVocPctPerC = EPC_DESIGN_DEFAULTS.moduleBetaVocPctPerC,
+  moduleBetaPmaxPctPerC = EPC_DESIGN_DEFAULTS.moduleBetaPmaxPctPerC,
+  temperatureC,
   modulesPerString,
   selectedModulesPerString,
   combinerInputs = EPC_DESIGN_DEFAULTS.combinerInputs,
   inverterArchitecture = 'central',
   totalStringInputs = 0,
+  dcCableLengthM = EPC_DESIGN_DEFAULTS.dcCableLengthM,
+  dcCableSizeMm2 = EPC_DESIGN_DEFAULTS.dcCableSizeMm2,
+  dcCableResistivity = EPC_DESIGN_DEFAULTS.dcCableResistivity,
+  dcCableVoltageDropLimitPct = EPC_DESIGN_DEFAULTS.dcCableVoltageDropLimitPct,
   minimumExpectedModulesPerString = 18
 } = {}) {
   const moduleWpValue = Math.max(1, asNumber(moduleWp, EPC_DESIGN_DEFAULTS.moduleWp));
-  const mpptVoltageLimitValue = Math.max(1, asNumber(mpptVoltageLimitV, EPC_DESIGN_DEFAULTS.mpptVoltageLimitV));
+  const maxDcVoltageValue = Math.max(1, asNumber(maxDcVoltageV ?? mpptVoltageLimitV, EPC_DESIGN_DEFAULTS.maxDcVoltageV));
+  const mpptVoltageLimitValue = maxDcVoltageValue;
+  const mpptVoltageMinValue = Math.max(1, asNumber(mpptVoltageMinV, EPC_DESIGN_DEFAULTS.mpptVoltageMinV));
+  const mpptVoltageMaxValue = Math.max(mpptVoltageMinValue, asNumber(mpptVoltageMaxV, Math.max(EPC_DESIGN_DEFAULTS.mpptVoltageMaxV, mpptVoltageMinValue)));
+  const mpptNumberValue = Math.max(1, Math.floor(asNumber(mpptNumber, EPC_DESIGN_DEFAULTS.mpptNumber)));
+  const maxInputCurrentPerMpptValue = Math.max(0.1, asNumber(maxInputCurrentPerMpptA, EPC_DESIGN_DEFAULTS.maxInputCurrentPerMpptA));
+  const maxShortCircuitCurrentPerMpptValue = Math.max(0.1, asNumber(maxShortCircuitCurrentPerMpptA, EPC_DESIGN_DEFAULTS.maxShortCircuitCurrentPerMpptA));
   const moduleVocValue = Math.max(0.1, asNumber(moduleVocV, EPC_DESIGN_DEFAULTS.moduleVocV));
+  const moduleVmpValue = Math.max(0.1, asNumber(moduleVmpV, EPC_DESIGN_DEFAULTS.moduleVmpV));
+  const moduleIscValue = Math.max(0.1, asNumber(moduleIscA, EPC_DESIGN_DEFAULTS.moduleIscA));
+  const moduleImpValue = Math.max(0.1, asNumber(moduleImpA, EPC_DESIGN_DEFAULTS.moduleImpA));
+  const betaVocValue = asNumber(moduleBetaVocPctPerC, EPC_DESIGN_DEFAULTS.moduleBetaVocPctPerC);
+  const betaPmaxValue = asNumber(moduleBetaPmaxPctPerC, EPC_DESIGN_DEFAULTS.moduleBetaPmaxPctPerC);
+  const hasTemperature = Number.isFinite(Number(temperatureC));
+  const temperatureValue = hasTemperature ? asNumber(temperatureC, 25) : 25;
   const selectedModulesPerStringValue = Math.floor(asNumber(selectedModulesPerString, 0));
   const legacyModulesPerStringValue = Math.floor(asNumber(modulesPerString, 0));
-  const voltageLimitedModulesPerString = Math.floor(mpptVoltageLimitValue / moduleVocValue);
+  const vocColdV = Math.max(0.1, moduleVocValue * (1 + (betaVocValue / 100) * (temperatureValue - 25)));
+  const maxStringLength = Math.max(1, Math.floor(maxDcVoltageValue / vocColdV));
+  const minStringLength = Math.max(1, Math.ceil(mpptVoltageMinValue / moduleVmpValue));
+  const voltageLimitedModulesPerString = maxStringLength;
   const maxModulesPerString = Math.max(1, voltageLimitedModulesPerString || legacyModulesPerStringValue || EPC_DESIGN_DEFAULTS.modulesPerString);
-  const stringOptions = [maxModulesPerString, maxModulesPerString - 1, maxModulesPerString - 2]
-    .filter((value, index, values) => value >= 1 && values.indexOf(value) === index);
+  const rawStringOptions = [maxModulesPerString, maxModulesPerString - 1, maxModulesPerString - 2]
+    .filter((value, index, values) => value >= minStringLength && values.indexOf(value) === index);
+  const stringOptions = rawStringOptions.length
+    ? rawStringOptions
+    : [minStringLength];
   const requestedModulesPerString = selectedModulesPerStringValue > 0
     ? selectedModulesPerStringValue
     : legacyModulesPerStringValue > 0
@@ -4822,18 +4949,66 @@ export function calculatePvStringDesign({
     : maxModulesPerString;
   const modulesPerStringValue = stringOptions.includes(requestedModulesPerString)
     ? requestedModulesPerString
-    : maxModulesPerString;
+    : stringOptions[0] || maxModulesPerString;
   const modules = Math.ceil((asNumber(targetPvMwp, 0) * 1000000) / moduleWpValue);
   const totalStrings = Math.ceil(modules / modulesPerStringValue);
   const fullStringModuleCount = totalStrings * modulesPerStringValue;
   const stringRoundingGapModules = Math.max(0, fullStringModuleCount - modules);
   const architecture = String(inverterArchitecture || 'central');
   const combinerInputsValue = Math.max(1, asNumber(combinerInputs, EPC_DESIGN_DEFAULTS.combinerInputs));
-  const combiners = architecture === 'string'
-    ? 0
-    : totalStrings;
+  const maxStringsPerMppt = Math.max(1, Math.floor(maxInputCurrentPerMpptValue / moduleImpValue));
+  const requiredMpptGroups = totalStrings > 0 ? Math.ceil(totalStrings / maxStringsPerMppt) : 0;
+  const activeMpptGroups = Math.max(1, requiredMpptGroups || mpptNumberValue);
+  const designStringsPerMppt = totalStrings > 0 ? Math.ceil(totalStrings / activeMpptGroups) : 0;
+  const mpptShortCircuitA = designStringsPerMppt * moduleIscValue;
+  const mpptShortCircuitStatus = mpptShortCircuitA <= maxShortCircuitCurrentPerMpptValue ? 'PASS' : 'FAIL';
+  const combinerInputStrings = architecture === 'string' || designStringsPerMppt <= 1 ? 0 : designStringsPerMppt;
+  const combinerCurrentA = combinerInputStrings * moduleIscValue;
+  const combinerQuantity = combinerInputStrings > 0 ? requiredMpptGroups : 0;
+  const nextStandard = (value, standards) => standards.find(item => item >= value) || Math.ceil(value);
+  const combinerRatingA = combinerInputStrings > 0
+    ? nextStandard(combinerCurrentA, [63, 80, 100, 125, 160, 200, 225, 250, 315, 400, 500, 630, 800, 1000])
+    : 0;
+  const fuseRatingA = nextStandard(1.25 * moduleIscValue, [15, 16, 20, 25, 30, 32, 35, 40, 50, 63]);
+  const dcCableAssumptions = {
+    lengthM: Math.max(0, asNumber(dcCableLengthM, EPC_DESIGN_DEFAULTS.dcCableLengthM)),
+    sizeMm2: Math.max(0.1, asNumber(dcCableSizeMm2, EPC_DESIGN_DEFAULTS.dcCableSizeMm2)),
+    resistivity: Math.max(0.0001, asNumber(dcCableResistivity, EPC_DESIGN_DEFAULTS.dcCableResistivity)),
+    voltageDropLimitPct: Math.max(0.1, asNumber(dcCableVoltageDropLimitPct, EPC_DESIGN_DEFAULTS.dcCableVoltageDropLimitPct)),
+    basis: 'Conceptual per-MPPT combiner-to-inverter copper run; final cable schedule by detailed route and local code.'
+  };
+  const dcCableCurrentA = designStringsPerMppt * moduleImpValue;
+  const dcCableDesignCurrentA = dcCableCurrentA * 1.25;
+  const dcCableVoltageV = modulesPerStringValue * moduleVmpValue;
+  const dcCableVoltageDropV = dcCableVoltageV > 0
+    ? (2 * dcCableCurrentA * dcCableAssumptions.lengthM * dcCableAssumptions.resistivity) / dcCableAssumptions.sizeMm2
+    : 0;
+  const dcCableVoltageDropPct = dcCableVoltageV > 0 ? (dcCableVoltageDropV / dcCableVoltageV) * 100 : 0;
+  const dcCableStatus = dcCableVoltageDropPct <= dcCableAssumptions.voltageDropLimitPct ? 'PASS' : 'REVIEW';
+  const combiners = combinerQuantity;
   const inputCount = asNumber(totalStringInputs, 0);
   const warnings = [];
+  if (!hasTemperature) {
+    warnings.push('TEMP C is missing; using 25C for cold Voc string-length calculation.');
+  }
+  if (maxStringLength < minStringLength) {
+    warnings.push('No valid string length satisfies both cold Max DC Voltage and MPPT minimum voltage; review module and inverter match.');
+  }
+  if (modulesPerStringValue < minStringLength) {
+    warnings.push('Selected string length is below MPPT minimum voltage requirement.');
+  }
+  if (modulesPerStringValue > maxStringLength) {
+    warnings.push('Selected string length exceeds cold-temperature Max DC Voltage requirement.');
+  }
+  if (mpptShortCircuitStatus !== 'PASS') {
+    warnings.push('MPPT short-circuit current exceeds inverter limit; reduce strings per MPPT or choose a higher-current inverter.');
+  }
+  if (dcCableStatus !== 'PASS') {
+    warnings.push('Concept DC cable voltage drop exceeds the assumption limit; increase cable size or shorten route.');
+  }
+  if (requiredMpptGroups > mpptNumberValue) {
+    warnings.push(`Total strings require ${requiredMpptGroups} MPPT groups at the current limit; more than one ${mpptNumberValue}-MPPT inverter block may be needed.`);
+  }
   if (inputCount > 0 && modules / inputCount < asNumber(minimumExpectedModulesPerString, 18)) {
     warnings.push('Review module/string ratio: total string inputs imply unusually low modules per string.');
   }
@@ -4845,7 +5020,22 @@ export function calculatePvStringDesign({
     moduleWp: moduleWpValue,
     modules,
     mpptVoltageLimitV: mpptVoltageLimitValue,
+    maxDcVoltageV: maxDcVoltageValue,
+    mpptVoltageMinV: mpptVoltageMinValue,
+    mpptVoltageMaxV: mpptVoltageMaxValue,
+    mpptNumber: mpptNumberValue,
+    maxInputCurrentPerMpptA: maxInputCurrentPerMpptValue,
+    maxShortCircuitCurrentPerMpptA: maxShortCircuitCurrentPerMpptValue,
     moduleVocV: moduleVocValue,
+    moduleVmpV: moduleVmpValue,
+    moduleIscA: moduleIscValue,
+    moduleImpA: moduleImpValue,
+    moduleBetaVocPctPerC: betaVocValue,
+    moduleBetaPmaxPctPerC: betaPmaxValue,
+    temperatureC: temperatureValue,
+    vocColdV: round(vocColdV, 2),
+    maxStringLength,
+    minStringLength,
     maxModulesPerString,
     selectedModulesPerString: modulesPerStringValue,
     stringOptions,
@@ -4857,7 +5047,23 @@ export function calculatePvStringDesign({
     stringRoundingGapModules,
     combinerInputs: combinerInputsValue,
     combiners,
-    combinerCalculationBasis: architecture === 'string' ? 'string-inverter' : 'module-count-over-string-length',
+    maxStringsPerMppt,
+    designStringsPerMppt,
+    requiredMpptGroups,
+    mpptShortCircuitA: round(mpptShortCircuitA, 2),
+    mpptShortCircuitStatus,
+    combinerQuantity,
+    combinerInputStrings,
+    combinerCurrentA: round(combinerCurrentA, 2),
+    combinerRatingA,
+    fuseRatingA,
+    dcCableCurrentA: round(dcCableCurrentA, 2),
+    dcCableDesignCurrentA: round(dcCableDesignCurrentA, 2),
+    dcCableVoltageDropV: round(dcCableVoltageDropV, 2),
+    dcCableVoltageDropPct: round(dcCableVoltageDropPct, 2),
+    dcCableStatus,
+    dcCableAssumptions,
+    combinerCalculationBasis: architecture === 'string' ? 'string-inverter' : 'per-mppt-parallel-group',
     inverterArchitecture: architecture,
     totalStringInputs: inputCount,
     warnings

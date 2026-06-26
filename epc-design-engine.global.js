@@ -4632,12 +4632,14 @@ function calculateEnergyFlow(project, load, recommended) {
       const pvToLoadKw = Math.min(pvOutputKw, loadKw);
       const surplusPvKw = Math.max(0, pvOutputKw - loadKw);
       const loadDeficitKw = Math.max(0, loadKw - pvOutputKw);
+      const batteryStartKwh = socKwh;
       const batteryHeadroomKwh = Math.max(0, maxSocKwh - socKwh);
       const pvToBatteryKw = Math.min(surplusPvKw, pcsKw, durationHours > 0 ? batteryHeadroomKwh / durationHours : 0);
       socKwh += pvToBatteryKw * durationHours;
       const batteryAvailableKwh = Math.max(0, socKwh - minSocKwh);
       const batteryToLoadKw = Math.min(loadDeficitKw, pcsKw, durationHours > 0 ? batteryAvailableKwh / durationHours : 0);
       socKwh -= batteryToLoadKw * durationHours;
+      const batteryEndKwh = socKwh;
       const gensetToLoadKw = Math.max(0, loadDeficitKw - batteryToLoadKw);
       const curtailmentKw = Math.max(0, surplusPvKw - pvToBatteryKw);
       const rowLoadSplits = splitLoadKw(round(loadKw, 2), project.loads.loadSplits || []);
@@ -4654,7 +4656,9 @@ function calculateEnergyFlow(project, load, recommended) {
           gensetToLoadKw: round(gensetToLoadKw, 2),
           pcsLimitKw: round(pcsKw, 2),
           curtailmentKw: round(curtailmentKw, 2),
-          socPct: batteryKwh > 0 ? round((socKwh / batteryKwh) * 100, 1) : 0,
+          batteryStartKwh: round(batteryStartKwh, 2),
+          batteryEndKwh: round(batteryEndKwh, 2),
+          socPct: batteryKwh > 0 ? round((batteryEndKwh / batteryKwh) * 100, 1) : 0,
           loadSplits: rowLoadSplits
         };
         if (densePvProfile) {

@@ -104,9 +104,19 @@ test('EMS Flow table removes genset reason and displays one decimal values', () 
   assert.match(renderer[0], /formatEpcNumber\(row\.pvOutputKw, 1\)/);
   assert.match(renderer[0], /formatEpcNumber\(row\.loadKw, 1\)/);
   assert.match(renderer[0], /formatEpcNumber\(row\.curtailmentKw, 1\)/);
+  assert.match(renderer[0], />Battery Start kWh</);
+  assert.match(renderer[0], />Battery End kWh</);
+  assert.ok(
+    renderer[0].indexOf('Battery End kWh') < renderer[0].indexOf('>SOC<'),
+    'battery kWh columns should appear before SOC'
+  );
+  assert.match(renderer[0], /formatEpcNumber\(row\.batteryStartKwh, 1\)/);
+  assert.match(renderer[0], /formatEpcNumber\(row\.batteryEndKwh, 1\)/);
   const total = html.match(/function renderEpcFlowTotalRow\(rows = \[\]\)[\s\S]*?function mergeEpcEnergyFlowRowsByHour/);
   assert.ok(total, 'EMS total row renderer should exist');
   assert.match(total[0], /formatEpcNumber\(sum\('pvOutputKw'\), 1\)/);
+  assert.match(total[0], /firstBatteryStartKwh/);
+  assert.match(total[0], /finalBatteryEndKwh/);
 });
 
 test('EPC UI exposes final capacity overrides and reset action', () => {

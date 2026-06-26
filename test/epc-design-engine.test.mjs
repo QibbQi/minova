@@ -612,14 +612,68 @@ test('EPC design engine exposes hourly PV load battery and curtailment simulatio
     'gensetToLoadKw',
     'pcsLimitKw',
     'curtailmentKw',
+    'batteryStartKwh',
+    'batteryEndKwh',
     'socPct',
     'loadSplits'
   ]);
+  const recommended = result.schemes.find((scheme) => scheme.id === result.recommendedSchemeId);
+  const batteryCapacityKwh = recommended.bessRecommendedMwh * 1000;
+  const firstRow = result.energyFlow.rows[0];
+  assert.equal(Number(((firstRow.batteryEndKwh / batteryCapacityKwh) * 100).toFixed(1)), firstRow.socPct);
   assert.ok(result.energyFlow.rows.some((row) => row.pvToBatteryKw > 0));
   assert.ok(result.energyFlow.rows.some((row) => row.curtailmentKw >= 0));
   assert.ok(result.energyFlow.summary.pvDirectKwh > 0);
   assert.ok(result.energyFlow.summary.gensetRemainingKwh > 0);
   assert.match(result.energyFlow.method, /PV -> Load/);
+});
+
+test('EPC energy flow reports battery kWh boundaries across midnight without artificial gains', () => {
+  const project = normalizeEpcDesignProject({
+    loads: {
+      measurementMethod: 'diesel_sfc_estimate',
+      dieselTotalLiters: 1000,
+      dieselPeriodDays: 1,
+      operationHoursPerDay: 3,
+      operationStartTime: '23:00',
+      operationFinishTime: '02:00'
+    },
+    designTargets: {
+      replacementPct: 80,
+      capacityOverrides: { pvMwp: 1, pcsMw: 1, bessMwh: 2 }
+    },
+    assumptions: { minSocPct: 20, bessDod: 0.75 },
+    loadProfile: [
+      { hour: 23, loadKw: 100 },
+      { hour: 0, loadKw: 600 },
+      { hour: 1, loadKw: 600 }
+    ],
+    solarResource: {
+      dataSource: 'Manual',
+      specificYieldKwhPerKwpDay: 3.6,
+      hourlyPvProfile: [
+        { hour: 23, pvMw: 1 },
+        { hour: 0, pvMw: 0 },
+        { hour: 1, pvMw: 0 }
+      ]
+    }
+  }, { now: '2026-06-12T00:00:00.000Z' });
+  const result = calculateEpcDesignProject(project, { now: '2026-06-12T00:00:00.000Z' });
+  const rows = result.energyFlow.rows;
+  const batteryCapacityKwh = result.schemes.find((scheme) => scheme.id === result.recommendedSchemeId).bessRecommendedMwh * 1000;
+  const eleven = rows.find((row) => row.hour === 23);
+  const midnight = rows.find((row) => row.hour === 0);
+  const one = rows.find((row) => row.hour === 1);
+
+  assert.equal(eleven.hourLabel, '23:00-00:00+1');
+  assert.equal(midnight.hourLabel, '00:00-01:00');
+  assert.equal(eleven.batteryEndKwh, midnight.batteryStartKwh);
+  assert.equal(midnight.batteryEndKwh, one.batteryStartKwh);
+  assert.ok(eleven.batteryEndKwh > eleven.batteryStartKwh);
+  assert.ok(midnight.batteryEndKwh < midnight.batteryStartKwh);
+  for (const row of rows) {
+    assert.equal(Number(((row.batteryEndKwh / batteryCapacityKwh) * 100).toFixed(1)), row.socPct);
+  }
 });
 
 test('EPC energy flow can consume a 5-minute PV Simulator profile', () => {

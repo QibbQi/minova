@@ -1402,6 +1402,51 @@ test('EPC hourly EMS merge carries previous day SOC across midnight zero-flow ro
   assert.equal(merged.find(row => row.hour === 0)?.socPct, 82.4);
 });
 
+test('EPC hourly EMS merge preserves battery kWh boundaries across midnight', () => {
+  const source = [
+    extractFunction('epcMinutesToTime', 'epcAddHoursToTime'),
+    extractFunction('epcChartRound', 'normalizeEpcDeviceWorkPeakBandColor'),
+    extractFunction('getEpcEnergyFlowDurationHours', 'mergeEpcEnergyFlowLoadSplits'),
+    extractFunction('mergeEpcEnergyFlowLoadSplits', 'mergeEpcEnergyFlowRowsByHour'),
+    extractFunction('mergeEpcEnergyFlowRowsByHour', 'getEpcEnergyFlowDisplayRows'),
+    'return mergeEpcEnergyFlowRowsByHour;'
+  ].join('\n');
+  const mergeRows = Function(source)();
+  const flowRow = (minute, startKwh, endKwh, socPct, pvToBatteryKw = 0) => ({
+    timelineMinute: minute,
+    intervalMinutes: 5,
+    durationHours: 5 / 60,
+    pvOutputKw: 0,
+    loadKw: 0,
+    pvToLoadKw: 0,
+    pvToBatteryKw,
+    batteryToLoadKw: 0,
+    gensetToLoadKw: 0,
+    pcsLimitKw: 500,
+    curtailmentKw: 0,
+    batteryStartKwh: startKwh,
+    batteryEndKwh: endKwh,
+    socPct
+  });
+  const rows = [
+    flowRow(0, 520, 520, 26),
+    flowRow(5, 520, 520, 26),
+    flowRow(55, 520, 520, 26),
+    flowRow(1380, 400, 400, 20),
+    flowRow(1435, 400, 520, 26, 1440)
+  ];
+
+  const merged = mergeRows(rows);
+  const midnight = merged.find(row => row.hour === 0);
+  const eleven = merged.find(row => row.hour === 23);
+
+  assert.equal(eleven?.batteryStartKwh, 400);
+  assert.equal(eleven?.batteryEndKwh, 520);
+  assert.equal(midnight?.batteryStartKwh, 520);
+  assert.equal(midnight?.batteryEndKwh, 520);
+  assert.equal(midnight?.socPct, 26);
+});
+
 test('EPC sub-hourly Load Work Profile carries previous day SOC across midnight zero-flow rows', () => {
   const source = [
     extractFunction('epcMinutesToTime', 'epcAddHoursToTime'),

@@ -15908,6 +15908,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const durationHours = row => Math.max(0, Number(row.durationHours) || 1);
             const sum = key => rows.reduce((total, row) => total + (Number(row[key]) || 0) * durationHours(row), 0);
             const finalSoc = rows.length ? rows[rows.length - 1].socPct : 0;
+            const firstBatteryStartKwh = rows.length ? rows[0].batteryStartKwh : null;
+            const finalBatteryEndKwh = rows.length ? rows[rows.length - 1].batteryEndKwh : null;
             return `
                 <tr class="epc-flow-total-row border-t-2 border-slate-200 bg-slate-50 text-slate-800">
                     <td class="px-3 py-3 font-black uppercase">Total</td>
@@ -15919,6 +15921,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     <td class="px-3 py-3 text-right font-black">${formatEpcNumber(sum('gensetToLoadKw'), 1)}</td>
                     <td class="px-3 py-3 text-right font-black">-</td>
                     <td class="px-3 py-3 text-right font-black">${formatEpcNumber(sum('curtailmentKw'), 1)}</td>
+                    <td class="px-3 py-3 text-right font-black">${Number.isFinite(Number(firstBatteryStartKwh)) ? formatEpcNumber(firstBatteryStartKwh, 1) : '-'}</td>
+                    <td class="px-3 py-3 text-right font-black">${Number.isFinite(Number(finalBatteryEndKwh)) ? formatEpcNumber(finalBatteryEndKwh, 1) : '-'}</td>
                     <td class="px-3 py-3 text-right">${renderEpcSocBadge(finalSoc)}</td>
                 </tr>
             `;
@@ -16691,6 +16695,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             socKwh = Math.max(minSocKwh, Math.min(maxSocKwh, socKwh));
             return rows.map((row, index) => {
                 const durationHours = Math.max(0.001, Number(row.durationHours) || (Number(row.intervalMinutes) > 0 ? Number(row.intervalMinutes) / 60 : 1));
+                const batteryStartKwh = socKwh;
                 const currentSocPct = batteryCapacityKwh > 0 ? (socKwh / batteryCapacityKwh) * 100 : socMinPct;
                 const batteryChargeLimitKw = batteryCapacityKwh > 0
                     ? Math.min(pcsLimitKw, Math.max(0, maxSocKwh - socKwh) / durationHours)
@@ -16722,6 +16727,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 }, model, batteryControl);
                 socKwh += ((Number(adjusted.pvToBatteryKw) || 0) - (Number(adjusted.batteryToLoadKw) || 0)) * durationHours;
                 socKwh = Math.max(minSocKwh, Math.min(maxSocKwh, socKwh));
+                const batteryEndKwh = socKwh;
                 adjusted.socPct = batteryCapacityKwh > 0 ? (socKwh / batteryCapacityKwh) * 100 : currentSocPct;
                 return {
                     ...row,
@@ -16734,6 +16740,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     gensetReason: adjusted.gensetReason || '',
                     curtailmentKw: epcChartRound(adjusted.curtailmentKw, 2),
                     unmetLoadKw: epcChartRound(adjusted.unmetLoadKw, 2),
+                    batteryStartKwh: epcChartRound(batteryStartKwh, 2),
+                    batteryEndKwh: epcChartRound(batteryEndKwh, 2),
                     socPct: epcChartRound(adjusted.socPct, 1),
                     loadSplits: syncEpcDeviceWorkLoadSplits(row.loadSplits, row.loadKw)
                 };
@@ -18280,12 +18288,30 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 ? Number(source.at(-1)?.socPct)
                 : null;
             if (!Number.isFinite(lastSoc)) lastSoc = null;
+            let lastBatteryKwh = null;
+            if (wrapDay && !hasEpcEnergyFlowMovement(source[0])) {
+                const finalEndKwh = Number(source.at(-1)?.batteryEndKwh);
+                const finalStartKwh = Number(source.at(-1)?.batteryStartKwh);
+                lastBatteryKwh = Number.isFinite(finalEndKwh) ? finalEndKwh : Number.isFinite(finalStartKwh) ? finalStartKwh : null;
+            }
             return source.map(row => {
-                const next = !hasEpcEnergyFlowMovement(row) && Number.isFinite(lastSoc)
-                    ? { ...row, socPct: epcChartRound(lastSoc, 1) }
+                const shouldCarry = !hasEpcEnergyFlowMovement(row) && Number.isFinite(lastSoc);
+                const next = shouldCarry
+                    ? {
+                        ...row,
+                        ...(Number.isFinite(lastBatteryKwh) ? {
+                            batteryStartKwh: epcChartRound(lastBatteryKwh, 2),
+                            batteryEndKwh: epcChartRound(lastBatteryKwh, 2)
+                        } : {}),
+                        socPct: epcChartRound(lastSoc, 1)
+                    }
                     : row;
                 const nextSoc = Number(next?.socPct);
                 if (Number.isFinite(nextSoc)) lastSoc = nextSoc;
+                const nextEndKwh = Number(next?.batteryEndKwh);
+                const nextStartKwh = Number(next?.batteryStartKwh);
+                if (Number.isFinite(nextEndKwh)) lastBatteryKwh = nextEndKwh;
+                else if (Number.isFinite(nextStartKwh)) lastBatteryKwh = nextStartKwh;
                 return next;
             });
         }
@@ -18355,7 +18381,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const averageKeys = ['pvOutputKw', 'loadKw', 'pvToLoadKw', 'pvToBatteryKw', 'batteryToLoadKw', 'gensetToLoadKw', 'pcsLimitKw', 'curtailmentKw'];
             const mergedRows = [...groups.entries()].sort(([a], [b]) => a - b).map(([hour, items]) => {
                 const totalDuration = items.reduce((total, item) => total + getEpcEnergyFlowDurationHours(item), 0) || items.length || 1;
+                const firstRow = items[0];
                 const finalRow = items.at(-1);
+                const batteryStartKwh = Number(firstRow?.batteryStartKwh);
+                const batteryEndKwh = Number(finalRow?.batteryEndKwh);
                 const merged = {
                     hour,
                     hourLabel: `${epcMinutesToTime(hour * 60)}-${epcMinutesToTime((hour + 1) * 60)}`,
@@ -18363,6 +18392,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     timelineMinute: hour * 60,
                     intervalMinutes: 60,
                     durationHours: totalDuration,
+                    batteryStartKwh: Number.isFinite(batteryStartKwh) ? epcChartRound(batteryStartKwh, 2) : undefined,
+                    batteryEndKwh: Number.isFinite(batteryEndKwh) ? epcChartRound(batteryEndKwh, 2) : undefined,
                     socPct: epcChartRound(finalRow?.socPct, 1),
                     loadSplits: mergeEpcEnergyFlowLoadSplits(items),
                     gensetReason: [...new Set(items.map(item => String(item.gensetReason || '').trim()).filter(Boolean))].join(' / '),
@@ -18448,6 +18479,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                                 <th class="px-3 py-2 text-right">Genset</th>
                                 <th class="px-3 py-2 text-right">PCS Limit</th>
                                 <th class="px-3 py-2 text-right">Curtailment</th>
+                                <th class="px-3 py-2 text-right">Battery Start kWh</th>
+                                <th class="px-3 py-2 text-right">Battery End kWh</th>
                                 <th class="px-3 py-2 text-right">SOC</th>
                             </tr>
                         </thead>
@@ -18465,6 +18498,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                                     <td class="px-3 py-3 text-right">${formatEpcNumber(row.gensetToLoadKw, 1)}</td>
                                     <td class="px-3 py-3 text-right font-black text-purple-700">${formatEpcNumber(row.pcsLimitKw, 1)}</td>
                                     <td class="px-3 py-3 text-right">${formatEpcNumber(row.curtailmentKw, 1)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(row.batteryStartKwh, 1)}</td>
+                                    <td class="px-3 py-3 text-right">${formatEpcNumber(row.batteryEndKwh, 1)}</td>
                                     <td class="px-3 py-3 text-right">${renderEpcSocBadge(row.socPct)}</td>
                                 </tr>
                             `).join('')}

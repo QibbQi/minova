@@ -1296,11 +1296,11 @@
                 <div id="quote-a4-warning" class="quote-page-break-warning no-print hidden mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[11px] font-bold text-amber-700"></div>
 
                 <div class="no-print mt-6 flex gap-3">
-                    <div class="relative group">
-                        <button class="text-xs bg-purple-700 hover:bg-purple-800 text-white px-4 py-2 rounded-lg font-bold shadow-lg shadow-purple-100 transition-all flex items-center gap-1">
+                    <div class="relative">
+                        <button type="button" data-quote-picker-trigger="inventory" onclick="toggleQuotePickerMenu('inventory', event)" aria-expanded="false" aria-controls="quote-inventory-picker-menu" class="text-xs bg-purple-700 hover:bg-purple-800 text-white px-4 py-2 rounded-lg font-bold shadow-lg shadow-purple-100 transition-all flex items-center gap-1">
                             From Inventory ↓
                         </button>
-                        <div class="absolute left-0 mt-2 w-[30rem] max-w-[calc(100vw-2rem)] bg-white shadow-2xl border border-slate-200 rounded-xl hidden group-hover:block z-50">
+                        <div id="quote-inventory-picker-menu" data-quote-picker-menu="inventory" class="absolute left-0 mt-2 w-[30rem] max-w-[calc(100vw-2rem)] bg-white shadow-2xl border border-slate-200 rounded-xl hidden z-50">
                             <div class="p-3 border-b bg-slate-50 rounded-t-xl flex flex-col gap-2">
                                 <div class="flex items-center justify-between gap-2 flex-wrap">
                                     <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Product Filters</span>
@@ -1327,11 +1327,11 @@
                             </div>
                         </div>
                     </div>
-                    <div class="relative group">
-                        <button class="text-xs bg-white hover:bg-purple-50 text-purple-700 px-4 py-2 rounded-lg font-bold shadow-lg shadow-purple-100 transition-all flex items-center gap-1 border border-purple-200">
+                    <div class="relative">
+                        <button type="button" data-quote-picker-trigger="price-list" onclick="toggleQuotePickerMenu('price-list', event)" aria-expanded="false" aria-controls="quote-price-list-picker-menu" class="text-xs bg-white hover:bg-purple-50 text-purple-700 px-4 py-2 rounded-lg font-bold shadow-lg shadow-purple-100 transition-all flex items-center gap-1 border border-purple-200">
                             From Price List ↓
                         </button>
-                        <div class="absolute left-0 mt-2 w-[32rem] max-w-[calc(100vw-2rem)] bg-white shadow-2xl border border-slate-200 rounded-xl hidden group-hover:block z-50">
+                        <div id="quote-price-list-picker-menu" data-quote-picker-menu="price-list" class="absolute left-0 mt-2 w-[32rem] max-w-[calc(100vw-2rem)] bg-white shadow-2xl border border-slate-200 rounded-xl hidden z-50">
                             <div class="p-3 border-b bg-slate-50 rounded-t-xl flex flex-col gap-2">
                                 <div class="flex items-center justify-between gap-2 flex-wrap">
                                     <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Price List Filters</span>
@@ -1359,11 +1359,11 @@
                             </div>
                         </div>
                     </div>
-                    <div class="relative group">
-                        <button class="text-xs bg-slate-900 hover:bg-black text-white px-4 py-2 rounded-lg font-bold shadow-lg shadow-slate-200 transition-all flex items-center gap-1">
+                    <div class="relative">
+                        <button type="button" data-quote-picker-trigger="installation" onclick="toggleQuotePickerMenu('installation', event)" aria-expanded="false" aria-controls="quote-installation-picker-menu" class="text-xs bg-slate-900 hover:bg-black text-white px-4 py-2 rounded-lg font-bold shadow-lg shadow-slate-200 transition-all flex items-center gap-1">
                             🧰 Installation Work ↓
                         </button>
-                        <div class="absolute left-0 mt-2 w-72 bg-white shadow-2xl border border-slate-200 rounded-xl hidden group-hover:block z-50">
+                        <div id="quote-installation-picker-menu" data-quote-picker-menu="installation" class="absolute left-0 mt-2 w-72 bg-white shadow-2xl border border-slate-200 rounded-xl hidden z-50">
                             <div class="p-3 border-b bg-slate-50 rounded-t-xl">
                                 <div class="text-[10px] font-black text-slate-400 uppercase">Add to Quotation</div>
                             </div>
@@ -21771,6 +21771,39 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             }
             renderQuote();
         };
+
+        const QUOTE_PICKER_MENU_KEYS = ['inventory', 'price-list', 'installation'];
+        function setQuotePickerMenuOpen(key, open) {
+            const menu = document.querySelector(`[data-quote-picker-menu="${key}"]`);
+            const trigger = document.querySelector(`[data-quote-picker-trigger="${key}"]`);
+            if (menu) menu.classList.toggle('hidden', !open);
+            if (trigger) trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+        }
+        window.closeQuotePickerMenus = (exceptKey = '') => {
+            QUOTE_PICKER_MENU_KEYS.forEach(key => {
+                if (key !== exceptKey) setQuotePickerMenuOpen(key, false);
+            });
+        };
+        window.toggleQuotePickerMenu = (key, event) => {
+            event?.preventDefault?.();
+            event?.stopPropagation?.();
+            const menu = document.querySelector(`[data-quote-picker-menu="${key}"]`);
+            if (!menu) return;
+            const shouldOpen = menu.classList.contains('hidden');
+            window.closeQuotePickerMenus(key);
+            setQuotePickerMenuOpen(key, shouldOpen);
+            if (shouldOpen) {
+                if (key === 'inventory') window.renderPicker?.();
+                if (key === 'price-list') window.renderPriceListPicker?.();
+            }
+        };
+        document.addEventListener('click', (event) => {
+            if (event.target?.closest?.('[data-quote-picker-trigger], [data-quote-picker-menu]')) return;
+            window.closeQuotePickerMenus();
+        });
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') window.closeQuotePickerMenus();
+        });
 
         let translateCache = {};
         let translatePending = new Set();

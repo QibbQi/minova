@@ -11,6 +11,19 @@ test('quotation tools expose a price-list picker beside inventory picker', () =>
   assert.match(html, /id="price-list-picker-country"/, 'price-list picker exposes supplier country filter');
 });
 
+test('quotation picker popovers are pinned by button clicks', () => {
+  const toolbar = html.match(/<div class="no-print mt-6 flex gap-3">([\s\S]*?)<button id="btn-split"/);
+  assert.ok(toolbar, 'quotation toolbar block is present');
+  assert.match(toolbar[1], /data-quote-picker-trigger="inventory"[\s\S]*onclick="toggleQuotePickerMenu\('inventory', event\)"/, 'inventory picker trigger toggles by click');
+  assert.match(toolbar[1], /data-quote-picker-trigger="price-list"[\s\S]*onclick="toggleQuotePickerMenu\('price-list', event\)"/, 'price-list picker trigger toggles by click');
+  assert.match(toolbar[1], /data-quote-picker-trigger="installation"[\s\S]*onclick="toggleQuotePickerMenu\('installation', event\)"/, 'installation picker trigger toggles by click');
+  assert.match(toolbar[1], /data-quote-picker-menu="inventory"/, 'inventory picker menu is addressable');
+  assert.match(toolbar[1], /data-quote-picker-menu="price-list"/, 'price-list picker menu is addressable');
+  assert.match(toolbar[1], /data-quote-picker-menu="installation"/, 'installation picker menu is addressable');
+  assert.doesNotMatch(toolbar[1], /group-hover:block/, 'quotation picker menus do not depend on hover to stay open');
+  assert.match(html, /window\.toggleQuotePickerMenu\s*=/, 'click toggle helper is exposed');
+});
+
 test('price-list picker is product-backed and not stock-gated', () => {
   const renderer = html.match(/window\.renderPriceListPicker\s*=\s*\(\)\s*=> \{([\s\S]*?)\n\s*\};/);
   assert.ok(renderer, 'price-list picker renderer is defined');

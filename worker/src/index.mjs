@@ -23,6 +23,7 @@ const ROLE_NAME_TO_KEY = Object.fromEntries(
   Object.entries(ROLE_DEFINITIONS).map(([key, role]) => [role.displayName, key])
 );
 const BUSINESS_DOMAIN_PERMISSIONS = {
+  presales_project: 'presales',
   supplier: 'suppliers',
   product: 'products',
   channel_partner: 'suppliers',
@@ -1267,6 +1268,7 @@ function businessSettingPermission(key) {
 export function businessSnapshotToItems(data = {}, quotes = []) {
   const arr = (value) => Array.isArray(value) ? value : [];
   const items = [
+    ...arr(data.presalesProjects).map(record => ({ domain: 'presales_project', recordId: recordIdFor(record), payload: record })),
     ...arr(data.suppliers).map(record => ({ domain: 'supplier', recordId: recordIdFor(record), payload: record })),
     ...arr(data.products).map(record => ({ domain: 'product', recordId: recordIdFor(record), payload: record })),
     ...arr(data.channelPartners).map(record => ({ domain: 'channel_partner', recordId: recordIdFor(record), payload: record })),
@@ -1300,6 +1302,7 @@ export function businessSnapshotToItems(data = {}, quotes = []) {
 
 export function buildBusinessBootstrapPayload(rows = [], settings = {}) {
   const bucket = {
+    presales_project: [],
     supplier: [],
     product: [],
     channel_partner: [],
@@ -1345,6 +1348,7 @@ export function buildBusinessBootstrapPayload(rows = [], settings = {}) {
   return {
     data: {
       products: bucket.product,
+      presalesProjects: bucket.presales_project,
       suppliers: bucket.supplier,
       channelPartners: bucket.channel_partner,
       certificationRequirementsCatalog: bucket.certification_requirement,

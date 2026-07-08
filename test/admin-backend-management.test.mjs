@@ -51,7 +51,7 @@ test('permission sanitization filters unknown tabs resources and actions', () =>
     watermark: { enabled: false }
   });
 
-  assert.deepEqual(permission.tabs, ['quotation', 'epcdesign']);
+  assert.deepEqual(permission.tabs, ['quotation', 'epcdesign', 'presales']);
   assert.deepEqual(permission.actions.quotes, ['read', 'edit']);
   assert.equal(permission.actions.unknownResource, undefined);
   assert.deepEqual(permission.sensitiveFields, ['margin']);
@@ -268,6 +268,7 @@ test('admin endpoint diagnostics do not report cached transient reads as active 
 });
 
 test('business domain permission maps D1 domains to RBAC resources', () => {
+  assert.deepEqual(domainPermission('presales_project'), { resource: 'presales', read: 'read', write: 'edit', delete: 'delete' });
   assert.deepEqual(domainPermission('supplier'), { resource: 'suppliers', read: 'read', write: 'edit', delete: 'delete' });
   assert.deepEqual(domainPermission('product'), { resource: 'products', read: 'read', write: 'edit', delete: 'delete' });
   assert.deepEqual(domainPermission('compatibility_rule'), { resource: 'products', read: 'read', write: 'edit', delete: 'delete' });
@@ -405,6 +406,7 @@ test('health payload exposes Worker and D1 deep status', () => {
 
 test('business bootstrap payload reshapes entity rows into app state', () => {
   const payload = buildBusinessBootstrapPayload([
+    { domain: 'presales_project', record_id: 'BD1', payload_json: '{"id":"BD1","customerName":"Factory A","stage":"Sizing"}', updated_at: '2026-06-03 00:58:00' },
     { domain: 'supplier', record_id: 'SUP1', payload_json: '{"id":"SUP1","code":"SUP1","nameEn":"Supplier"}', updated_at: '2026-06-03 00:59:00' },
     { domain: 'product', record_id: 'P1', payload_json: '{"id":"P1","name":"PV"}', updated_at: '2026-06-03 01:00:00' },
     { domain: 'certification_requirement', record_id: 'PV-001', payload_json: '{"id":"PV-001","sourceCategory":"PV_MODULE","standard":"IEC 61215 series"}', updated_at: '2026-06-03 01:00:10' },
@@ -420,6 +422,7 @@ test('business bootstrap payload reshapes entity rows into app state', () => {
     subcategories_by_category: { 'PV Module': ['Bifacial'] }
   });
 
+  assert.deepEqual(payload.data.presalesProjects, [{ id: 'BD1', customerName: 'Factory A', stage: 'Sizing' }]);
   assert.deepEqual(payload.data.suppliers, [{ id: 'SUP1', code: 'SUP1', nameEn: 'Supplier' }]);
   assert.deepEqual(payload.data.products, [{ id: 'P1', name: 'PV' }]);
   assert.deepEqual(payload.data.certificationRequirementsCatalog, [{ id: 'PV-001', sourceCategory: 'PV_MODULE', standard: 'IEC 61215 series' }]);
@@ -444,6 +447,7 @@ test('business bootstrap payload reshapes entity rows into app state', () => {
 
 test('business snapshot migration maps suppliers into D1 entities', () => {
   const { items } = businessSnapshotToItems({
+    presalesProjects: [{ id: 'BD1', customerName: 'Factory A', quoteId: 'Q1', epcDesignProjectId: 'EPC1' }],
     suppliers: [{ id: 'supplier_SUP1', code: 'SUP1', nameEn: 'Supplier One' }],
     products: [{ id: 'P1', name: 'PV' }],
     certificationRequirementsCatalog: [{ id: 'PV-001', sourceCategory: 'PV_MODULE', standard: 'IEC 61215 series' }],
@@ -453,6 +457,11 @@ test('business snapshot migration maps suppliers into D1 entities', () => {
     compatibilityRules: [{ id: 'CR1', sourceProductId: 'P1', targetProductId: 'INV1' }]
   });
 
+  assert.deepEqual(items.filter(item => item.domain === 'presales_project'), [{
+    domain: 'presales_project',
+    recordId: 'BD1',
+    payload: { id: 'BD1', customerName: 'Factory A', quoteId: 'Q1', epcDesignProjectId: 'EPC1' }
+  }]);
   assert.deepEqual(items.filter(item => item.domain === 'supplier'), [{
     domain: 'supplier',
     recordId: 'supplier_SUP1',
@@ -492,7 +501,7 @@ test('quote-setting save paths persist D1 settings directly', () => {
 });
 
 test('top navigation tabs use compact SVG icon buttons with hover labels', () => {
-  for (const tab of ['quotation', 'pvcalc', 'costcalc', 'database', 'engineering', 'pricelist', 'inventory', 'transport']) {
+  for (const tab of ['presales', 'quotation', 'pvcalc', 'costcalc', 'database', 'engineering', 'pricelist', 'inventory', 'transport']) {
     assert.match(indexHtmlSource, new RegExp(`id="tab-${tab}"[^>]*aria-label=`));
     assert.match(indexHtmlSource, new RegExp(`id="tab-${tab}"[\\s\\S]*?<svg`));
     assert.match(indexHtmlSource, new RegExp(`id="tab-${tab}"[\\s\\S]*?data-tab-label`));

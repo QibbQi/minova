@@ -14,7 +14,7 @@ import { domainPermission, normalizeBusinessSettingsPayload } from '../worker/sr
 const authUiSource = readFileSync(new URL('../auth/minova-auth-ui.mjs', import.meta.url), 'utf8');
 
 test('EPC design permissions expose quick design and engineering download separately', () => {
-  assert.equal(PERMISSION_SCHEMA_VERSION, 3);
+  assert.equal(PERMISSION_SCHEMA_VERSION, 4);
 
   const sales = getDefaultPermissionSnapshot('sales');
   assert.equal(canAccessTab(sales, 'epcdesign'), true);
@@ -37,7 +37,7 @@ test('EPC design permissions expose quick design and engineering download separa
   assert.equal(canPerformAction(visitor, 'epcDesign', 'download'), false);
 });
 
-test('legacy permissions migrate EPC design tab and resources into schema v3', () => {
+test('legacy permissions migrate EPC and presales resources into schema v4', () => {
   const migrated = mergePermissionSnapshot({ role: 'sales' }, {
     schemaVersion: 2,
     role: 'sales',
@@ -49,11 +49,16 @@ test('legacy permissions migrate EPC design tab and resources into schema v3', (
     }
   });
 
-  assert.equal(migrated.schemaVersion, 3);
+  assert.equal(migrated.schemaVersion, 4);
   assert.equal(canAccessTab(migrated, 'epcdesign'), true);
   assert.equal(canPerformAction(migrated, 'epcDesign', 'read'), true);
   assert.equal(canPerformAction(migrated, 'epcDesign', 'download'), true);
   assert.deepEqual(migrated.actions.epcDesignEngineering, []);
+  assert.equal(canAccessTab(migrated, 'presales'), true);
+  assert.equal(canPerformAction(migrated, 'presales', 'read'), true);
+  assert.equal(canPerformAction(migrated, 'presales', 'edit'), true);
+  assert.equal(canPerformAction(migrated, 'presales', 'download'), true);
+  assert.equal(canPerformAction(migrated, 'presales', 'approve'), false);
 });
 
 test('EPC design domains and settings map through Worker and auth UI permission gates', () => {

@@ -97,6 +97,7 @@ const businessState = {
 };
 
 const TAB_LABELS = {
+  presales: 'Pre-sales Workspace',
   quotation: 'Quotation Builder',
   pvcalc: 'PV + ESS Calculator',
   costcalc: 'Quote Settings',
@@ -110,6 +111,7 @@ const TAB_LABELS = {
 };
 
 const RESOURCE_LABELS = {
+  presales: 'Pre-sales',
   quotes: 'Quotation',
   products: 'Products',
   priceList: 'Price List',
@@ -150,6 +152,7 @@ const ADMIN_PANELS = [
 ];
 
 const BUSINESS_DOMAIN_LABELS = {
+  presales_project: 'Pre-sales Projects',
   supplier: 'Suppliers',
   product: 'Products',
   channel_partner: 'Channel Partners',
@@ -349,6 +352,7 @@ const businessRecordIdFor = (record, index = 0) => {
 };
 
 const BUSINESS_RESOURCE_BY_DOMAIN = {
+  presales_project: 'presales',
   supplier: 'suppliers',
   product: 'products',
   channel_partner: 'suppliers',
@@ -1020,6 +1024,7 @@ async function logout() {
 
 function renderTabIcon(tab) {
   const icons = {
+    presales: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 5h16v14H4z"/><path d="M8 9h8"/><path d="M8 13h5"/><path d="M16 16l2 2 3-4"/></svg>',
     admin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7z"/><path d="M9 12l2 2 4-5"/></svg>',
     epcdesign: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 17l4-5 4 3 4-7 4 9"/><path d="M3 20h18"/><path d="M8 7h3"/><path d="M9.5 5.5v3"/><path d="M16 6h4"/></svg>',
     engineering: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 19h16"/><path d="M7 16l6-10 4 7"/><path d="M9 13h7"/><path d="M14 6l2-2 3 3-2 2"/></svg>'
@@ -1357,6 +1362,7 @@ function applyPermissions() {
 
   const pdfBtn = document.getElementById('btn-generate-pdf');
   if (pdfBtn) pdfBtn.style.display = canPerformAction(state.permission, 'quotes', 'download') ? '' : 'none';
+  lockResourceView('view-presales', 'presales');
   lockResourceView('view-quotation', 'quotes');
   lockResourceView('view-database', 'products');
   lockResourceView('view-epcdesign', 'epcDesign');

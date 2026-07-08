@@ -1,5 +1,5 @@
 export const DEFAULT_API_BASE_URL = 'https://minova-backend.qibbqi00.workers.dev';
-export const PERMISSION_SCHEMA_VERSION = 3;
+export const PERMISSION_SCHEMA_VERSION = 4;
 
 export const ROLE_DEFINITIONS = {
   admin: {
@@ -47,6 +47,7 @@ export const ROLE_DEFINITIONS = {
 };
 
 export const ALL_TABS = [
+  'presales',
   'quotation',
   'pvcalc',
   'costcalc',
@@ -60,6 +61,7 @@ export const ALL_TABS = [
 ];
 
 export const PERMISSION_RESOURCES = [
+  'presales',
   'quotes',
   'products',
   'priceList',
@@ -91,15 +93,16 @@ export const SENSITIVE_FIELDS = [
 
 const ROLE_TABS = {
   admin: ALL_TABS,
-  sales: ['quotation', 'pvcalc', 'epcdesign', 'pricelist'],
-  sales_management: ['quotation', 'pvcalc', 'epcdesign', 'pricelist', 'admin'],
-  supply_chain: ['database', 'epcdesign', 'engineering', 'inventory', 'transport', 'pricelist'],
-  operation_management: ['database', 'epcdesign', 'engineering', 'inventory', 'transport'],
-  price_auditor: ['quotation', 'costcalc', 'epcdesign', 'pricelist', 'engineering', 'admin'],
-  read_only: ['quotation', 'pvcalc', 'pricelist']
+  sales: ['presales', 'quotation', 'pvcalc', 'epcdesign', 'pricelist'],
+  sales_management: ['presales', 'quotation', 'pvcalc', 'epcdesign', 'pricelist', 'admin'],
+  supply_chain: ['presales', 'database', 'epcdesign', 'engineering', 'inventory', 'transport', 'pricelist'],
+  operation_management: ['presales', 'database', 'epcdesign', 'engineering', 'inventory', 'transport'],
+  price_auditor: ['presales', 'quotation', 'costcalc', 'epcdesign', 'pricelist', 'engineering', 'admin'],
+  read_only: ['presales', 'quotation', 'pvcalc', 'pricelist']
 };
 
 const READ_ONLY_ACTIONS = {
+  presales: ['read'],
   quotes: ['read'],
   products: ['read'],
   priceList: ['read'],
@@ -115,6 +118,7 @@ const READ_ONLY_ACTIONS = {
 
 const ROLE_ACTIONS = {
   admin: {
+    presales: ['read', 'edit', 'delete', 'download', 'approve'],
     quotes: ['read', 'edit', 'delete', 'download', 'approve'],
     products: ['read', 'edit', 'delete', 'upload'],
     priceList: ['read', 'edit', 'delete'],
@@ -128,6 +132,7 @@ const ROLE_ACTIONS = {
     admin: ['read', 'edit', 'delete']
   },
   sales: {
+    presales: ['read', 'edit', 'download'],
     quotes: ['read', 'edit', 'download', 'approvalRequest'],
     products: ['read'],
     priceList: ['read'],
@@ -141,6 +146,7 @@ const ROLE_ACTIONS = {
     admin: []
   },
   sales_management: {
+    presales: ['read', 'edit', 'download', 'approve'],
     quotes: ['read', 'edit', 'download', 'approvalRequest', 'approve'],
     products: ['read'],
     priceList: ['read'],
@@ -154,6 +160,7 @@ const ROLE_ACTIONS = {
     admin: ['read']
   },
   supply_chain: {
+    presales: ['read', 'edit'],
     quotes: ['read', 'edit', 'download', 'approvalRequest'],
     products: ['read', 'edit', 'delete', 'upload'],
     priceList: ['read', 'edit'],
@@ -167,6 +174,7 @@ const ROLE_ACTIONS = {
     admin: []
   },
   operation_management: {
+    presales: ['read', 'edit'],
     quotes: ['read', 'edit', 'download', 'approvalRequest'],
     products: ['read', 'edit', 'delete'],
     priceList: ['read'],
@@ -180,6 +188,7 @@ const ROLE_ACTIONS = {
     admin: []
   },
   price_auditor: {
+    presales: ['read', 'approve'],
     quotes: ['read', 'edit', 'delete', 'download', 'approvalRequest', 'approve'],
     products: ['read', 'delete'],
     priceList: ['read', 'edit'],
@@ -428,6 +437,14 @@ function migratePermissionSnapshot(role, raw = {}, base = getDefaultPermissionSn
       if (!Object.prototype.hasOwnProperty.call(migrated.actions, resource)) {
         migrated.actions[resource] = [...listToSet(base.actions?.[resource] || [])];
       }
+    }
+  }
+  if (version < 4) {
+    if ((base.tabs || []).includes('presales') && !listToSet(migrated.tabs).has('presales')) {
+      migrated.tabs = [...migrated.tabs, 'presales'];
+    }
+    if (!Object.prototype.hasOwnProperty.call(migrated.actions, 'presales')) {
+      migrated.actions.presales = [...listToSet(base.actions?.presales || [])];
     }
   }
   migrated.schemaVersion = PERMISSION_SCHEMA_VERSION;

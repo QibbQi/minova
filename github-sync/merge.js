@@ -87,6 +87,7 @@ export function mergeState(remote, local) {
   const data = {
     ...rData,
     ...lData,
+    presalesProjects: mergeByKey(rData.presalesProjects, lData.presalesProjects, stableRecordKey),
     products: mergeByKey(rData.products, lData.products, stableRecordKey),
     channelPartners: mergeByKey(rData.channelPartners, lData.channelPartners, stableRecordKey),
     certificationRequirementsCatalog: mergeByKey(rData.certificationRequirementsCatalog, lData.certificationRequirementsCatalog, stableRecordKey),

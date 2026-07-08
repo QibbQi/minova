@@ -53,3 +53,23 @@ test('internal handoff separates customer summary from engineering review notes'
   assert.match(indexHtml, /Quote version/);
   assert.match(indexHtml, /Approval status/);
 });
+
+test('linked quote and EPC selections expose BD-readable detail previews', () => {
+  for (const snippet of [
+    'id="presales-quote-detail"',
+    'id="presales-epc-detail"',
+    'function getPresalesQuoteDetail',
+    'function renderPresalesQuoteDetail',
+    'function getPresalesEpcDetail',
+    'function renderPresalesEpcDetail',
+    'onPresalesLinkedWorkChanged',
+    'Quote Total',
+    'Monthly Usage',
+    'Target Generation',
+    'Recommended PV/BESS/PCS',
+    'Open High Risks',
+    'BOQ Lines'
+  ]) {
+    assert.match(indexHtml, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing linked detail preview: ${snippet}`);
+  }
+});

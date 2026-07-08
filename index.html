@@ -1193,11 +1193,11 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
                         <label class="block">
                             <span class="block text-[10px] font-black text-slate-400 uppercase mb-1">Quote Draft</span>
-                            <select id="presales-quote-link" onchange="markPresalesDirty()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-500 bg-white"></select>
+                            <select id="presales-quote-link" onchange="onPresalesLinkedWorkChanged()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-500 bg-white"></select>
                         </label>
                         <label class="block">
                             <span class="block text-[10px] font-black text-slate-400 uppercase mb-1">Hybrid EPC Design</span>
-                            <select id="presales-epc-link" onchange="markPresalesDirty()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-500 bg-white"></select>
+                            <select id="presales-epc-link" onchange="onPresalesLinkedWorkChanged()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-500 bg-white"></select>
                         </label>
                     </div>
                     <div class="flex flex-wrap gap-2 mt-4">
@@ -1221,11 +1221,15 @@
                     </div>
                     <div class="rounded-xl border border-slate-200 bg-white p-4">
                         <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Quote Draft</p>
-                        <div id="presales-quote-card" class="mt-2 text-sm font-bold text-slate-700 leading-relaxed">No quote linked.</div>
+                        <div id="presales-quote-card" class="mt-2 text-sm font-bold text-slate-700 leading-relaxed">
+                            <div id="presales-quote-detail">No quote linked.</div>
+                        </div>
                     </div>
                     <div class="rounded-xl border border-slate-200 bg-white p-4">
                         <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">EPC Risk / BOQ</p>
-                        <div id="presales-epc-card" class="mt-2 text-sm font-bold text-slate-700 leading-relaxed">No EPC concept linked.</div>
+                        <div id="presales-epc-card" class="mt-2 text-sm font-bold text-slate-700 leading-relaxed">
+                            <div id="presales-epc-detail">No EPC concept linked.</div>
+                        </div>
                     </div>
                 </div>
 
@@ -6953,6 +6957,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         let nonStockPricingStrategies = {};
         let presalesProjects = [];
         let presalesActiveProjectId = '';
+        const presalesQuoteDetailCache = new Map();
+        const presalesQuoteDetailPending = new Set();
         let epcDesignProjects = [];
         let epcDesignDefaults = { ...EPC_DESIGN_DEFAULTS };
         let epcDesignActiveProjectId = '';
@@ -21073,6 +21079,308 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return getPresalesEpcOptions().find(project => String(project.id) === key) || null;
         }
 
+        function presalesNum(value, fallback = 0) {
+            const n = parseFloat(String(value ?? '').replace(/,/g, ''));
+            return Number.isFinite(n) ? n : fallback;
+        }
+
+        function presalesFormatNumber(value, digits = 2) {
+            return presalesNum(value, 0).toLocaleString('zh-CN', {
+                minimumFractionDigits: digits,
+                maximumFractionDigits: digits
+            });
+        }
+
+        function presalesFormatMoney(value, currency = 'MYR') {
+            const symbol = String(currency || '').toUpperCase() === 'CNY' ? '¥' : 'RM';
+            return `${symbol} ${presalesFormatNumber(value, 2)}`;
+        }
+
+        function presalesSnapshotField(snapshot, id, fallback = '') {
+            const rec = snapshot?.fields?.[id];
+            if (!rec || typeof rec !== 'object') return fallback;
+            if (rec.t === 'checked') return rec.v ? 'Yes' : 'No';
+            return String(rec.v ?? fallback);
+        }
+
+        function presalesQuoteRowsSubtotal(rows = []) {
+            return (Array.isArray(rows) ? rows : []).reduce((sum, row) => {
+                const qty = presalesNum(row?.quantity ?? row?.qty, 0);
+                const amount = presalesNum(row?.amount, NaN);
+                if (Number.isFinite(amount)) return sum + amount;
+                return sum + qty * presalesNum(row?.price ?? row?.unitPrice, 0);
+            }, 0);
+        }
+
+        function presalesQuoteMetric(label, value, note = '') {
+            return `
+                <div class="min-w-0">
+                    <div class="text-[10px] font-black uppercase tracking-widest text-slate-400">${htmlSafe(label)}</div>
+                    <div class="mt-0.5 text-sm font-black text-slate-800 break-words">${htmlSafe(value || '-')}</div>
+                    ${note ? `<div class="mt-0.5 text-[10px] font-bold text-slate-400 leading-tight">${htmlSafe(note)}</div>` : ''}
+                </div>
+            `;
+        }
+
+        function buildPresalesQuoteDetailFromSnapshot(doc = {}, meta = {}, sourceLabel = 'Saved quote snapshot') {
+            const snapshot = doc?.snapshot && typeof doc.snapshot === 'object' ? doc.snapshot : null;
+            const rows = Array.isArray(snapshot?.memory?.quoteRows) ? snapshot.memory.quoteRows : [];
+            const subtotal = presalesQuoteRowsSubtotal(rows);
+            const quoteTotal = subtotal > 0 ? subtotal * 1.06 : 0;
+            const quoteNo = doc.quoteNo || meta.quoteNo || presalesSnapshotField(snapshot, 'quote-no', '');
+            const customerName = doc.customerName || meta.customerName || presalesSnapshotField(snapshot, 'input-customer-name', '');
+            return {
+                id: String(doc.id || meta.id || '').trim(),
+                name: doc.name || meta.name || customerName || quoteNo || doc.id || meta.id || '',
+                customerName,
+                quoteNo,
+                approvalStatus: doc.approvalStatus || meta.approvalStatus || 'not checked',
+                updatedAt: doc.updatedAt || meta.updatedAt || meta.createdAt || '',
+                sourceLabel,
+                loaded: Boolean(snapshot),
+                rowCount: rows.length,
+                quoteTotal,
+                quoteTotalNote: quoteTotal > 0 ? 'Rows subtotal + 6% SST estimate' : 'Snapshot total unavailable',
+                monthlyUsage: presalesSnapshotField(snapshot, 'input-monthly-usage', ''),
+                targetGeneration: presalesSnapshotField(snapshot, 'input-target-generation', ''),
+                proposedSize: presalesSnapshotField(snapshot, 'input-proposed-size', ''),
+                exportFactor: presalesSnapshotField(snapshot, 'input-quote-export-factor-roi', ''),
+                roiSaving: '',
+                payback: '',
+                roiNote: snapshot ? 'ROI KPI is recalculated after loading the quote.' : 'Only quote index is loaded in this workspace.',
+                currency: 'MYR'
+            };
+        }
+
+        function getPresalesCurrentQuoteDetail(id, meta = {}) {
+            const key = String(id || '').trim();
+            if (!key || String(window.currentSavedQuoteId || '').trim() !== key) return null;
+            const rows = Array.isArray(window.__getQuoteRows?.()) ? window.__getQuoteRows() : [];
+            const quoteNo = String(document.getElementById('quote-no')?.value || meta.quoteNo || '').trim();
+            const customerName = String(document.getElementById('input-customer-name')?.value || meta.customerName || '').trim();
+            const currency = String(window.__getQuoteCurrency?.() || '').trim().toUpperCase() === 'CNY' ? 'CNY' : 'MYR';
+            const quoteTotal = presalesNum(document.getElementById('grand-total')?.textContent, presalesQuoteRowsSubtotal(rows) * 1.06);
+            return {
+                id: key,
+                name: meta.name || customerName || quoteNo || key,
+                customerName,
+                quoteNo,
+                approvalStatus: meta.approvalStatus || 'not checked',
+                updatedAt: meta.updatedAt || '',
+                sourceLabel: 'Current loaded quote',
+                loaded: true,
+                rowCount: rows.length,
+                quoteTotal,
+                quoteTotalNote: 'Live quotation Grand Total',
+                monthlyUsage: String(document.getElementById('input-monthly-usage')?.value || document.getElementById('quote-roi-input-monthly')?.textContent || '').trim(),
+                targetGeneration: String(document.getElementById('input-target-generation')?.value || document.getElementById('quote-roi-input-target')?.textContent || '').trim(),
+                proposedSize: String(document.getElementById('input-proposed-size')?.value || document.getElementById('quote-roi-kpi-pv-size')?.textContent || '').trim(),
+                exportFactor: String(document.getElementById('input-quote-export-factor-roi')?.value || '').trim(),
+                roiSaving: String(document.getElementById('quote-roi-kpi-saving')?.textContent || '').trim(),
+                payback: String(document.getElementById('quote-roi-kpi-payback')?.textContent || '').trim(),
+                roiNote: String(document.getElementById('quote-roi-assumption-summary')?.textContent || 'Preliminary / BD estimate until tariff/source date and CAPEX source are reviewed.').trim(),
+                currency
+            };
+        }
+
+        function getPresalesQuoteDetail(id) {
+            const key = String(id || '').trim();
+            if (!key) return null;
+            const meta = getPresalesQuoteMeta(key) || { id: key };
+            const current = getPresalesCurrentQuoteDetail(key, meta);
+            if (current) return current;
+            const cached = presalesQuoteDetailCache.get(key);
+            if (cached) return cached;
+            if (meta.snapshot) {
+                const detail = buildPresalesQuoteDetailFromSnapshot(meta, meta, 'Cached quote snapshot');
+                presalesQuoteDetailCache.set(key, detail);
+                return detail;
+            }
+            return {
+                id: key,
+                name: meta.name || meta.customerName || meta.quoteNo || key,
+                customerName: meta.customerName || '',
+                quoteNo: meta.quoteNo || '',
+                approvalStatus: meta.approvalStatus || 'not checked',
+                updatedAt: meta.updatedAt || meta.createdAt || '',
+                sourceLabel: 'Quote index only',
+                loaded: false,
+                rowCount: 0,
+                quoteTotal: 0,
+                quoteTotalNote: 'Full snapshot not loaded yet',
+                monthlyUsage: '',
+                targetGeneration: '',
+                proposedSize: '',
+                exportFactor: '',
+                roiSaving: '',
+                payback: '',
+                roiNote: 'Open or load the quote to inspect line items and recalculate ROI KPI.',
+                currency: 'MYR'
+            };
+        }
+
+        async function refreshPresalesQuoteDetail(id, options = {}) {
+            const key = String(id || '').trim();
+            if (!key) return null;
+            if (!options.force && presalesQuoteDetailCache.has(key)) return presalesQuoteDetailCache.get(key);
+            if (presalesQuoteDetailPending.has(key)) return getPresalesQuoteDetail(key);
+            if (!window.__minovaBusiness?.getQuote) {
+                if (options.notify) window.showToast?.('Quote detail API is not available in this session.', 'info');
+                return getPresalesQuoteDetail(key);
+            }
+            presalesQuoteDetailPending.add(key);
+            renderPresalesQuoteDetail(currentPresalesDraftFromForm());
+            try {
+                const remote = await window.__minovaBusiness.getQuote(key);
+                const q = remote?.quote || remote || {};
+                if (!q?.snapshot) throw new Error('Quote snapshot is empty');
+                const detail = buildPresalesQuoteDetailFromSnapshot(q, getPresalesQuoteMeta(key) || {}, 'D1 saved quote snapshot');
+                presalesQuoteDetailCache.set(key, detail);
+                if (options.notify) window.showToast?.('Quote details loaded.', 'success');
+                return detail;
+            } catch (error) {
+                const fallback = {
+                    ...getPresalesQuoteDetail(key),
+                    loadError: error?.message || 'Unable to load saved quote detail'
+                };
+                presalesQuoteDetailCache.set(key, fallback);
+                if (options.notify) window.showToast?.('Unable to load quote details.', 'error');
+                return fallback;
+            } finally {
+                presalesQuoteDetailPending.delete(key);
+                const active = currentPresalesDraftFromForm();
+                if (String(active.quoteId || '') === key) {
+                    renderPresalesQuoteDetail(active);
+                    generatePresalesHandoff({ silent: true });
+                }
+            }
+        }
+
+        function queuePresalesQuoteDetailLoad(id) {
+            const key = String(id || '').trim();
+            if (!key || presalesQuoteDetailCache.has(key) || presalesQuoteDetailPending.has(key)) return;
+            if (!window.__minovaBusiness?.getQuote) return;
+            refreshPresalesQuoteDetail(key, { force: false });
+        }
+
+        function renderPresalesQuoteDetail(project = getActivePresalesProject()) {
+            const target = document.getElementById('presales-quote-detail') || document.getElementById('presales-quote-card');
+            if (!target) return;
+            const detail = getPresalesQuoteDetail(project?.quoteId);
+            if (!detail) {
+                target.innerHTML = 'No quote linked.';
+                return;
+            }
+            const loading = presalesQuoteDetailPending.has(String(project?.quoteId || '').trim());
+            if (!detail.loaded && !detail.loadError) queuePresalesQuoteDetailLoad(project.quoteId);
+            const quoteTotal = detail.quoteTotal > 0 ? presalesFormatMoney(detail.quoteTotal, detail.currency) : '-';
+            const sourceTone = detail.loaded ? 'text-green-700 bg-green-50 border-green-200' : 'text-amber-700 bg-amber-50 border-amber-200';
+            target.innerHTML = `
+                <div class="min-w-0">
+                    <div class="font-black text-slate-800 break-words">${htmlSafe(detail.name || detail.id)}</div>
+                    <div class="mt-1 text-xs text-slate-500">Quote version: ${htmlSafe(detail.quoteNo || detail.id || '-')} · Approval status: ${htmlSafe(detail.approvalStatus || 'not checked')}</div>
+                    <div class="mt-2 inline-flex rounded-full border px-2 py-1 text-[10px] font-black ${sourceTone}">${htmlSafe(loading ? 'Loading saved quote snapshot' : detail.sourceLabel)}</div>
+                    ${detail.loadError ? `<div class="mt-2 text-[11px] font-bold text-red-600">${htmlSafe(detail.loadError)}</div>` : ''}
+                    <div class="mt-3 grid grid-cols-2 gap-x-4 gap-y-3">
+                        ${presalesQuoteMetric('Quote Total', quoteTotal, detail.quoteTotalNote)}
+                        ${presalesQuoteMetric('Line Items', detail.rowCount ? String(detail.rowCount) : '-', detail.loaded ? 'Snapshot rows' : 'Load snapshot for row detail')}
+                        ${presalesQuoteMetric('Monthly Usage', detail.monthlyUsage ? `${detail.monthlyUsage} kWh` : '-', 'Key ROI input')}
+                        ${presalesQuoteMetric('Target Generation', detail.targetGeneration ? `${detail.targetGeneration} kWh` : '-', 'Key ROI input')}
+                        ${presalesQuoteMetric('Proposed PV', detail.proposedSize ? `${detail.proposedSize} kWp` : '-', 'Sizing basis')}
+                        ${presalesQuoteMetric('Payback', detail.payback || '-', detail.roiSaving ? `Saving ${detail.currency === 'CNY' ? '¥' : 'RM'} ${detail.roiSaving}` : 'Load quote for ROI KPI')}
+                    </div>
+                    <div class="mt-3 text-[11px] font-bold text-slate-500 leading-relaxed">${htmlSafe(detail.roiNote || 'Preliminary / BD estimate until inputs are reviewed.')}</div>
+                    <div class="mt-3 flex flex-wrap gap-2">
+                        <button type="button" onclick="refreshPresalesLinkedQuoteDetail()" class="rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px] font-black text-slate-600 hover:bg-slate-50">Load Details</button>
+                        <button type="button" onclick="openPresalesQuote()" class="rounded-lg border border-purple-200 px-2.5 py-1.5 text-[11px] font-black text-purple-700 hover:bg-purple-50">Open Quote</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function getPresalesEpcProject(id) {
+            const key = String(id || '').trim();
+            if (!key) return null;
+            return (Array.isArray(epcDesignProjects) ? epcDesignProjects : []).find(project => String(project?.id || '').trim() === key) || null;
+        }
+
+        function getPresalesEpcDetail(id) {
+            const key = String(id || '').trim();
+            if (!key) return null;
+            const project = getPresalesEpcProject(key);
+            const meta = getPresalesEpcMeta(key) || { id: key };
+            if (!project) {
+                return { id: key, name: meta.name || key, loaded: false, error: 'Linked EPC project is not available in this browser state.' };
+            }
+            try {
+                const result = calculateEpcDesignProject(project, { defaults: epcDesignDefaults });
+                const recommended = getRecommendedEpcScheme(result);
+                const risks = Array.isArray(result.risks) ? result.risks : [];
+                const openRisks = risks.filter(risk => !['auto-cleared', 'manual-acknowledged'].includes(String(risk.status || '')));
+                const openHigh = risks.filter(risk => risk.level === 'High' && risk.blocking !== false);
+                return {
+                    id: key,
+                    name: project.project?.name || project.name || meta.name || key,
+                    loaded: true,
+                    schemeLabel: recommended?.label || result.schemes?.find(scheme => scheme.id === result.recommendedSchemeId)?.label || 'Recommended Scheme',
+                    pvMwp: recommended?.pvRecommendedMwp || 0,
+                    bessMwh: recommended?.bessRecommendedMwh || 0,
+                    pcsMw: recommended?.pcsRecommendedMw || 0,
+                    cRate: recommended?.cRate || 0,
+                    avgLoadKw: result.load?.averageLoadKw || 0,
+                    peakLoadKw: result.load?.peakLoadKw || 0,
+                    architecture: result.electricalArchitecture?.recommendation || result.electrical?.recommendation || '',
+                    solarSource: result.solar?.dataSource || '',
+                    riskCount: risks.length,
+                    openRiskCount: openRisks.length,
+                    openHighRiskCount: openHigh.length,
+                    reportBlocked: Boolean(result.reportGate?.blocked),
+                    boqLines: Array.isArray(result.boq) ? result.boq.length : 0,
+                    dataQualityScore: result.dataQualityScore
+                };
+            } catch (error) {
+                return { id: key, name: meta.name || key, loaded: false, error: error?.message || 'Unable to calculate linked EPC detail.' };
+            }
+        }
+
+        function renderPresalesEpcDetail(project = getActivePresalesProject()) {
+            const target = document.getElementById('presales-epc-detail') || document.getElementById('presales-epc-card');
+            if (!target) return;
+            const detail = getPresalesEpcDetail(project?.epcDesignProjectId);
+            if (!detail) {
+                target.innerHTML = 'No EPC concept linked.';
+                return;
+            }
+            if (!detail.loaded) {
+                target.innerHTML = `
+                    <div class="font-black text-slate-800">${htmlSafe(detail.name || detail.id)}</div>
+                    <div class="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-700">${htmlSafe(detail.error || 'EPC detail is not available.')}</div>
+                    <div class="mt-3"><button type="button" onclick="openPresalesEpc()" class="rounded-lg border border-purple-200 px-2.5 py-1.5 text-[11px] font-black text-purple-700 hover:bg-purple-50">Open EPC</button></div>
+                `;
+                return;
+            }
+            const riskTone = detail.reportBlocked ? 'text-red-700 bg-red-50 border-red-200' : 'text-green-700 bg-green-50 border-green-200';
+            target.innerHTML = `
+                <div class="min-w-0">
+                    <div class="font-black text-slate-800 break-words">${htmlSafe(detail.name || detail.id)}</div>
+                    <div class="mt-1 text-xs text-slate-500">Engineering draft / requires review · ${htmlSafe(detail.schemeLabel)}</div>
+                    <div class="mt-2 inline-flex rounded-full border px-2 py-1 text-[10px] font-black ${riskTone}">${detail.reportBlocked ? 'Reports blocked by open High risk' : 'No blocking High risk'}</div>
+                    <div class="mt-3 grid grid-cols-2 gap-x-4 gap-y-3">
+                        ${presalesQuoteMetric('Recommended PV/BESS/PCS', `${formatEpcNumber(detail.pvMwp, 2, 'MWp')} / ${formatEpcNumber(detail.bessMwh, 2, 'MWh')} / ${formatEpcNumber(detail.pcsMw, 2, 'MW')}`, `${formatEpcNumber(detail.cRate, 2, 'C')} battery basis`)}
+                        ${presalesQuoteMetric('Load Basis', `${formatEpcNumber(detail.avgLoadKw, 0, 'kW avg')} / ${formatEpcNumber(detail.peakLoadKw, 0, 'kW peak')}`, detail.solarSource || 'Solar source not set')}
+                        ${presalesQuoteMetric('Open High Risks', String(detail.openHighRiskCount), `${detail.openRiskCount} open of ${detail.riskCount} total risks`)}
+                        ${presalesQuoteMetric('BOQ Lines', String(detail.boqLines), 'Product Master readiness still required')}
+                    </div>
+                    <div class="mt-3 text-[11px] font-bold text-slate-500 leading-relaxed">${htmlSafe(detail.architecture || 'Review electrical architecture and BOQ before firm proposal.')}</div>
+                    <div class="mt-3 flex flex-wrap gap-2">
+                        <button type="button" onclick="openPresalesEpcPanel('schemes')" class="rounded-lg border border-purple-200 px-2.5 py-1.5 text-[11px] font-black text-purple-700 hover:bg-purple-50">Schemes</button>
+                        <button type="button" onclick="openPresalesEpcPanel('risks')" class="rounded-lg border border-red-200 px-2.5 py-1.5 text-[11px] font-black text-red-700 hover:bg-red-50">Risks</button>
+                        <button type="button" onclick="openPresalesEpcPanel('boq')" class="rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px] font-black text-slate-700 hover:bg-slate-50">BOQ</button>
+                    </div>
+                </div>
+            `;
+        }
+
         function setSelectValueIfPresent(id, value) {
             const el = document.getElementById(id);
             if (el) el.value = value || '';
@@ -21081,6 +21389,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         function markPresalesDirty() {
             const status = document.getElementById('presales-updated-at');
             if (status) status.textContent = 'Unsaved changes';
+        }
+
+        function onPresalesLinkedWorkChanged() {
+            markPresalesDirty();
+            const project = currentPresalesDraftFromForm();
+            renderPresalesCards(project);
+            generatePresalesHandoff({ silent: true });
         }
 
         function currentPresalesDraftFromForm() {
@@ -21159,10 +21474,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
 
         function renderPresalesCards(project = getActivePresalesProject()) {
-            const quote = getPresalesQuoteMeta(project?.quoteId);
-            const epc = getPresalesEpcMeta(project?.epcDesignProjectId);
             const assumptionLabel = PRESALES_ASSUMPTION_STATUS[project?.assumptionStatus] || PRESALES_ASSUMPTION_STATUS.preliminary;
-            const riskLabel = PRESALES_RISK_STATUS[project?.riskStatus] || PRESALES_RISK_STATUS.open;
             const siteCard = document.getElementById('presales-site-card');
             if (siteCard) {
                 siteCard.innerHTML = project
@@ -21178,15 +21490,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             }
             const quoteCard = document.getElementById('presales-quote-card');
             if (quoteCard) {
-                quoteCard.innerHTML = quote
-                    ? `<div>${htmlSafe(quote.name || quote.customerName || quote.id)}</div><div class="mt-1 text-xs text-slate-500">Quote version: ${htmlSafe(quote.quoteNo || quote.id || '-')} · Approval status: ${htmlSafe(quote.approvalStatus || 'not checked')}</div>`
-                    : 'No quote linked.';
+                if (!quoteCard.querySelector('#presales-quote-detail')) quoteCard.innerHTML = '<div id="presales-quote-detail"></div>';
+                renderPresalesQuoteDetail(project);
             }
             const epcCard = document.getElementById('presales-epc-card');
             if (epcCard) {
-                epcCard.innerHTML = epc
-                    ? `<div>${htmlSafe(epc.name || epc.id)}</div><div class="mt-1 text-xs text-slate-500">Engineering draft / requires review · Risk status: ${htmlSafe(riskLabel)} · BOQ requires Product Master readiness check.</div>`
-                    : 'No EPC concept linked.';
+                if (!epcCard.querySelector('#presales-epc-detail')) epcCard.innerHTML = '<div id="presales-epc-detail"></div>';
+                renderPresalesEpcDetail(project);
             }
         }
 
@@ -21255,12 +21565,14 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (customerName && customer && !customer.value.trim()) customer.value = customerName;
             markPresalesDirty();
             renderPresalesCards(currentPresalesDraftFromForm());
+            generatePresalesHandoff({ silent: true });
         }
 
         function syncPresalesFromCurrentEpc() {
             if (epcDesignActiveProjectId) setSelectValueIfPresent('presales-epc-link', epcDesignActiveProjectId);
             markPresalesDirty();
             renderPresalesCards(currentPresalesDraftFromForm());
+            generatePresalesHandoff({ silent: true });
         }
 
         function openPresalesQuote() {
@@ -21282,17 +21594,39 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             try { setEpcPanelTab('schemes'); } catch (e) {}
         }
 
+        function openPresalesEpcPanel(panel = 'schemes') {
+            openPresalesEpc();
+            try { setEpcPanelTab(panel); } catch (e) {}
+        }
+
+        function refreshPresalesLinkedQuoteDetail() {
+            const project = currentPresalesDraftFromForm();
+            return refreshPresalesQuoteDetail(project.quoteId, { force: true, notify: true });
+        }
+
         function buildPresalesHandoffText(project = currentPresalesDraftFromForm()) {
-            const quote = getPresalesQuoteMeta(project.quoteId);
-            const epc = getPresalesEpcMeta(project.epcDesignProjectId);
+            const quote = getPresalesQuoteDetail(project.quoteId);
+            const epc = getPresalesEpcDetail(project.epcDesignProjectId);
             const assumptionLabel = PRESALES_ASSUMPTION_STATUS[project.assumptionStatus] || PRESALES_ASSUMPTION_STATUS.preliminary;
             const riskLabel = PRESALES_RISK_STATUS[project.riskStatus] || PRESALES_RISK_STATUS.open;
+            const quoteTotal = quote?.quoteTotal > 0 ? presalesFormatMoney(quote.quoteTotal, quote.currency) : '-';
+            const quoteInputs = quote
+                ? `Monthly Usage: ${quote.monthlyUsage || '-'} kWh; Target Generation: ${quote.targetGeneration || '-'} kWh; Export factor: ${quote.exportFactor || '-'}; Proposed PV: ${quote.proposedSize || '-'} kWp`
+                : 'Quote inputs: Not linked';
+            const epcRecommendation = epc?.loaded
+                ? `Recommended PV/BESS/PCS: ${formatEpcNumber(epc.pvMwp, 2, 'MWp')} / ${formatEpcNumber(epc.bessMwh, 2, 'MWh')} / ${formatEpcNumber(epc.pcsMw, 2, 'MW')}`
+                : 'Recommended PV/BESS/PCS: Not linked';
+            const epcRiskSummary = epc?.loaded
+                ? `Open High Risks: ${epc.openHighRiskCount}; Open Risks: ${epc.openRiskCount}/${epc.riskCount}; BOQ Lines: ${epc.boqLines}`
+                : `Unconfirmed risks: ${riskLabel}`;
             const customerSummary = [
                 'Customer-facing summary',
                 `Customer: ${project.customerName || '-'}`,
                 `Site basis: ${project.siteSummary || 'Pending customer/site inputs.'}`,
                 `Current stage: ${project.stage}`,
                 `Estimate class: ${assumptionLabel}`,
+                `Quote Total: ${quoteTotal}`,
+                epcRecommendation,
                 'Note: ROI, payback and savings are preliminary until tariff/source date, export factor, CAPEX source and engineering confirmation are reviewed.'
             ].join('\n');
             const internal = [
@@ -21302,7 +21636,11 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 `Site assumptions: ${project.siteSummary || '-'}`,
                 `Quote version: ${quote?.quoteNo || quote?.id || 'Not linked'}`,
                 `Approval status: ${quote?.approvalStatus || 'not checked'}`,
+                `Quote Total: ${quoteTotal}`,
+                quoteInputs,
                 `Linked EPC design: ${epc?.name || epc?.id || 'Not linked'}`,
+                epcRecommendation,
+                epcRiskSummary,
                 `Assumption status: ${assumptionLabel}`,
                 `Unconfirmed risks: ${riskLabel}`,
                 'Product certification gaps: review Product Master readiness, certification status, lead time and quote price before firm proposal.',
@@ -21347,10 +21685,18 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         window.saveCurrentPresalesProject = saveCurrentPresalesProject;
         window.setPresalesStage = setPresalesStage;
         window.markPresalesDirty = markPresalesDirty;
+        window.onPresalesLinkedWorkChanged = onPresalesLinkedWorkChanged;
+        window.getPresalesQuoteDetail = getPresalesQuoteDetail;
+        window.renderPresalesQuoteDetail = renderPresalesQuoteDetail;
+        window.refreshPresalesQuoteDetail = refreshPresalesQuoteDetail;
+        window.refreshPresalesLinkedQuoteDetail = refreshPresalesLinkedQuoteDetail;
+        window.getPresalesEpcDetail = getPresalesEpcDetail;
+        window.renderPresalesEpcDetail = renderPresalesEpcDetail;
         window.syncPresalesFromCurrentQuote = syncPresalesFromCurrentQuote;
         window.syncPresalesFromCurrentEpc = syncPresalesFromCurrentEpc;
         window.openPresalesQuote = openPresalesQuote;
         window.openPresalesEpc = openPresalesEpc;
+        window.openPresalesEpcPanel = openPresalesEpcPanel;
         window.generatePresalesHandoff = generatePresalesHandoff;
         window.copyPresalesHandoff = copyPresalesHandoff;
 

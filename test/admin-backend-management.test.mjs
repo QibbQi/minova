@@ -405,8 +405,15 @@ test('health payload exposes Worker and D1 deep status', () => {
 });
 
 test('business bootstrap payload reshapes entity rows into app state', () => {
+  const presalesRecord = {
+    id: 'BD1',
+    customerName: 'Factory A',
+    stage: 'Sizing',
+    intakeBasis: { location: 'Sabah', monthlyConsumptionKwh: 186000 },
+    evidenceStatus: { utilityBills: 'partial', loadProfile: 'requested' }
+  };
   const payload = buildBusinessBootstrapPayload([
-    { domain: 'presales_project', record_id: 'BD1', payload_json: '{"id":"BD1","customerName":"Factory A","stage":"Sizing"}', updated_at: '2026-06-03 00:58:00' },
+    { domain: 'presales_project', record_id: 'BD1', payload_json: JSON.stringify(presalesRecord), updated_at: '2026-06-03 00:58:00' },
     { domain: 'supplier', record_id: 'SUP1', payload_json: '{"id":"SUP1","code":"SUP1","nameEn":"Supplier"}', updated_at: '2026-06-03 00:59:00' },
     { domain: 'product', record_id: 'P1', payload_json: '{"id":"P1","name":"PV"}', updated_at: '2026-06-03 01:00:00' },
     { domain: 'certification_requirement', record_id: 'PV-001', payload_json: '{"id":"PV-001","sourceCategory":"PV_MODULE","standard":"IEC 61215 series"}', updated_at: '2026-06-03 01:00:10' },
@@ -422,7 +429,15 @@ test('business bootstrap payload reshapes entity rows into app state', () => {
     subcategories_by_category: { 'PV Module': ['Bifacial'] }
   });
 
-  assert.deepEqual(payload.data.presalesProjects, [{ id: 'BD1', customerName: 'Factory A', stage: 'Sizing' }]);
+  assert.deepEqual(payload.data.presalesProjects, [presalesRecord]);
+  assert.deepEqual(payload.data.presalesProjects[0].intakeBasis, {
+    location: 'Sabah',
+    monthlyConsumptionKwh: 186000
+  });
+  assert.deepEqual(payload.data.presalesProjects[0].evidenceStatus, {
+    utilityBills: 'partial',
+    loadProfile: 'requested'
+  });
   assert.deepEqual(payload.data.suppliers, [{ id: 'SUP1', code: 'SUP1', nameEn: 'Supplier' }]);
   assert.deepEqual(payload.data.products, [{ id: 'P1', name: 'PV' }]);
   assert.deepEqual(payload.data.certificationRequirementsCatalog, [{ id: 'PV-001', sourceCategory: 'PV_MODULE', standard: 'IEC 61215 series' }]);
@@ -446,8 +461,15 @@ test('business bootstrap payload reshapes entity rows into app state', () => {
 });
 
 test('business snapshot migration maps suppliers into D1 entities', () => {
+  const presalesRecord = {
+    id: 'BD1',
+    customerName: 'Factory A',
+    stage: 'Sizing',
+    intakeBasis: { location: 'Sabah', monthlyConsumptionKwh: 186000 },
+    evidenceStatus: { utilityBills: 'partial', loadProfile: 'requested' }
+  };
   const { items } = businessSnapshotToItems({
-    presalesProjects: [{ id: 'BD1', customerName: 'Factory A', quoteId: 'Q1', epcDesignProjectId: 'EPC1' }],
+    presalesProjects: [presalesRecord],
     suppliers: [{ id: 'supplier_SUP1', code: 'SUP1', nameEn: 'Supplier One' }],
     products: [{ id: 'P1', name: 'PV' }],
     certificationRequirementsCatalog: [{ id: 'PV-001', sourceCategory: 'PV_MODULE', standard: 'IEC 61215 series' }],
@@ -460,7 +482,7 @@ test('business snapshot migration maps suppliers into D1 entities', () => {
   assert.deepEqual(items.filter(item => item.domain === 'presales_project'), [{
     domain: 'presales_project',
     recordId: 'BD1',
-    payload: { id: 'BD1', customerName: 'Factory A', quoteId: 'Q1', epcDesignProjectId: 'EPC1' }
+    payload: presalesRecord
   }]);
   assert.deepEqual(items.filter(item => item.domain === 'supplier'), [{
     domain: 'supplier',

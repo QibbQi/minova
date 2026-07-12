@@ -300,3 +300,13 @@ test('mergeState merges channel partners and keeps local conflicts', () => {
   assert.deepEqual(merged.data.channelPartners.map((partner) => partner.id), ['remote-channel', 'shared-channel', 'local-channel'])
   assert.equal(merged.data.channelPartners.find((partner) => partner.id === 'shared-channel').name, 'Local Dealer')
 })
+
+test('mergeState preserves nested presales intake and prefers local project conflicts', () => {
+  const merged = mergeState(
+    { data: { presalesProjects: [{ id: 'BD1', intakeBasis: { location: 'Remote' } }] } },
+    { data: { presalesProjects: [{ id: 'BD1', intakeBasis: { location: 'Sabah' }, evidenceStatus: { utilityBills: 'partial' } }] } }
+  )
+  assert.equal(merged.data.presalesProjects.length, 1)
+  assert.equal(merged.data.presalesProjects[0].intakeBasis.location, 'Sabah')
+  assert.equal(merged.data.presalesProjects[0].evidenceStatus.utilityBills, 'partial')
+})

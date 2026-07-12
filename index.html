@@ -5941,6 +5941,17 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             normalizeEpcDesignProjectList,
             parseGlobalSolarAtlasSolarResource
         } = window.MinovaEpcDesignEngine;
+        import {
+            PRESALES_ASSUMPTION_STATUS,
+            PRESALES_EVIDENCE_DEFAULTS,
+            PRESALES_INTAKE_DEFAULTS,
+            PRESALES_RISK_STATUS,
+            PRESALES_STAGES,
+            buildPresalesEvidenceGaps,
+            buildPresalesOpportunityModel,
+            calculatePresalesReadiness,
+            normalizePresalesProject
+        } from './presales-workbench.mjs';
         document.documentElement.dataset.epcDesignWorkspace = 'booted';
 
         const localStorage = (() => {
@@ -7016,35 +7027,6 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         function domSafeId(v) {
             return String(v ?? '').replace(/[^A-Za-z0-9_-]/g, '_');
         }
-        const PRESALES_STAGES = ['Intake', 'Sizing', 'Product/BOQ', 'Risk', 'Quote/PDF', 'Handoff'];
-        const PRESALES_ASSUMPTION_STATUS = {
-            preliminary: 'Preliminary / BD estimate',
-            needs_source: 'Needs source/date',
-            engineering_review: 'Engineering draft / requires review',
-            confirmed: 'Engineering confirmed'
-        };
-        const PRESALES_RISK_STATUS = {
-            open: 'Open risks',
-            needs_review: 'Needs engineering review',
-            accepted: 'Accepted for proposal'
-        };
-        function normalizePresalesProject(record = {}) {
-            const id = String(record?.id || '').trim() || `presales_${Date.now()}`;
-            const stage = PRESALES_STAGES.includes(record?.stage) ? record.stage : 'Intake';
-            const assumptionStatus = Object.prototype.hasOwnProperty.call(PRESALES_ASSUMPTION_STATUS, record?.assumptionStatus) ? record.assumptionStatus : 'preliminary';
-            const riskStatus = Object.prototype.hasOwnProperty.call(PRESALES_RISK_STATUS, record?.riskStatus) ? record.riskStatus : 'open';
-            return {
-                id,
-                customerName: String(record?.customerName || '').trim(),
-                siteSummary: String(record?.siteSummary || '').trim(),
-                stage,
-                quoteId: String(record?.quoteId || '').trim(),
-                epcDesignProjectId: String(record?.epcDesignProjectId || '').trim(),
-                assumptionStatus,
-                riskStatus,
-                updatedAt: String(record?.updatedAt || '').trim()
-            };
-        }
         function normalizePresalesProjectList(list = []) {
             const seen = new Set();
             return (Array.isArray(list) ? list : [])
@@ -7056,6 +7038,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 })
                 .sort((a, b) => (Date.parse(b.updatedAt || '') || 0) - (Date.parse(a.updatedAt || '') || 0));
         }
+        window.normalizePresalesProject = normalizePresalesProject;
+        window.buildPresalesEvidenceGaps = buildPresalesEvidenceGaps;
+        window.calculatePresalesReadiness = calculatePresalesReadiness;
+        window.buildPresalesOpportunityModel = buildPresalesOpportunityModel;
         const PRODUCT_CATEGORY_ALIASES = [
             ['光伏组件', 'PV Module'],
             ['光伏板', 'PV Module'],

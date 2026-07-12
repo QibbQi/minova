@@ -5,7 +5,8 @@ import {
   buildPresalesEvidenceGaps,
   buildPresalesOpportunityModel,
   calculatePresalesReadiness,
-  normalizePresalesProject
+  normalizePresalesProject,
+  PRESALES_READINESS_LABEL
 } from '../presales-workbench.mjs';
 
 const indexHtml = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
@@ -72,7 +73,9 @@ test('presales readiness is a bounded completeness score with High-risk cap', ()
   assert.equal(readiness.rawScore, 95);
   assert.equal(readiness.score, 79);
   assert.equal(readiness.blocked, true);
-  assert.match(readiness.nextAction, /High risk/i);
+  assert.equal(PRESALES_READINESS_LABEL, 'BD Readiness');
+  assert.equal(readiness.label, 'BD Readiness');
+  assert.equal(readiness.nextAction, 'Open EPC High Risks');
 });
 
 test('presales gaps are actionable and opportunity model reuses quote and EPC detail', () => {

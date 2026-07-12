@@ -5945,6 +5945,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             PRESALES_ASSUMPTION_STATUS,
             PRESALES_EVIDENCE_DEFAULTS,
             PRESALES_INTAKE_DEFAULTS,
+            PRESALES_READINESS_LABEL,
             PRESALES_RISK_STATUS,
             PRESALES_STAGES,
             buildPresalesEvidenceGaps,
@@ -7039,6 +7040,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 .sort((a, b) => (Date.parse(b.updatedAt || '') || 0) - (Date.parse(a.updatedAt || '') || 0));
         }
         window.normalizePresalesProject = normalizePresalesProject;
+        window.PRESALES_READINESS_LABEL = PRESALES_READINESS_LABEL;
         window.buildPresalesEvidenceGaps = buildPresalesEvidenceGaps;
         window.calculatePresalesReadiness = calculatePresalesReadiness;
         window.buildPresalesOpportunityModel = buildPresalesOpportunityModel;

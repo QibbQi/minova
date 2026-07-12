@@ -15,6 +15,8 @@ export const PRESALES_RISK_STATUS = Object.freeze({
   accepted: 'Accepted for proposal'
 });
 
+export const PRESALES_READINESS_LABEL = 'BD Readiness';
+
 export const PRESALES_INTAKE_DEFAULTS = Object.freeze({
   siteName: '',
   location: '',
@@ -187,6 +189,7 @@ export function calculatePresalesReadiness(project = {}, quote = null, epc = nul
   const score = Math.max(0, Math.min(blocked ? 79 : 100, rawScore));
   const gaps = buildPresalesEvidenceGaps(normalized, quote, epc);
   return {
+    label: PRESALES_READINESS_LABEL,
     score,
     rawScore,
     capped: score !== rawScore,

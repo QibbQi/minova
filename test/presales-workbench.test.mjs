@@ -197,3 +197,42 @@ test('presales cockpit has one stage owner and structured progressive intake', (
   assert.match(indexHtml, /function readPresalesIntakeForm/);
   assert.match(indexHtml, /function populatePresalesIntakeForm/);
 });
+
+test('presales intake uses canonical enum values and keeps collapsed raw notes readable', () => {
+  const optionValues = id => {
+    const select = indexHtml.match(new RegExp(`<select id="${id}"[^>]*>([\\s\\S]*?)</select>`));
+    assert.ok(select, `missing select: ${id}`);
+    return [...select[1].matchAll(/<option value="([^"]+)"/g)].map(([, value]) => value);
+  };
+
+  const presalesEnumValues = [
+    ...optionValues('presales-genset-use'),
+    ...optionValues('presales-export-eligibility'),
+    ...optionValues('presales-evidence-utility-bills')
+  ];
+  assert.deepEqual(optionValues('presales-genset-use'), ['unknown', 'outage', 'peak_shaving', 'continuous']);
+  assert.deepEqual(optionValues('presales-export-eligibility'), ['unknown', 'confirmed', 'restricted', 'not_allowed']);
+  assert.deepEqual(optionValues('presales-evidence-utility-bills'), ['complete', 'partial', 'missing']);
+  for (const id of [
+    'presales-evidence-load-profile',
+    'presales-evidence-site-photos',
+    'presales-evidence-existing-sld'
+  ]) {
+    const values = optionValues(id);
+    presalesEnumValues.push(...values);
+    assert.deepEqual(values, ['available', 'requested', 'missing']);
+  }
+  const structuralValues = optionValues('presales-evidence-structural-report');
+  presalesEnumValues.push(...structuralValues);
+  assert.deepEqual(structuralValues, ['available', 'requested', 'not_required', 'missing']);
+  for (const invalid of ['backup', 'prime', 'eligible', 'not_eligible', 'pending']) {
+    assert.ok(!presalesEnumValues.includes(invalid), `invalid Presales enum value: ${invalid}`);
+  }
+
+  assert.match(indexHtml, /id="presales-intake-notes-summary"/);
+  assert.match(indexHtml, /function updatePresalesIntakeSummaries/);
+  assert.match(indexHtml, /No raw notes captured yet\./);
+  assert.match(indexHtml, /-webkit-line-clamp:\s*2/);
+  assert.match(indexHtml, /togglePresalesIntakeGroup\('notes'\)/);
+  assert.match(indexHtml, /\? `presales-stage-btn min-h-11/);
+});

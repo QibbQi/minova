@@ -58,6 +58,13 @@
             outline-offset: 2px;
         }
 
+        #presales-intake-notes-summary {
+            display: -webkit-box;
+            overflow: hidden;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
+        }
+
         @media (max-width: 767px) {
             #view-presales .presales-field { font-size: 1rem; }
             #presales-stage-rail { display: none; }
@@ -1231,7 +1238,7 @@
                         <label><span class="mb-1 block text-xs font-semibold text-slate-600">Genset capacity (kVA)</span><input id="presales-genset-capacity-kva" type="number" min="0" oninput="markPresalesDirty()" class="presales-field"></label>
                         <label><span class="mb-1 block text-xs font-semibold text-slate-600">Runtime (hours/month)</span><input id="presales-genset-runtime-hours-month" type="number" min="0" oninput="markPresalesDirty()" class="presales-field"></label>
                         <label><span class="mb-1 block text-xs font-semibold text-slate-600">Diesel (liters/month)</span><input id="presales-diesel-consumption-liters-month" type="number" min="0" oninput="markPresalesDirty()" class="presales-field"></label>
-                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Genset use</span><select id="presales-genset-use" onchange="markPresalesDirty()" class="presales-field"><option value="unknown">Unknown</option><option value="backup">Backup</option><option value="prime">Prime</option><option value="peak_shaving">Peak shaving</option></select></label>
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Genset use</span><select id="presales-genset-use" onchange="markPresalesDirty()" class="presales-field"><option value="unknown">Unknown</option><option value="outage">Outage support</option><option value="peak_shaving">Peak shaving</option><option value="continuous">Continuous</option></select></label>
                     </div>
                 </section>
 
@@ -1243,7 +1250,7 @@
                     <div id="presales-intake-site" class="hidden grid grid-cols-1 gap-3 pb-4 md:grid-cols-2">
                         <label><span class="mb-1 block text-xs font-semibold text-slate-600">Available area (m²)</span><input id="presales-available-area-m2" type="number" min="0" oninput="markPresalesDirty()" class="presales-field"></label>
                         <label><span class="mb-1 block text-xs font-semibold text-slate-600">Transformer capacity (kVA)</span><input id="presales-transformer-capacity-kva" type="number" min="0" oninput="markPresalesDirty()" class="presales-field"></label>
-                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Export eligibility</span><select id="presales-export-eligibility" onchange="markPresalesDirty()" class="presales-field"><option value="unknown">Unknown</option><option value="eligible">Eligible</option><option value="not_eligible">Not eligible</option><option value="pending">Pending confirmation</option></select></label>
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Export eligibility</span><select id="presales-export-eligibility" onchange="markPresalesDirty()" class="presales-field"><option value="unknown">Unknown</option><option value="confirmed">Confirmed</option><option value="restricted">Restricted</option><option value="not_allowed">Not allowed</option></select></label>
                         <label><span class="mb-1 block text-xs font-semibold text-slate-600">Primary constraint</span><input id="presales-primary-constraint" type="text" oninput="markPresalesDirty()" class="presales-field"></label>
                     </div>
                 </section>
@@ -1268,22 +1275,22 @@
                         <span aria-hidden="true">⌄</span>
                     </button>
                     <div id="presales-intake-evidence" class="hidden grid grid-cols-1 gap-3 pb-4 md:grid-cols-2">
-                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Utility bills</span><select id="presales-evidence-utility-bills" onchange="markPresalesDirty()" class="presales-field"><option value="missing">Missing</option><option value="partial">Partial</option><option value="complete">Complete</option></select></label>
-                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Load profile</span><select id="presales-evidence-load-profile" onchange="markPresalesDirty()" class="presales-field"><option value="missing">Missing</option><option value="available">Available</option></select></label>
-                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Site photos</span><select id="presales-evidence-site-photos" onchange="markPresalesDirty()" class="presales-field"><option value="missing">Missing</option><option value="available">Available</option></select></label>
-                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Existing SLD</span><select id="presales-evidence-existing-sld" onchange="markPresalesDirty()" class="presales-field"><option value="missing">Missing</option><option value="available">Available</option></select></label>
-                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Structural report</span><select id="presales-evidence-structural-report" onchange="markPresalesDirty()" class="presales-field"><option value="missing">Missing</option><option value="available">Available</option><option value="not_required">Not required</option></select></label>
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Utility bills</span><select id="presales-evidence-utility-bills" onchange="markPresalesDirty()" class="presales-field"><option value="complete">Complete</option><option value="partial">Partial</option><option value="missing">Missing</option></select></label>
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Load profile</span><select id="presales-evidence-load-profile" onchange="markPresalesDirty()" class="presales-field"><option value="available">Available</option><option value="requested">Requested</option><option value="missing">Missing</option></select></label>
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Site photos</span><select id="presales-evidence-site-photos" onchange="markPresalesDirty()" class="presales-field"><option value="available">Available</option><option value="requested">Requested</option><option value="missing">Missing</option></select></label>
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Existing SLD</span><select id="presales-evidence-existing-sld" onchange="markPresalesDirty()" class="presales-field"><option value="available">Available</option><option value="requested">Requested</option><option value="missing">Missing</option></select></label>
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Structural report</span><select id="presales-evidence-structural-report" onchange="markPresalesDirty()" class="presales-field"><option value="available">Available</option><option value="requested">Requested</option><option value="not_required">Not required</option><option value="missing">Missing</option></select></label>
                         <label><span class="mb-1 block text-xs font-semibold text-slate-600">Risk status</span><select id="presales-risk-status" onchange="markPresalesDirty()" class="presales-field"><option value="open">Open risks</option><option value="needs_review">Needs engineering review</option><option value="accepted">Accepted for proposal</option></select></label>
                     </div>
                 </section>
 
                 <section class="px-4">
                     <button type="button" data-presales-intake-group="notes" class="presales-action flex min-h-11 w-full items-center justify-between gap-3 py-3 text-left" onclick="togglePresalesIntakeGroup('notes')" aria-expanded="false" aria-controls="presales-intake-notes">
-                        <span><strong class="text-sm text-slate-900">Raw notes</strong><span id="presales-intake-notes-summary" class="ml-2 text-xs text-slate-500">Expand to edit</span></span>
+                        <span class="min-w-0"><strong class="text-sm text-slate-900">Raw notes</strong><span id="presales-intake-notes-summary" class="ml-2 text-xs text-slate-500">No raw notes captured yet.</span><span class="ml-2 text-xs font-semibold text-purple-700">Expand/Edit</span></span>
                         <span aria-hidden="true">⌄</span>
                     </button>
                     <div id="presales-intake-notes" class="hidden pb-4">
-                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Site summary</span><textarea id="presales-site-summary" oninput="markPresalesDirty()" rows="5" placeholder="Site address, bill period, diesel baseline, roof/load constraints, customer notes." class="presales-field"></textarea></label>
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Site summary</span><textarea id="presales-site-summary" oninput="markPresalesDirty(); updatePresalesIntakeSummaries()" rows="5" placeholder="Site address, bill period, diesel baseline, roof/load constraints, customer notes." class="presales-field"></textarea></label>
                     </div>
                 </section>
             </section>
@@ -21569,6 +21576,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             });
         }
 
+        function updatePresalesIntakeSummaries(project = getActivePresalesProject() || {}) {
+            const notesSummary = document.getElementById('presales-intake-notes-summary');
+            if (notesSummary) {
+                notesSummary.textContent = presalesFormText('presales-site-summary', project.siteSummary || '') || 'No raw notes captured yet.';
+            }
+        }
+
         function setPresalesIntakeGroupExpanded(groupId, expanded) {
             const panel = document.getElementById(`presales-intake-${groupId}`);
             const button = document.querySelector(`[data-presales-intake-group="${groupId}"]`);
@@ -21578,6 +21592,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
         function togglePresalesIntakeGroup(groupId) {
             const button = document.querySelector(`[data-presales-intake-group="${groupId}"]`);
+            if (groupId === 'notes') updatePresalesIntakeSummaries();
             setPresalesIntakeGroupExpanded(groupId, button?.getAttribute('aria-expanded') !== 'true');
         }
 
@@ -21672,7 +21687,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const stageButton = (name, index, compact = false) => {
                 const selected = name === active;
                 const classes = compact
-                    ? `presales-stage-btn w-full rounded-lg px-3 py-2 text-left text-xs font-bold ${selected ? 'bg-purple-800 text-white' : 'text-slate-700 hover:bg-slate-50'}`
+                    ? `presales-stage-btn min-h-11 w-full rounded-lg px-3 py-2 text-left text-xs font-bold ${selected ? 'bg-purple-800 text-white' : 'text-slate-700 hover:bg-slate-50'}`
                     : `presales-stage-btn rounded-lg border px-3 py-2 text-left ${selected ? 'border-purple-300 bg-purple-50 shadow-sm' : 'border-transparent hover:bg-slate-50'}`;
                 const label = compact ? name : `<span class="block text-[10px] font-black ${selected ? 'text-purple-600' : 'text-slate-400'}">${String(index + 1).padStart(2, '0')}</span><span class="mt-1 block text-xs font-black">${name}</span>`;
                 return `<button type="button" data-presales-stage="${htmlSafe(name)}" onclick="setPresalesStage('${name}')" aria-pressed="${selected}" class="${classes}">${label}</button>`;
@@ -21736,6 +21751,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             renderPresalesProjectSelect(project);
             renderPresalesLinkSelects(project);
             populatePresalesIntakeForm(project || {});
+            updatePresalesIntakeSummaries(project || {});
             applyPresalesIntakeDisclosure(project || {});
             const view = document.getElementById('view-presales');
             if (view) view.dataset.presalesRecordState = project?.updatedAt ? 'existing' : 'new';
@@ -21919,6 +21935,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         window.setPresalesStage = setPresalesStage;
         window.togglePresalesMobileStages = togglePresalesMobileStages;
         window.togglePresalesIntakeGroup = togglePresalesIntakeGroup;
+        window.updatePresalesIntakeSummaries = updatePresalesIntakeSummaries;
         window.markPresalesDirty = markPresalesDirty;
         window.onPresalesLinkedWorkChanged = onPresalesLinkedWorkChanged;
         window.getPresalesQuoteDetail = getPresalesQuoteDetail;

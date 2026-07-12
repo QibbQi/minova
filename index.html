@@ -12,6 +12,72 @@
             --print-font-size: 12pt;
         }
 
+        #view-presales {
+            --presales-bg: #f3f5f8;
+            --presales-surface: rgba(255, 255, 255, 0.78);
+            --presales-solid: #ffffff;
+            --presales-border: rgba(148, 163, 184, 0.32);
+            --presales-text: #172033;
+            --presales-muted: #64748b;
+            --presales-purple: #582c83;
+            --presales-yellow: #ffc107;
+            --presales-danger: #b91c1c;
+            color: var(--presales-text);
+        }
+
+        .presales-glass {
+            background: var(--presales-surface);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08), 0 0 0 1px var(--presales-border);
+            -webkit-backdrop-filter: blur(18px);
+            backdrop-filter: blur(18px);
+            border-radius: 8px;
+        }
+
+        .presales-solid {
+            background: var(--presales-solid);
+            border: 1px solid var(--presales-border);
+            border-radius: 8px;
+        }
+
+        .presales-field {
+            min-height: 44px;
+            width: 100%;
+            border: 1px solid #d8dee8;
+            border-radius: 8px;
+            background: #fff;
+            padding: 0.68rem 0.75rem;
+            font-size: 0.875rem;
+            color: var(--presales-text);
+        }
+
+        .presales-field:focus-visible,
+        .presales-action:focus-visible,
+        .presales-stage-btn:focus-visible {
+            outline: 2px solid var(--presales-purple);
+            outline-offset: 2px;
+        }
+
+        @media (max-width: 767px) {
+            #view-presales .presales-field { font-size: 1rem; }
+            #presales-stage-rail { display: none; }
+            #presales-stage-mobile-summary { display: flex; }
+            #view-presales[data-presales-record-state="existing"] #presales-opportunity-column { order: -10; }
+        }
+
+        @media (min-width: 768px) {
+            #presales-stage-rail { display: grid; }
+            #presales-stage-mobile-summary { display: none; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            #view-presales *, #view-presales *::before, #view-presales *::after {
+                scroll-behavior: auto !important;
+                transition-duration: 0.01ms !important;
+                animation-duration: 0.01ms !important;
+            }
+        }
+
         @media print {
             .no-print { display: none !important; }
             body { background-color: white; padding: 0; margin: 0; }
@@ -1093,139 +1159,166 @@
 
 
     <main id="view-presales" class="max-w-7xl mx-auto px-4 mb-20 hidden" style="display: none;">
-        <section class="mb-5 border-b border-slate-200 pb-5">
-            <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+        <section id="presales-command-bar" class="presales-glass sticky top-2 z-20 mb-4 p-3">
+            <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div class="min-w-0">
-                    <p class="text-[10px] font-black text-purple-700 uppercase tracking-widest mb-1">BD Pre-sales</p>
-                    <h2 class="text-2xl font-black text-slate-900 tracking-tight">Pre-sales Workspace</h2>
-                    <p class="text-sm text-slate-500 mt-1 max-w-3xl">Capture customer/site basis, link the quote draft and Hybrid EPC concept, then hand a clean review pack to engineering.</p>
+                    <p class="text-xs font-semibold text-purple-700">BD Pre-sales</p>
+                    <h2 class="text-2xl font-bold text-slate-900">Pre-sales Workspace</h2>
+                    <p id="presales-project-context" class="mt-1 text-sm text-slate-500">New opportunity</p>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
-                    <select id="presales-project-select" onchange="selectPresalesProject(this.value)" class="min-w-[220px] border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold bg-white outline-none">
-                        <option value="">New pre-sales project</option>
-                    </select>
-                    <button type="button" onclick="createPresalesProject()" class="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-black hover:bg-black">New Case</button>
-                    <button type="button" onclick="saveCurrentPresalesProject()" class="px-3 py-2 rounded-xl bg-purple-700 text-white text-xs font-black hover:bg-purple-800">Save</button>
-                    <button type="button" onclick="generatePresalesHandoff()" class="px-3 py-2 rounded-xl brand-yellow-action border text-xs font-black">Generate Handoff</button>
+                    <select id="presales-project-select" onchange="selectPresalesProject(this.value)" class="presales-field min-w-0 flex-1 sm:min-w-[220px]"></select>
+                    <span id="presales-updated-at" class="text-xs font-semibold text-slate-500" aria-live="polite">Not saved</span>
+                    <button type="button" onclick="createPresalesProject()" class="presales-action min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold">New Case</button>
+                    <button type="button" onclick="saveCurrentPresalesProject()" class="presales-action min-h-11 rounded-lg bg-purple-800 px-4 text-xs font-bold text-white">Save</button>
+                    <button type="button" onclick="openPresalesHandoff()" class="presales-action min-h-11 rounded-lg border border-amber-400 bg-amber-300 px-4 text-xs font-bold text-slate-900">Handoff</button>
                 </div>
             </div>
         </section>
 
-        <section class="grid grid-cols-2 md:grid-cols-6 gap-2 mb-5" aria-label="BD workflow stages">
-            <button type="button" data-presales-stage="Intake" onclick="setPresalesStage('Intake')" class="presales-stage-btn rounded-xl border border-slate-200 bg-white px-3 py-3 text-left">
-                <span class="block text-[10px] font-black uppercase tracking-widest text-slate-400">01</span>
-                <span class="block mt-1 text-xs font-black text-slate-800">Intake</span>
-            </button>
-            <button type="button" data-presales-stage="Sizing" onclick="setPresalesStage('Sizing')" class="presales-stage-btn rounded-xl border border-slate-200 bg-white px-3 py-3 text-left">
-                <span class="block text-[10px] font-black uppercase tracking-widest text-slate-400">02</span>
-                <span class="block mt-1 text-xs font-black text-slate-800">Sizing</span>
-            </button>
-            <button type="button" data-presales-stage="Product/BOQ" onclick="setPresalesStage('Product/BOQ')" class="presales-stage-btn rounded-xl border border-slate-200 bg-white px-3 py-3 text-left">
-                <span class="block text-[10px] font-black uppercase tracking-widest text-slate-400">03</span>
-                <span class="block mt-1 text-xs font-black text-slate-800">Product/BOQ</span>
-            </button>
-            <button type="button" data-presales-stage="Risk" onclick="setPresalesStage('Risk')" class="presales-stage-btn rounded-xl border border-slate-200 bg-white px-3 py-3 text-left">
-                <span class="block text-[10px] font-black uppercase tracking-widest text-slate-400">04</span>
-                <span class="block mt-1 text-xs font-black text-slate-800">Risk</span>
-            </button>
-            <button type="button" data-presales-stage="Quote/PDF" onclick="setPresalesStage('Quote/PDF')" class="presales-stage-btn rounded-xl border border-slate-200 bg-white px-3 py-3 text-left">
-                <span class="block text-[10px] font-black uppercase tracking-widest text-slate-400">05</span>
-                <span class="block mt-1 text-xs font-black text-slate-800">Quote/PDF</span>
-            </button>
-            <button type="button" data-presales-stage="Handoff" onclick="setPresalesStage('Handoff')" class="presales-stage-btn rounded-xl border border-slate-200 bg-white px-3 py-3 text-left">
-                <span class="block text-[10px] font-black uppercase tracking-widest text-slate-400">06</span>
-                <span class="block mt-1 text-xs font-black text-slate-800">Handoff</span>
-            </button>
-        </section>
+        <nav id="presales-stage-rail" class="presales-glass mb-4 grid-cols-6 gap-1 p-2" aria-label="BD workflow stages"></nav>
 
-        <section class="grid grid-cols-1 xl:grid-cols-12 gap-5">
-            <div class="xl:col-span-5 space-y-5">
-                <div class="rounded-xl border border-slate-200 bg-white p-5">
-                    <div class="flex items-center justify-between gap-3 mb-4">
-                        <div>
-                            <p class="text-[10px] font-black text-purple-700 uppercase tracking-widest">Intake basis</p>
-                            <h3 class="text-base font-black text-slate-800 mt-1">Customer and site</h3>
-                        </div>
-                        <span id="presales-updated-at" class="text-[10px] font-bold text-slate-400">Not saved</span>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <label class="block">
-                            <span class="block text-[10px] font-black text-slate-400 uppercase mb-1">Customer</span>
-                            <input id="presales-customer-name" type="text" oninput="markPresalesDirty()" placeholder="Customer / company" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-500 bg-white">
-                        </label>
-                        <label class="block">
-                            <span class="block text-[10px] font-black text-slate-400 uppercase mb-1">Stage</span>
-                            <select id="presales-stage" onchange="setPresalesStage(this.value)" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-500 bg-white">
-                                <option>Intake</option>
-                                <option>Sizing</option>
-                                <option>Product/BOQ</option>
-                                <option>Risk</option>
-                                <option>Quote/PDF</option>
-                                <option>Handoff</option>
-                            </select>
-                        </label>
-                        <label class="block">
-                            <span class="block text-[10px] font-black text-slate-400 uppercase mb-1">Assumption Status</span>
-                            <select id="presales-assumption-status" onchange="markPresalesDirty()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-500 bg-white">
-                                <option value="preliminary">Preliminary / BD estimate</option>
-                                <option value="needs_source">Needs source/date</option>
-                                <option value="engineering_review">Engineering draft / requires review</option>
-                                <option value="confirmed">Engineering confirmed</option>
-                            </select>
-                        </label>
-                        <label class="block">
-                            <span class="block text-[10px] font-black text-slate-400 uppercase mb-1">Risk Status</span>
-                            <select id="presales-risk-status" onchange="markPresalesDirty()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-500 bg-white">
-                                <option value="open">Open risks</option>
-                                <option value="needs_review">Needs engineering review</option>
-                                <option value="accepted">Accepted for proposal</option>
-                            </select>
-                        </label>
-                    </div>
-                    <label class="block mt-3">
-                        <span class="block text-[10px] font-black text-slate-400 uppercase mb-1">Site Summary / Bill / Diesel Basis</span>
-                        <textarea id="presales-site-summary" oninput="markPresalesDirty()" rows="5" placeholder="Site address, monthly kWh, bill period, diesel baseline, roof/load constraints, customer notes." class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-500 bg-white"></textarea>
-                    </label>
-                </div>
-
-                <div class="rounded-xl border border-slate-200 bg-white p-5">
-                    <p class="text-[10px] font-black text-purple-700 uppercase tracking-widest">Linked work</p>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-                        <label class="block">
-                            <span class="block text-[10px] font-black text-slate-400 uppercase mb-1">Quote Draft</span>
-                            <select id="presales-quote-link" onchange="onPresalesLinkedWorkChanged()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-500 bg-white"></select>
-                        </label>
-                        <label class="block">
-                            <span class="block text-[10px] font-black text-slate-400 uppercase mb-1">Hybrid EPC Design</span>
-                            <select id="presales-epc-link" onchange="onPresalesLinkedWorkChanged()" class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-purple-500 bg-white"></select>
-                        </label>
-                    </div>
-                    <div class="flex flex-wrap gap-2 mt-4">
-                        <button type="button" onclick="syncPresalesFromCurrentQuote()" class="px-3 py-2 rounded-xl border border-slate-200 text-xs font-black text-slate-700 hover:bg-slate-50">Use Current Quote</button>
-                        <button type="button" onclick="syncPresalesFromCurrentEpc()" class="px-3 py-2 rounded-xl border border-slate-200 text-xs font-black text-slate-700 hover:bg-slate-50">Use Current EPC</button>
-                        <button type="button" onclick="openPresalesQuote()" class="px-3 py-2 rounded-xl border border-purple-200 text-xs font-black text-purple-700 hover:bg-purple-50">Open Quote</button>
-                        <button type="button" onclick="openPresalesEpc()" class="px-3 py-2 rounded-xl border border-purple-200 text-xs font-black text-purple-700 hover:bg-purple-50">Open EPC</button>
-                    </div>
-                </div>
+        <div id="presales-stage-mobile-summary" class="presales-glass mb-4 hidden items-center gap-3 p-3">
+            <div class="min-w-0 flex-1">
+                <div id="presales-stage-mobile-label" class="text-sm font-bold text-slate-900">Step 1 of 6 - Intake</div>
+                <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200"><div id="presales-stage-mobile-progress" class="h-full bg-purple-700" style="width:16.67%"></div></div>
             </div>
+            <button type="button" onclick="togglePresalesMobileStages()" class="presales-action min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold" aria-controls="presales-stage-mobile-menu" aria-expanded="false">Steps</button>
+        </div>
+        <div id="presales-stage-mobile-menu" class="presales-solid mb-4 hidden p-2"></div>
 
-            <div class="xl:col-span-7 space-y-5">
+        <section id="presales-cockpit-grid" class="grid grid-cols-1 gap-5 xl:grid-cols-12">
+            <section id="presales-intake-panel" class="presales-glass xl:col-span-4">
+                <div class="border-b border-slate-200 p-4">
+                    <p class="text-xs font-semibold text-purple-700">Progressive intake</p>
+                    <h3 class="mt-1 text-base font-bold text-slate-900">Customer and operating basis</h3>
+                </div>
+
+                <section class="border-b border-slate-200 px-4 last:border-b-0">
+                    <button type="button" data-presales-intake-group="customer" class="presales-action flex min-h-11 w-full items-center justify-between gap-3 py-3 text-left" onclick="togglePresalesIntakeGroup('customer')" aria-expanded="true" aria-controls="presales-intake-customer">
+                        <span><strong class="text-sm text-slate-900">Customer</strong><span id="presales-intake-customer-summary" class="ml-2 text-xs text-slate-500">Who and where</span></span>
+                        <span aria-hidden="true">⌄</span>
+                    </button>
+                    <div id="presales-intake-customer" class="grid grid-cols-1 gap-3 pb-4 md:grid-cols-2">
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Customer</span><input id="presales-customer-name" type="text" oninput="markPresalesDirty()" placeholder="Customer / company" class="presales-field"></label>
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Site name</span><input id="presales-site-name" type="text" oninput="markPresalesDirty()" placeholder="Site / facility" class="presales-field"></label>
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Location</span><input id="presales-location" type="text" oninput="markPresalesDirty()" placeholder="City, state" class="presales-field"></label>
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Facility type</span><input id="presales-facility-type" type="text" oninput="markPresalesDirty()" placeholder="Factory, warehouse..." class="presales-field"></label>
+                    </div>
+                </section>
+
+                <section class="border-b border-slate-200 px-4 last:border-b-0">
+                    <button type="button" data-presales-intake-group="energy" class="presales-action flex min-h-11 w-full items-center justify-between gap-3 py-3 text-left" onclick="togglePresalesIntakeGroup('energy')" aria-expanded="true" aria-controls="presales-intake-energy">
+                        <span><strong class="text-sm text-slate-900">Energy</strong><span id="presales-intake-energy-summary" class="ml-2 text-xs text-slate-500">Monthly use and tariff basis</span></span>
+                        <span aria-hidden="true">⌄</span>
+                    </button>
+                    <div id="presales-intake-energy" class="grid grid-cols-1 gap-3 pb-4 md:grid-cols-2">
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Monthly consumption (kWh)</span><input id="presales-monthly-consumption-kwh" type="number" min="0" oninput="markPresalesDirty()" class="presales-field"></label>
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Bill months available</span><input id="presales-bill-months-available" type="number" min="0" oninput="markPresalesDirty()" class="presales-field"></label>
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Peak demand (kW)</span><input id="presales-peak-demand-kw" type="number" min="0" oninput="markPresalesDirty()" class="presales-field"></label>
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Tariff category</span><input id="presales-tariff-category" type="text" oninput="markPresalesDirty()" class="presales-field"></label>
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Tariff source</span><input id="presales-tariff-source" type="text" oninput="markPresalesDirty()" placeholder="Bill, tariff notice..." class="presales-field"></label>
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Tariff source date</span><input id="presales-tariff-source-date" type="date" onchange="markPresalesDirty()" class="presales-field"></label>
+                    </div>
+                </section>
+
+                <section class="border-b border-slate-200 px-4 last:border-b-0">
+                    <button type="button" data-presales-intake-group="diesel" class="presales-action flex min-h-11 w-full items-center justify-between gap-3 py-3 text-left" onclick="togglePresalesIntakeGroup('diesel')" aria-expanded="false" aria-controls="presales-intake-diesel">
+                        <span><strong class="text-sm text-slate-900">Diesel</strong><span id="presales-intake-diesel-summary" class="ml-2 text-xs text-slate-500">Generator baseline</span></span>
+                        <span aria-hidden="true">⌄</span>
+                    </button>
+                    <div id="presales-intake-diesel" class="hidden grid grid-cols-1 gap-3 pb-4 md:grid-cols-2">
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Genset capacity (kVA)</span><input id="presales-genset-capacity-kva" type="number" min="0" oninput="markPresalesDirty()" class="presales-field"></label>
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Runtime (hours/month)</span><input id="presales-genset-runtime-hours-month" type="number" min="0" oninput="markPresalesDirty()" class="presales-field"></label>
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Diesel (liters/month)</span><input id="presales-diesel-consumption-liters-month" type="number" min="0" oninput="markPresalesDirty()" class="presales-field"></label>
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Genset use</span><select id="presales-genset-use" onchange="markPresalesDirty()" class="presales-field"><option value="unknown">Unknown</option><option value="backup">Backup</option><option value="prime">Prime</option><option value="peak_shaving">Peak shaving</option></select></label>
+                    </div>
+                </section>
+
+                <section class="border-b border-slate-200 px-4 last:border-b-0">
+                    <button type="button" data-presales-intake-group="site" class="presales-action flex min-h-11 w-full items-center justify-between gap-3 py-3 text-left" onclick="togglePresalesIntakeGroup('site')" aria-expanded="false" aria-controls="presales-intake-site">
+                        <span><strong class="text-sm text-slate-900">Site</strong><span id="presales-intake-site-summary" class="ml-2 text-xs text-slate-500">Space and connection constraints</span></span>
+                        <span aria-hidden="true">⌄</span>
+                    </button>
+                    <div id="presales-intake-site" class="hidden grid grid-cols-1 gap-3 pb-4 md:grid-cols-2">
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Available area (m²)</span><input id="presales-available-area-m2" type="number" min="0" oninput="markPresalesDirty()" class="presales-field"></label>
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Transformer capacity (kVA)</span><input id="presales-transformer-capacity-kva" type="number" min="0" oninput="markPresalesDirty()" class="presales-field"></label>
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Export eligibility</span><select id="presales-export-eligibility" onchange="markPresalesDirty()" class="presales-field"><option value="unknown">Unknown</option><option value="eligible">Eligible</option><option value="not_eligible">Not eligible</option><option value="pending">Pending confirmation</option></select></label>
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Primary constraint</span><input id="presales-primary-constraint" type="text" oninput="markPresalesDirty()" class="presales-field"></label>
+                    </div>
+                </section>
+
+                <section class="border-b border-slate-200 px-4 last:border-b-0">
+                    <button type="button" data-presales-intake-group="objective" class="presales-action flex min-h-11 w-full items-center justify-between gap-3 py-3 text-left" onclick="togglePresalesIntakeGroup('objective')" aria-expanded="false" aria-controls="presales-intake-objective">
+                        <span><strong class="text-sm text-slate-900">Objective</strong><span id="presales-intake-objective-summary" class="ml-2 text-xs text-slate-500">Target and decision context</span></span>
+                        <span aria-hidden="true">⌄</span>
+                    </button>
+                    <div id="presales-intake-objective" class="hidden grid grid-cols-1 gap-3 pb-4 md:grid-cols-2">
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Target saving (%)</span><input id="presales-target-saving-pct" type="number" min="0" oninput="markPresalesDirty()" class="presales-field"></label>
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Budget range</span><input id="presales-budget-range" type="text" oninput="markPresalesDirty()" class="presales-field"></label>
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Proposal due date</span><input id="presales-proposal-due-date" type="date" onchange="markPresalesDirty()" class="presales-field"></label>
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Assumption status</span><select id="presales-assumption-status" onchange="markPresalesDirty()" class="presales-field"><option value="preliminary">Preliminary / BD estimate</option><option value="needs_source">Needs source/date</option><option value="engineering_review">Engineering draft / requires review</option><option value="confirmed">Engineering confirmed</option></select></label>
+                        <label class="md:col-span-2"><span class="mb-1 block text-xs font-semibold text-slate-600">Customer decision note</span><textarea id="presales-customer-decision-note" rows="3" oninput="markPresalesDirty()" class="presales-field"></textarea></label>
+                    </div>
+                </section>
+
+                <section class="border-b border-slate-200 px-4 last:border-b-0">
+                    <button type="button" data-presales-intake-group="evidence" class="presales-action flex min-h-11 w-full items-center justify-between gap-3 py-3 text-left" onclick="togglePresalesIntakeGroup('evidence')" aria-expanded="false" aria-controls="presales-intake-evidence">
+                        <span><strong class="text-sm text-slate-900">Evidence</strong><span id="presales-intake-evidence-summary" class="ml-2 text-xs text-slate-500">Available source material</span></span>
+                        <span aria-hidden="true">⌄</span>
+                    </button>
+                    <div id="presales-intake-evidence" class="hidden grid grid-cols-1 gap-3 pb-4 md:grid-cols-2">
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Utility bills</span><select id="presales-evidence-utility-bills" onchange="markPresalesDirty()" class="presales-field"><option value="missing">Missing</option><option value="partial">Partial</option><option value="complete">Complete</option></select></label>
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Load profile</span><select id="presales-evidence-load-profile" onchange="markPresalesDirty()" class="presales-field"><option value="missing">Missing</option><option value="available">Available</option></select></label>
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Site photos</span><select id="presales-evidence-site-photos" onchange="markPresalesDirty()" class="presales-field"><option value="missing">Missing</option><option value="available">Available</option></select></label>
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Existing SLD</span><select id="presales-evidence-existing-sld" onchange="markPresalesDirty()" class="presales-field"><option value="missing">Missing</option><option value="available">Available</option></select></label>
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Structural report</span><select id="presales-evidence-structural-report" onchange="markPresalesDirty()" class="presales-field"><option value="missing">Missing</option><option value="available">Available</option><option value="not_required">Not required</option></select></label>
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Risk status</span><select id="presales-risk-status" onchange="markPresalesDirty()" class="presales-field"><option value="open">Open risks</option><option value="needs_review">Needs engineering review</option><option value="accepted">Accepted for proposal</option></select></label>
+                    </div>
+                </section>
+
+                <section class="px-4">
+                    <button type="button" data-presales-intake-group="notes" class="presales-action flex min-h-11 w-full items-center justify-between gap-3 py-3 text-left" onclick="togglePresalesIntakeGroup('notes')" aria-expanded="false" aria-controls="presales-intake-notes">
+                        <span><strong class="text-sm text-slate-900">Raw notes</strong><span id="presales-intake-notes-summary" class="ml-2 text-xs text-slate-500">Expand to edit</span></span>
+                        <span aria-hidden="true">⌄</span>
+                    </button>
+                    <div id="presales-intake-notes" class="hidden pb-4">
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Site summary</span><textarea id="presales-site-summary" oninput="markPresalesDirty()" rows="5" placeholder="Site address, bill period, diesel baseline, roof/load constraints, customer notes." class="presales-field"></textarea></label>
+                    </div>
+                </section>
+            </section>
+
+            <section id="presales-opportunity-column" class="space-y-5 xl:col-span-8">
+                <div class="presales-solid p-5">
+                    <p class="text-xs font-semibold text-purple-700">Linked work</p>
+                    <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Quote draft</span><select id="presales-quote-link" onchange="onPresalesLinkedWorkChanged()" class="presales-field"></select></label>
+                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Hybrid EPC design</span><select id="presales-epc-link" onchange="onPresalesLinkedWorkChanged()" class="presales-field"></select></label>
+                    </div>
+                    <div class="mt-4 flex flex-wrap gap-2">
+                        <button type="button" onclick="syncPresalesFromCurrentQuote()" class="presales-action min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold">Use Current Quote</button>
+                        <button type="button" onclick="syncPresalesFromCurrentEpc()" class="presales-action min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold">Use Current EPC</button>
+                        <button type="button" onclick="openPresalesQuote()" class="presales-action min-h-11 rounded-lg border border-purple-200 bg-white px-3 text-xs font-bold text-purple-700">Open Quote</button>
+                        <button type="button" onclick="openPresalesEpc()" class="presales-action min-h-11 rounded-lg border border-purple-200 bg-white px-3 text-xs font-bold text-purple-700">Open EPC</button>
+                    </div>
+                </div>
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="rounded-xl border border-slate-200 bg-white p-4">
+                    <div class="presales-solid p-4">
                         <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Customer / Site Information</p>
                         <div id="presales-site-card" class="mt-2 text-sm font-bold text-slate-700 leading-relaxed">No active pre-sales project.</div>
                     </div>
-                    <div class="rounded-xl border border-slate-200 bg-white p-4">
+                    <div class="presales-solid p-4">
                         <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Calculation Evidence</p>
                         <div id="presales-assumption-card" class="mt-2 text-sm font-bold text-slate-700 leading-relaxed">Preliminary / BD estimate until tariff/source date and CAPEX source are reviewed.</div>
                     </div>
-                    <div class="rounded-xl border border-slate-200 bg-white p-4">
+                    <div class="presales-solid p-4">
                         <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Quote Draft</p>
                         <div id="presales-quote-card" class="mt-2 text-sm font-bold text-slate-700 leading-relaxed">
                             <div id="presales-quote-detail">No quote linked.</div>
                         </div>
                     </div>
-                    <div class="rounded-xl border border-slate-200 bg-white p-4">
+                    <div class="presales-solid p-4">
                         <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">EPC Risk / BOQ</p>
                         <div id="presales-epc-card" class="mt-2 text-sm font-bold text-slate-700 leading-relaxed">
                             <div id="presales-epc-detail">No EPC concept linked.</div>
@@ -1233,7 +1326,7 @@
                     </div>
                 </div>
 
-                <div class="rounded-xl border border-slate-200 bg-white p-5">
+                <div class="presales-solid p-5">
                     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
                         <div>
                             <p class="text-[10px] font-black text-purple-700 uppercase tracking-widest">Handoff</p>
@@ -1252,7 +1345,7 @@
                         </label>
                     </div>
                 </div>
-            </div>
+            </section>
         </section>
     </main>
 
@@ -6969,6 +7062,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         let nonStockPricingStrategies = {};
         let presalesProjects = [];
         let presalesActiveProjectId = '';
+        let presalesDraftStage = 'Intake';
         const presalesQuoteDetailCache = new Map();
         const presalesQuoteDetailPending = new Set();
         let epcDesignProjects = [];
@@ -21386,22 +21480,143 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             generatePresalesHandoff({ silent: true });
         }
 
+        function presalesFormText(id, fallback = '') {
+            const element = document.getElementById(id);
+            return element ? String(element.value || '').trim() : fallback;
+        }
+
+        function presalesFormNumber(id, fallback = null) {
+            const value = presalesFormText(id, '');
+            if (!value) return fallback;
+            const number = Number(value);
+            return Number.isFinite(number) && number >= 0 ? number : fallback;
+        }
+
+        function readPresalesIntakeForm(existing = getActivePresalesProject() || {}) {
+            return {
+                siteName: presalesFormText('presales-site-name', existing.intakeBasis?.siteName || ''),
+                location: presalesFormText('presales-location', existing.intakeBasis?.location || ''),
+                facilityType: presalesFormText('presales-facility-type', existing.intakeBasis?.facilityType || ''),
+                monthlyConsumptionKwh: presalesFormNumber('presales-monthly-consumption-kwh'),
+                billMonthsAvailable: presalesFormNumber('presales-bill-months-available'),
+                peakDemandKw: presalesFormNumber('presales-peak-demand-kw'),
+                tariffCategory: presalesFormText('presales-tariff-category'),
+                tariffSource: presalesFormText('presales-tariff-source'),
+                tariffSourceDate: presalesFormText('presales-tariff-source-date'),
+                gensetCapacityKva: presalesFormNumber('presales-genset-capacity-kva'),
+                gensetRuntimeHoursMonth: presalesFormNumber('presales-genset-runtime-hours-month'),
+                dieselConsumptionLitersMonth: presalesFormNumber('presales-diesel-consumption-liters-month'),
+                gensetUse: presalesFormText('presales-genset-use', 'unknown'),
+                availableAreaM2: presalesFormNumber('presales-available-area-m2'),
+                transformerCapacityKva: presalesFormNumber('presales-transformer-capacity-kva'),
+                exportEligibility: presalesFormText('presales-export-eligibility', 'unknown'),
+                primaryConstraint: presalesFormText('presales-primary-constraint'),
+                targetSavingPct: presalesFormNumber('presales-target-saving-pct'),
+                budgetRange: presalesFormText('presales-budget-range'),
+                proposalDueDate: presalesFormText('presales-proposal-due-date'),
+                customerDecisionNote: presalesFormText('presales-customer-decision-note')
+            };
+        }
+
+        function readPresalesEvidenceForm(existing = getActivePresalesProject() || {}) {
+            return {
+                utilityBills: presalesFormText('presales-evidence-utility-bills', existing.evidenceStatus?.utilityBills || 'missing'),
+                loadProfile: presalesFormText('presales-evidence-load-profile', existing.evidenceStatus?.loadProfile || 'missing'),
+                sitePhotos: presalesFormText('presales-evidence-site-photos', existing.evidenceStatus?.sitePhotos || 'missing'),
+                existingSld: presalesFormText('presales-evidence-existing-sld', existing.evidenceStatus?.existingSld || 'missing'),
+                structuralReport: presalesFormText('presales-evidence-structural-report', existing.evidenceStatus?.structuralReport || 'missing')
+            };
+        }
+
+        function populatePresalesIntakeForm(project = {}) {
+            const intake = project.intakeBasis || {};
+            const evidence = project.evidenceStatus || {};
+            const values = {
+                'presales-customer-name': project.customerName || '',
+                'presales-site-name': intake.siteName || '',
+                'presales-location': intake.location || '',
+                'presales-facility-type': intake.facilityType || '',
+                'presales-monthly-consumption-kwh': intake.monthlyConsumptionKwh,
+                'presales-bill-months-available': intake.billMonthsAvailable,
+                'presales-peak-demand-kw': intake.peakDemandKw,
+                'presales-tariff-category': intake.tariffCategory || '',
+                'presales-tariff-source': intake.tariffSource || '',
+                'presales-tariff-source-date': intake.tariffSourceDate || '',
+                'presales-genset-capacity-kva': intake.gensetCapacityKva,
+                'presales-genset-runtime-hours-month': intake.gensetRuntimeHoursMonth,
+                'presales-diesel-consumption-liters-month': intake.dieselConsumptionLitersMonth,
+                'presales-genset-use': intake.gensetUse || 'unknown',
+                'presales-available-area-m2': intake.availableAreaM2,
+                'presales-transformer-capacity-kva': intake.transformerCapacityKva,
+                'presales-export-eligibility': intake.exportEligibility || 'unknown',
+                'presales-primary-constraint': intake.primaryConstraint || '',
+                'presales-target-saving-pct': intake.targetSavingPct,
+                'presales-budget-range': intake.budgetRange || '',
+                'presales-proposal-due-date': intake.proposalDueDate || '',
+                'presales-customer-decision-note': intake.customerDecisionNote || '',
+                'presales-evidence-utility-bills': evidence.utilityBills || 'missing',
+                'presales-evidence-load-profile': evidence.loadProfile || 'missing',
+                'presales-evidence-site-photos': evidence.sitePhotos || 'missing',
+                'presales-evidence-existing-sld': evidence.existingSld || 'missing',
+                'presales-evidence-structural-report': evidence.structuralReport || 'missing',
+                'presales-site-summary': project.siteSummary || '',
+                'presales-assumption-status': project.assumptionStatus || 'preliminary',
+                'presales-risk-status': project.riskStatus || 'open'
+            };
+            Object.entries(values).forEach(([id, value]) => {
+                const element = document.getElementById(id);
+                if (element) element.value = value ?? '';
+            });
+        }
+
+        function setPresalesIntakeGroupExpanded(groupId, expanded) {
+            const panel = document.getElementById(`presales-intake-${groupId}`);
+            const button = document.querySelector(`[data-presales-intake-group="${groupId}"]`);
+            if (panel) panel.classList.toggle('hidden', !expanded);
+            if (button) button.setAttribute('aria-expanded', String(Boolean(expanded)));
+        }
+
+        function togglePresalesIntakeGroup(groupId) {
+            const button = document.querySelector(`[data-presales-intake-group="${groupId}"]`);
+            setPresalesIntakeGroupExpanded(groupId, button?.getAttribute('aria-expanded') !== 'true');
+        }
+
+        function hasStructuredPresalesIntake(project = {}) {
+            const intake = project.intakeBasis || {};
+            return Boolean(
+                intake.location ||
+                intake.facilityType ||
+                Number(intake.monthlyConsumptionKwh || 0) > 0 ||
+                Number(intake.gensetCapacityKva || 0) > 0 ||
+                Number(intake.availableAreaM2 || 0) > 0 ||
+                intake.customerDecisionNote
+            );
+        }
+
+        function applyPresalesIntakeDisclosure(project = {}) {
+            const existing = Boolean(project.updatedAt);
+            const structured = hasStructuredPresalesIntake(project);
+            const expanded = new Set(existing ? [] : ['customer', 'energy']);
+            if (!structured && existing) expanded.add('customer');
+            for (const group of ['customer', 'energy', 'diesel', 'site', 'objective', 'evidence', 'notes']) {
+                setPresalesIntakeGroupExpanded(group, expanded.has(group));
+            }
+        }
+
         function currentPresalesDraftFromForm() {
             const existing = getActivePresalesProject() || {};
-            const formValue = (id, fallback = '') => {
-                const el = document.getElementById(id);
-                return el ? el.value : fallback;
-            };
             return normalizePresalesProject({
                 ...existing,
                 id: existing.id || `presales_${Date.now()}`,
-                customerName: formValue('presales-customer-name', existing.customerName || ''),
-                siteSummary: formValue('presales-site-summary', existing.siteSummary || ''),
-                stage: formValue('presales-stage', existing.stage || 'Intake'),
-                quoteId: formValue('presales-quote-link', existing.quoteId || ''),
-                epcDesignProjectId: formValue('presales-epc-link', existing.epcDesignProjectId || ''),
-                assumptionStatus: formValue('presales-assumption-status', existing.assumptionStatus || 'preliminary'),
-                riskStatus: formValue('presales-risk-status', existing.riskStatus || 'open'),
+                customerName: presalesFormText('presales-customer-name', existing.customerName || ''),
+                siteSummary: presalesFormText('presales-site-summary', existing.siteSummary || ''),
+                stage: presalesDraftStage,
+                quoteId: presalesFormText('presales-quote-link', existing.quoteId || ''),
+                epcDesignProjectId: presalesFormText('presales-epc-link', existing.epcDesignProjectId || ''),
+                assumptionStatus: presalesFormText('presales-assumption-status', existing.assumptionStatus || 'preliminary'),
+                riskStatus: presalesFormText('presales-risk-status', existing.riskStatus || 'open'),
+                intakeBasis: readPresalesIntakeForm(existing),
+                evidenceStatus: readPresalesEvidenceForm(existing),
                 updatedAt: existing.updatedAt || ''
             });
         }
@@ -21451,14 +21666,37 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             }
         }
 
-        function highlightPresalesStage(stage = 'Intake') {
+        function renderPresalesStages(stage = presalesDraftStage) {
             const active = PRESALES_STAGES.includes(stage) ? stage : 'Intake';
-            document.querySelectorAll('[data-presales-stage]').forEach(btn => {
-                const selected = btn.dataset.presalesStage === active;
-                btn.classList.toggle('border-purple-300', selected);
-                btn.classList.toggle('bg-purple-50', selected);
-                btn.classList.toggle('shadow-sm', selected);
-            });
+            const activeIndex = PRESALES_STAGES.indexOf(active);
+            const stageButton = (name, index, compact = false) => {
+                const selected = name === active;
+                const classes = compact
+                    ? `presales-stage-btn w-full rounded-lg px-3 py-2 text-left text-xs font-bold ${selected ? 'bg-purple-800 text-white' : 'text-slate-700 hover:bg-slate-50'}`
+                    : `presales-stage-btn rounded-lg border px-3 py-2 text-left ${selected ? 'border-purple-300 bg-purple-50 shadow-sm' : 'border-transparent hover:bg-slate-50'}`;
+                const label = compact ? name : `<span class="block text-[10px] font-black ${selected ? 'text-purple-600' : 'text-slate-400'}">${String(index + 1).padStart(2, '0')}</span><span class="mt-1 block text-xs font-black">${name}</span>`;
+                return `<button type="button" data-presales-stage="${htmlSafe(name)}" onclick="setPresalesStage('${name}')" aria-pressed="${selected}" class="${classes}">${label}</button>`;
+            };
+            const rail = document.getElementById('presales-stage-rail');
+            if (rail) rail.innerHTML = PRESALES_STAGES.map((name, index) => stageButton(name, index)).join('');
+            const mobileMenu = document.getElementById('presales-stage-mobile-menu');
+            if (mobileMenu) mobileMenu.innerHTML = `<div class="grid grid-cols-2 gap-1">${PRESALES_STAGES.map((name, index) => stageButton(name, index, true)).join('')}</div>`;
+            const mobileLabel = document.getElementById('presales-stage-mobile-label');
+            if (mobileLabel) mobileLabel.textContent = `Step ${activeIndex + 1} of ${PRESALES_STAGES.length} - ${active}`;
+            const progress = document.getElementById('presales-stage-mobile-progress');
+            if (progress) progress.style.width = `${((activeIndex + 1) / PRESALES_STAGES.length) * 100}%`;
+        }
+
+        function highlightPresalesStage(stage = presalesDraftStage) {
+            renderPresalesStages(stage);
+        }
+
+        function togglePresalesMobileStages() {
+            const menu = document.getElementById('presales-stage-mobile-menu');
+            const button = document.querySelector('[aria-controls="presales-stage-mobile-menu"]');
+            const expanded = menu?.classList.contains('hidden');
+            if (menu) menu.classList.toggle('hidden', !expanded);
+            if (button) button.setAttribute('aria-expanded', String(Boolean(expanded)));
         }
 
         function renderPresalesCards(project = getActivePresalesProject()) {
@@ -21494,18 +21732,18 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 presalesActiveProjectId = presalesProjects[0]?.id || '';
             }
             const project = getActivePresalesProject();
+            presalesDraftStage = PRESALES_STAGES.includes(project?.stage) ? project.stage : 'Intake';
             renderPresalesProjectSelect(project);
             renderPresalesLinkSelects(project);
-            setSelectValueIfPresent('presales-stage', project?.stage || 'Intake');
-            setSelectValueIfPresent('presales-assumption-status', project?.assumptionStatus || 'preliminary');
-            setSelectValueIfPresent('presales-risk-status', project?.riskStatus || 'open');
-            const customer = document.getElementById('presales-customer-name');
-            if (customer) customer.value = project?.customerName || '';
-            const site = document.getElementById('presales-site-summary');
-            if (site) site.value = project?.siteSummary || '';
+            populatePresalesIntakeForm(project || {});
+            applyPresalesIntakeDisclosure(project || {});
+            const view = document.getElementById('view-presales');
+            if (view) view.dataset.presalesRecordState = project?.updatedAt ? 'existing' : 'new';
+            const context = document.getElementById('presales-project-context');
+            if (context) context.textContent = project?.customerName || project?.intakeBasis?.siteName || 'New opportunity';
             const status = document.getElementById('presales-updated-at');
             if (status) status.textContent = project?.updatedAt ? `Saved ${new Date(project.updatedAt).toLocaleString()}` : 'Not saved';
-            highlightPresalesStage(project?.stage || 'Intake');
+            highlightPresalesStage(presalesDraftStage);
             renderPresalesCards(project);
             generatePresalesHandoff({ silent: true });
         }
@@ -21540,8 +21778,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
         function setPresalesStage(stage) {
             const normalized = PRESALES_STAGES.includes(stage) ? stage : 'Intake';
-            setSelectValueIfPresent('presales-stage', normalized);
+            presalesDraftStage = normalized;
             highlightPresalesStage(normalized);
+            const mobileMenu = document.getElementById('presales-stage-mobile-menu');
+            if (mobileMenu && !mobileMenu.classList.contains('hidden')) togglePresalesMobileStages();
             markPresalesDirty();
         }
 
@@ -21590,6 +21830,11 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         function refreshPresalesLinkedQuoteDetail() {
             const project = currentPresalesDraftFromForm();
             return refreshPresalesQuoteDetail(project.quoteId, { force: true, notify: true });
+        }
+
+        function openPresalesHandoff() {
+            generatePresalesHandoff({ silent: true });
+            document.getElementById('presales-opportunity-column')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         function buildPresalesHandoffText(project = currentPresalesDraftFromForm()) {
@@ -21672,6 +21917,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         window.createPresalesProject = createPresalesProject;
         window.saveCurrentPresalesProject = saveCurrentPresalesProject;
         window.setPresalesStage = setPresalesStage;
+        window.togglePresalesMobileStages = togglePresalesMobileStages;
+        window.togglePresalesIntakeGroup = togglePresalesIntakeGroup;
         window.markPresalesDirty = markPresalesDirty;
         window.onPresalesLinkedWorkChanged = onPresalesLinkedWorkChanged;
         window.getPresalesQuoteDetail = getPresalesQuoteDetail;
@@ -21685,6 +21932,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         window.openPresalesQuote = openPresalesQuote;
         window.openPresalesEpc = openPresalesEpc;
         window.openPresalesEpcPanel = openPresalesEpcPanel;
+        window.openPresalesHandoff = openPresalesHandoff;
         window.generatePresalesHandoff = generatePresalesHandoff;
         window.copyPresalesHandoff = copyPresalesHandoff;
 

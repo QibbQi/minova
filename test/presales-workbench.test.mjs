@@ -105,7 +105,7 @@ test('presales workspace is a first-class top-level BD entry', () => {
   assert.match(indexHtml, /id="tab-presales"[^>]*aria-label="Pre-sales Workspace"/);
   assert.match(indexHtml, /onclick="switchTab\('presales'\)"/);
   assert.match(indexHtml, /<main id="view-presales"[\s\S]*Pre-sales Workspace/);
-  assert.match(indexHtml, /Intake[\s\S]*Sizing[\s\S]*Product\/BOQ[\s\S]*Risk[\s\S]*Quote\/PDF[\s\S]*Handoff/);
+  assert.match(indexHtml, /PRESALES_STAGES\.map/);
   assert.match(indexHtml, /id="presales-project-select"/);
   assert.match(indexHtml, /id="presales-quote-link"/);
   assert.match(indexHtml, /id="presales-epc-link"/);
@@ -166,4 +166,34 @@ test('linked quote and EPC selections expose BD-readable detail previews', () =>
   ]) {
     assert.match(indexHtml, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing linked detail preview: ${snippet}`);
   }
+});
+
+test('presales cockpit has one stage owner and structured progressive intake', () => {
+  for (const id of [
+    'presales-command-bar',
+    'presales-stage-rail',
+    'presales-stage-mobile-summary',
+    'presales-cockpit-grid',
+    'presales-intake-panel',
+    'presales-intake-customer',
+    'presales-intake-energy',
+    'presales-intake-diesel',
+    'presales-intake-site',
+    'presales-intake-objective',
+    'presales-intake-evidence',
+    'presales-site-name',
+    'presales-location',
+    'presales-facility-type',
+    'presales-monthly-consumption-kwh',
+    'presales-bill-months-available',
+    'presales-tariff-source',
+    'presales-tariff-source-date',
+    'presales-site-summary'
+  ]) {
+    assert.match(indexHtml, new RegExp(`id="${id}"`), `missing cockpit intake id: ${id}`);
+  }
+  assert.doesNotMatch(indexHtml, /id="presales-stage"/);
+  assert.match(indexHtml, /aria-expanded="(true|false)"/);
+  assert.match(indexHtml, /function readPresalesIntakeForm/);
+  assert.match(indexHtml, /function populatePresalesIntakeForm/);
 });

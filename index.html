@@ -69,6 +69,10 @@
             min-height: 44px;
         }
 
+        .presales-energy-mobile {
+            display: none;
+        }
+
         @media (max-width: 767px) {
             #view-presales .presales-field { font-size: 1rem; }
             #presales-stage-rail { display: none; }
@@ -77,6 +81,15 @@
             #presales-command-controls { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.5rem; width: 100%; }
             #presales-project-select { min-width: 0; width: 100%; }
             #presales-command-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+            .presales-energy-desktop { display: none; }
+            .presales-energy-mobile { display: grid; gap: 0.5rem; }
+            .presales-energy-mobile-connector { display: flex; align-items: center; justify-content: center; min-height: 1.25rem; color: #64748b; font-size: 1rem; font-weight: 900; line-height: 1; }
+            .presales-energy-mobile-branches { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
+            .presales-energy-node { display: flex; min-width: 0; min-height: 4.5rem; flex-direction: column; justify-content: center; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; padding: 0.75rem; font-size: 0.875rem; font-weight: 800; line-height: 1.25; color: #172033; }
+            .presales-energy-node strong { overflow-wrap: anywhere; font-size: 0.875rem; }
+            .presales-energy-node span { margin-top: 0.25rem; overflow-wrap: anywhere; font-size: 0.75rem; font-weight: 700; color: #64748b; }
+            .presales-energy-node--bus { border-color: #582c83; background: #582c83; color: #fff; }
+            .presales-energy-node--bus span { color: #f5eefe; }
         }
 
         @media (min-width: 768px) and (max-width: 1023px) {
@@ -21519,7 +21532,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 ? (kpi.money ? presalesFormatMoney(kpi.value, kpi.currency) : `${kpi.value}${kpi.unit ? ` ${kpi.unit}` : ''}`)
                 : emDash;
             const action = hasValue ? '' : `
-                <button type="button" onclick="focusPresalesGap('${htmlSafe(kpi.target)}')" class="presales-action mt-1 text-left text-[11px] font-bold text-purple-700 underline decoration-purple-200 underline-offset-2">${htmlSafe(kpi.action)}</button>
+                <button type="button" onclick="focusPresalesGap('${htmlSafe(kpi.target)}', '${htmlSafe(kpi.action)}')" class="presales-action mt-1 text-left text-[11px] font-bold text-purple-700 underline decoration-purple-200 underline-offset-2">${htmlSafe(kpi.action)}</button>
             `;
             return `
                 <div class="min-w-0">
@@ -21547,7 +21560,17 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     <span class="shrink-0 text-xs font-semibold ${loaded ? 'text-green-700' : 'text-amber-700'}">${loaded ? 'EPC draft' : 'Pending EPC'}</span>
                 </div>
                 <p class="sr-only">${htmlSafe(summary)}</p>
-                <svg viewBox="0 0 760 190" class="h-auto w-full" role="img" aria-label="${htmlSafe(summary)}">
+                <div class="presales-energy-mobile" aria-hidden="true">
+                    <div class="presales-energy-node"><strong data-presales-energy-label>PV</strong><span>${htmlSafe(pv)}</span></div>
+                    <div class="presales-energy-mobile-connector">|</div>
+                    <div class="presales-energy-node presales-energy-node--bus"><strong data-presales-energy-label>AC Bus / PCS</strong><span>${htmlSafe(pcs)}</span></div>
+                    <div class="presales-energy-mobile-connector">|</div>
+                    <div class="presales-energy-mobile-branches">
+                        <div class="presales-energy-node"><strong data-presales-energy-label>BESS</strong><span>${htmlSafe(bess)}</span></div>
+                        <div class="presales-energy-node"><strong data-presales-energy-label>Customer Load</strong><span>${htmlSafe(load)}</span></div>
+                    </div>
+                </div>
+                <svg viewBox="0 0 760 190" class="presales-energy-desktop h-auto w-full" role="img" aria-label="${htmlSafe(summary)}">
                     <path d="M130 95 H310 M450 95 H630 M380 130 V155" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linecap="round"/>
                     <g><rect x="20" y="55" width="110" height="80" rx="8" fill="#fff" stroke="#c4b5fd"/><text x="75" y="85" text-anchor="middle" font-size="13" font-weight="700">PV</text><text x="75" y="108" text-anchor="middle" font-size="12">${htmlSafe(pv)}</text></g>
                     <g><rect x="310" y="50" width="140" height="90" rx="8" fill="#582C83"/><text x="380" y="84" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">AC Bus / PCS</text><text x="380" y="109" text-anchor="middle" font-size="12" fill="#fff">${htmlSafe(pcs)}</text></g>
@@ -21568,7 +21591,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 ? gaps.map(gap => `
                     <div class="flex min-w-0 items-center justify-between gap-3 border-b border-slate-100 py-2 last:border-b-0">
                         <p class="min-w-0 text-xs font-semibold text-slate-700">${htmlSafe(gap.label)}</p>
-                        <button type="button" onclick="focusPresalesGap('${htmlSafe(gap.target)}')" class="presales-action shrink-0 text-xs font-bold text-purple-700">${htmlSafe(gap.actionLabel)}</button>
+                        <button type="button" onclick="focusPresalesGap('${htmlSafe(gap.target)}', '${htmlSafe(gap.actionLabel)}')" class="presales-action shrink-0 text-xs font-bold text-purple-700">${htmlSafe(gap.actionLabel)}</button>
                     </div>
                 `).join('')
                 : '<p class="text-xs font-semibold text-green-700">Evidence and linked work are ready for engineering handoff.</p>';
@@ -21592,9 +21615,18 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             }
         }
 
-        function focusPresalesGap(target) {
+        function focusPresalesGap(target, actionLabel = '') {
             if (target === 'risks') {
                 openPresalesEpcPanel('risks');
+                return;
+            }
+            const isLinkSelectionAction = /^Select\s/.test(String(actionLabel || '').trim());
+            if (target === 'quote' && !isLinkSelectionAction) {
+                openPresalesQuote();
+                return;
+            }
+            if (target === 'epc' && !isLinkSelectionAction) {
+                openPresalesEpc();
                 return;
             }
             const inputByTarget = {

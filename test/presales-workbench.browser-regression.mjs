@@ -80,6 +80,33 @@ function nestedValue(project, fieldId) {
   return project[evidence ? 'evidenceStatus' : 'intakeBasis'][key];
 }
 
+async function activatePresalesWorkspace(page, userId) {
+  await page.evaluate(id => {
+    window.__minovaAuth = {
+      state: { user: { id } },
+      canPerformAction: () => true
+    };
+    window.switchTab('presales');
+  }, userId);
+  await page.waitForFunction(() => {
+    const view = document.getElementById('view-presales');
+    const box = view?.getBoundingClientRect();
+    return Boolean(
+      view &&
+      !view.classList.contains('hidden') &&
+      getComputedStyle(view).display !== 'none' &&
+      box.width > 0 &&
+      box.height > 0
+    );
+  });
+  await page.evaluate(() => window.createPresalesProject());
+}
+
+function assertRenderedSurface(box, name) {
+  assert.ok(box.width > 0, `${name} width must be non-zero`);
+  assert.ok(box.height > 0, `${name} height must be non-zero`);
+}
+
 const { chromium } = loadPlaywright();
 const { server, url } = await startStaticServer();
 const browser = await chromium.launch({
@@ -94,23 +121,51 @@ try {
   page.on('pageerror', error => pageErrors.push(error.message));
   await page.goto(url, { waitUntil: 'networkidle', timeout: 60000 });
   await page.waitForFunction(() => typeof window.saveCurrentPresalesProject === 'function', { timeout: 60000 });
-  await page.evaluate(() => {
-    window.__minovaAuth = { state: { user: { id: 'browser-regression' } } };
-    window.switchTab('presales');
-    window.createPresalesProject();
-  });
+  await activatePresalesWorkspace(page, 'browser-regression');
 
   const initialSnapshot = await page.evaluate(() => ({
+    presalesView: document.getElementById('view-presales').getBoundingClientRect(),
     score: document.getElementById('presales-readiness-score').textContent,
     kpiCount: document.querySelectorAll('#presales-kpi-strip > div').length,
     architecture: document.getElementById('presales-energy-architecture').textContent,
     hasAccessibleArchitecture: Boolean(document.querySelector('#presales-energy-architecture svg[role="img"][aria-label]'))
   }));
+  assertRenderedSurface(initialSnapshot.presalesView, 'mobile Presales workspace');
   assert.match(initialSnapshot.score, /^\d+%$/);
   assert.equal(initialSnapshot.kpiCount, 6);
   assert.match(initialSnapshot.architecture, /(Pending EPC|EPC draft)/);
   assert.match(initialSnapshot.architecture, /Energy concept: PV Pending/);
   assert.equal(initialSnapshot.hasAccessibleArchitecture, true);
+
+  const actionNavigation = await page.evaluate(() => {
+    window.focusPresalesGap('quote', 'Select Quote Draft');
+    const quoteSelection = {
+      activeElement: document.activeElement?.id,
+      presalesVisible: document.getElementById('view-presales').offsetParent !== null
+    };
+    window.focusPresalesGap('quote');
+    const quote = {
+      quoteVisible: document.getElementById('view-quotation').offsetParent !== null,
+      presalesHidden: document.getElementById('view-presales').offsetParent === null
+    };
+    window.switchTab('presales');
+    window.focusPresalesGap('epc', 'Select Hybrid EPC Design');
+    const epcSelection = {
+      activeElement: document.activeElement?.id,
+      presalesVisible: document.getElementById('view-presales').offsetParent !== null
+    };
+    window.focusPresalesGap('epc');
+    const epc = {
+      epcVisible: document.getElementById('view-epcdesign').offsetParent !== null,
+      presalesHidden: document.getElementById('view-presales').offsetParent === null
+    };
+    window.switchTab('presales');
+    return { quoteSelection, quote, epcSelection, epc };
+  });
+  assert.deepEqual(actionNavigation.quoteSelection, { activeElement: 'presales-quote-link', presalesVisible: true });
+  assert.deepEqual(actionNavigation.quote, { quoteVisible: true, presalesHidden: true });
+  assert.deepEqual(actionNavigation.epcSelection, { activeElement: 'presales-epc-link', presalesVisible: true });
+  assert.deepEqual(actionNavigation.epc, { epcVisible: true, presalesHidden: true });
 
   await page.locator('#presales-customer-name').fill('North Plant');
   await page.locator('#presales-monthly-consumption-kwh').fill('186000');
@@ -211,22 +266,29 @@ try {
     const evidence = rect('presales-evidence-gaps');
     const quote = rect('presales-quote-detail');
     const epc = rect('presales-epc-detail');
-    return { snapshot, evidence, quote, epc, documentWidth: document.documentElement.scrollWidth, viewportWidth: window.innerWidth };
+    const energyLabels = [...document.querySelectorAll('#presales-energy-architecture [data-presales-energy-label]')]
+      .map(label => ({
+        text: label.textContent.trim(),
+        fontSize: Number.parseFloat(getComputedStyle(label).fontSize),
+        box: label.getBoundingClientRect()
+      }));
+    return { snapshot, evidence, quote, epc, energyLabels, documentWidth: document.documentElement.scrollWidth, viewportWidth: window.innerWidth };
   });
+  for (const [name, box] of Object.entries({ snapshot: mobileSnapshotLayout.snapshot, evidence: mobileSnapshotLayout.evidence, quote: mobileSnapshotLayout.quote, epc: mobileSnapshotLayout.epc })) {
+    assertRenderedSurface(box, `mobile ${name} surface`);
+  }
   assert.ok(mobileSnapshotLayout.documentWidth <= mobileSnapshotLayout.viewportWidth, 'mobile snapshot must not cause horizontal overflow');
   assert.ok(mobileSnapshotLayout.snapshot.bottom <= mobileSnapshotLayout.evidence.top + 1, 'evidence strip overlaps the mobile snapshot');
   assert.ok(mobileSnapshotLayout.evidence.bottom <= Math.min(mobileSnapshotLayout.quote.top, mobileSnapshotLayout.epc.top) + 1, 'linked detail surfaces overlap the mobile evidence strip');
   assert.ok([mobileSnapshotLayout.snapshot, mobileSnapshotLayout.evidence, mobileSnapshotLayout.quote, mobileSnapshotLayout.epc].every(box => box.width <= mobileSnapshotLayout.viewportWidth), 'mobile snapshot surface exceeds viewport width');
+  assert.equal(mobileSnapshotLayout.energyLabels.length, 4, 'mobile energy architecture must render four readable labels');
+  assert.ok(mobileSnapshotLayout.energyLabels.every(label => label.box.width > 0 && label.box.height > 0 && label.fontSize >= 12), `mobile energy labels must be visible at 12px or larger: ${JSON.stringify(mobileSnapshotLayout.energyLabels)}`);
   await page.screenshot({ path: '/private/tmp/presales-task3-mobile.png', fullPage: true });
 
-  const desktopPage = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  const desktopPage = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   await desktopPage.goto(url, { waitUntil: 'networkidle', timeout: 60000 });
   await desktopPage.waitForFunction(() => typeof window.saveCurrentPresalesProject === 'function', { timeout: 60000 });
-  await desktopPage.evaluate(() => {
-    window.__minovaAuth = { state: { user: { id: 'desktop-visual-regression' } } };
-    window.switchTab('presales');
-    window.createPresalesProject();
-  });
+  await activatePresalesWorkspace(desktopPage, 'desktop-visual-regression');
   await desktopPage.locator('#presales-customer-name').fill('Desktop Visual Plant');
   await desktopPage.locator('#presales-monthly-consumption-kwh').fill('186000');
   await desktopPage.waitForTimeout(160);
@@ -240,6 +302,7 @@ try {
     const quote = rect('presales-quote-detail');
     const epc = rect('presales-epc-detail');
     return {
+      presalesView: rect('view-presales'),
       score: document.getElementById('presales-readiness-score').textContent,
       kpiCount: document.querySelectorAll('#presales-kpi-strip > div').length,
       hasArchitecture: Boolean(document.querySelector('#presales-energy-architecture svg[role="img"][aria-label]')),
@@ -251,6 +314,10 @@ try {
       viewportWidth: window.innerWidth
     };
   });
+  assertRenderedSurface(desktopSnapshotLayout.presalesView, 'desktop Presales workspace');
+  for (const [name, box] of Object.entries({ snapshot: desktopSnapshotLayout.snapshot, evidence: desktopSnapshotLayout.evidence, quote: desktopSnapshotLayout.quote, epc: desktopSnapshotLayout.epc })) {
+    assertRenderedSurface(box, `desktop ${name} surface`);
+  }
   assert.match(desktopSnapshotLayout.score, /^\d+%$/);
   assert.equal(desktopSnapshotLayout.kpiCount, 6);
   assert.equal(desktopSnapshotLayout.hasArchitecture, true);

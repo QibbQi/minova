@@ -168,6 +168,36 @@ test('linked quote and EPC selections expose BD-readable detail previews', () =>
   }
 });
 
+test('presales opportunity snapshot exposes readiness, KPIs, evidence and energy flow', () => {
+  for (const id of [
+    'presales-opportunity-snapshot',
+    'presales-readiness-score',
+    'presales-readiness-breakdown',
+    'presales-next-action',
+    'presales-kpi-strip',
+    'presales-energy-architecture',
+    'presales-evidence-gaps',
+    'presales-quote-detail',
+    'presales-epc-detail'
+  ]) {
+    assert.match(indexHtml, new RegExp(`id="${id}"`), `missing snapshot id: ${id}`);
+  }
+  for (const snippet of [
+    'function renderPresalesOpportunitySnapshot',
+    'function renderPresalesEvidenceGaps',
+    'function renderPresalesEnergyArchitecture',
+    'function focusPresalesGap',
+    'BD Readiness',
+    'Customer-facing output blocked by High risk',
+    'aria-current="step"',
+    'Blocked by High risk',
+    "const emDash = '—'",
+    'function presalesSnapshotHasValue'
+  ]) {
+    assert.match(indexHtml, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing snapshot behavior: ${snippet}`);
+  }
+});
+
 test('presales cockpit has one stage owner and structured progressive intake', () => {
   for (const id of [
     'presales-command-bar',

@@ -100,6 +100,36 @@ try {
     window.createPresalesProject();
   });
 
+  const initialSnapshot = await page.evaluate(() => ({
+    score: document.getElementById('presales-readiness-score').textContent,
+    kpiCount: document.querySelectorAll('#presales-kpi-strip > div').length,
+    architecture: document.getElementById('presales-energy-architecture').textContent,
+    hasAccessibleArchitecture: Boolean(document.querySelector('#presales-energy-architecture svg[role="img"][aria-label]'))
+  }));
+  assert.match(initialSnapshot.score, /^\d+%$/);
+  assert.equal(initialSnapshot.kpiCount, 6);
+  assert.match(initialSnapshot.architecture, /(Pending EPC|EPC draft)/);
+  assert.match(initialSnapshot.architecture, /Energy concept: PV Pending/);
+  assert.equal(initialSnapshot.hasAccessibleArchitecture, true);
+
+  await page.locator('#presales-customer-name').fill('North Plant');
+  await page.locator('#presales-monthly-consumption-kwh').fill('186000');
+  await page.waitForTimeout(160);
+  const refreshedSnapshot = await page.evaluate(() => {
+    window.setPresalesStage('Risk');
+    return {
+      monthlyConsumption: document.querySelector('#presales-kpi-strip').textContent,
+      currentStage: document.querySelector('#presales-stage-rail [aria-current="step"]')?.getAttribute('data-presales-stage'),
+      completedStage: document.querySelector('#presales-stage-rail [data-presales-stage="Intake"]')?.getAttribute('aria-label'),
+      documentWidth: document.documentElement.scrollWidth,
+      viewportWidth: window.innerWidth
+    };
+  });
+  assert.match(refreshedSnapshot.monthlyConsumption, /186,000 kWh/);
+  assert.equal(refreshedSnapshot.currentStage, 'Risk');
+  assert.match(refreshedSnapshot.completedStage, /completed/);
+  assert.ok(refreshedSnapshot.documentWidth <= refreshedSnapshot.viewportWidth, 'snapshot must not cause mobile horizontal overflow');
+
   await page.locator('#presales-site-summary').fill(
     'First raw note line. Second raw note line. Third raw note line that must remain available through Expand/Edit.'
   );
@@ -172,6 +202,63 @@ try {
   assert.ok(mobileLayout.selector.width >= 220, `project selector is over-compressed at ${mobileLayout.selector.width}px`);
   assert.ok(mobileLayout.actionRows.every(box => box.top >= mobileLayout.selector.bottom), 'project selector must occupy its own mobile command-bar row');
   assert.ok(mobileLayout.documentWidth <= mobileLayout.viewportWidth, 'mobile command bar must not cause horizontal overflow');
+  const mobileSnapshotLayout = await page.evaluate(() => {
+    const rect = id => {
+      const box = document.getElementById(id).getBoundingClientRect();
+      return { top: box.top, bottom: box.bottom, width: box.width };
+    };
+    const snapshot = rect('presales-opportunity-snapshot');
+    const evidence = rect('presales-evidence-gaps');
+    const quote = rect('presales-quote-detail');
+    const epc = rect('presales-epc-detail');
+    return { snapshot, evidence, quote, epc, documentWidth: document.documentElement.scrollWidth, viewportWidth: window.innerWidth };
+  });
+  assert.ok(mobileSnapshotLayout.documentWidth <= mobileSnapshotLayout.viewportWidth, 'mobile snapshot must not cause horizontal overflow');
+  assert.ok(mobileSnapshotLayout.snapshot.bottom <= mobileSnapshotLayout.evidence.top + 1, 'evidence strip overlaps the mobile snapshot');
+  assert.ok(mobileSnapshotLayout.evidence.bottom <= Math.min(mobileSnapshotLayout.quote.top, mobileSnapshotLayout.epc.top) + 1, 'linked detail surfaces overlap the mobile evidence strip');
+  assert.ok([mobileSnapshotLayout.snapshot, mobileSnapshotLayout.evidence, mobileSnapshotLayout.quote, mobileSnapshotLayout.epc].every(box => box.width <= mobileSnapshotLayout.viewportWidth), 'mobile snapshot surface exceeds viewport width');
+  await page.screenshot({ path: '/private/tmp/presales-task3-mobile.png', fullPage: true });
+
+  const desktopPage = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  await desktopPage.goto(url, { waitUntil: 'networkidle', timeout: 60000 });
+  await desktopPage.waitForFunction(() => typeof window.saveCurrentPresalesProject === 'function', { timeout: 60000 });
+  await desktopPage.evaluate(() => {
+    window.__minovaAuth = { state: { user: { id: 'desktop-visual-regression' } } };
+    window.switchTab('presales');
+    window.createPresalesProject();
+  });
+  await desktopPage.locator('#presales-customer-name').fill('Desktop Visual Plant');
+  await desktopPage.locator('#presales-monthly-consumption-kwh').fill('186000');
+  await desktopPage.waitForTimeout(160);
+  const desktopSnapshotLayout = await desktopPage.evaluate(() => {
+    const rect = id => {
+      const box = document.getElementById(id).getBoundingClientRect();
+      return { top: box.top, bottom: box.bottom, width: box.width };
+    };
+    const snapshot = rect('presales-opportunity-snapshot');
+    const evidence = rect('presales-evidence-gaps');
+    const quote = rect('presales-quote-detail');
+    const epc = rect('presales-epc-detail');
+    return {
+      score: document.getElementById('presales-readiness-score').textContent,
+      kpiCount: document.querySelectorAll('#presales-kpi-strip > div').length,
+      hasArchitecture: Boolean(document.querySelector('#presales-energy-architecture svg[role="img"][aria-label]')),
+      snapshot,
+      evidence,
+      quote,
+      epc,
+      documentWidth: document.documentElement.scrollWidth,
+      viewportWidth: window.innerWidth
+    };
+  });
+  assert.match(desktopSnapshotLayout.score, /^\d+%$/);
+  assert.equal(desktopSnapshotLayout.kpiCount, 6);
+  assert.equal(desktopSnapshotLayout.hasArchitecture, true);
+  assert.ok(desktopSnapshotLayout.documentWidth <= desktopSnapshotLayout.viewportWidth, 'desktop snapshot must not cause horizontal overflow');
+  assert.ok(desktopSnapshotLayout.snapshot.bottom <= desktopSnapshotLayout.evidence.top + 1, 'desktop evidence strip overlaps the snapshot');
+  assert.ok(desktopSnapshotLayout.evidence.bottom <= Math.min(desktopSnapshotLayout.quote.top, desktopSnapshotLayout.epc.top) + 1, 'desktop linked detail surfaces overlap the evidence strip');
+  await desktopPage.screenshot({ path: '/private/tmp/presales-task3-desktop.png', fullPage: true });
+  await desktopPage.close();
   assert.equal(pageErrors.length, 0, `browser errors: ${pageErrors.join('; ')}`);
 } finally {
   await browser.close();

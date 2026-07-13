@@ -6094,7 +6094,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="./epc-design-engine.global.js?v=epc-design-v2"></script>
-    <script type="module">
+    <script src="./presales-workbench.global.js?v=presales-workbench-v1"></script>
+    <script>
+        (() => {
         const {
             EPC_DESIGN_DEFAULTS,
             buildGlobalSolarAtlasApiUrls,
@@ -6105,7 +6107,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             normalizeEpcDesignProjectList,
             parseGlobalSolarAtlasSolarResource
         } = window.MinovaEpcDesignEngine;
-        import {
+        const {
             PRESALES_ASSUMPTION_STATUS,
             PRESALES_COPY,
             PRESALES_EVIDENCE_DEFAULTS,
@@ -6117,7 +6119,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             buildPresalesOpportunityModel,
             calculatePresalesReadiness,
             normalizePresalesProject
-        } from './presales-workbench.mjs';
+        } = window.MinovaPresalesWorkbench || {};
         document.documentElement.dataset.epcDesignWorkspace = 'booted';
 
         const localStorage = (() => {
@@ -33338,6 +33340,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             modal.classList.add('hidden');
             modal.classList.remove('flex');
         };
+            })();
     </script>
 
     <style>
@@ -39276,6 +39279,17 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 </div>
 <script>
   window.__minovaAuth = window.__minovaAuth || { state: { user: null, ready: false, locked: true } };
+  if (window.location.protocol === 'file:') {
+    window.__minovaAuth.state = { ...(window.__minovaAuth.state || {}), user: null, ready: true, locked: false };
+    window.__minovaAuth.canAccessTab = window.__minovaAuth.canAccessTab || (() => true);
+    window.__minovaAuth.canPerformAction = window.__minovaAuth.canPerformAction || (() => true);
+    window.__minovaAuth.canViewSensitiveField = window.__minovaAuth.canViewSensitiveField || (() => true);
+    window.__minovaAuth.auditEvent = window.__minovaAuth.auditEvent || (() => {});
+  } else {
+    const authScript = document.createElement('script');
+    authScript.type = 'module';
+    authScript.src = './auth/minova-auth-ui.mjs';
+    document.currentScript.after(authScript);
+  }
 </script>
-<script type="module" src="./auth/minova-auth-ui.mjs"></script>
 </body></html>

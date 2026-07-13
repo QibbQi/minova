@@ -24,8 +24,9 @@ test('EPC design tab is placed between Product List and Engineering Workspace', 
   assert.ok(engineeringPos > epcPos, 'Engineering tab is after EPC tab');
   assert.match(html, /id="tab-epcdesign"[^>]*aria-label="Hybrid EPC Design"/);
   assert.match(html, /id="tab-epcdesign"[\s\S]*?<svg/);
-  assert.match(html, /<script src="\.\/epc-design-engine\.global\.js\?v=epc-design-v2"><\/script>\s*<script type="module">\s*const \{/);
+  assert.match(html, /<script src="\.\/epc-design-engine\.global\.js\?v=epc-design-v2"><\/script>\s*<script src="\.\/presales-workbench\.global\.js\?v=presales-workbench-v1"><\/script>\s*<script>\s*\(\(\) => \{\s*const \{/);
   assert.doesNotMatch(html, /<script type="module">\s*import \{\s*EPC_DESIGN_DEFAULTS/);
+  assert.doesNotMatch(html, /from '\.\/presales-workbench\.mjs'/);
 });
 
 test('EPC design workspace exposes quick detailed map solar and report surfaces', () => {

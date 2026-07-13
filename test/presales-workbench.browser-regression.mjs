@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { homedir } from 'node:os';
 import { dirname, extname, join, normalize, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const playwrightRoots = [
@@ -712,6 +712,38 @@ try {
   assert.ok(desktopSnapshotLayout.evidence.bottom <= Math.min(desktopSnapshotLayout.quote.top, desktopSnapshotLayout.epc.top) + 1, 'desktop linked detail surfaces overlap the evidence strip');
   await desktopPage.screenshot({ path: '/private/tmp/presales-task3-desktop.png', fullPage: true });
   await desktopPage.close();
+
+  const filePage = await browser.newPage({ viewport: { width: 1280, height: 860 } });
+  const fileErrors = [];
+  const fileConsoleErrors = [];
+  filePage.on('pageerror', error => fileErrors.push(error.message));
+  filePage.on('console', message => {
+    if (message.type() === 'error') fileConsoleErrors.push(message.text());
+  });
+  await filePage.goto(pathToFileURL(join(repoRoot, 'index.html')).href, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await filePage.waitForFunction(() => typeof window.switchTab === 'function' && Boolean(window.MinovaPresalesWorkbench), { timeout: 60000 });
+  const fileModeState = await filePage.evaluate(() => {
+    window.switchTab('presales');
+    return {
+      protocol: window.location.protocol,
+      hasSwitchTab: typeof window.switchTab === 'function',
+      hasPresalesGlobal: Boolean(window.MinovaPresalesWorkbench),
+      presalesVisible: document.getElementById('view-presales')?.offsetParent !== null,
+      authReady: window.__minovaAuth?.state?.ready,
+      authLocked: window.__minovaAuth?.state?.locked
+    };
+  });
+  assert.deepEqual(fileModeState, {
+    protocol: 'file:',
+    hasSwitchTab: true,
+    hasPresalesGlobal: true,
+    presalesVisible: true,
+    authReady: true,
+    authLocked: false
+  });
+  assert.equal(fileErrors.length, 0, `file-mode browser errors: ${fileErrors.join('; ')}`);
+  assert.ok(!fileConsoleErrors.some(message => /presales-workbench\.mjs|auth\/minova-auth-ui\.mjs|CORS policy/i.test(message)), `file-mode module CORS errors: ${fileConsoleErrors.join('; ')}`);
+  await filePage.close();
   assert.equal(pageErrors.length, 0, `browser errors: ${pageErrors.join('; ')}`);
 } finally {
   await browser.close();

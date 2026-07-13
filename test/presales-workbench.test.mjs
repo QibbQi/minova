@@ -11,6 +11,8 @@ import {
 } from '../presales-workbench.mjs';
 
 const indexHtml = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const presalesModuleSource = readFileSync(new URL('../presales-workbench.mjs', import.meta.url), 'utf8');
+const presalesGlobalSource = readFileSync(new URL('../presales-workbench.global.js', import.meta.url), 'utf8');
 const authUiSource = readFileSync(new URL('../auth/minova-auth-ui.mjs', import.meta.url), 'utf8');
 const workerSource = readFileSync(new URL('../worker/src/index.mjs', import.meta.url), 'utf8');
 const mergeSource = readFileSync(new URL('../github-sync/merge.js', import.meta.url), 'utf8');
@@ -110,6 +112,18 @@ test('presales workspace is a first-class top-level BD entry', () => {
   assert.match(indexHtml, /id="presales-project-select"/);
   assert.match(indexHtml, /id="presales-quote-link"/);
   assert.match(indexHtml, /id="presales-epc-link"/);
+});
+
+test('presales browser helpers load through a file-safe global script', () => {
+  assert.match(indexHtml, /<script src="\.\/presales-workbench\.global\.js\?v=presales-workbench-v1"><\/script>/);
+  assert.match(indexHtml, /window\.MinovaPresalesWorkbench/);
+  assert.doesNotMatch(indexHtml, /from '\.\/presales-workbench\.mjs'/);
+  assert.match(presalesGlobalSource, /global\.MinovaPresalesWorkbench = Object\.freeze/);
+
+  const moduleExports = [...presalesModuleSource.matchAll(/export\s+(?:const|function)\s+([A-Za-z0-9_]+)/g)].map(match => match[1]);
+  for (const name of moduleExports) {
+    assert.match(presalesGlobalSource, new RegExp(`\\b${name}\\b`), `global script missing ${name}`);
+  }
 });
 
 test('presales project state persists through local, D1, and GitHub sync paths', () => {

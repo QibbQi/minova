@@ -33,7 +33,7 @@
 
 ## Commit
 
-- Full SHA: pending amend after commit creation.
+- Task 4 implementation: `9fc9e7f6d95f7a0e5501669998050125fa027cbe` (`Complete presales handoff workspace`).
 
 ## Residual Risk
 

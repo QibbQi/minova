@@ -65,16 +65,34 @@
             -webkit-line-clamp: 2;
         }
 
+        #presales-stage-mobile-menu .presales-stage-btn {
+            min-height: 44px;
+        }
+
         @media (max-width: 767px) {
             #view-presales .presales-field { font-size: 1rem; }
             #presales-stage-rail { display: none; }
             #presales-stage-mobile-summary { display: flex; }
             #view-presales[data-presales-record-state="existing"] #presales-opportunity-column { order: -10; }
+            #presales-command-controls { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.5rem; width: 100%; }
+            #presales-project-select { min-width: 0; width: 100%; }
+            #presales-command-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+        }
+
+        @media (min-width: 768px) and (max-width: 1023px) {
+            #presales-command-controls { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.5rem; width: 100%; }
+            #presales-command-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
         }
 
         @media (min-width: 768px) {
             #presales-stage-rail { display: grid; }
             #presales-stage-mobile-summary { display: none; }
+        }
+
+        @media (min-width: 1024px) {
+            #presales-command-controls { display: grid; grid-template-columns: minmax(220px, 1fr) auto; align-items: center; gap: 0.5rem; }
+            #presales-project-select { min-width: 220px; }
+            #presales-command-actions { display: flex; flex-wrap: nowrap; align-items: center; gap: 0.5rem; }
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -1173,12 +1191,14 @@
                     <h2 class="text-2xl font-bold text-slate-900">Pre-sales Workspace</h2>
                     <p id="presales-project-context" class="mt-1 text-sm text-slate-500">New opportunity</p>
                 </div>
-                <div class="flex flex-wrap items-center gap-2">
-                    <select id="presales-project-select" onchange="selectPresalesProject(this.value)" class="presales-field min-w-0 flex-1 sm:min-w-[220px]"></select>
-                    <span id="presales-updated-at" class="text-xs font-semibold text-slate-500" aria-live="polite">Not saved</span>
-                    <button type="button" onclick="createPresalesProject()" class="presales-action min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold">New Case</button>
-                    <button type="button" onclick="saveCurrentPresalesProject()" class="presales-action min-h-11 rounded-lg bg-purple-800 px-4 text-xs font-bold text-white">Save</button>
-                    <button type="button" onclick="openPresalesHandoff()" class="presales-action min-h-11 rounded-lg border border-amber-400 bg-amber-300 px-4 text-xs font-bold text-slate-900">Handoff</button>
+                <div id="presales-command-controls" class="min-w-0">
+                    <select id="presales-project-select" onchange="selectPresalesProject(this.value)" class="presales-field"></select>
+                    <div id="presales-command-actions">
+                        <span id="presales-updated-at" class="text-xs font-semibold text-slate-500" aria-live="polite">Not saved</span>
+                        <button type="button" onclick="createPresalesProject()" class="presales-action min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold">New Case</button>
+                        <button type="button" onclick="saveCurrentPresalesProject()" class="presales-action min-h-11 rounded-lg bg-purple-800 px-4 text-xs font-bold text-white">Save</button>
+                        <button type="button" onclick="openPresalesHandoff()" class="presales-action min-h-11 rounded-lg border border-amber-400 bg-amber-300 px-4 text-xs font-bold text-slate-900">Handoff</button>
+                    </div>
                 </div>
             </div>
         </section>

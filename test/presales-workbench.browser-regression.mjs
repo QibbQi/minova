@@ -197,6 +197,9 @@ try {
   assert.match(chineseDynamicContent.handoff, /客户输出已阻止/);
   assert.match(chineseDynamicContent.internalHandoff, /客户\/现场基础/);
   assert.match(chineseDynamicContent.internalHandoff, /电价/);
+  assert.match(chineseDynamicContent.internalHandoff, /未知/);
+  assert.match(chineseDynamicContent.internalHandoff, /缺失/);
+  assert.doesNotMatch(chineseDynamicContent.internalHandoff, /\b(?:unknown|missing)\b/);
 
   const actionNavigation = await page.evaluate(() => {
     window.focusPresalesGap('quote', 'Select Quote Draft');

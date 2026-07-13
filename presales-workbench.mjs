@@ -53,6 +53,16 @@ export const PRESALES_COPY = Object.freeze({
     customerSiteBasis: 'Customer/site basis', billMonthsShort: 'bill months', tariff: 'Tariff', source: 'source', date: 'date', diesel: 'Diesel',
     hoursMonth: 'hours/month', litersMonth: 'liters/month', use: 'use', transformer: 'transformer', export: 'export', constraint: 'constraint',
     savingTarget: 'saving', budget: 'budget', due: 'due', decision: 'decision', bills: 'bills', structural: 'structural',
+    enumUnknown: 'Unknown', enumOutage: 'Outage support', enumPeakShaving: 'Peak shaving', enumContinuous: 'Continuous',
+    enumConfirmed: 'Confirmed', enumRestricted: 'Restricted', enumNotAllowed: 'Not allowed',
+    enumComplete: 'Complete', enumPartial: 'Partial', enumMissing: 'Missing', enumAvailable: 'Available', enumRequested: 'Requested', enumNotRequired: 'Not required',
+    assumptionPreliminary: 'Preliminary / BD estimate', assumptionNeedsSource: 'Needs source/date', assumptionEngineeringReview: 'Engineering draft / requires review', assumptionConfirmed: 'Engineering confirmed',
+    riskOpen: 'Open risks', riskNeedsReview: 'Needs engineering review', riskAccepted: 'Accepted for proposal',
+    gapHighRisk: '{count} open High risks', gapOpenEpcHighRisks: 'Open EPC High Risks', gapTariffMissing: 'Tariff source/date missing', gapAddTariffEvidence: 'Add tariff evidence',
+    gapBills: 'Bills {months}/12', gapAddMonths: 'Add {months} months', gapLoadProfileMissing: 'Load profile missing', gapRequestFromCustomer: 'Request from customer',
+    gapSitePhotosMissing: 'Site photos missing', gapRequestSitePhotos: 'Request site photos', gapExistingSldMissing: 'Existing SLD missing', gapRequestExistingSld: 'Request existing SLD',
+    gapStructuralMissing: 'Structural basis missing', gapConfirmStructuralPath: 'Confirm structural path', gapQuoteNotLinked: 'Quote not linked', gapSelectQuoteDraft: 'Select Quote Draft',
+    gapEpcNotLinked: 'EPC concept not linked', gapSelectEpcDesign: 'Select Hybrid EPC Design', none: 'None',
     customerCopyDenied: 'Customer output is blocked by open High risk'
   }),
   zh: Object.freeze({
@@ -90,6 +100,16 @@ export const PRESALES_COPY = Object.freeze({
     customerSiteBasis: '客户/现场基础', billMonthsShort: '个月账单', tariff: '电价', source: '来源', date: '日期', diesel: '柴油',
     hoursMonth: '小时/月', litersMonth: '升/月', use: '用途', transformer: '变压器', export: '上网', constraint: '约束',
     savingTarget: '节省', budget: '预算', due: '截止', decision: '决策', bills: '账单', structural: '结构',
+    enumUnknown: '未知', enumOutage: '停电备用', enumPeakShaving: '削峰', enumContinuous: '连续运行',
+    enumConfirmed: '已确认', enumRestricted: '受限', enumNotAllowed: '不允许',
+    enumComplete: '完整', enumPartial: '部分', enumMissing: '缺失', enumAvailable: '已具备', enumRequested: '已请求', enumNotRequired: '不需要',
+    assumptionPreliminary: '初步商务估算', assumptionNeedsSource: '需补来源/日期', assumptionEngineeringReview: '工程草案 / 需要复核', assumptionConfirmed: '工程已确认',
+    riskOpen: '风险未关闭', riskNeedsReview: '需工程复核', riskAccepted: '可用于提案',
+    gapHighRisk: '{count} 项未关闭高风险', gapOpenEpcHighRisks: '打开 EPC 高风险', gapTariffMissing: '电价来源/日期缺失', gapAddTariffEvidence: '补充电价依据',
+    gapBills: '账单 {months}/12', gapAddMonths: '补充 {months} 个月', gapLoadProfileMissing: '负荷曲线缺失', gapRequestFromCustomer: '向客户索取',
+    gapSitePhotosMissing: '现场照片缺失', gapRequestSitePhotos: '索取现场照片', gapExistingSldMissing: '现有单线图缺失', gapRequestExistingSld: '索取现有单线图',
+    gapStructuralMissing: '结构依据缺失', gapConfirmStructuralPath: '确认结构路径', gapQuoteNotLinked: '未关联报价', gapSelectQuoteDraft: '选择报价草稿',
+    gapEpcNotLinked: '未关联 EPC 概念', gapSelectEpcDesign: '选择 Hybrid EPC 设计', none: '无',
     customerCopyDenied: '存在未关闭的高风险，客户输出已阻止'
   })
 });

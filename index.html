@@ -21443,6 +21443,62 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return String(template).replace(/\{(\w+)\}/g, (_, name) => String(values[name] ?? ''));
         }
 
+        function presalesEnumText(value) {
+            const key = {
+                unknown: 'enumUnknown',
+                outage: 'enumOutage',
+                peak_shaving: 'enumPeakShaving',
+                continuous: 'enumContinuous',
+                confirmed: 'enumConfirmed',
+                restricted: 'enumRestricted',
+                not_allowed: 'enumNotAllowed',
+                complete: 'enumComplete',
+                partial: 'enumPartial',
+                missing: 'enumMissing',
+                available: 'enumAvailable',
+                requested: 'enumRequested',
+                not_required: 'enumNotRequired'
+            }[String(value || '')];
+            return key ? presalesText(key) : (value || '-');
+        }
+
+        function presalesStatusText(kind, value) {
+            const maps = {
+                assumption: {
+                    preliminary: 'assumptionPreliminary',
+                    needs_source: 'assumptionNeedsSource',
+                    engineering_review: 'assumptionEngineeringReview',
+                    confirmed: 'assumptionConfirmed'
+                },
+                risk: {
+                    open: 'riskOpen',
+                    needs_review: 'riskNeedsReview',
+                    accepted: 'riskAccepted'
+                }
+            };
+            const key = maps[kind]?.[String(value || '')];
+            return key ? presalesText(key) : (value || '-');
+        }
+
+        function presalesGapText(gap = {}, project = currentPresalesDraftFromForm()) {
+            const intake = project?.intakeBasis || {};
+            const missingMonths = Math.max(0, 12 - Number(intake.billMonthsAvailable || 0));
+            const count = String(gap.label || '').match(/^\d+/)?.[0] || '0';
+            const map = {
+                'high-risk': [presalesText('gapHighRisk', { count }), presalesText('gapOpenEpcHighRisks')],
+                'tariff-source-date': [presalesText('gapTariffMissing'), presalesText('gapAddTariffEvidence')],
+                'utility-bills': [presalesText('gapBills', { months: intake.billMonthsAvailable || 0 }), presalesText('gapAddMonths', { months: missingMonths })],
+                'load-profile': [presalesText('gapLoadProfileMissing'), presalesText('gapRequestFromCustomer')],
+                'site-photos': [presalesText('gapSitePhotosMissing'), presalesText('gapRequestSitePhotos')],
+                'existing-sld': [presalesText('gapExistingSldMissing'), presalesText('gapRequestExistingSld')],
+                'structural-report': [presalesText('gapStructuralMissing'), presalesText('gapConfirmStructuralPath')],
+                'quote-link': [presalesText('gapQuoteNotLinked'), presalesText('gapSelectQuoteDraft')],
+                'epc-link': [presalesText('gapEpcNotLinked'), presalesText('gapSelectEpcDesign')]
+            };
+            const localized = map[gap.id];
+            return localized ? `${localized[0]}: ${localized[1]}` : `${gap.label}: ${gap.actionLabel}`;
+        }
+
         function renderPresalesQuoteDetail(project = getActivePresalesProject()) {
             const target = document.getElementById('presales-quote-detail') || document.getElementById('presales-quote-card');
             if (!target) return;
@@ -22260,8 +22316,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const epc = getPresalesEpcDetail(project.epcDesignProjectId);
             const model = getPresalesOpportunityModel(project);
             const intake = project.intakeBasis || {};
-            const assumptionLabel = PRESALES_ASSUMPTION_STATUS[project.assumptionStatus] || PRESALES_ASSUMPTION_STATUS.preliminary;
-            const riskLabel = PRESALES_RISK_STATUS[project.riskStatus] || PRESALES_RISK_STATUS.open;
+            const assumptionLabel = presalesStatusText('assumption', project.assumptionStatus || 'preliminary');
+            const riskLabel = presalesStatusText('risk', project.riskStatus || 'open');
             const quoteTotal = quote?.quoteTotal > 0 ? presalesFormatMoney(quote.quoteTotal, quote.currency) : '-';
             const label = (en, zh) => currentLang === 'zh' ? zh : en;
             const quoteInputs = quote
@@ -22289,14 +22345,14 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 `${presalesText('customerSiteBasis')}: ${intake.siteName || '-'}; ${intake.location || '-'}; ${intake.facilityType || '-'}`,
                 `${presalesText('energy')}: ${intake.monthlyConsumptionKwh || '-'} kWh/month; ${intake.billMonthsAvailable || 0}/12 ${presalesText('billMonthsShort')}; ${intake.peakDemandKw || '-'} kW peak`,
                 `${presalesText('tariff')}: ${intake.tariffCategory || '-'}; ${presalesText('source')} ${intake.tariffSource || '-'}; ${presalesText('date')} ${intake.tariffSourceDate || '-'}`,
-                `${presalesText('diesel')}: ${intake.gensetCapacityKva || '-'} kVA; ${intake.gensetRuntimeHoursMonth || '-'} ${presalesText('hoursMonth')}; ${intake.dieselConsumptionLitersMonth || '-'} ${presalesText('litersMonth')}; ${presalesText('use')} ${intake.gensetUse || 'unknown'}`,
-                `${presalesText('site')}: ${intake.availableAreaM2 || '-'} m2; ${presalesText('transformer')} ${intake.transformerCapacityKva || '-'} kVA; ${presalesText('export')} ${intake.exportEligibility || 'unknown'}; ${presalesText('constraint')} ${intake.primaryConstraint || '-'}`,
+                `${presalesText('diesel')}: ${intake.gensetCapacityKva || '-'} kVA; ${intake.gensetRuntimeHoursMonth || '-'} ${presalesText('hoursMonth')}; ${intake.dieselConsumptionLitersMonth || '-'} ${presalesText('litersMonth')}; ${presalesText('use')} ${presalesEnumText(intake.gensetUse || 'unknown')}`,
+                `${presalesText('site')}: ${intake.availableAreaM2 || '-'} m2; ${presalesText('transformer')} ${intake.transformerCapacityKva || '-'} kVA; ${presalesText('export')} ${presalesEnumText(intake.exportEligibility || 'unknown')}; ${presalesText('constraint')} ${intake.primaryConstraint || '-'}`,
                 `${presalesText('objective')}: ${intake.targetSavingPct || '-'}% ${presalesText('savingTarget')}; ${presalesText('budget')} ${intake.budgetRange || '-'}; ${presalesText('due')} ${intake.proposalDueDate || '-'}; ${presalesText('decision')} ${intake.customerDecisionNote || '-'}`,
-                `${presalesText('evidence')}: ${presalesText('bills')} ${project.evidenceStatus?.utilityBills || '-'}; ${presalesText('loadProfile')} ${project.evidenceStatus?.loadProfile || '-'}; ${presalesText('sitePhotos')} ${project.evidenceStatus?.sitePhotos || '-'}; SLD ${project.evidenceStatus?.existingSld || '-'}; ${presalesText('structural')} ${project.evidenceStatus?.structuralReport || '-'}`
+                `${presalesText('evidence')}: ${presalesText('bills')} ${presalesEnumText(project.evidenceStatus?.utilityBills || 'missing')}; ${presalesText('loadProfile')} ${presalesEnumText(project.evidenceStatus?.loadProfile || 'missing')}; ${presalesText('sitePhotos')} ${presalesEnumText(project.evidenceStatus?.sitePhotos || 'missing')}; SLD ${presalesEnumText(project.evidenceStatus?.existingSld || 'missing')}; ${presalesText('structural')} ${presalesEnumText(project.evidenceStatus?.structuralReport || 'missing')}`
             ];
             const evidenceGaps = buildPresalesEvidenceGaps(project, quote, epc)
-                .map(gap => `- ${gap.label}: ${gap.actionLabel}`)
-                .join('\n') || '- None';
+                .map(gap => `- ${presalesGapText(gap, project)}`)
+                .join('\n') || `- ${presalesText('none')}`;
             const internal = [
                 presalesText('internalHandoffTitle'),
                 `${label('Customer', '客户')}: ${project.customerName || '-'}`,

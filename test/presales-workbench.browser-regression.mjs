@@ -178,7 +178,8 @@ try {
       epc: document.getElementById('presales-epc-detail').textContent,
       evidence: document.getElementById('presales-evidence-gaps').textContent,
       energy: document.getElementById('presales-energy-architecture').textContent,
-      handoff: document.getElementById('presales-handoff-preview').textContent
+      handoff: document.getElementById('presales-handoff-preview').textContent,
+      stages: `${document.getElementById('presales-stage-rail').textContent} ${document.getElementById('presales-stage-mobile-label').textContent}`
     };
     window.setPresalesHandoffTab('internal');
     values.internalHandoff = document.getElementById('presales-handoff-preview').textContent;
@@ -199,6 +200,9 @@ try {
   assert.match(chineseDynamicContent.internalHandoff, /电价/);
   assert.match(chineseDynamicContent.internalHandoff, /未知/);
   assert.match(chineseDynamicContent.internalHandoff, /缺失/);
+  assert.match(chineseDynamicContent.stages, /信息采集/);
+  assert.doesNotMatch(chineseDynamicContent.stages, /\b(?:Intake|Sizing|Risk|Handoff)\b/);
+  assert.doesNotMatch(chineseDynamicContent.evidence, /(?:Load profile missing|Quote not linked|Select Quote Draft)/);
   assert.doesNotMatch(chineseDynamicContent.internalHandoff, /\b(?:unknown|missing)\b/);
 
   const actionNavigation = await page.evaluate(() => {
@@ -247,7 +251,7 @@ try {
   });
   assert.match(refreshedSnapshot.monthlyConsumption, /186,?000 kWh/);
   assert.equal(refreshedSnapshot.currentStage, 'Risk');
-  assert.match(refreshedSnapshot.completedStage, /completed/);
+  assert.match(refreshedSnapshot.completedStage, /completed/i);
   assert.ok(refreshedSnapshot.documentWidth <= refreshedSnapshot.viewportWidth, 'snapshot must not cause mobile horizontal overflow');
 
   await page.evaluate(text => {
@@ -361,8 +365,7 @@ try {
   const unrelatedGlobalEpcBlock = await page.evaluate(() => {
     window.__lastEpcDesignResult = { ...(window.__lastEpcDesignResult || {}), reportGate: { blocked: true } };
     const epcSelect = document.getElementById('presales-epc-link');
-    epcSelect.insertAdjacentHTML('beforeend', '<option value="not-current-linked-epc">Unavailable safe-link test EPC</option>');
-    epcSelect.value = 'not-current-linked-epc';
+    epcSelect.value = '';
     window.openPresalesHandoff();
     window.setPresalesHandoffTab('customer');
     const state = {
@@ -373,6 +376,26 @@ try {
     return state;
   });
   assert.deepEqual(unrelatedGlobalEpcBlock, { copyDisabled: false, reason: '' });
+
+  const missingLinkedEpcBlock = await page.evaluate(() => {
+    const epcSelect = document.getElementById('presales-epc-link');
+    epcSelect.insertAdjacentHTML('beforeend', '<option value="not-current-linked-epc">Unavailable safe-link test EPC</option>');
+    epcSelect.value = 'not-current-linked-epc';
+    window.openPresalesHandoff();
+    window.setPresalesHandoffTab('customer');
+    const state = {
+      copyDisabled: document.querySelector('#presales-handoff-drawer button[data-presales-copy="copy"]').disabled,
+      plainTextDisabled: document.getElementById('presales-handoff-plain-text').disabled,
+      reason: document.getElementById('presales-handoff-block-reason').textContent
+    };
+    window.closePresalesHandoff();
+    return state;
+  });
+  assert.deepEqual(missingLinkedEpcBlock, {
+    copyDisabled: true,
+    plainTextDisabled: true,
+    reason: 'Customer-facing output blocked because the linked EPC design is not available for risk verification.'
+  });
 
   const saveAndSwitchPending = await page.evaluate(async () => {
     window.__minovaBusiness = null;
@@ -437,6 +460,17 @@ try {
   assert.equal(rejectedSaveState.saveDisabled, false);
   assert.match(rejectedSaveState.status, /Save failed/);
   await page.evaluate(() => window.discardAndSwitchPresalesProject());
+  const rejectedRollbackState = await page.evaluate(currentId => {
+    window.selectPresalesProject(currentId);
+    const projects = JSON.parse(localStorage.getItem('minova_presales_projects_v1') || '[]');
+    const restored = projects.find(project => project.id === currentId);
+    return {
+      value: document.getElementById('presales-customer-name').value,
+      persisted: restored?.customerName || ''
+    };
+  }, saveAndSwitchRejected.currentId);
+  assert.notEqual(rejectedRollbackState.value, 'Keep this draft after rejection');
+  assert.notEqual(rejectedRollbackState.persisted, 'Keep this draft after rejection');
 
   const saveAndSwitchResolvedFailure = await page.evaluate(async () => {
     const currentId = document.getElementById('presales-project-select').value;
@@ -493,6 +527,68 @@ try {
   assert.equal(switchGuard.cancelled, switchGuard.firstId);
   assert.equal(switchGuard.discarded, switchGuard.secondId);
   assert.equal(switchGuard.bannerHidden, true);
+
+  const newCaseGuard = await page.evaluate(() => {
+    const activeId = document.getElementById('presales-project-select').value;
+    document.getElementById('presales-customer-name').value = 'Unsaved new case value';
+    window.markPresalesDirty();
+    const attempted = window.createPresalesProject();
+    return {
+      attempted,
+      activeId,
+      selected: document.getElementById('presales-project-select').value,
+      bannerVisible: !document.getElementById('presales-unsaved-switch-banner').classList.contains('hidden')
+    };
+  });
+  assert.equal(newCaseGuard.attempted, null);
+  assert.equal(newCaseGuard.selected, newCaseGuard.activeId);
+  assert.equal(newCaseGuard.bannerVisible, true);
+  const newCaseDiscarded = await page.evaluate(activeId => {
+    window.discardAndSwitchPresalesProject();
+    return {
+      selected: document.getElementById('presales-project-select').value,
+      bannerHidden: document.getElementById('presales-unsaved-switch-banner').classList.contains('hidden')
+    };
+  }, newCaseGuard.activeId);
+  assert.notEqual(newCaseDiscarded.selected, newCaseGuard.activeId);
+  assert.equal(newCaseDiscarded.bannerHidden, true);
+
+  const readOnlyGuard = await page.evaluate(async () => {
+    window.__minovaAuth.state.permission.actions.presales = ['read'];
+    window.renderPresalesWorkbench();
+    const beforeId = document.getElementById('presales-project-select').value;
+    const beforeStage = document.querySelector('#presales-stage-rail [aria-current="step"]')?.getAttribute('data-presales-stage');
+    const created = window.createPresalesProject();
+    document.getElementById('presales-customer-name').value = 'Unauthorized local draft';
+    window.markPresalesDirty();
+    const saved = await window.saveCurrentPresalesProject();
+    window.setPresalesStage('Handoff');
+    const afterStage = document.querySelector('#presales-stage-rail [aria-current="step"]')?.getAttribute('data-presales-stage');
+    return {
+      created,
+      saved,
+      beforeId,
+      selected: document.getElementById('presales-project-select').value,
+      beforeStage,
+      afterStage,
+      saveDisabled: document.querySelector('#presales-command-actions button[data-presales-copy="save"]').disabled,
+      newDisabled: document.querySelector('#presales-command-actions button[data-presales-copy="newCase"]').disabled,
+      stageDisabled: [...document.querySelectorAll('#presales-stage-rail button[data-presales-stage]')].every(button => button.disabled),
+      status: document.getElementById('presales-updated-at').textContent
+    };
+  });
+  assert.equal(readOnlyGuard.created, null);
+  assert.equal(readOnlyGuard.saved, null);
+  assert.equal(readOnlyGuard.selected, readOnlyGuard.beforeId);
+  assert.equal(readOnlyGuard.afterStage, readOnlyGuard.beforeStage);
+  assert.equal(readOnlyGuard.saveDisabled, true);
+  assert.equal(readOnlyGuard.newDisabled, true);
+  assert.equal(readOnlyGuard.stageDisabled, true);
+  assert.match(readOnlyGuard.status, /permission to edit pre-sales/);
+  await page.evaluate(() => {
+    window.__minovaAuth.state.permission.actions.presales = ['read', 'edit'];
+    window.renderPresalesWorkbench();
+  });
 
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.locator('button[data-presales-copy="handoff"]').click();
@@ -556,7 +652,10 @@ try {
         fontSize: Number.parseFloat(getComputedStyle(label).fontSize),
         box: plainRect(label.getBoundingClientRect())
       }));
-    return { snapshot, evidence, quote, epc, energyLabels, documentWidth: document.documentElement.scrollWidth, viewportWidth: window.innerWidth };
+    const actionHeights = [...document.querySelectorAll('#presales-quote-detail button, #presales-epc-detail button, #presales-evidence-gaps button')]
+      .filter(button => button.offsetParent !== null)
+      .map(button => button.getBoundingClientRect().height);
+    return { snapshot, evidence, quote, epc, energyLabels, actionHeights, documentWidth: document.documentElement.scrollWidth, viewportWidth: window.innerWidth };
   });
   for (const [name, box] of Object.entries({ snapshot: mobileSnapshotLayout.snapshot, evidence: mobileSnapshotLayout.evidence, quote: mobileSnapshotLayout.quote, epc: mobileSnapshotLayout.epc })) {
     assertRenderedSurface(box, `mobile ${name} surface`);
@@ -567,6 +666,8 @@ try {
   assert.ok([mobileSnapshotLayout.snapshot, mobileSnapshotLayout.evidence, mobileSnapshotLayout.quote, mobileSnapshotLayout.epc].every(box => box.width <= mobileSnapshotLayout.viewportWidth), 'mobile snapshot surface exceeds viewport width');
   assert.equal(mobileSnapshotLayout.energyLabels.length, 4, 'mobile energy architecture must render four readable labels');
   assert.ok(mobileSnapshotLayout.energyLabels.every(label => label.box.width > 0 && label.box.height > 0 && label.fontSize >= 12), `mobile energy labels must be visible at 12px or larger: ${JSON.stringify(mobileSnapshotLayout.energyLabels)}`);
+  assert.ok(mobileSnapshotLayout.actionHeights.length > 0, 'linked detail and evidence actions must render on mobile');
+  assert.ok(mobileSnapshotLayout.actionHeights.every(height => height >= 44), `mobile linked/evidence actions below 44px: ${mobileSnapshotLayout.actionHeights.join(', ')}`);
   await page.screenshot({ path: '/private/tmp/presales-task3-mobile.png', fullPage: true });
 
   const desktopPage = await browser.newPage({ viewport: { width: 1440, height: 900 } });

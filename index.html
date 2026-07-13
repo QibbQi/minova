@@ -1278,56 +1278,56 @@
 
                 <section class="border-b border-slate-200 px-4 last:border-b-0">
                     <button type="button" data-presales-intake-group="diesel" class="presales-action flex min-h-11 w-full items-center justify-between gap-3 py-3 text-left" onclick="togglePresalesIntakeGroup('diesel')" aria-expanded="false" aria-controls="presales-intake-diesel">
-                        <span><strong class="text-sm text-slate-900">Diesel</strong><span id="presales-intake-diesel-summary" class="ml-2 text-xs text-slate-500">Generator baseline</span></span>
+                        <span><strong data-presales-copy="diesel" class="text-sm text-slate-900">Diesel</strong><span id="presales-intake-diesel-summary" class="ml-2 text-xs text-slate-500">Generator baseline</span></span>
                         <span aria-hidden="true">⌄</span>
                     </button>
                     <div id="presales-intake-diesel" class="hidden grid grid-cols-1 gap-3 pb-4 md:grid-cols-2">
-                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Genset capacity (kVA)</span><input id="presales-genset-capacity-kva" type="number" min="0" oninput="markPresalesDirty()" class="presales-field"></label>
-                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Runtime (hours/month)</span><input id="presales-genset-runtime-hours-month" type="number" min="0" oninput="markPresalesDirty()" class="presales-field"></label>
-                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Diesel (liters/month)</span><input id="presales-diesel-consumption-liters-month" type="number" min="0" oninput="markPresalesDirty()" class="presales-field"></label>
-                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Genset use</span><select id="presales-genset-use" onchange="markPresalesDirty()" class="presales-field"><option value="unknown">Unknown</option><option value="outage">Outage support</option><option value="peak_shaving">Peak shaving</option><option value="continuous">Continuous</option></select></label>
+                        <label><span data-presales-copy="gensetCapacity" class="mb-1 block text-xs font-semibold text-slate-600">Genset capacity (kVA)</span><input id="presales-genset-capacity-kva" type="number" min="0" oninput="markPresalesDirty()" class="presales-field"></label>
+                        <label><span data-presales-copy="runtime" class="mb-1 block text-xs font-semibold text-slate-600">Runtime (hours/month)</span><input id="presales-genset-runtime-hours-month" type="number" min="0" oninput="markPresalesDirty()" class="presales-field"></label>
+                        <label><span data-presales-copy="dieselConsumption" class="mb-1 block text-xs font-semibold text-slate-600">Diesel (liters/month)</span><input id="presales-diesel-consumption-liters-month" type="number" min="0" oninput="markPresalesDirty()" class="presales-field"></label>
+                        <label><span data-presales-copy="gensetUse" class="mb-1 block text-xs font-semibold text-slate-600">Genset use</span><select id="presales-genset-use" onchange="markPresalesDirty()" class="presales-field"><option value="unknown">Unknown</option><option value="outage">Outage support</option><option value="peak_shaving">Peak shaving</option><option value="continuous">Continuous</option></select></label>
                     </div>
                 </section>
 
                 <section class="border-b border-slate-200 px-4 last:border-b-0">
                     <button type="button" data-presales-intake-group="site" class="presales-action flex min-h-11 w-full items-center justify-between gap-3 py-3 text-left" onclick="togglePresalesIntakeGroup('site')" aria-expanded="false" aria-controls="presales-intake-site">
-                        <span><strong class="text-sm text-slate-900">Site</strong><span id="presales-intake-site-summary" class="ml-2 text-xs text-slate-500">Space and connection constraints</span></span>
+                        <span><strong data-presales-copy="site" class="text-sm text-slate-900">Site</strong><span id="presales-intake-site-summary" class="ml-2 text-xs text-slate-500">Space and connection constraints</span></span>
                         <span aria-hidden="true">⌄</span>
                     </button>
                     <div id="presales-intake-site" class="hidden grid grid-cols-1 gap-3 pb-4 md:grid-cols-2">
-                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Available area (m²)</span><input id="presales-available-area-m2" type="number" min="0" oninput="markPresalesDirty()" class="presales-field"></label>
-                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Transformer capacity (kVA)</span><input id="presales-transformer-capacity-kva" type="number" min="0" oninput="markPresalesDirty()" class="presales-field"></label>
-                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Export eligibility</span><select id="presales-export-eligibility" onchange="markPresalesDirty()" class="presales-field"><option value="unknown">Unknown</option><option value="confirmed">Confirmed</option><option value="restricted">Restricted</option><option value="not_allowed">Not allowed</option></select></label>
-                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Primary constraint</span><input id="presales-primary-constraint" type="text" oninput="markPresalesDirty()" class="presales-field"></label>
+                        <label><span data-presales-copy="availableArea" class="mb-1 block text-xs font-semibold text-slate-600">Available area (m2)</span><input id="presales-available-area-m2" type="number" min="0" oninput="markPresalesDirty()" class="presales-field"></label>
+                        <label><span data-presales-copy="transformerCapacity" class="mb-1 block text-xs font-semibold text-slate-600">Transformer capacity (kVA)</span><input id="presales-transformer-capacity-kva" type="number" min="0" oninput="markPresalesDirty()" class="presales-field"></label>
+                        <label><span data-presales-copy="exportEligibility" class="mb-1 block text-xs font-semibold text-slate-600">Export eligibility</span><select id="presales-export-eligibility" onchange="markPresalesDirty()" class="presales-field"><option value="unknown">Unknown</option><option value="confirmed">Confirmed</option><option value="restricted">Restricted</option><option value="not_allowed">Not allowed</option></select></label>
+                        <label><span data-presales-copy="primaryConstraint" class="mb-1 block text-xs font-semibold text-slate-600">Primary constraint</span><input id="presales-primary-constraint" type="text" oninput="markPresalesDirty()" class="presales-field"></label>
                     </div>
                 </section>
 
                 <section class="border-b border-slate-200 px-4 last:border-b-0">
                     <button type="button" data-presales-intake-group="objective" class="presales-action flex min-h-11 w-full items-center justify-between gap-3 py-3 text-left" onclick="togglePresalesIntakeGroup('objective')" aria-expanded="false" aria-controls="presales-intake-objective">
-                        <span><strong class="text-sm text-slate-900">Objective</strong><span id="presales-intake-objective-summary" class="ml-2 text-xs text-slate-500">Target and decision context</span></span>
+                        <span><strong data-presales-copy="objective" class="text-sm text-slate-900">Objective</strong><span id="presales-intake-objective-summary" class="ml-2 text-xs text-slate-500">Target and decision context</span></span>
                         <span aria-hidden="true">⌄</span>
                     </button>
                     <div id="presales-intake-objective" class="hidden grid grid-cols-1 gap-3 pb-4 md:grid-cols-2">
-                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Target saving (%)</span><input id="presales-target-saving-pct" type="number" min="0" oninput="markPresalesDirty()" class="presales-field"></label>
-                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Budget range</span><input id="presales-budget-range" type="text" oninput="markPresalesDirty()" class="presales-field"></label>
-                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Proposal due date</span><input id="presales-proposal-due-date" type="date" onchange="markPresalesDirty()" class="presales-field"></label>
-                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Assumption status</span><select id="presales-assumption-status" onchange="markPresalesDirty()" class="presales-field"><option value="preliminary">Preliminary / BD estimate</option><option value="needs_source">Needs source/date</option><option value="engineering_review">Engineering draft / requires review</option><option value="confirmed">Engineering confirmed</option></select></label>
-                        <label class="md:col-span-2"><span class="mb-1 block text-xs font-semibold text-slate-600">Customer decision note</span><textarea id="presales-customer-decision-note" rows="3" oninput="markPresalesDirty()" class="presales-field"></textarea></label>
+                        <label><span data-presales-copy="targetSaving" class="mb-1 block text-xs font-semibold text-slate-600">Target saving (%)</span><input id="presales-target-saving-pct" type="number" min="0" oninput="markPresalesDirty()" class="presales-field"></label>
+                        <label><span data-presales-copy="budgetRange" class="mb-1 block text-xs font-semibold text-slate-600">Budget range</span><input id="presales-budget-range" type="text" oninput="markPresalesDirty()" class="presales-field"></label>
+                        <label><span data-presales-copy="proposalDueDate" class="mb-1 block text-xs font-semibold text-slate-600">Proposal due date</span><input id="presales-proposal-due-date" type="date" onchange="markPresalesDirty()" class="presales-field"></label>
+                        <label><span data-presales-copy="assumptionStatus" class="mb-1 block text-xs font-semibold text-slate-600">Assumption status</span><select id="presales-assumption-status" onchange="markPresalesDirty()" class="presales-field"><option value="preliminary">Preliminary / BD estimate</option><option value="needs_source">Needs source/date</option><option value="engineering_review">Engineering draft / requires review</option><option value="confirmed">Engineering confirmed</option></select></label>
+                        <label class="md:col-span-2"><span data-presales-copy="customerDecisionNote" class="mb-1 block text-xs font-semibold text-slate-600">Customer decision note</span><textarea id="presales-customer-decision-note" rows="3" oninput="markPresalesDirty()" class="presales-field"></textarea></label>
                     </div>
                 </section>
 
                 <section class="border-b border-slate-200 px-4 last:border-b-0">
                     <button type="button" data-presales-intake-group="evidence" class="presales-action flex min-h-11 w-full items-center justify-between gap-3 py-3 text-left" onclick="togglePresalesIntakeGroup('evidence')" aria-expanded="false" aria-controls="presales-intake-evidence">
-                        <span><strong class="text-sm text-slate-900">Evidence</strong><span id="presales-intake-evidence-summary" class="ml-2 text-xs text-slate-500">Available source material</span></span>
+                        <span><strong data-presales-copy="evidence" class="text-sm text-slate-900">Evidence</strong><span id="presales-intake-evidence-summary" class="ml-2 text-xs text-slate-500">Available source material</span></span>
                         <span aria-hidden="true">⌄</span>
                     </button>
                     <div id="presales-intake-evidence" class="hidden grid grid-cols-1 gap-3 pb-4 md:grid-cols-2">
-                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Utility bills</span><select id="presales-evidence-utility-bills" onchange="markPresalesDirty()" class="presales-field"><option value="complete">Complete</option><option value="partial">Partial</option><option value="missing">Missing</option></select></label>
-                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Load profile</span><select id="presales-evidence-load-profile" onchange="markPresalesDirty()" class="presales-field"><option value="available">Available</option><option value="requested">Requested</option><option value="missing">Missing</option></select></label>
-                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Site photos</span><select id="presales-evidence-site-photos" onchange="markPresalesDirty()" class="presales-field"><option value="available">Available</option><option value="requested">Requested</option><option value="missing">Missing</option></select></label>
-                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Existing SLD</span><select id="presales-evidence-existing-sld" onchange="markPresalesDirty()" class="presales-field"><option value="available">Available</option><option value="requested">Requested</option><option value="missing">Missing</option></select></label>
-                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Structural report</span><select id="presales-evidence-structural-report" onchange="markPresalesDirty()" class="presales-field"><option value="available">Available</option><option value="requested">Requested</option><option value="not_required">Not required</option><option value="missing">Missing</option></select></label>
-                        <label><span class="mb-1 block text-xs font-semibold text-slate-600">Risk status</span><select id="presales-risk-status" onchange="markPresalesDirty()" class="presales-field"><option value="open">Open risks</option><option value="needs_review">Needs engineering review</option><option value="accepted">Accepted for proposal</option></select></label>
+                        <label><span data-presales-copy="utilityBills" class="mb-1 block text-xs font-semibold text-slate-600">Utility bills</span><select id="presales-evidence-utility-bills" onchange="markPresalesDirty()" class="presales-field"><option value="complete">Complete</option><option value="partial">Partial</option><option value="missing">Missing</option></select></label>
+                        <label><span data-presales-copy="loadProfile" class="mb-1 block text-xs font-semibold text-slate-600">Load profile</span><select id="presales-evidence-load-profile" onchange="markPresalesDirty()" class="presales-field"><option value="available">Available</option><option value="requested">Requested</option><option value="missing">Missing</option></select></label>
+                        <label><span data-presales-copy="sitePhotos" class="mb-1 block text-xs font-semibold text-slate-600">Site photos</span><select id="presales-evidence-site-photos" onchange="markPresalesDirty()" class="presales-field"><option value="available">Available</option><option value="requested">Requested</option><option value="missing">Missing</option></select></label>
+                        <label><span data-presales-copy="existingSld" class="mb-1 block text-xs font-semibold text-slate-600">Existing SLD</span><select id="presales-evidence-existing-sld" onchange="markPresalesDirty()" class="presales-field"><option value="available">Available</option><option value="requested">Requested</option><option value="missing">Missing</option></select></label>
+                        <label><span data-presales-copy="structuralReport" class="mb-1 block text-xs font-semibold text-slate-600">Structural report</span><select id="presales-evidence-structural-report" onchange="markPresalesDirty()" class="presales-field"><option value="available">Available</option><option value="requested">Requested</option><option value="not_required">Not required</option><option value="missing">Missing</option></select></label>
+                        <label><span data-presales-copy="riskStatus" class="mb-1 block text-xs font-semibold text-slate-600">Risk status</span><select id="presales-risk-status" onchange="markPresalesDirty()" class="presales-field"><option value="open">Open risks</option><option value="needs_review">Needs engineering review</option><option value="accepted">Accepted for proposal</option></select></label>
                     </div>
                 </section>
 
@@ -7137,6 +7137,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         let presalesDraftStage = 'Intake';
         let presalesDirty = false;
         let presalesPendingProjectId = '';
+        let presalesPendingNewProject = false;
         let presalesHandoffTab = 'customer';
         let presalesHandoffText = { customerSummary: '', internal: '' };
         let presalesHandoffReturnFocus = null;
@@ -21480,7 +21481,55 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return key ? presalesText(key) : (value || '-');
         }
 
-        function presalesGapText(gap = {}, project = currentPresalesDraftFromForm()) {
+        function presalesStageText(stage) {
+            const key = {
+                Intake: 'stageIntake',
+                Sizing: 'stageSizing',
+                'Product/BOQ': 'stageProductBoq',
+                Risk: 'stageRisk',
+                'Quote/PDF': 'stageQuotePdf',
+                Handoff: 'stageHandoff'
+            }[String(stage || '')];
+            return key ? presalesText(key) : (stage || '-');
+        }
+
+        function canEditPresales() {
+            try {
+                const auth = window.__minovaAuth;
+                if (!auth || typeof auth.canPerformAction !== 'function') return true;
+                return Boolean(auth.canPerformAction('presales', 'edit'));
+            } catch (error) {
+                return true;
+            }
+        }
+
+        function guardPresalesEdit() {
+            if (canEditPresales()) return true;
+            renderPresalesSaveState('error', presalesText('presalesEditDenied'));
+            setPresalesSwitchError(presalesText('presalesEditDenied'));
+            return false;
+        }
+
+        function snapshotPresalesProjectsState() {
+            return {
+                projects: cloneForD1(presalesProjects),
+                activeProjectId: presalesActiveProjectId
+            };
+        }
+
+        function restorePresalesProjectsState(snapshot = {}) {
+            presalesProjects = normalizePresalesProjectList(snapshot.projects || []);
+            presalesActiveProjectId = snapshot.activeProjectId || presalesProjects[0]?.id || '';
+            presalesSaveLocalSnapshot();
+        }
+
+        function isPresalesD1SaveFailure(result) {
+            if (!result) return false;
+            if (result.ok === false || result.forbidden === true) return true;
+            return result.skipped === true && result.localFallback !== true && result.localOnly !== true;
+        }
+
+        function presalesGapParts(gap = {}, project = currentPresalesDraftFromForm()) {
             const intake = project?.intakeBasis || {};
             const missingMonths = Math.max(0, 12 - Number(intake.billMonthsAvailable || 0));
             const count = String(gap.label || '').match(/^\d+/)?.[0] || '0';
@@ -21496,7 +21545,12 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 'epc-link': [presalesText('gapEpcNotLinked'), presalesText('gapSelectEpcDesign')]
             };
             const localized = map[gap.id];
-            return localized ? `${localized[0]}: ${localized[1]}` : `${gap.label}: ${gap.actionLabel}`;
+            return localized || [gap.label || '', gap.actionLabel || ''];
+        }
+
+        function presalesGapText(gap = {}, project = currentPresalesDraftFromForm()) {
+            const [label, action] = presalesGapParts(gap, project);
+            return `${label}: ${action}`;
         }
 
         function renderPresalesQuoteDetail(project = getActivePresalesProject()) {
@@ -21527,8 +21581,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     </div>
                     <div class="mt-3 text-[11px] font-bold text-slate-500 leading-relaxed">${htmlSafe(detail.roiNote || presalesText('preliminaryEstimate'))}</div>
                     <div class="mt-3 flex flex-wrap gap-2">
-                        <button type="button" onclick="refreshPresalesLinkedQuoteDetail()" class="rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px] font-black text-slate-600 hover:bg-slate-50">${presalesText('loadDetails')}</button>
-                        <button type="button" onclick="openPresalesQuote()" class="rounded-lg border border-purple-200 px-2.5 py-1.5 text-[11px] font-black text-purple-700 hover:bg-purple-50">${presalesText('openQuote')}</button>
+                        <button type="button" onclick="refreshPresalesLinkedQuoteDetail()" class="presales-action inline-flex min-h-11 items-center rounded-lg border border-slate-200 px-3 py-2 text-[11px] font-black text-slate-600 hover:bg-slate-50">${presalesText('loadDetails')}</button>
+                        <button type="button" onclick="openPresalesQuote()" class="presales-action inline-flex min-h-11 items-center rounded-lg border border-purple-200 px-3 py-2 text-[11px] font-black text-purple-700 hover:bg-purple-50">${presalesText('openQuote')}</button>
                     </div>
                 </div>
             `;
@@ -21546,7 +21600,15 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const project = getPresalesEpcProject(key);
             const meta = getPresalesEpcMeta(key) || { id: key };
             if (!project) {
-                return { id: key, name: meta.name || key, loaded: false, error: 'Linked EPC project is not available in this browser state.' };
+                return {
+                    id: key,
+                    name: meta.name || key,
+                    loaded: false,
+                    reportBlocked: true,
+                    unverified: true,
+                    openHighRiskCount: 0,
+                    error: presalesText('customerOutputUnverifiedEpc')
+                };
             }
             try {
                 const result = calculateEpcDesignProject(project, { defaults: epcDesignDefaults });
@@ -21577,7 +21639,15 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     dataQualityScore: result.dataQualityScore
                 };
             } catch (error) {
-                return { id: key, name: meta.name || key, loaded: false, error: error?.message || 'Unable to calculate linked EPC detail.' };
+                return {
+                    id: key,
+                    name: meta.name || key,
+                    loaded: false,
+                    reportBlocked: true,
+                    unverified: true,
+                    openHighRiskCount: 0,
+                    error: error?.message || presalesText('customerOutputUnverifiedEpc')
+                };
             }
         }
 
@@ -21593,7 +21663,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 target.innerHTML = `
                     <div class="font-black text-slate-800">${htmlSafe(detail.name || detail.id)}</div>
                     <div class="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-700">${htmlSafe(detail.error || 'EPC detail is not available.')}</div>
-                    <div class="mt-3"><button type="button" onclick="openPresalesEpc()" class="rounded-lg border border-purple-200 px-2.5 py-1.5 text-[11px] font-black text-purple-700 hover:bg-purple-50">${presalesText('openEpc')}</button></div>
+                    <div class="mt-3"><button type="button" onclick="openPresalesEpc()" class="presales-action inline-flex min-h-11 items-center rounded-lg border border-purple-200 px-3 py-2 text-[11px] font-black text-purple-700 hover:bg-purple-50">${presalesText('openEpc')}</button></div>
                 `;
                 return;
             }
@@ -21611,9 +21681,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     </div>
                     <div class="mt-3 text-[11px] font-bold text-slate-500 leading-relaxed">${htmlSafe(detail.architecture || presalesText('reviewElectricalArchitecture'))}</div>
                     <div class="mt-3 flex flex-wrap gap-2">
-                        <button type="button" onclick="openPresalesEpcPanel('schemes')" class="rounded-lg border border-purple-200 px-2.5 py-1.5 text-[11px] font-black text-purple-700 hover:bg-purple-50">${presalesText('schemes')}</button>
-                        <button type="button" onclick="openPresalesEpcPanel('risks')" class="rounded-lg border border-red-200 px-2.5 py-1.5 text-[11px] font-black text-red-700 hover:bg-red-50">${presalesText('risks')}</button>
-                        <button type="button" onclick="openPresalesEpcPanel('boq')" class="rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px] font-black text-slate-700 hover:bg-slate-50">${presalesText('boq')}</button>
+                        <button type="button" onclick="openPresalesEpcPanel('schemes')" class="presales-action inline-flex min-h-11 items-center rounded-lg border border-purple-200 px-3 py-2 text-[11px] font-black text-purple-700 hover:bg-purple-50">${presalesText('schemes')}</button>
+                        <button type="button" onclick="openPresalesEpcPanel('risks')" class="presales-action inline-flex min-h-11 items-center rounded-lg border border-red-200 px-3 py-2 text-[11px] font-black text-red-700 hover:bg-red-50">${presalesText('risks')}</button>
+                        <button type="button" onclick="openPresalesEpcPanel('boq')" class="presales-action inline-flex min-h-11 items-center rounded-lg border border-slate-200 px-3 py-2 text-[11px] font-black text-slate-700 hover:bg-slate-50">${presalesText('boq')}</button>
                     </div>
                 </div>
             `;
@@ -21696,12 +21766,15 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 ? `<span class="font-bold text-red-700">${presalesText('customerOutputBlocked')}</span>`
                 : '';
             const rows = gaps.length
-                ? gaps.map(gap => `
+                ? gaps.map(gap => {
+                    const [label, actionLabel] = presalesGapParts(gap, model.project);
+                    return `
                     <div class="flex min-w-0 items-center justify-between gap-3 border-b border-slate-100 py-2 last:border-b-0">
-                        <p class="min-w-0 text-xs font-semibold text-slate-700">${htmlSafe(gap.label)}</p>
-                        <button type="button" onclick="focusPresalesGap('${htmlSafe(gap.target)}', '${htmlSafe(gap.actionLabel)}')" class="presales-action shrink-0 text-xs font-bold text-purple-700">${htmlSafe(gap.actionLabel)}</button>
+                        <p class="min-w-0 text-xs font-semibold text-slate-700">${htmlSafe(label)}</p>
+                        <button type="button" onclick="focusPresalesGap('${htmlSafe(gap.target)}', '${htmlSafe(gap.actionLabel)}')" class="presales-action inline-flex min-h-11 shrink-0 items-center rounded-lg px-2 text-xs font-bold text-purple-700">${htmlSafe(actionLabel)}</button>
                     </div>
-                `).join('')
+                `;
+                }).join('')
                 : `<p class="text-xs font-semibold text-green-700">${presalesText('evidenceReady')}</p>`;
             target.innerHTML = `
                 <div class="flex flex-wrap items-center justify-between gap-2">
@@ -21829,6 +21902,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
 
         function markPresalesDirty() {
+            if (!guardPresalesEdit()) return;
             presalesDirty = true;
             renderPresalesSaveState('dirty');
             window.clearTimeout(presalesSnapshotRefreshTimer);
@@ -21842,6 +21916,22 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const project = currentPresalesDraftFromForm();
             renderPresalesOpportunitySnapshot(project);
             generatePresalesHandoff({ silent: true });
+        }
+
+        function applyPresalesEditPermissions() {
+            const editable = canEditPresales();
+            const editSelectors = [
+                '#presales-command-actions button[data-presales-copy="newCase"]',
+                '#presales-command-actions button[data-presales-copy="save"]',
+                '#presales-stage-rail button[data-presales-stage]',
+                '#presales-stage-mobile-menu button[data-presales-stage]'
+            ];
+            document.querySelectorAll(editSelectors.join(',')).forEach(element => {
+                element.disabled = !editable;
+                element.setAttribute('aria-disabled', String(!editable));
+                element.classList.toggle('opacity-50', !editable);
+                element.classList.toggle('cursor-not-allowed', !editable);
+            });
         }
 
         function presalesFormText(id, fallback = '') {
@@ -22004,8 +22094,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             presalesActiveProjectId = normalized.id;
             presalesSaveLocalSnapshot();
             const d1Save = persistEntityToD1('presales_project', normalized.id, normalized, { awaitResult: options.awaitD1 === true });
-            try { window.__minovaSync?.enqueueSnapshot?.('presales project update'); } catch (e) {}
-            renderPresalesWorkbench();
+            if (options.deferSync !== true) {
+                try { window.__minovaSync?.enqueueSnapshot?.('presales project update'); } catch (e) {}
+            }
+            if (options.render !== false) renderPresalesWorkbench();
             return options.includeD1Save ? { project: normalized, d1Save } : normalized;
         }
 
@@ -22047,27 +22139,28 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 const selected = name === active;
                 const completed = index < activeIndex;
                 const blocked = name === 'Risk' && riskBlocked;
+                const displayName = presalesStageText(name);
                 const classes = compact
                     ? `presales-stage-btn min-h-11 w-full rounded-lg px-3 py-2 text-left text-xs font-bold ${blocked ? 'border border-red-300 bg-red-50 text-red-700' : selected ? 'bg-purple-800 text-white' : 'text-slate-700 hover:bg-slate-50'}`
                     : `presales-stage-btn rounded-lg border px-3 py-2 text-left ${blocked ? 'border-red-300 bg-red-50 text-red-700' : selected ? 'border-purple-300 bg-purple-50 shadow-sm' : 'border-transparent hover:bg-slate-50'}`;
                 const status = blocked
-                    ? '<span class="ml-1 inline-flex items-center gap-1 text-[10px] font-bold"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="inline h-3.5 w-3.5"><path d="M12 3 2.7 20h18.6L12 3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg><span>Blocked by High risk</span></span>'
+                    ? `<span class="ml-1 inline-flex items-center gap-1 text-[10px] font-bold"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="inline h-3.5 w-3.5"><path d="M12 3 2.7 20h18.6L12 3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg><span>${presalesText('blockedByHighRisk')}</span></span>`
                     : completed
-                        ? '<span class="ml-1 inline-flex items-center gap-1 text-[10px] font-bold text-green-700"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="inline h-3.5 w-3.5"><path d="m5 12 4 4L19 6"/></svg><span>Completed</span></span>'
+                        ? `<span class="ml-1 inline-flex items-center gap-1 text-[10px] font-bold text-green-700"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="inline h-3.5 w-3.5"><path d="m5 12 4 4L19 6"/></svg><span>${presalesText('completed')}</span></span>`
                         : '';
                 const label = compact
-                    ? `<span>${name}</span>${status}`
-                    : `<span class="block text-[10px] font-black ${selected ? 'text-purple-600' : 'text-slate-400'}">${String(index + 1).padStart(2, '0')}</span><span class="mt-1 block text-xs font-black">${name}</span>${status}`;
+                    ? `<span>${htmlSafe(displayName)}</span>${status}`
+                    : `<span class="block text-[10px] font-black ${selected ? 'text-purple-600' : 'text-slate-400'}">${String(index + 1).padStart(2, '0')}</span><span class="mt-1 block text-xs font-black">${htmlSafe(displayName)}</span>${status}`;
                 const current = selected ? 'aria-current="step"' : '';
-                const accessibleStatus = blocked ? ', blocked by High risk' : completed ? ', completed' : selected ? ', current step' : '';
-                return `<button type="button" data-presales-stage="${htmlSafe(name)}" onclick="setPresalesStage('${name}')" aria-pressed="${selected}" ${current} aria-label="${htmlSafe(name + accessibleStatus)}" class="${classes}">${label}</button>`;
+                const accessibleStatus = blocked ? `, ${presalesText('blockedByHighRisk')}` : completed ? `, ${presalesText('completed')}` : selected ? `, ${presalesText('currentStep')}` : '';
+                return `<button type="button" data-presales-stage="${htmlSafe(name)}" onclick="setPresalesStage('${name}')" aria-pressed="${selected}" ${current} aria-label="${htmlSafe(displayName + accessibleStatus)}" class="${classes}">${label}</button>`;
             };
             const rail = document.getElementById('presales-stage-rail');
             if (rail) rail.innerHTML = PRESALES_STAGES.map((name, index) => stageButton(name, index)).join('');
             const mobileMenu = document.getElementById('presales-stage-mobile-menu');
             if (mobileMenu) mobileMenu.innerHTML = `<div class="grid grid-cols-2 gap-1">${PRESALES_STAGES.map((name, index) => stageButton(name, index, true)).join('')}</div>`;
             const mobileLabel = document.getElementById('presales-stage-mobile-label');
-            if (mobileLabel) mobileLabel.textContent = `Step ${activeIndex + 1} of ${PRESALES_STAGES.length} - ${active}`;
+            if (mobileLabel) mobileLabel.textContent = `${presalesText('step')} ${activeIndex + 1} ${presalesText('of')} ${PRESALES_STAGES.length} - ${presalesStageText(active)}`;
             const progress = document.getElementById('presales-stage-mobile-progress');
             if (progress) progress.style.width = `${((activeIndex + 1) / PRESALES_STAGES.length) * 100}%`;
         }
@@ -22111,6 +22204,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             renderPresalesCards(project);
             generatePresalesHandoff({ silent: true });
             applyPresalesLanguage();
+            applyPresalesEditPermissions();
         }
 
         function selectPresalesProject(id) {
@@ -22128,7 +22222,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
         async function saveAndSwitchPresalesProject() {
             const nextId = presalesPendingProjectId;
-            if (!nextId && nextId !== '') return;
+            const createNew = presalesPendingNewProject;
+            if (!createNew && !nextId && nextId !== '') return;
             setPresalesSwitchError('');
             setPresalesSwitchSaving(true);
             const project = await saveCurrentPresalesProject();
@@ -22138,27 +22233,48 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 return;
             }
             presalesPendingProjectId = '';
+            presalesPendingNewProject = false;
             setPresalesSwitchBanner(false);
-            presalesActiveProjectId = nextId;
-            renderPresalesWorkbench();
+            if (createNew) {
+                createPresalesProject({ force: true });
+            } else {
+                presalesActiveProjectId = nextId;
+                renderPresalesWorkbench();
+            }
         }
 
         function discardAndSwitchPresalesProject() {
             const nextId = presalesPendingProjectId;
+            const createNew = presalesPendingNewProject;
             presalesPendingProjectId = '';
+            presalesPendingNewProject = false;
             presalesDirty = false;
             setPresalesSwitchBanner(false);
-            presalesActiveProjectId = nextId;
-            renderPresalesWorkbench();
+            if (createNew) {
+                createPresalesProject({ force: true });
+            } else {
+                presalesActiveProjectId = nextId;
+                renderPresalesWorkbench();
+            }
         }
 
         function cancelPresalesProjectSwitch() {
             presalesPendingProjectId = '';
+            presalesPendingNewProject = false;
             setPresalesSwitchBanner(false);
             renderPresalesProjectSelect(getActivePresalesProject());
         }
 
-        function createPresalesProject() {
+        function createPresalesProject(options = {}) {
+            if (!guardPresalesEdit()) return null;
+            if (presalesDirty && options.force !== true) {
+                presalesPendingProjectId = '';
+                presalesPendingNewProject = true;
+                renderPresalesProjectSelect(getActivePresalesProject());
+                setPresalesSwitchError('');
+                setPresalesSwitchBanner(true);
+                return null;
+            }
             const customerName = String(document.getElementById('input-customer-name')?.value || '').trim();
             const quoteId = String(document.getElementById('saved-quotes-select')?.value || '').trim();
             const project = upsertPresalesProject({
@@ -22175,17 +22291,27 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
 
         async function saveCurrentPresalesProject() {
+            if (!guardPresalesEdit()) return null;
+            const previousState = snapshotPresalesProjectsState();
             renderPresalesSaveState('saving');
             try {
-                const { project, d1Save } = upsertPresalesProject(currentPresalesDraftFromForm(), { includeD1Save: true, awaitD1: true });
+                const { project, d1Save } = upsertPresalesProject(currentPresalesDraftFromForm(), {
+                    includeD1Save: true,
+                    awaitD1: true,
+                    deferSync: true,
+                    render: false
+                });
                 const d1Result = await d1Save;
-                if (d1Result?.ok === false) {
+                if (isPresalesD1SaveFailure(d1Result)) {
                     throw new Error(d1Result.error || presalesText('saveFailed'));
                 }
                 presalesDirty = false;
+                try { window.__minovaSync?.enqueueSnapshot?.('presales project update'); } catch (e) {}
+                renderPresalesWorkbench();
                 renderPresalesSaveState('saved', `Saved ${new Date(project.updatedAt).toLocaleString()}`);
                 return project;
             } catch (error) {
+                restorePresalesProjectsState(previousState);
                 console.error('Presales save failed:', error);
                 renderPresalesSaveState('error', presalesText('saveFailed'));
                 return null;
@@ -22193,6 +22319,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
 
         function setPresalesStage(stage) {
+            if (!guardPresalesEdit()) return;
             const normalized = PRESALES_STAGES.includes(stage) ? stage : 'Intake';
             presalesDraftStage = normalized;
             highlightPresalesStage(normalized);
@@ -22262,9 +22389,20 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
 
         function isPresalesCustomerOutputBlocked() {
+            return Boolean(getPresalesCustomerOutputBlockReason());
+        }
+
+        function getPresalesCustomerOutputBlockReason() {
             const project = currentPresalesDraftFromForm();
+            const linkedEpcId = String(project.epcDesignProjectId || '').trim();
+            const epc = linkedEpcId ? getPresalesEpcDetail(linkedEpcId) : null;
+            if (linkedEpcId && (!epc || !epc.loaded || epc.unverified)) {
+                return presalesText('customerOutputUnverifiedEpc');
+            }
             const model = getPresalesOpportunityModel(project);
-            return Boolean(model.readiness?.blocked || model.epc?.reportBlocked || Number(model.epc?.openHighRiskCount || 0) > 0);
+            return (model.readiness?.blocked || model.epc?.reportBlocked || Number(model.epc?.openHighRiskCount || 0) > 0)
+                ? presalesText('customerOutputBlockedReason')
+                : '';
         }
 
         function closePresalesHandoff() {
@@ -22289,8 +22427,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             customerTab?.classList.toggle('text-slate-900', isCustomer);
             internalTab?.classList.toggle('bg-white', !isCustomer);
             internalTab?.classList.toggle('text-slate-900', !isCustomer);
-            const customerBlocked = isCustomer && isPresalesCustomerOutputBlocked();
-            const activeText = customerBlocked ? presalesText('customerOutputBlockedReason') : (isCustomer ? presalesHandoffText.customerSummary : presalesHandoffText.internal);
+            const customerBlockReason = isCustomer ? getPresalesCustomerOutputBlockReason() : '';
+            const customerBlocked = Boolean(customerBlockReason);
+            const activeText = customerBlocked ? customerBlockReason : (isCustomer ? presalesHandoffText.customerSummary : presalesHandoffText.internal);
             const preview = document.getElementById('presales-handoff-preview');
             const plainText = document.getElementById('presales-handoff-plain-text');
             const copy = document.getElementById('presales-handoff-copy');
@@ -22306,7 +22445,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 copy.classList.toggle('cursor-not-allowed', customerBlocked);
             }
             if (blockReason) {
-                blockReason.textContent = customerBlocked ? presalesText('customerOutputBlockedReason') : '';
+                blockReason.textContent = customerBlocked ? customerBlockReason : '';
                 blockReason.classList.toggle('hidden', !customerBlocked);
             }
         }

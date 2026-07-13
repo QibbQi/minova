@@ -42,7 +42,9 @@ export const PRESALES_COPY = Object.freeze({
     energyArchitecture: 'Energy architecture', energyContext: 'PV, load, storage and supply context', customerLoad: 'Customer Load', acBusPcs: 'AC Bus / PCS',
     actionableEvidenceGaps: 'Actionable evidence gaps', evidenceReady: 'Evidence and linked work are ready for engineering handoff.',
     customerOutputBlocked: 'Customer-facing output blocked by High risk', customerOutputBlockedReason: 'Customer-facing output blocked by open High risk. Resolve or acknowledge the High risk in EPC before release.',
-    saveFailed: 'Save failed - Retry Save', saving: 'Saving...', saved: 'Saved', notSaved: 'Not saved', unsavedChanges: 'Unsaved changes',
+    saveFailed: 'Save failed - Retry Save', presalesEditDenied: 'You do not have permission to edit pre-sales projects.',
+    saving: 'Saving...', saved: 'Saved', notSaved: 'Not saved', unsavedChanges: 'Unsaved changes',
+    stageIntake: 'Intake', stageSizing: 'Sizing', stageProductBoq: 'Product/BOQ', stageRisk: 'Risk', stageQuotePdf: 'Quote/PDF', stageHandoff: 'Handoff',
     quoteVersion: 'Quote version', approvalStatus: 'Approval status', notChecked: 'not checked', loadingQuote: 'Loading saved quote snapshot',
     quoteTotal: 'Quote Total', lineItems: 'Line Items', monthlyUsage: 'Monthly Usage', targetGeneration: 'Target Generation', proposedPv: 'Proposed PV', payback: 'Payback',
     snapshotRows: 'Snapshot rows', loadSnapshotRows: 'Load snapshot for row detail', keyRoiInput: 'Key ROI input', sizingBasis: 'Sizing basis', loadQuote: 'Load quote for ROI KPI', preliminaryEstimate: 'Preliminary / BD estimate until inputs are reviewed.', loadDetails: 'Load Details',
@@ -63,6 +65,8 @@ export const PRESALES_COPY = Object.freeze({
     gapSitePhotosMissing: 'Site photos missing', gapRequestSitePhotos: 'Request site photos', gapExistingSldMissing: 'Existing SLD missing', gapRequestExistingSld: 'Request existing SLD',
     gapStructuralMissing: 'Structural basis missing', gapConfirmStructuralPath: 'Confirm structural path', gapQuoteNotLinked: 'Quote not linked', gapSelectQuoteDraft: 'Select Quote Draft',
     gapEpcNotLinked: 'EPC concept not linked', gapSelectEpcDesign: 'Select Hybrid EPC Design', none: 'None',
+    customerOutputUnverifiedEpc: 'Customer-facing output blocked because the linked EPC design is not available for risk verification.',
+    step: 'Step', of: 'of', blockedByHighRisk: 'Blocked by High risk', completed: 'Completed', currentStep: 'current step',
     customerCopyDenied: 'Customer output is blocked by open High risk'
   }),
   zh: Object.freeze({
@@ -89,7 +93,9 @@ export const PRESALES_COPY = Object.freeze({
     energyArchitecture: '能源架构', energyContext: '光伏、负荷、储能与供电背景', customerLoad: '客户负荷', acBusPcs: '交流母线 / PCS',
     actionableEvidenceGaps: '待补证据', evidenceReady: '证据与关联工作已满足工程交接条件。',
     customerOutputBlocked: '高风险未关闭，客户输出已阻止', customerOutputBlockedReason: '存在未关闭的高风险，客户输出已阻止。请先在 EPC 中解决或确认该高风险后再发布。',
-    saveFailed: '保存失败 - 请重试保存', saving: '正在保存...', saved: '已保存', notSaved: '未保存', unsavedChanges: '有未保存更改',
+    saveFailed: '保存失败 - 请重试保存', presalesEditDenied: '你没有权限编辑售前项目。',
+    saving: '正在保存...', saved: '已保存', notSaved: '未保存', unsavedChanges: '有未保存更改',
+    stageIntake: '信息采集', stageSizing: '容量测算', stageProductBoq: '产品/BOQ', stageRisk: '风险复核', stageQuotePdf: '报价/PDF', stageHandoff: '工程交接',
     quoteVersion: '报价版本', approvalStatus: '审批状态', notChecked: '未核对', loadingQuote: '正在加载已保存报价快照',
     quoteTotal: '报价总额', lineItems: '报价行', monthlyUsage: '月用电量', targetGeneration: '目标发电量', proposedPv: '建议光伏', payback: '回本期',
     snapshotRows: '快照行', loadSnapshotRows: '加载快照以查看报价行', keyRoiInput: 'ROI 关键输入', sizingBasis: '容量配置基础', loadQuote: '加载报价以查看 ROI 指标', preliminaryEstimate: '在输入复核前，此为初步商务估算。', loadDetails: '加载详情',
@@ -110,6 +116,8 @@ export const PRESALES_COPY = Object.freeze({
     gapSitePhotosMissing: '现场照片缺失', gapRequestSitePhotos: '索取现场照片', gapExistingSldMissing: '现有单线图缺失', gapRequestExistingSld: '索取现有单线图',
     gapStructuralMissing: '结构依据缺失', gapConfirmStructuralPath: '确认结构路径', gapQuoteNotLinked: '未关联报价', gapSelectQuoteDraft: '选择报价草稿',
     gapEpcNotLinked: '未关联 EPC 概念', gapSelectEpcDesign: '选择 Hybrid EPC 设计', none: '无',
+    customerOutputUnverifiedEpc: '关联的 EPC 设计当前不可用，无法复核风险，客户输出已阻止。',
+    step: '步骤', of: '/', blockedByHighRisk: '高风险阻止', completed: '已完成', currentStep: '当前步骤',
     customerCopyDenied: '存在未关闭的高风险，客户输出已阻止'
   })
 });

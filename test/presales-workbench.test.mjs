@@ -196,7 +196,7 @@ test('presales opportunity snapshot exposes readiness, KPIs, evidence and energy
     "data-presales-copy=\"readinessLabel\"",
     "presalesText('customerOutputBlocked')",
     'aria-current="step"',
-    'Blocked by High risk',
+    "presalesText('blockedByHighRisk')",
     "const emDash = '—'",
     'function presalesSnapshotHasValue'
   ]) {
@@ -300,6 +300,7 @@ test('presales inline project switch guard and display currency avoid browser co
   for (const snippet of [
     'let presalesDirty = false',
     'let presalesPendingProjectId = \'\'',
+    'let presalesPendingNewProject = false',
     'function saveAndSwitchPresalesProject',
     'function discardAndSwitchPresalesProject',
     'function cancelPresalesProjectSwitch',

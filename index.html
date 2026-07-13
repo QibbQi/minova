@@ -21496,8 +21496,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 const result = calculateEpcDesignProject(project, { defaults: epcDesignDefaults });
                 const recommended = getRecommendedEpcScheme(result);
                 const risks = Array.isArray(result.risks) ? result.risks : [];
-                const openRisks = risks.filter(risk => !['auto-cleared', 'manual-acknowledged'].includes(String(risk.status || '')));
-                const openHigh = risks.filter(risk => risk.level === 'High' && risk.blocking !== false);
+                const clearedRiskStatuses = ['auto-cleared', 'manual-acknowledged'];
+                const openRisks = risks.filter(risk => !clearedRiskStatuses.includes(String(risk.status || '')));
+                const openHigh = risks.filter(risk => risk.level === 'High' && risk.blocking !== false && !clearedRiskStatuses.includes(String(risk.status || '')));
                 return {
                     id: key,
                     name: project.project?.name || project.name || meta.name || key,
@@ -21515,6 +21516,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     openRiskCount: openRisks.length,
                     openHighRiskCount: openHigh.length,
                     reportBlocked: Boolean(result.reportGate?.blocked),
+                    reportGate: result.reportGate || null,
                     boqLines: Array.isArray(result.boq) ? result.boq.length : 0,
                     dataQualityScore: result.dataQualityScore
                 };
@@ -21601,7 +21603,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const bess = loaded && presalesSnapshotHasValue(epc.bessMwh) ? `${presalesFormatNumber(epc.bessMwh, 2)} MWh` : presalesText('pending');
             const pcs = loaded && presalesSnapshotHasValue(epc.pcsMw) ? `${presalesFormatNumber(epc.pcsMw, 2)} MW` : presalesText('pending');
             const load = loaded && presalesSnapshotHasValue(epc.avgLoadKw) ? `${presalesFormatNumber(epc.avgLoadKw, 0)} kW average` : presalesText('pending');
-            const summary = `Energy concept: PV ${pv}; PCS ${pcs}; BESS ${bess}; customer load ${load}.`;
+            const summary = `${presalesText('energyArchitecture')}: PV ${pv}; PCS ${pcs}; BESS ${bess}; ${presalesText('customerLoad')} ${load}.`;
+            const acBusLabel = presalesText('acBusPcs');
+            const customerLoadLabel = presalesText('customerLoad');
             target.innerHTML = `
                 <div class="mb-3 flex items-center justify-between gap-3">
                     <div class="min-w-0"><p class="text-xs font-semibold text-slate-500">${presalesText('energyArchitecture')}</p><p class="text-sm font-bold text-slate-900">${presalesText('energyContext')}</p></div>
@@ -21621,8 +21625,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 <svg viewBox="0 0 760 190" class="presales-energy-desktop h-auto w-full" role="img" aria-label="${htmlSafe(summary)}">
                     <path d="M130 95 H310 M450 95 H630 M380 130 V155" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linecap="round"/>
                     <g><rect x="20" y="55" width="110" height="80" rx="8" fill="#fff" stroke="#c4b5fd"/><text x="75" y="85" text-anchor="middle" font-size="13" font-weight="700">PV</text><text x="75" y="108" text-anchor="middle" font-size="12">${htmlSafe(pv)}</text></g>
-                    <g><rect x="310" y="50" width="140" height="90" rx="8" fill="#582C83"/><text x="380" y="84" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">AC Bus / PCS</text><text x="380" y="109" text-anchor="middle" font-size="12" fill="#fff">${htmlSafe(pcs)}</text></g>
-                    <g><rect x="630" y="55" width="110" height="80" rx="8" fill="#fff" stroke="#cbd5e1"/><text x="685" y="85" text-anchor="middle" font-size="13" font-weight="700">Load</text><text x="685" y="108" text-anchor="middle" font-size="12">${htmlSafe(load)}</text></g>
+                    <g><rect x="310" y="50" width="140" height="90" rx="8" fill="#582C83"/><text x="380" y="84" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">${htmlSafe(acBusLabel)}</text><text x="380" y="109" text-anchor="middle" font-size="12" fill="#fff">${htmlSafe(pcs)}</text></g>
+                    <g><rect x="630" y="55" width="110" height="80" rx="8" fill="#fff" stroke="#cbd5e1"/><text x="685" y="85" text-anchor="middle" font-size="13" font-weight="700">${htmlSafe(customerLoadLabel)}</text><text x="685" y="108" text-anchor="middle" font-size="12">${htmlSafe(load)}</text></g>
                     <g><rect x="320" y="155" width="120" height="30" rx="8" fill="#fff8dc" stroke="#f59e0b"/><text x="380" y="175" text-anchor="middle" font-size="12" font-weight="700">BESS ${htmlSafe(bess)}</text></g>
                 </svg>
             `;
@@ -22118,7 +22122,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             renderPresalesSaveState('saving');
             try {
                 const { project, d1Save } = upsertPresalesProject(currentPresalesDraftFromForm(), { includeD1Save: true, awaitD1: true });
-                await d1Save;
+                const d1Result = await d1Save;
+                if (d1Result?.ok === false) {
+                    throw new Error(d1Result.error || presalesText('saveFailed'));
+                }
                 presalesDirty = false;
                 renderPresalesSaveState('saved', `Saved ${new Date(project.updatedAt).toLocaleString()}`);
                 return project;
@@ -22200,9 +22207,8 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
 
         function isPresalesCustomerOutputBlocked() {
             const project = currentPresalesDraftFromForm();
-            if (getPresalesOpportunityModel(project).readiness?.blocked) return true;
-            const linkedEpcId = String(project.epcDesignProjectId || '').trim();
-            return Boolean(linkedEpcId && window.__lastEpcDesignResult?.reportGate?.blocked);
+            const model = getPresalesOpportunityModel(project);
+            return Boolean(model.readiness?.blocked || model.epc?.reportBlocked || Number(model.epc?.openHighRiskCount || 0) > 0);
         }
 
         function closePresalesHandoff() {
@@ -22280,13 +22286,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 label('Note: ROI, payback and savings are preliminary until tariff/source date, export factor, CAPEX source and engineering confirmation are reviewed.', '说明：在复核电价来源日期、上网系数、CAPEX 来源和工程确认前，ROI、回本期与节省额均为初步估算。')
             ].join('\n');
             const intakeLines = [
-                `Customer/site basis: ${intake.siteName || '-'}; ${intake.location || '-'}; ${intake.facilityType || '-'}`,
-                `Energy: ${intake.monthlyConsumptionKwh || '-'} kWh/month; ${intake.billMonthsAvailable || 0}/12 bill months; ${intake.peakDemandKw || '-'} kW peak`,
-                `Tariff: ${intake.tariffCategory || '-'}; source ${intake.tariffSource || '-'}; date ${intake.tariffSourceDate || '-'}`,
-                `Diesel: ${intake.gensetCapacityKva || '-'} kVA; ${intake.gensetRuntimeHoursMonth || '-'} hours/month; ${intake.dieselConsumptionLitersMonth || '-'} liters/month; use ${intake.gensetUse || 'unknown'}`,
-                `Site: ${intake.availableAreaM2 || '-'} m2; transformer ${intake.transformerCapacityKva || '-'} kVA; export ${intake.exportEligibility || 'unknown'}; constraint ${intake.primaryConstraint || '-'}`,
-                `Objective: ${intake.targetSavingPct || '-'}% saving; budget ${intake.budgetRange || '-'}; due ${intake.proposalDueDate || '-'}; decision ${intake.customerDecisionNote || '-'}`,
-                `Evidence: bills ${project.evidenceStatus?.utilityBills || '-'}; load profile ${project.evidenceStatus?.loadProfile || '-'}; site photos ${project.evidenceStatus?.sitePhotos || '-'}; SLD ${project.evidenceStatus?.existingSld || '-'}; structural ${project.evidenceStatus?.structuralReport || '-'}`
+                `${presalesText('customerSiteBasis')}: ${intake.siteName || '-'}; ${intake.location || '-'}; ${intake.facilityType || '-'}`,
+                `${presalesText('energy')}: ${intake.monthlyConsumptionKwh || '-'} kWh/month; ${intake.billMonthsAvailable || 0}/12 ${presalesText('billMonthsShort')}; ${intake.peakDemandKw || '-'} kW peak`,
+                `${presalesText('tariff')}: ${intake.tariffCategory || '-'}; ${presalesText('source')} ${intake.tariffSource || '-'}; ${presalesText('date')} ${intake.tariffSourceDate || '-'}`,
+                `${presalesText('diesel')}: ${intake.gensetCapacityKva || '-'} kVA; ${intake.gensetRuntimeHoursMonth || '-'} ${presalesText('hoursMonth')}; ${intake.dieselConsumptionLitersMonth || '-'} ${presalesText('litersMonth')}; ${presalesText('use')} ${intake.gensetUse || 'unknown'}`,
+                `${presalesText('site')}: ${intake.availableAreaM2 || '-'} m2; ${presalesText('transformer')} ${intake.transformerCapacityKva || '-'} kVA; ${presalesText('export')} ${intake.exportEligibility || 'unknown'}; ${presalesText('constraint')} ${intake.primaryConstraint || '-'}`,
+                `${presalesText('objective')}: ${intake.targetSavingPct || '-'}% ${presalesText('savingTarget')}; ${presalesText('budget')} ${intake.budgetRange || '-'}; ${presalesText('due')} ${intake.proposalDueDate || '-'}; ${presalesText('decision')} ${intake.customerDecisionNote || '-'}`,
+                `${presalesText('evidence')}: ${presalesText('bills')} ${project.evidenceStatus?.utilityBills || '-'}; ${presalesText('loadProfile')} ${project.evidenceStatus?.loadProfile || '-'}; ${presalesText('sitePhotos')} ${project.evidenceStatus?.sitePhotos || '-'}; SLD ${project.evidenceStatus?.existingSld || '-'}; ${presalesText('structural')} ${project.evidenceStatus?.structuralReport || '-'}`
             ];
             const evidenceGaps = buildPresalesEvidenceGaps(project, quote, epc)
                 .map(gap => `- ${gap.label}: ${gap.actionLabel}`)

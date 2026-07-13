@@ -166,7 +166,7 @@ try {
   assert.match(initialSnapshot.score, /^\d+%$/);
   assert.equal(initialSnapshot.kpiCount, 6);
   assert.match(initialSnapshot.architecture, /(Pending EPC|EPC draft)/);
-  assert.match(initialSnapshot.architecture, /Energy concept: PV Pending/);
+  assert.match(initialSnapshot.architecture, /Energy architecture: PV Pending/);
   assert.equal(initialSnapshot.hasAccessibleArchitecture, true);
 
   const chineseDynamicContent = await page.evaluate(() => {
@@ -180,6 +180,9 @@ try {
       energy: document.getElementById('presales-energy-architecture').textContent,
       handoff: document.getElementById('presales-handoff-preview').textContent
     };
+    window.setPresalesHandoffTab('internal');
+    values.internalHandoff = document.getElementById('presales-handoff-preview').textContent;
+    window.setPresalesHandoffTab('customer');
     window.closePresalesHandoff();
     window.toggleLanguage();
     return values;
@@ -189,7 +192,11 @@ try {
   assert.match(chineseDynamicContent.epc, /工程草案|未关闭高风险/);
   assert.match(chineseDynamicContent.evidence, /待补证据/);
   assert.match(chineseDynamicContent.energy, /能源架构/);
+  assert.match(chineseDynamicContent.energy, /交流母线 \/ PCS/);
+  assert.match(chineseDynamicContent.energy, /客户负荷/);
   assert.match(chineseDynamicContent.handoff, /客户输出已阻止/);
+  assert.match(chineseDynamicContent.internalHandoff, /客户\/现场基础/);
+  assert.match(chineseDynamicContent.internalHandoff, /电价/);
 
   const actionNavigation = await page.evaluate(() => {
     window.focusPresalesGap('quote', 'Select Quote Draft');
@@ -278,6 +285,7 @@ try {
   assert.equal(notesAfterEdit.summary, 'Edited raw note remains visible in the collapsed summary.');
 
   await page.locator('button[data-presales-copy="handoff"]').click();
+  await page.waitForFunction(() => document.activeElement?.id === 'presales-handoff-close');
   const drawerCustomer = await page.evaluate(() => ({
     visible: !document.getElementById('presales-handoff-drawer').classList.contains('hidden'),
     modal: document.getElementById('presales-handoff-drawer').getAttribute('aria-modal'),
@@ -309,11 +317,11 @@ try {
   assert.equal(await page.evaluate(() => document.activeElement?.dataset?.presalesCopy), 'handoff');
 
   const blockedCustomerHandoff = await page.evaluate(() => {
-    window.__lastEpcDesignResult = { ...(window.__lastEpcDesignResult || {}), reportGate: { blocked: true } };
     const epcSelect = document.getElementById('presales-epc-link');
-    epcSelect.insertAdjacentHTML('beforeend', '<option value="blocked-test">Blocked test EPC</option>');
-    epcSelect.value = 'blocked-test';
-    const reportBlocked = Boolean(window.__lastEpcDesignResult.reportGate.blocked);
+    const linkedEpcId = [...epcSelect.options].find(option => option.value)?.value || '';
+    epcSelect.value = linkedEpcId;
+    const detail = window.getPresalesEpcDetail(linkedEpcId);
+    const reportBlocked = Boolean(detail?.reportBlocked);
     const copied = [];
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
@@ -333,8 +341,9 @@ try {
       plainTextDisabled: document.getElementById('presales-handoff-plain-text').disabled
     };
     const allowed = window.copyActivePresalesHandoff();
-    return Promise.all([denied, allowed]).then(() => ({ reportBlocked, customer, internal, copied }));
+    return Promise.all([denied, allowed]).then(() => ({ linkedEpcId, reportBlocked, customer, internal, copied }));
   });
+  assert.ok(blockedCustomerHandoff.linkedEpcId, 'test fixture must link a real EPC project');
   assert.equal(blockedCustomerHandoff.reportBlocked, true, 'default EPC risk state must exercise the customer-output block');
   assert.deepEqual(blockedCustomerHandoff.customer, {
     copyDisabled: true,
@@ -345,6 +354,22 @@ try {
   assert.equal(blockedCustomerHandoff.copied.length, 1, 'blocked customer copy must not reach the clipboard while internal handoff stays available');
   assert.match(blockedCustomerHandoff.copied[0], /Internal Engineering Handoff/);
   await page.keyboard.press('Escape');
+
+  const unrelatedGlobalEpcBlock = await page.evaluate(() => {
+    window.__lastEpcDesignResult = { ...(window.__lastEpcDesignResult || {}), reportGate: { blocked: true } };
+    const epcSelect = document.getElementById('presales-epc-link');
+    epcSelect.insertAdjacentHTML('beforeend', '<option value="not-current-linked-epc">Unavailable safe-link test EPC</option>');
+    epcSelect.value = 'not-current-linked-epc';
+    window.openPresalesHandoff();
+    window.setPresalesHandoffTab('customer');
+    const state = {
+      copyDisabled: document.querySelector('#presales-handoff-drawer button[data-presales-copy="copy"]').disabled,
+      reason: document.getElementById('presales-handoff-block-reason').textContent
+    };
+    window.closePresalesHandoff();
+    return state;
+  });
+  assert.deepEqual(unrelatedGlobalEpcBlock, { copyDisabled: false, reason: '' });
 
   const saveAndSwitchPending = await page.evaluate(async () => {
     window.__minovaBusiness = null;
@@ -408,6 +433,31 @@ try {
   assert.equal(rejectedSaveState.bannerVisible, true);
   assert.equal(rejectedSaveState.saveDisabled, false);
   assert.match(rejectedSaveState.status, /Save failed/);
+  await page.evaluate(() => window.discardAndSwitchPresalesProject());
+
+  const saveAndSwitchResolvedFailure = await page.evaluate(async () => {
+    const currentId = document.getElementById('presales-project-select').value;
+    const nextId = JSON.parse(localStorage.getItem('minova_presales_projects_v1') || '[]').find(project => project.id !== currentId).id;
+    document.getElementById('presales-customer-name').value = 'Keep this draft after resolved failure';
+    window.markPresalesDirty();
+    window.selectPresalesProject(nextId);
+    window.__minovaBusiness = {
+      upsertEntity: () => Promise.resolve({ ok: false, queued: true, error: 'D1 queued this save' })
+    };
+    await window.saveAndSwitchPresalesProject();
+    return {
+      currentId,
+      nextId,
+      activeId: document.getElementById('presales-project-select').value,
+      draft: document.getElementById('presales-customer-name').value,
+      bannerVisible: !document.getElementById('presales-unsaved-switch-banner').classList.contains('hidden'),
+      status: document.getElementById('presales-updated-at').textContent
+    };
+  });
+  assert.equal(saveAndSwitchResolvedFailure.activeId, saveAndSwitchResolvedFailure.currentId);
+  assert.equal(saveAndSwitchResolvedFailure.draft, 'Keep this draft after resolved failure');
+  assert.equal(saveAndSwitchResolvedFailure.bannerVisible, true);
+  assert.match(saveAndSwitchResolvedFailure.status, /Save failed/);
   await page.evaluate(() => window.discardAndSwitchPresalesProject());
 
   const switchGuard = await page.evaluate(() => {

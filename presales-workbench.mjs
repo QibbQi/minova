@@ -50,6 +50,9 @@ export const PRESALES_COPY = Object.freeze({
     recommendedPvBessPcs: 'Recommended PV/BESS/PCS', loadBasis: 'Load Basis', openHighRisks: 'Open High Risks', boqLines: 'BOQ Lines', openRisks: 'open risks', totalRisks: 'total risks',
     productMasterReadiness: 'Product Master readiness still required', reviewElectricalArchitecture: 'Review electrical architecture and BOQ before firm proposal.', schemes: 'Schemes', risks: 'Risks', boq: 'BOQ',
     customerSummaryTitle: 'Customer Summary', internalHandoffTitle: 'Internal Engineering Handoff', locationPending: 'Pending customer/site inputs.', notLinked: 'Not linked', unconfirmedRisks: 'Unconfirmed risks',
+    customerSiteBasis: 'Customer/site basis', billMonthsShort: 'bill months', tariff: 'Tariff', source: 'source', date: 'date', diesel: 'Diesel',
+    hoursMonth: 'hours/month', litersMonth: 'liters/month', use: 'use', transformer: 'transformer', export: 'export', constraint: 'constraint',
+    savingTarget: 'saving', budget: 'budget', due: 'due', decision: 'decision', bills: 'bills', structural: 'structural',
     customerCopyDenied: 'Customer output is blocked by open High risk'
   }),
   zh: Object.freeze({
@@ -84,6 +87,9 @@ export const PRESALES_COPY = Object.freeze({
     recommendedPvBessPcs: '建议 PV/BESS/PCS', loadBasis: '负荷基础', openHighRisks: '未关闭高风险', boqLines: 'BOQ 行数', openRisks: '项未关闭风险', totalRisks: '项总风险',
     productMasterReadiness: '仍需确认产品主数据就绪度', reviewElectricalArchitecture: '正式提案前请复核电气架构与 BOQ。', schemes: '方案', risks: '风险', boq: 'BOQ',
     customerSummaryTitle: '客户摘要', internalHandoffTitle: '内部工程交接', locationPending: '待补充客户/现场信息。', notLinked: '未关联', unconfirmedRisks: '未确认风险',
+    customerSiteBasis: '客户/现场基础', billMonthsShort: '个月账单', tariff: '电价', source: '来源', date: '日期', diesel: '柴油',
+    hoursMonth: '小时/月', litersMonth: '升/月', use: '用途', transformer: '变压器', export: '上网', constraint: '约束',
+    savingTarget: '节省', budget: '预算', due: '截止', decision: '决策', bills: '账单', structural: '结构',
     customerCopyDenied: '存在未关闭的高风险，客户输出已阻止'
   })
 });

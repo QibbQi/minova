@@ -6,6 +6,7 @@ import {
   buildPresalesOpportunityModel,
   calculatePresalesReadiness,
   normalizePresalesProject,
+  PRESALES_COPY,
   PRESALES_READINESS_LABEL
 } from '../presales-workbench.mjs';
 
@@ -141,8 +142,9 @@ test('BD-facing calculation outputs disclose assumption class and review status'
 
 test('internal handoff separates customer summary from engineering review notes', () => {
   assert.match(indexHtml, /function generatePresalesHandoff/);
-  assert.match(indexHtml, /Internal engineering handoff/);
-  assert.match(indexHtml, /Customer-facing summary/);
+  assert.match(indexHtml, /Internal Engineering Handoff/);
+  assert.match(indexHtml, /Customer Summary/);
+  assert.match(indexHtml, /Raw customer and site notes/);
   assert.match(indexHtml, /Unconfirmed risks/);
   assert.match(indexHtml, /Quote version/);
   assert.match(indexHtml, /Approval status/);
@@ -271,4 +273,56 @@ test('presales intake uses canonical enum values and keeps collapsed raw notes r
   assert.match(indexHtml, /-webkit-line-clamp:\s*2/);
   assert.match(indexHtml, /togglePresalesIntakeGroup\('notes'\)/);
   assert.match(indexHtml, /\? `presales-stage-btn min-h-11/);
+});
+
+test('presales handoff uses an accessible drawer and keeps raw notes internal', () => {
+  for (const id of [
+    'presales-handoff-drawer',
+    'presales-handoff-customer-tab',
+    'presales-handoff-internal-tab',
+    'presales-handoff-preview',
+    'presales-handoff-plain-text',
+    'presales-unsaved-switch-banner'
+  ]) {
+    assert.match(indexHtml, new RegExp(`id="${id}"`), `missing handoff id: ${id}`);
+  }
+  assert.match(indexHtml, /role="dialog"/);
+  assert.match(indexHtml, /aria-modal="true"/);
+  assert.match(indexHtml, /function openPresalesHandoff/);
+  assert.match(indexHtml, /function closePresalesHandoff/);
+  assert.match(indexHtml, /function setPresalesHandoffTab/);
+  assert.match(indexHtml, /function copyActivePresalesHandoff/);
+  assert.match(indexHtml, /Raw customer and site notes/);
+  assert.match(indexHtml, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.doesNotMatch(indexHtml, /id="presales-customer-summary"/);
+  assert.doesNotMatch(indexHtml, /id="presales-internal-handoff"/);
+});
+
+test('presales inline project switch guard and display currency avoid browser confirms', () => {
+  for (const snippet of [
+    'let presalesDirty = false',
+    'let presalesPendingProjectId = \'\'',
+    'function saveAndSwitchPresalesProject',
+    'function discardAndSwitchPresalesProject',
+    'function cancelPresalesProjectSwitch',
+    'function renderPresalesSaveState',
+    'presales-unsaved-switch-banner',
+    'sourceCurrency = \'MYR\'',
+    "document.getElementById('rate-myr-cny')",
+    "getActiveTopLevelTab?.() === 'presales'"
+  ]) {
+    assert.match(indexHtml, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing interaction behavior: ${snippet}`);
+  }
+  const selectProject = indexHtml.match(/function selectPresalesProject\(id\) \{([\s\S]*?)\n        \}/);
+  assert.ok(selectProject, 'missing selectPresalesProject implementation');
+  assert.doesNotMatch(selectProject[1], /\b(confirm|alert)\s*\(/, 'project switching must use the inline guard');
+});
+
+test('every presales DOM copy key exists in English and Chinese', () => {
+  const keys = Array.from(indexHtml.matchAll(/data-presales-copy="([^"]+)"/g), match => match[1]);
+  assert.ok(keys.length > 20, 'expected complete Presales copy hooks');
+  for (const key of new Set(keys)) {
+    assert.equal(typeof PRESALES_COPY.en[key], 'string', `missing English copy: ${key}`);
+    assert.equal(typeof PRESALES_COPY.zh[key], 'string', `missing Chinese copy: ${key}`);
+  }
 });

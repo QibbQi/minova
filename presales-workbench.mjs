@@ -17,6 +17,49 @@ export const PRESALES_RISK_STATUS = Object.freeze({
 
 export const PRESALES_READINESS_LABEL = 'BD Readiness';
 
+export const PRESALES_COPY = Object.freeze({
+  en: Object.freeze({
+    eyebrow: 'BD Pre-sales', workspace: 'Pre-sales Workspace', newOpportunity: 'New opportunity',
+    newCase: 'New Case', save: 'Save', handoff: 'Handoff', switchPrompt: 'Save changes before switching projects?',
+    saveAndSwitch: 'Save & Switch', discard: 'Discard', cancel: 'Cancel',
+    progressiveIntake: 'Progressive intake', operatingBasis: 'Customer and operating basis',
+    customer: 'Customer', energy: 'Energy', diesel: 'Diesel', site: 'Site', objective: 'Objective', evidence: 'Evidence',
+    customerName: 'Customer', siteName: 'Site name', location: 'Location', facilityType: 'Facility type',
+    monthlyConsumption: 'Monthly consumption (kWh)', billMonths: 'Bill months available', peakDemand: 'Peak demand (kW)',
+    tariffCategory: 'Tariff category', tariffSource: 'Tariff source', tariffSourceDate: 'Tariff source date',
+    gensetCapacity: 'Genset capacity (kVA)', runtime: 'Runtime (hours/month)', dieselConsumption: 'Diesel (liters/month)',
+    gensetUse: 'Genset use', availableArea: 'Available area (m2)', transformerCapacity: 'Transformer capacity (kVA)',
+    exportEligibility: 'Export eligibility', primaryConstraint: 'Primary constraint', targetSaving: 'Target saving (%)',
+    budgetRange: 'Budget range', proposalDueDate: 'Proposal due date', assumptionStatus: 'Assumption status',
+    customerDecisionNote: 'Customer decision note', utilityBills: 'Utility bills', loadProfile: 'Load profile',
+    sitePhotos: 'Site photos', existingSld: 'Existing SLD', structuralReport: 'Structural report', riskStatus: 'Risk status',
+    rawNotes: 'Raw customer and site notes', linkedWork: 'Linked work', quoteDraft: 'Quote draft', epcDesign: 'Hybrid EPC design',
+    useCurrentQuote: 'Use Current Quote', useCurrentEpc: 'Use Current EPC', openQuote: 'Open Quote', openEpc: 'Open EPC',
+    customerSummary: 'Customer Summary', engineeringHandoff: 'Engineering Handoff', projectSummary: 'Project summary',
+    closeHandoff: 'Close handoff', viewPlainText: 'View plain text', copy: 'Copy'
+  }),
+  zh: Object.freeze({
+    eyebrow: '售前', workspace: '售前工作台', newOpportunity: '新商机',
+    newCase: '新建项目', save: '保存', handoff: '交接', switchPrompt: '切换项目之前保存更改？',
+    saveAndSwitch: '保存并切换', discard: '放弃更改', cancel: '取消',
+    progressiveIntake: '渐进式信息采集', operatingBasis: '客户与运行基础',
+    customer: '客户', energy: '能源', diesel: '柴油', site: '现场', objective: '目标', evidence: '证据',
+    customerName: '客户', siteName: '现场名称', location: '地点', facilityType: '设施类型',
+    monthlyConsumption: '月用电量 (kWh)', billMonths: '已具备账单月数', peakDemand: '峰值需量 (kW)',
+    tariffCategory: '电价类别', tariffSource: '电价来源', tariffSourceDate: '电价来源日期',
+    gensetCapacity: '发电机容量 (kVA)', runtime: '运行时间 (小时/月)', dieselConsumption: '柴油用量 (升/月)',
+    gensetUse: '发电机用途', availableArea: '可用面积 (m2)', transformerCapacity: '变压器容量 (kVA)',
+    exportEligibility: '上网资格', primaryConstraint: '主要约束', targetSaving: '目标节省 (%)',
+    budgetRange: '预算范围', proposalDueDate: '方案截止日期', assumptionStatus: '假设状态',
+    customerDecisionNote: '客户决策备注', utilityBills: '电费账单', loadProfile: '负荷曲线',
+    sitePhotos: '现场照片', existingSld: '现有单线图', structuralReport: '结构报告', riskStatus: '风险状态',
+    rawNotes: '客户与现场原始记录', linkedWork: '关联工作', quoteDraft: '报价草稿', epcDesign: 'Hybrid EPC 设计',
+    useCurrentQuote: '使用当前报价', useCurrentEpc: '使用当前 EPC', openQuote: '打开报价', openEpc: '打开 EPC',
+    customerSummary: '客户摘要', engineeringHandoff: '工程交接', projectSummary: '项目摘要',
+    closeHandoff: '关闭交接', viewPlainText: '查看纯文本', copy: '复制'
+  })
+});
+
 export const PRESALES_INTAKE_DEFAULTS = Object.freeze({
   siteName: '',
   location: '',

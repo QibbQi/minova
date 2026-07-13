@@ -220,6 +220,71 @@ try {
   assert.equal(notesAfterEdit.expanded, 'true');
   assert.equal(notesAfterEdit.summary, 'Edited raw note remains visible in the collapsed summary.');
 
+  await page.locator('[data-presales-copy="handoff"]').click();
+  const drawerCustomer = await page.evaluate(() => ({
+    visible: !document.getElementById('presales-handoff-drawer').classList.contains('hidden'),
+    modal: document.getElementById('presales-handoff-drawer').getAttribute('aria-modal'),
+    bodyLocked: document.body.classList.contains('presales-handoff-open'),
+    activeElement: document.activeElement?.id,
+    preview: document.getElementById('presales-handoff-preview').textContent,
+    copyHeight: document.querySelector('#presales-handoff-drawer button[data-presales-copy="copy"]').getBoundingClientRect().height
+  }));
+  assert.equal(drawerCustomer.visible, true);
+  assert.equal(drawerCustomer.modal, 'true');
+  assert.equal(drawerCustomer.bodyLocked, true);
+  assert.equal(drawerCustomer.activeElement, 'presales-handoff-close');
+  assert.doesNotMatch(drawerCustomer.preview, /Edited raw note/);
+  assert.ok(drawerCustomer.copyHeight >= 44, 'handoff copy action must have a 44px target');
+
+  await page.locator('#presales-handoff-internal-tab').click();
+  const drawerInternal = await page.evaluate(() => ({
+    preview: document.getElementById('presales-handoff-preview').textContent,
+    plainText: document.getElementById('presales-handoff-plain-text').value,
+    selected: document.getElementById('presales-handoff-internal-tab').getAttribute('aria-selected')
+  }));
+  assert.match(drawerInternal.preview, /Raw customer and site notes: Edited raw note/);
+  assert.equal(drawerInternal.preview, drawerInternal.plainText);
+  assert.equal(drawerInternal.selected, 'true');
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('#presales-handoff-drawer').evaluate(drawer => drawer.classList.contains('hidden')), true);
+  assert.equal(await page.evaluate(() => document.activeElement?.dataset?.presalesCopy), 'handoff');
+
+  const switchGuard = await page.evaluate(() => {
+    const firstId = JSON.parse(localStorage.getItem('minova_presales_projects_v1') || '[]')[0].id;
+    const newProject = window.createPresalesProject();
+    const secondId = newProject.id;
+    window.selectPresalesProject(firstId);
+    document.getElementById('presales-customer-name').value = 'Unsaved switch value';
+    window.markPresalesDirty();
+    window.selectPresalesProject(secondId);
+    const guarded = {
+      selected: document.getElementById('presales-project-select').value,
+      visible: !document.getElementById('presales-unsaved-switch-banner').classList.contains('hidden')
+    };
+    window.cancelPresalesProjectSwitch();
+    const cancelled = document.getElementById('presales-project-select').value;
+    window.selectPresalesProject(secondId);
+    window.discardAndSwitchPresalesProject();
+    return {
+      firstId,
+      secondId,
+      guarded,
+      cancelled,
+      discarded: document.getElementById('presales-project-select').value,
+      bannerHidden: document.getElementById('presales-unsaved-switch-banner').classList.contains('hidden')
+    };
+  });
+  assert.deepEqual(switchGuard.guarded, { selected: switchGuard.firstId, visible: true });
+  assert.equal(switchGuard.cancelled, switchGuard.firstId);
+  assert.equal(switchGuard.discarded, switchGuard.secondId);
+  assert.equal(switchGuard.bannerHidden, true);
+
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.locator('[data-presales-copy="handoff"]').click();
+  const reducedMotion = await page.locator('#presales-handoff-customer-tab').evaluate(tab => getComputedStyle(tab).transitionDuration);
+  assert.equal(reducedMotion, '0.01s');
+  await page.keyboard.press('Escape');
+
   for (const [fieldId, values] of Object.entries(enumCoverage)) {
     for (const value of values) {
       const roundTrip = await page.evaluate(({ fieldId, value }) => {

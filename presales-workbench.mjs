@@ -36,7 +36,21 @@ export const PRESALES_COPY = Object.freeze({
     rawNotes: 'Raw customer and site notes', linkedWork: 'Linked work', quoteDraft: 'Quote draft', epcDesign: 'Hybrid EPC design',
     useCurrentQuote: 'Use Current Quote', useCurrentEpc: 'Use Current EPC', openQuote: 'Open Quote', openEpc: 'Open EPC',
     customerSummary: 'Customer Summary', engineeringHandoff: 'Engineering Handoff', projectSummary: 'Project summary',
-    closeHandoff: 'Close handoff', viewPlainText: 'View plain text', copy: 'Copy'
+    closeHandoff: 'Close handoff', viewPlainText: 'View plain text', copy: 'Copy',
+    readinessLabel: 'BD Readiness', intake: 'Intake', quoteSnapshot: 'Quote snapshot', recommendedBess: 'Recommended BESS', recommendedPcs: 'Recommended PCS', defaultNextAction: 'Capture customer and energy basis', viewBreakdown: 'View breakdown', hideBreakdown: 'Hide breakdown',
+    noQuoteLinked: 'No quote linked.', noEpcLinked: 'No EPC concept linked.', pending: 'Pending', pendingEpc: 'Pending EPC', epcDraft: 'EPC draft',
+    energyArchitecture: 'Energy architecture', energyContext: 'PV, load, storage and supply context', customerLoad: 'Customer Load', acBusPcs: 'AC Bus / PCS',
+    actionableEvidenceGaps: 'Actionable evidence gaps', evidenceReady: 'Evidence and linked work are ready for engineering handoff.',
+    customerOutputBlocked: 'Customer-facing output blocked by High risk', customerOutputBlockedReason: 'Customer-facing output blocked by open High risk. Resolve or acknowledge the High risk in EPC before release.',
+    saveFailed: 'Save failed - Retry Save', saving: 'Saving...', saved: 'Saved', notSaved: 'Not saved', unsavedChanges: 'Unsaved changes',
+    quoteVersion: 'Quote version', approvalStatus: 'Approval status', notChecked: 'not checked', loadingQuote: 'Loading saved quote snapshot',
+    quoteTotal: 'Quote Total', lineItems: 'Line Items', monthlyUsage: 'Monthly Usage', targetGeneration: 'Target Generation', proposedPv: 'Proposed PV', payback: 'Payback',
+    snapshotRows: 'Snapshot rows', loadSnapshotRows: 'Load snapshot for row detail', keyRoiInput: 'Key ROI input', sizingBasis: 'Sizing basis', loadQuote: 'Load quote for ROI KPI', preliminaryEstimate: 'Preliminary / BD estimate until inputs are reviewed.', loadDetails: 'Load Details',
+    engineeringDraft: 'Engineering draft / requires review', reportsBlocked: 'Reports blocked by open High risk', noBlockingHighRisk: 'No blocking High risk',
+    recommendedPvBessPcs: 'Recommended PV/BESS/PCS', loadBasis: 'Load Basis', openHighRisks: 'Open High Risks', boqLines: 'BOQ Lines', openRisks: 'open risks', totalRisks: 'total risks',
+    productMasterReadiness: 'Product Master readiness still required', reviewElectricalArchitecture: 'Review electrical architecture and BOQ before firm proposal.', schemes: 'Schemes', risks: 'Risks', boq: 'BOQ',
+    customerSummaryTitle: 'Customer Summary', internalHandoffTitle: 'Internal Engineering Handoff', locationPending: 'Pending customer/site inputs.', notLinked: 'Not linked', unconfirmedRisks: 'Unconfirmed risks',
+    customerCopyDenied: 'Customer output is blocked by open High risk'
   }),
   zh: Object.freeze({
     eyebrow: '售前', workspace: '售前工作台', newOpportunity: '新商机',
@@ -56,7 +70,21 @@ export const PRESALES_COPY = Object.freeze({
     rawNotes: '客户与现场原始记录', linkedWork: '关联工作', quoteDraft: '报价草稿', epcDesign: 'Hybrid EPC 设计',
     useCurrentQuote: '使用当前报价', useCurrentEpc: '使用当前 EPC', openQuote: '打开报价', openEpc: '打开 EPC',
     customerSummary: '客户摘要', engineeringHandoff: '工程交接', projectSummary: '项目摘要',
-    closeHandoff: '关闭交接', viewPlainText: '查看纯文本', copy: '复制'
+    closeHandoff: '关闭交接', viewPlainText: '查看纯文本', copy: '复制',
+    readinessLabel: '商务就绪度', intake: '信息采集', quoteSnapshot: '报价快照', recommendedBess: '建议 BESS', recommendedPcs: '建议 PCS', defaultNextAction: '补充客户与用能基础信息', viewBreakdown: '查看明细', hideBreakdown: '收起明细',
+    noQuoteLinked: '未关联报价。', noEpcLinked: '未关联 EPC 概念。', pending: '待补充', pendingEpc: '待补充 EPC', epcDraft: 'EPC 草案',
+    energyArchitecture: '能源架构', energyContext: '光伏、负荷、储能与供电背景', customerLoad: '客户负荷', acBusPcs: '交流母线 / PCS',
+    actionableEvidenceGaps: '待补证据', evidenceReady: '证据与关联工作已满足工程交接条件。',
+    customerOutputBlocked: '高风险未关闭，客户输出已阻止', customerOutputBlockedReason: '存在未关闭的高风险，客户输出已阻止。请先在 EPC 中解决或确认该高风险后再发布。',
+    saveFailed: '保存失败 - 请重试保存', saving: '正在保存...', saved: '已保存', notSaved: '未保存', unsavedChanges: '有未保存更改',
+    quoteVersion: '报价版本', approvalStatus: '审批状态', notChecked: '未核对', loadingQuote: '正在加载已保存报价快照',
+    quoteTotal: '报价总额', lineItems: '报价行', monthlyUsage: '月用电量', targetGeneration: '目标发电量', proposedPv: '建议光伏', payback: '回本期',
+    snapshotRows: '快照行', loadSnapshotRows: '加载快照以查看报价行', keyRoiInput: 'ROI 关键输入', sizingBasis: '容量配置基础', loadQuote: '加载报价以查看 ROI 指标', preliminaryEstimate: '在输入复核前，此为初步商务估算。', loadDetails: '加载详情',
+    engineeringDraft: '工程草案 / 需要复核', reportsBlocked: '未关闭的高风险阻止报告', noBlockingHighRisk: '无阻止性高风险',
+    recommendedPvBessPcs: '建议 PV/BESS/PCS', loadBasis: '负荷基础', openHighRisks: '未关闭高风险', boqLines: 'BOQ 行数', openRisks: '项未关闭风险', totalRisks: '项总风险',
+    productMasterReadiness: '仍需确认产品主数据就绪度', reviewElectricalArchitecture: '正式提案前请复核电气架构与 BOQ。', schemes: '方案', risks: '风险', boq: 'BOQ',
+    customerSummaryTitle: '客户摘要', internalHandoffTitle: '内部工程交接', locationPending: '待补充客户/现场信息。', notLinked: '未关联', unconfirmedRisks: '未确认风险',
+    customerCopyDenied: '存在未关闭的高风险，客户输出已阻止'
   })
 });
 

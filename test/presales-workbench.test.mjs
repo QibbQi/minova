@@ -142,12 +142,10 @@ test('BD-facing calculation outputs disclose assumption class and review status'
 
 test('internal handoff separates customer summary from engineering review notes', () => {
   assert.match(indexHtml, /function generatePresalesHandoff/);
-  assert.match(indexHtml, /Internal Engineering Handoff/);
-  assert.match(indexHtml, /Customer Summary/);
+  for (const key of ['internalHandoffTitle', 'customerSummaryTitle', 'unconfirmedRisks', 'quoteVersion', 'approvalStatus']) {
+    assert.match(indexHtml, new RegExp(`presalesText\\('${key}'\\)`), `handoff must localize ${key}`);
+  }
   assert.match(indexHtml, /Raw customer and site notes/);
-  assert.match(indexHtml, /Unconfirmed risks/);
-  assert.match(indexHtml, /Quote version/);
-  assert.match(indexHtml, /Approval status/);
 });
 
 test('linked quote and EPC selections expose BD-readable detail previews', () => {
@@ -159,12 +157,12 @@ test('linked quote and EPC selections expose BD-readable detail previews', () =>
     'function getPresalesEpcDetail',
     'function renderPresalesEpcDetail',
     'onPresalesLinkedWorkChanged',
-    'Quote Total',
-    'Monthly Usage',
-    'Target Generation',
-    'Recommended PV/BESS/PCS',
-    'Open High Risks',
-    'BOQ Lines'
+    "presalesText('quoteTotal')",
+    "presalesText('monthlyUsage')",
+    "presalesText('targetGeneration')",
+    "presalesText('recommendedPvBessPcs')",
+    "presalesText('openHighRisks')",
+    "presalesText('boqLines')"
   ]) {
     assert.match(indexHtml, new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing linked detail preview: ${snippet}`);
   }
@@ -195,8 +193,8 @@ test('presales opportunity snapshot exposes readiness, KPIs, evidence and energy
     "if (target === 'epc' && !isLinkSelectionAction)",
     'presales-energy-mobile',
     'data-presales-energy-label',
-    'BD Readiness',
-    'Customer-facing output blocked by High risk',
+    "data-presales-copy=\"readinessLabel\"",
+    "presalesText('customerOutputBlocked')",
     'aria-current="step"',
     'Blocked by High risk',
     "const emDash = '—'",

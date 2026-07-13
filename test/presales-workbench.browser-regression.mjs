@@ -80,12 +80,41 @@ function nestedValue(project, fieldId) {
   return project[evidence ? 'evidenceStatus' : 'intakeBasis'][key];
 }
 
+function cssDurationSeconds(value) {
+  return Math.max(...String(value || '')
+    .split(',')
+    .map(part => part.trim())
+    .filter(Boolean)
+    .map(part => {
+      const duration = Number.parseFloat(part);
+      if (!Number.isFinite(duration)) return 0;
+      return part.endsWith('ms') ? duration / 1000 : duration;
+    }), 0);
+}
+
 async function activatePresalesWorkspace(page, userId) {
   await page.evaluate(id => {
-    window.__minovaAuth = {
-      state: { user: { id } },
-      canPerformAction: () => true
+    const permission = {
+      tabs: ['presales', 'epcdesign', 'quotation'],
+      actions: {
+        epcDesign: ['read', 'edit'],
+        epcDesignEngineering: ['read', 'edit'],
+        presales: ['read', 'edit']
+      }
     };
+    Object.assign(window.__minovaAuth.state, {
+      user: { id },
+      ready: true,
+      locked: false,
+      permission
+    });
+    Object.defineProperties(window.__minovaAuth.state, {
+      ready: { configurable: true, get: () => true, set: () => {} },
+      locked: { configurable: true, get: () => false, set: () => {} },
+      permission: { configurable: true, get: () => permission, set: () => {} }
+    });
+    const overlay = document.getElementById('minova-auth-overlay');
+    if (overlay) overlay.style.setProperty('display', 'none', 'important');
     window.switchTab('presales');
   }, userId);
   await page.waitForFunction(() => {
@@ -103,8 +132,8 @@ async function activatePresalesWorkspace(page, userId) {
 }
 
 function assertRenderedSurface(box, name) {
-  assert.ok(box.width > 0, `${name} width must be non-zero`);
-  assert.ok(box.height > 0, `${name} height must be non-zero`);
+  assert.ok(box.width > 0, `${name} width must be non-zero: ${JSON.stringify(box)}`);
+  assert.ok(box.height > 0, `${name} height must be non-zero: ${JSON.stringify(box)}`);
 }
 
 const { chromium } = loadPlaywright();
@@ -123,19 +152,44 @@ try {
   await page.waitForFunction(() => typeof window.saveCurrentPresalesProject === 'function', { timeout: 60000 });
   await activatePresalesWorkspace(page, 'browser-regression');
 
-  const initialSnapshot = await page.evaluate(() => ({
-    presalesView: document.getElementById('view-presales').getBoundingClientRect(),
-    score: document.getElementById('presales-readiness-score').textContent,
-    kpiCount: document.querySelectorAll('#presales-kpi-strip > div').length,
-    architecture: document.getElementById('presales-energy-architecture').textContent,
-    hasAccessibleArchitecture: Boolean(document.querySelector('#presales-energy-architecture svg[role="img"][aria-label]'))
-  }));
+  const initialSnapshot = await page.evaluate(() => {
+    const box = document.getElementById('view-presales').getBoundingClientRect();
+    return {
+      presalesView: { top: box.top, bottom: box.bottom, width: box.width, height: box.height },
+      score: document.getElementById('presales-readiness-score').textContent,
+      kpiCount: document.querySelectorAll('#presales-kpi-strip > div').length,
+      architecture: document.getElementById('presales-energy-architecture').textContent,
+      hasAccessibleArchitecture: Boolean(document.querySelector('#presales-energy-architecture svg[role="img"][aria-label]'))
+    };
+  });
   assertRenderedSurface(initialSnapshot.presalesView, 'mobile Presales workspace');
   assert.match(initialSnapshot.score, /^\d+%$/);
   assert.equal(initialSnapshot.kpiCount, 6);
   assert.match(initialSnapshot.architecture, /(Pending EPC|EPC draft)/);
   assert.match(initialSnapshot.architecture, /Energy concept: PV Pending/);
   assert.equal(initialSnapshot.hasAccessibleArchitecture, true);
+
+  const chineseDynamicContent = await page.evaluate(() => {
+    window.toggleLanguage();
+    window.openPresalesHandoff();
+    const values = {
+      readiness: document.querySelector('#presales-opportunity-snapshot').textContent,
+      quote: document.getElementById('presales-quote-detail').textContent,
+      epc: document.getElementById('presales-epc-detail').textContent,
+      evidence: document.getElementById('presales-evidence-gaps').textContent,
+      energy: document.getElementById('presales-energy-architecture').textContent,
+      handoff: document.getElementById('presales-handoff-preview').textContent
+    };
+    window.closePresalesHandoff();
+    window.toggleLanguage();
+    return values;
+  });
+  assert.match(chineseDynamicContent.readiness, /商务就绪度/);
+  assert.match(chineseDynamicContent.quote, /未关联报价/);
+  assert.match(chineseDynamicContent.epc, /工程草案|未关闭高风险/);
+  assert.match(chineseDynamicContent.evidence, /待补证据/);
+  assert.match(chineseDynamicContent.energy, /能源架构/);
+  assert.match(chineseDynamicContent.handoff, /客户输出已阻止/);
 
   const actionNavigation = await page.evaluate(() => {
     window.focusPresalesGap('quote', 'Select Quote Draft');
@@ -168,6 +222,7 @@ try {
   assert.deepEqual(actionNavigation.epc, { epcVisible: true, presalesHidden: true });
 
   await page.locator('#presales-customer-name').fill('North Plant');
+  await page.locator('[data-presales-intake-group="energy"]').click();
   await page.locator('#presales-monthly-consumption-kwh').fill('186000');
   await page.waitForTimeout(160);
   const refreshedSnapshot = await page.evaluate(() => {
@@ -180,14 +235,16 @@ try {
       viewportWidth: window.innerWidth
     };
   });
-  assert.match(refreshedSnapshot.monthlyConsumption, /186,000 kWh/);
+  assert.match(refreshedSnapshot.monthlyConsumption, /186,?000 kWh/);
   assert.equal(refreshedSnapshot.currentStage, 'Risk');
   assert.match(refreshedSnapshot.completedStage, /completed/);
   assert.ok(refreshedSnapshot.documentWidth <= refreshedSnapshot.viewportWidth, 'snapshot must not cause mobile horizontal overflow');
 
-  await page.locator('#presales-site-summary').fill(
-    'First raw note line. Second raw note line. Third raw note line that must remain available through Expand/Edit.'
-  );
+  await page.evaluate(text => {
+    const field = document.getElementById('presales-site-summary');
+    field.value = text;
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+  }, 'First raw note line. Second raw note line. Third raw note line that must remain available through Expand/Edit.');
   const notesBeforeExpand = await page.evaluate(() => {
     const summary = document.getElementById('presales-intake-notes-summary');
     const panel = document.getElementById('presales-intake-notes');
@@ -220,14 +277,15 @@ try {
   assert.equal(notesAfterEdit.expanded, 'true');
   assert.equal(notesAfterEdit.summary, 'Edited raw note remains visible in the collapsed summary.');
 
-  await page.locator('[data-presales-copy="handoff"]').click();
+  await page.locator('button[data-presales-copy="handoff"]').click();
   const drawerCustomer = await page.evaluate(() => ({
     visible: !document.getElementById('presales-handoff-drawer').classList.contains('hidden'),
     modal: document.getElementById('presales-handoff-drawer').getAttribute('aria-modal'),
     bodyLocked: document.body.classList.contains('presales-handoff-open'),
     activeElement: document.activeElement?.id,
     preview: document.getElementById('presales-handoff-preview').textContent,
-    copyHeight: document.querySelector('#presales-handoff-drawer button[data-presales-copy="copy"]').getBoundingClientRect().height
+    copyHeight: document.querySelector('#presales-handoff-drawer button[data-presales-copy="copy"]').getBoundingClientRect().height,
+    plainTextHeight: document.querySelector('#presales-handoff-drawer summary[data-presales-copy="viewPlainText"]').getBoundingClientRect().height
   }));
   assert.equal(drawerCustomer.visible, true);
   assert.equal(drawerCustomer.modal, 'true');
@@ -235,6 +293,7 @@ try {
   assert.equal(drawerCustomer.activeElement, 'presales-handoff-close');
   assert.doesNotMatch(drawerCustomer.preview, /Edited raw note/);
   assert.ok(drawerCustomer.copyHeight >= 44, 'handoff copy action must have a 44px target');
+  assert.ok(drawerCustomer.plainTextHeight >= 44, 'View plain text summary must have a 44px target');
 
   await page.locator('#presales-handoff-internal-tab').click();
   const drawerInternal = await page.evaluate(() => ({
@@ -249,8 +308,110 @@ try {
   assert.equal(await page.locator('#presales-handoff-drawer').evaluate(drawer => drawer.classList.contains('hidden')), true);
   assert.equal(await page.evaluate(() => document.activeElement?.dataset?.presalesCopy), 'handoff');
 
+  const blockedCustomerHandoff = await page.evaluate(() => {
+    window.__lastEpcDesignResult = { ...(window.__lastEpcDesignResult || {}), reportGate: { blocked: true } };
+    const epcSelect = document.getElementById('presales-epc-link');
+    epcSelect.insertAdjacentHTML('beforeend', '<option value="blocked-test">Blocked test EPC</option>');
+    epcSelect.value = 'blocked-test';
+    const reportBlocked = Boolean(window.__lastEpcDesignResult.reportGate.blocked);
+    const copied = [];
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: text => { copied.push(text); return Promise.resolve(); } }
+    });
+    window.openPresalesHandoff();
+    window.setPresalesHandoffTab('customer');
+    const customer = {
+      copyDisabled: document.querySelector('#presales-handoff-drawer button[data-presales-copy="copy"]').disabled,
+      plainTextDisabled: document.getElementById('presales-handoff-plain-text').disabled,
+      reason: document.getElementById('presales-handoff-block-reason').textContent
+    };
+    const denied = window.copyActivePresalesHandoff();
+    window.setPresalesHandoffTab('internal');
+    const internal = {
+      copyDisabled: document.querySelector('#presales-handoff-drawer button[data-presales-copy="copy"]').disabled,
+      plainTextDisabled: document.getElementById('presales-handoff-plain-text').disabled
+    };
+    const allowed = window.copyActivePresalesHandoff();
+    return Promise.all([denied, allowed]).then(() => ({ reportBlocked, customer, internal, copied }));
+  });
+  assert.equal(blockedCustomerHandoff.reportBlocked, true, 'default EPC risk state must exercise the customer-output block');
+  assert.deepEqual(blockedCustomerHandoff.customer, {
+    copyDisabled: true,
+    plainTextDisabled: true,
+    reason: 'Customer-facing output blocked by open High risk. Resolve or acknowledge the High risk in EPC before release.'
+  });
+  assert.deepEqual(blockedCustomerHandoff.internal, { copyDisabled: false, plainTextDisabled: false });
+  assert.equal(blockedCustomerHandoff.copied.length, 1, 'blocked customer copy must not reach the clipboard while internal handoff stays available');
+  assert.match(blockedCustomerHandoff.copied[0], /Internal Engineering Handoff/);
+  await page.keyboard.press('Escape');
+
+  const saveAndSwitchPending = await page.evaluate(async () => {
+    window.__minovaBusiness = null;
+    await window.saveCurrentPresalesProject();
+    const firstId = document.getElementById('presales-project-select').value;
+    const secondId = window.createPresalesProject().id;
+    window.selectPresalesProject(firstId);
+    document.getElementById('presales-customer-name').value = 'Persist before switching';
+    window.markPresalesDirty();
+    window.selectPresalesProject(secondId);
+    let resolveSave;
+    window.__minovaBusiness = {
+      upsertEntity: () => new Promise(resolve => { resolveSave = resolve; })
+    };
+    window.__presalesResolveSave = resolveSave;
+    window.saveAndSwitchPresalesProject();
+    await Promise.resolve();
+    window.__presalesResolveSave = resolveSave;
+    return {
+      firstId,
+      secondId,
+      activeId: document.getElementById('presales-project-select').value,
+      saveDisabled: document.querySelector('#presales-unsaved-switch-banner button[data-presales-copy="saveAndSwitch"]').disabled
+    };
+  });
+  assert.equal(saveAndSwitchPending.activeId, saveAndSwitchPending.firstId, 'Save & Switch must keep the current project selected while D1 is pending');
+  assert.equal(saveAndSwitchPending.saveDisabled, true, 'Save & Switch must prevent duplicate requests while D1 is pending');
+  await page.evaluate(() => window.__presalesResolveSave({ ok: true }));
+  await page.waitForFunction(secondId => document.getElementById('presales-project-select').value === secondId, saveAndSwitchPending.secondId);
+
+  const saveAndSwitchRejected = await page.evaluate(async () => {
+    const currentId = document.getElementById('presales-project-select').value;
+    const nextId = JSON.parse(localStorage.getItem('minova_presales_projects_v1') || '[]').find(project => project.id !== currentId).id;
+    document.getElementById('presales-customer-name').value = 'Keep this draft after rejection';
+    window.markPresalesDirty();
+    window.selectPresalesProject(nextId);
+    let rejectSave;
+    window.__minovaBusiness = {
+      upsertEntity: () => new Promise((resolve, reject) => { rejectSave = reject; })
+    };
+    window.__presalesRejectSave = rejectSave;
+    window.saveAndSwitchPresalesProject();
+    await Promise.resolve();
+    window.__presalesRejectSave = rejectSave;
+    return { currentId, nextId };
+  });
+  await page.evaluate(() => window.__presalesRejectSave(new Error('D1 rejected this save')));
+  await page.waitForFunction(currentId => {
+    const status = document.getElementById('presales-updated-at');
+    return document.getElementById('presales-project-select').value === currentId && status.dataset.presalesSaveState === 'error';
+  }, saveAndSwitchRejected.currentId);
+  const rejectedSaveState = await page.evaluate(() => ({
+    activeId: document.getElementById('presales-project-select').value,
+    draft: document.getElementById('presales-customer-name').value,
+    bannerVisible: !document.getElementById('presales-unsaved-switch-banner').classList.contains('hidden'),
+    saveDisabled: document.querySelector('#presales-unsaved-switch-banner button[data-presales-copy="saveAndSwitch"]').disabled,
+    status: document.getElementById('presales-updated-at').textContent
+  }));
+  assert.equal(rejectedSaveState.activeId, saveAndSwitchRejected.currentId);
+  assert.equal(rejectedSaveState.draft, 'Keep this draft after rejection');
+  assert.equal(rejectedSaveState.bannerVisible, true);
+  assert.equal(rejectedSaveState.saveDisabled, false);
+  assert.match(rejectedSaveState.status, /Save failed/);
+  await page.evaluate(() => window.discardAndSwitchPresalesProject());
+
   const switchGuard = await page.evaluate(() => {
-    const firstId = JSON.parse(localStorage.getItem('minova_presales_projects_v1') || '[]')[0].id;
+    const firstId = document.getElementById('presales-project-select').value || JSON.parse(localStorage.getItem('minova_presales_projects_v1') || '[]')[0].id;
     const newProject = window.createPresalesProject();
     const secondId = newProject.id;
     window.selectPresalesProject(firstId);
@@ -274,15 +435,16 @@ try {
       bannerHidden: document.getElementById('presales-unsaved-switch-banner').classList.contains('hidden')
     };
   });
-  assert.deepEqual(switchGuard.guarded, { selected: switchGuard.firstId, visible: true });
+  assert.equal(switchGuard.guarded.visible, true);
+  assert.equal(switchGuard.guarded.selected, switchGuard.firstId);
   assert.equal(switchGuard.cancelled, switchGuard.firstId);
   assert.equal(switchGuard.discarded, switchGuard.secondId);
   assert.equal(switchGuard.bannerHidden, true);
 
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.locator('[data-presales-copy="handoff"]').click();
+  await page.locator('button[data-presales-copy="handoff"]').click();
   const reducedMotion = await page.locator('#presales-handoff-customer-tab').evaluate(tab => getComputedStyle(tab).transitionDuration);
-  assert.equal(reducedMotion, '0.01s');
+  assert.ok(cssDurationSeconds(reducedMotion) <= 0.001, `reduced motion transition must be near-zero, got ${reducedMotion}`);
   await page.keyboard.press('Escape');
 
   for (const [fieldId, values] of Object.entries(enumCoverage)) {
@@ -304,7 +466,8 @@ try {
   const mobileLayout = await page.evaluate(() => {
     const commandBar = document.getElementById('presales-command-bar').getBoundingClientRect();
     const selector = document.getElementById('presales-project-select').getBoundingClientRect();
-    const actionRows = [...document.querySelectorAll('#presales-command-bar button')]
+    const actionRows = [...document.querySelectorAll('#presales-command-actions button')]
+      .filter(button => button.offsetParent !== null)
       .map(button => button.getBoundingClientRect());
     const stageButtons = [...document.querySelectorAll('#presales-stage-mobile-menu [data-presales-stage]')]
       .map(button => button.getBoundingClientRect().height);
@@ -325,7 +488,10 @@ try {
   const mobileSnapshotLayout = await page.evaluate(() => {
     const rect = id => {
       const box = document.getElementById(id).getBoundingClientRect();
-      return { top: box.top, bottom: box.bottom, width: box.width };
+      return { top: box.top, bottom: box.bottom, width: box.width, height: box.height };
+    };
+    const plainRect = box => {
+      return { top: box.top, bottom: box.bottom, width: box.width, height: box.height };
     };
     const snapshot = rect('presales-opportunity-snapshot');
     const evidence = rect('presales-evidence-gaps');
@@ -335,7 +501,7 @@ try {
       .map(label => ({
         text: label.textContent.trim(),
         fontSize: Number.parseFloat(getComputedStyle(label).fontSize),
-        box: label.getBoundingClientRect()
+        box: plainRect(label.getBoundingClientRect())
       }));
     return { snapshot, evidence, quote, epc, energyLabels, documentWidth: document.documentElement.scrollWidth, viewportWidth: window.innerWidth };
   });
@@ -355,12 +521,13 @@ try {
   await desktopPage.waitForFunction(() => typeof window.saveCurrentPresalesProject === 'function', { timeout: 60000 });
   await activatePresalesWorkspace(desktopPage, 'desktop-visual-regression');
   await desktopPage.locator('#presales-customer-name').fill('Desktop Visual Plant');
+  await desktopPage.locator('[data-presales-intake-group="energy"]').click();
   await desktopPage.locator('#presales-monthly-consumption-kwh').fill('186000');
   await desktopPage.waitForTimeout(160);
   const desktopSnapshotLayout = await desktopPage.evaluate(() => {
     const rect = id => {
       const box = document.getElementById(id).getBoundingClientRect();
-      return { top: box.top, bottom: box.bottom, width: box.width };
+      return { top: box.top, bottom: box.bottom, width: box.width, height: box.height };
     };
     const snapshot = rect('presales-opportunity-snapshot');
     const evidence = rect('presales-evidence-gaps');

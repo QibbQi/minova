@@ -1222,10 +1222,11 @@
             <div id="presales-unsaved-switch-banner" class="mt-3 hidden items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm" role="status">
                 <span data-presales-copy="switchPrompt">Save changes before switching projects?</span>
                 <div class="flex flex-wrap gap-2">
-                    <button type="button" onclick="saveAndSwitchPresalesProject()" data-presales-copy="saveAndSwitch" class="presales-action min-h-11 rounded-lg bg-purple-800 px-3 text-xs font-bold text-white">Save &amp; Switch</button>
+                    <button id="presales-save-and-switch" type="button" onclick="saveAndSwitchPresalesProject()" data-presales-copy="saveAndSwitch" class="presales-action min-h-11 rounded-lg bg-purple-800 px-3 text-xs font-bold text-white">Save &amp; Switch</button>
                     <button type="button" onclick="discardAndSwitchPresalesProject()" data-presales-copy="discard" class="presales-action min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold">Discard</button>
                     <button type="button" onclick="cancelPresalesProjectSwitch()" data-presales-copy="cancel" class="presales-action min-h-11 px-3 text-xs font-bold text-slate-600">Cancel</button>
                 </div>
+                <p id="presales-switch-error" class="hidden w-full text-xs font-bold text-red-700" aria-live="polite"></p>
             </div>
         </section>
 
@@ -1363,9 +1364,9 @@
                                 <strong id="presales-readiness-score" class="rounded-full bg-white px-2 py-3 text-3xl font-bold text-slate-900">—</strong>
                             </div>
                             <div class="min-w-0">
-                                <p class="text-xs font-semibold text-slate-500">BD Readiness</p>
+                                <p data-presales-copy="readinessLabel" class="text-xs font-semibold text-slate-500">BD Readiness</p>
                                 <p id="presales-next-action" class="mt-1 text-sm font-bold text-slate-900">Capture customer and energy basis</p>
-                                <button id="presales-readiness-breakdown" type="button" onclick="togglePresalesReadinessBreakdown()" class="presales-action mt-2 min-h-11 text-left text-xs font-semibold text-purple-700" aria-expanded="false" aria-controls="presales-readiness-breakdown-detail">View breakdown</button>
+                                <button id="presales-readiness-breakdown" type="button" onclick="togglePresalesReadinessBreakdown()" data-presales-copy="viewBreakdown" class="presales-action mt-2 min-h-11 text-left text-xs font-semibold text-purple-700" aria-expanded="false" aria-controls="presales-readiness-breakdown-detail">View breakdown</button>
                                 <p id="presales-readiness-breakdown-detail" class="mt-1 hidden text-xs leading-relaxed text-slate-500"></p>
                             </div>
                         </div>
@@ -1410,10 +1411,11 @@
                 </div>
                 <article id="presales-handoff-preview" role="tabpanel" aria-live="polite" class="mt-4 whitespace-pre-wrap rounded-lg bg-white p-4 text-sm leading-6 text-slate-700"></article>
                 <details class="mt-3">
-                    <summary data-presales-copy="viewPlainText" class="cursor-pointer text-sm font-semibold text-slate-600">View plain text</summary>
+                    <summary data-presales-copy="viewPlainText" class="presales-action flex min-h-11 cursor-pointer items-center text-sm font-semibold text-slate-600">View plain text</summary>
                     <textarea id="presales-handoff-plain-text" readonly rows="12" class="presales-field mt-2 font-mono text-xs"></textarea>
                 </details>
-                <button type="button" onclick="copyActivePresalesHandoff()" data-presales-copy="copy" class="presales-action mt-4 min-h-11 w-full rounded-lg bg-amber-300 px-4 text-sm font-bold text-slate-900">Copy</button>
+                <p id="presales-handoff-block-reason" class="mt-3 hidden rounded-lg border border-red-200 bg-red-50 p-3 text-xs font-bold text-red-700" role="status"></p>
+                <button id="presales-handoff-copy" type="button" onclick="copyActivePresalesHandoff()" data-presales-copy="copy" class="presales-action mt-4 min-h-11 w-full rounded-lg bg-amber-300 px-4 text-sm font-bold text-slate-900">Copy</button>
             </section>
         </div>
     </main>
@@ -21156,11 +21158,21 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
 
         function persistEntityToD1(domain, recordId, payload, options = {}) {
+            const { awaitResult = false, ...writeOptions } = options;
+            if (!domain || !recordId || !payload || !window.__minovaBusiness?.upsertEntity) {
+                return Promise.resolve({ skipped: true, localFallback: true });
+            }
             try {
-                if (!domain || !recordId || !payload || !window.__minovaBusiness?.upsertEntity) return;
-                window.__minovaBusiness.upsertEntity(domain, String(recordId), cloneForD1(payload), options);
-            } catch (e) {
-                console.warn('D1 entity save queued/failed:', domain, recordId, e);
+                const request = Promise.resolve(window.__minovaBusiness.upsertEntity(domain, String(recordId), cloneForD1(payload), writeOptions));
+                if (awaitResult) return request;
+                return request.catch(error => {
+                    console.warn('D1 entity save queued/failed:', domain, recordId, error);
+                    return { queued: true, error };
+                });
+            } catch (error) {
+                if (awaitResult) return Promise.reject(error);
+                console.warn('D1 entity save queued/failed:', domain, recordId, error);
+                return Promise.resolve({ queued: true, error });
             }
         }
 
@@ -21425,12 +21437,18 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             refreshPresalesQuoteDetail(key, { force: false });
         }
 
+        function presalesText(key, values = {}) {
+            const copy = PRESALES_COPY[currentLang] || PRESALES_COPY.en;
+            const template = copy[key] || PRESALES_COPY.en[key] || key;
+            return String(template).replace(/\{(\w+)\}/g, (_, name) => String(values[name] ?? ''));
+        }
+
         function renderPresalesQuoteDetail(project = getActivePresalesProject()) {
             const target = document.getElementById('presales-quote-detail') || document.getElementById('presales-quote-card');
             if (!target) return;
             const detail = getPresalesQuoteDetail(project?.quoteId);
             if (!detail) {
-                target.innerHTML = 'No quote linked.';
+                target.innerHTML = presalesText('noQuoteLinked');
                 return;
             }
             const loading = presalesQuoteDetailPending.has(String(project?.quoteId || '').trim());
@@ -21440,21 +21458,21 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             target.innerHTML = `
                 <div class="min-w-0">
                     <div class="font-black text-slate-800 break-words">${htmlSafe(detail.name || detail.id)}</div>
-                    <div class="mt-1 text-xs text-slate-500">Quote version: ${htmlSafe(detail.quoteNo || detail.id || '-')} · Approval status: ${htmlSafe(detail.approvalStatus || 'not checked')}</div>
-                    <div class="mt-2 inline-flex rounded-full border px-2 py-1 text-[10px] font-black ${sourceTone}">${htmlSafe(loading ? 'Loading saved quote snapshot' : detail.sourceLabel)}</div>
+                    <div class="mt-1 text-xs text-slate-500">${presalesText('quoteVersion')}: ${htmlSafe(detail.quoteNo || detail.id || '-')} · ${presalesText('approvalStatus')}: ${htmlSafe(detail.approvalStatus || presalesText('notChecked'))}</div>
+                    <div class="mt-2 inline-flex rounded-full border px-2 py-1 text-[10px] font-black ${sourceTone}">${htmlSafe(loading ? presalesText('loadingQuote') : detail.sourceLabel)}</div>
                     ${detail.loadError ? `<div class="mt-2 text-[11px] font-bold text-red-600">${htmlSafe(detail.loadError)}</div>` : ''}
                     <div class="mt-3 grid grid-cols-2 gap-x-4 gap-y-3">
-                        ${presalesQuoteMetric('Quote Total', quoteTotal, detail.quoteTotalNote)}
-                        ${presalesQuoteMetric('Line Items', detail.rowCount ? String(detail.rowCount) : '-', detail.loaded ? 'Snapshot rows' : 'Load snapshot for row detail')}
-                        ${presalesQuoteMetric('Monthly Usage', detail.monthlyUsage ? `${detail.monthlyUsage} kWh` : '-', 'Key ROI input')}
-                        ${presalesQuoteMetric('Target Generation', detail.targetGeneration ? `${detail.targetGeneration} kWh` : '-', 'Key ROI input')}
-                        ${presalesQuoteMetric('Proposed PV', detail.proposedSize ? `${detail.proposedSize} kWp` : '-', 'Sizing basis')}
-                        ${presalesQuoteMetric('Payback', detail.payback || '-', detail.roiSaving ? `Saving ${detail.currency === 'CNY' ? '¥' : 'RM'} ${detail.roiSaving}` : 'Load quote for ROI KPI')}
+                        ${presalesQuoteMetric(presalesText('quoteTotal'), quoteTotal, detail.quoteTotalNote)}
+                        ${presalesQuoteMetric(presalesText('lineItems'), detail.rowCount ? String(detail.rowCount) : '-', detail.loaded ? presalesText('snapshotRows') : presalesText('loadSnapshotRows'))}
+                        ${presalesQuoteMetric(presalesText('monthlyUsage'), detail.monthlyUsage ? `${detail.monthlyUsage} kWh` : '-', presalesText('keyRoiInput'))}
+                        ${presalesQuoteMetric(presalesText('targetGeneration'), detail.targetGeneration ? `${detail.targetGeneration} kWh` : '-', presalesText('keyRoiInput'))}
+                        ${presalesQuoteMetric(presalesText('proposedPv'), detail.proposedSize ? `${detail.proposedSize} kWp` : '-', presalesText('sizingBasis'))}
+                        ${presalesQuoteMetric(presalesText('payback'), detail.payback || '-', detail.roiSaving ? `Saving ${detail.currency === 'CNY' ? '¥' : 'RM'} ${detail.roiSaving}` : presalesText('loadQuote'))}
                     </div>
-                    <div class="mt-3 text-[11px] font-bold text-slate-500 leading-relaxed">${htmlSafe(detail.roiNote || 'Preliminary / BD estimate until inputs are reviewed.')}</div>
+                    <div class="mt-3 text-[11px] font-bold text-slate-500 leading-relaxed">${htmlSafe(detail.roiNote || presalesText('preliminaryEstimate'))}</div>
                     <div class="mt-3 flex flex-wrap gap-2">
-                        <button type="button" onclick="refreshPresalesLinkedQuoteDetail()" class="rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px] font-black text-slate-600 hover:bg-slate-50">Load Details</button>
-                        <button type="button" onclick="openPresalesQuote()" class="rounded-lg border border-purple-200 px-2.5 py-1.5 text-[11px] font-black text-purple-700 hover:bg-purple-50">Open Quote</button>
+                        <button type="button" onclick="refreshPresalesLinkedQuoteDetail()" class="rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px] font-black text-slate-600 hover:bg-slate-50">${presalesText('loadDetails')}</button>
+                        <button type="button" onclick="openPresalesQuote()" class="rounded-lg border border-purple-200 px-2.5 py-1.5 text-[11px] font-black text-purple-700 hover:bg-purple-50">${presalesText('openQuote')}</button>
                     </div>
                 </div>
             `;
@@ -21510,14 +21528,14 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (!target) return;
             const detail = getPresalesEpcDetail(project?.epcDesignProjectId);
             if (!detail) {
-                target.innerHTML = 'No EPC concept linked.';
+                target.innerHTML = presalesText('noEpcLinked');
                 return;
             }
             if (!detail.loaded) {
                 target.innerHTML = `
                     <div class="font-black text-slate-800">${htmlSafe(detail.name || detail.id)}</div>
                     <div class="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-700">${htmlSafe(detail.error || 'EPC detail is not available.')}</div>
-                    <div class="mt-3"><button type="button" onclick="openPresalesEpc()" class="rounded-lg border border-purple-200 px-2.5 py-1.5 text-[11px] font-black text-purple-700 hover:bg-purple-50">Open EPC</button></div>
+                    <div class="mt-3"><button type="button" onclick="openPresalesEpc()" class="rounded-lg border border-purple-200 px-2.5 py-1.5 text-[11px] font-black text-purple-700 hover:bg-purple-50">${presalesText('openEpc')}</button></div>
                 `;
                 return;
             }
@@ -21525,19 +21543,19 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             target.innerHTML = `
                 <div class="min-w-0">
                     <div class="font-black text-slate-800 break-words">${htmlSafe(detail.name || detail.id)}</div>
-                    <div class="mt-1 text-xs text-slate-500">Engineering draft / requires review · ${htmlSafe(detail.schemeLabel)}</div>
-                    <div class="mt-2 inline-flex rounded-full border px-2 py-1 text-[10px] font-black ${riskTone}">${detail.reportBlocked ? 'Reports blocked by open High risk' : 'No blocking High risk'}</div>
+                    <div class="mt-1 text-xs text-slate-500">${presalesText('engineeringDraft')} · ${htmlSafe(detail.schemeLabel)}</div>
+                    <div class="mt-2 inline-flex rounded-full border px-2 py-1 text-[10px] font-black ${riskTone}">${detail.reportBlocked ? presalesText('reportsBlocked') : presalesText('noBlockingHighRisk')}</div>
                     <div class="mt-3 grid grid-cols-2 gap-x-4 gap-y-3">
-                        ${presalesQuoteMetric('Recommended PV/BESS/PCS', `${formatEpcNumber(detail.pvMwp, 2, 'MWp')} / ${formatEpcNumber(detail.bessMwh, 2, 'MWh')} / ${formatEpcNumber(detail.pcsMw, 2, 'MW')}`, `${formatEpcNumber(detail.cRate, 2, 'C')} battery basis`)}
-                        ${presalesQuoteMetric('Load Basis', `${formatEpcNumber(detail.avgLoadKw, 0, 'kW avg')} / ${formatEpcNumber(detail.peakLoadKw, 0, 'kW peak')}`, detail.solarSource || 'Solar source not set')}
-                        ${presalesQuoteMetric('Open High Risks', String(detail.openHighRiskCount), `${detail.openRiskCount} open of ${detail.riskCount} total risks`)}
-                        ${presalesQuoteMetric('BOQ Lines', String(detail.boqLines), 'Product Master readiness still required')}
+                        ${presalesQuoteMetric(presalesText('recommendedPvBessPcs'), `${formatEpcNumber(detail.pvMwp, 2, 'MWp')} / ${formatEpcNumber(detail.bessMwh, 2, 'MWh')} / ${formatEpcNumber(detail.pcsMw, 2, 'MW')}`, `${formatEpcNumber(detail.cRate, 2, 'C')} battery basis`)}
+                        ${presalesQuoteMetric(presalesText('loadBasis'), `${formatEpcNumber(detail.avgLoadKw, 0, 'kW avg')} / ${formatEpcNumber(detail.peakLoadKw, 0, 'kW peak')}`, detail.solarSource || presalesText('pending'))}
+                        ${presalesQuoteMetric(presalesText('openHighRisks'), String(detail.openHighRiskCount), `${detail.openRiskCount} ${presalesText('openRisks')} / ${detail.riskCount} ${presalesText('totalRisks')}`)}
+                        ${presalesQuoteMetric(presalesText('boqLines'), String(detail.boqLines), presalesText('productMasterReadiness'))}
                     </div>
-                    <div class="mt-3 text-[11px] font-bold text-slate-500 leading-relaxed">${htmlSafe(detail.architecture || 'Review electrical architecture and BOQ before firm proposal.')}</div>
+                    <div class="mt-3 text-[11px] font-bold text-slate-500 leading-relaxed">${htmlSafe(detail.architecture || presalesText('reviewElectricalArchitecture'))}</div>
                     <div class="mt-3 flex flex-wrap gap-2">
-                        <button type="button" onclick="openPresalesEpcPanel('schemes')" class="rounded-lg border border-purple-200 px-2.5 py-1.5 text-[11px] font-black text-purple-700 hover:bg-purple-50">Schemes</button>
-                        <button type="button" onclick="openPresalesEpcPanel('risks')" class="rounded-lg border border-red-200 px-2.5 py-1.5 text-[11px] font-black text-red-700 hover:bg-red-50">Risks</button>
-                        <button type="button" onclick="openPresalesEpcPanel('boq')" class="rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px] font-black text-slate-700 hover:bg-slate-50">BOQ</button>
+                        <button type="button" onclick="openPresalesEpcPanel('schemes')" class="rounded-lg border border-purple-200 px-2.5 py-1.5 text-[11px] font-black text-purple-700 hover:bg-purple-50">${presalesText('schemes')}</button>
+                        <button type="button" onclick="openPresalesEpcPanel('risks')" class="rounded-lg border border-red-200 px-2.5 py-1.5 text-[11px] font-black text-red-700 hover:bg-red-50">${presalesText('risks')}</button>
+                        <button type="button" onclick="openPresalesEpcPanel('boq')" class="rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px] font-black text-slate-700 hover:bg-slate-50">${presalesText('boq')}</button>
                     </div>
                 </div>
             `;
@@ -21579,25 +21597,25 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (!target) return;
             const epc = model.epc;
             const loaded = Boolean(epc?.loaded);
-            const pv = loaded && presalesSnapshotHasValue(epc.pvMwp) ? `${presalesFormatNumber(epc.pvMwp, 2)} MWp` : 'Pending';
-            const bess = loaded && presalesSnapshotHasValue(epc.bessMwh) ? `${presalesFormatNumber(epc.bessMwh, 2)} MWh` : 'Pending';
-            const pcs = loaded && presalesSnapshotHasValue(epc.pcsMw) ? `${presalesFormatNumber(epc.pcsMw, 2)} MW` : 'Pending';
-            const load = loaded && presalesSnapshotHasValue(epc.avgLoadKw) ? `${presalesFormatNumber(epc.avgLoadKw, 0)} kW average` : 'pending';
+            const pv = loaded && presalesSnapshotHasValue(epc.pvMwp) ? `${presalesFormatNumber(epc.pvMwp, 2)} MWp` : presalesText('pending');
+            const bess = loaded && presalesSnapshotHasValue(epc.bessMwh) ? `${presalesFormatNumber(epc.bessMwh, 2)} MWh` : presalesText('pending');
+            const pcs = loaded && presalesSnapshotHasValue(epc.pcsMw) ? `${presalesFormatNumber(epc.pcsMw, 2)} MW` : presalesText('pending');
+            const load = loaded && presalesSnapshotHasValue(epc.avgLoadKw) ? `${presalesFormatNumber(epc.avgLoadKw, 0)} kW average` : presalesText('pending');
             const summary = `Energy concept: PV ${pv}; PCS ${pcs}; BESS ${bess}; customer load ${load}.`;
             target.innerHTML = `
                 <div class="mb-3 flex items-center justify-between gap-3">
-                    <div class="min-w-0"><p class="text-xs font-semibold text-slate-500">Energy architecture</p><p class="text-sm font-bold text-slate-900">PV, load, storage and supply context</p></div>
-                    <span class="shrink-0 text-xs font-semibold ${loaded ? 'text-green-700' : 'text-amber-700'}">${loaded ? 'EPC draft' : 'Pending EPC'}</span>
+                    <div class="min-w-0"><p class="text-xs font-semibold text-slate-500">${presalesText('energyArchitecture')}</p><p class="text-sm font-bold text-slate-900">${presalesText('energyContext')}</p></div>
+                    <span class="shrink-0 text-xs font-semibold ${loaded ? 'text-green-700' : 'text-amber-700'}">${loaded ? presalesText('epcDraft') : presalesText('pendingEpc')}</span>
                 </div>
                 <p class="sr-only">${htmlSafe(summary)}</p>
                 <div class="presales-energy-mobile" aria-hidden="true">
                     <div class="presales-energy-node"><strong data-presales-energy-label>PV</strong><span>${htmlSafe(pv)}</span></div>
                     <div class="presales-energy-mobile-connector">|</div>
-                    <div class="presales-energy-node presales-energy-node--bus"><strong data-presales-energy-label>AC Bus / PCS</strong><span>${htmlSafe(pcs)}</span></div>
+                    <div class="presales-energy-node presales-energy-node--bus"><strong data-presales-energy-label>${presalesText('acBusPcs')}</strong><span>${htmlSafe(pcs)}</span></div>
                     <div class="presales-energy-mobile-connector">|</div>
                     <div class="presales-energy-mobile-branches">
                         <div class="presales-energy-node"><strong data-presales-energy-label>BESS</strong><span>${htmlSafe(bess)}</span></div>
-                        <div class="presales-energy-node"><strong data-presales-energy-label>Customer Load</strong><span>${htmlSafe(load)}</span></div>
+                        <div class="presales-energy-node"><strong data-presales-energy-label>${presalesText('customerLoad')}</strong><span>${htmlSafe(load)}</span></div>
                     </div>
                 </div>
                 <svg viewBox="0 0 760 190" class="presales-energy-desktop h-auto w-full" role="img" aria-label="${htmlSafe(summary)}">
@@ -21615,7 +21633,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (!target) return;
             const gaps = Array.isArray(model.gaps) ? model.gaps : [];
             const blockedNotice = model.readiness?.blocked
-                ? '<span class="font-bold text-red-700">Customer-facing output blocked by High risk</span>'
+                ? `<span class="font-bold text-red-700">${presalesText('customerOutputBlocked')}</span>`
                 : '';
             const rows = gaps.length
                 ? gaps.map(gap => `
@@ -21624,10 +21642,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                         <button type="button" onclick="focusPresalesGap('${htmlSafe(gap.target)}', '${htmlSafe(gap.actionLabel)}')" class="presales-action shrink-0 text-xs font-bold text-purple-700">${htmlSafe(gap.actionLabel)}</button>
                     </div>
                 `).join('')
-                : '<p class="text-xs font-semibold text-green-700">Evidence and linked work are ready for engineering handoff.</p>';
+                : `<p class="text-xs font-semibold text-green-700">${presalesText('evidenceReady')}</p>`;
             target.innerHTML = `
                 <div class="flex flex-wrap items-center justify-between gap-2">
-                    <p class="text-xs font-black uppercase tracking-widest text-slate-500">Actionable evidence gaps</p>
+                    <p class="text-xs font-black uppercase tracking-widest text-slate-500">${presalesText('actionableEvidenceGaps')}</p>
                     ${blockedNotice}
                 </div>
                 <div class="mt-2">${rows}</div>
@@ -21641,7 +21659,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (detail) detail.classList.toggle('hidden', !expanded);
             if (button) {
                 button.setAttribute('aria-expanded', String(Boolean(expanded)));
-                button.textContent = expanded ? 'Hide breakdown' : 'View breakdown';
+                button.textContent = expanded ? presalesText('hideBreakdown') : presalesText('viewBreakdown');
             }
         }
 
@@ -21685,18 +21703,18 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (nextAction) nextAction.textContent = readiness.nextAction;
             const breakdown = document.getElementById('presales-readiness-breakdown-detail');
             if (breakdown) {
-                breakdown.textContent = `Intake ${readiness.breakdown.intake}/30 · Evidence ${readiness.breakdown.evidence}/25 · Quote ${readiness.breakdown.quote}/15 · EPC ${readiness.breakdown.epc}/20 · Risk ${readiness.breakdown.risk}/10${readiness.blocked ? ' · Capped pending High-risk review.' : ''}`;
+                breakdown.textContent = `Intake ${readiness.breakdown.intake}/30 · Evidence ${readiness.breakdown.evidence}/25 · Quote ${readiness.breakdown.quote}/15 · EPC ${readiness.breakdown.epc}/20 · Risk ${readiness.breakdown.risk}/10${readiness.blocked ? ` · ${presalesText('customerOutputBlocked')}` : ''}`;
             }
             const quote = model.quote;
             const epc = model.epc;
             const proposedFromEpc = Boolean(epc?.loaded && presalesSnapshotHasValue(epc.pvMwp));
             const kpis = [
-                { label: 'Monthly consumption', value: model.project.intakeBasis.monthlyConsumptionKwh, unit: 'kWh', source: 'Intake', target: 'energy', action: 'Add intake' },
-                { label: 'Proposed PV', value: proposedFromEpc ? epc.pvMwp : quote?.proposedSize, unit: proposedFromEpc ? 'MWp' : 'kWp', source: proposedFromEpc ? 'EPC draft' : 'Quote snapshot', target: proposedFromEpc ? 'epc' : 'quote', action: proposedFromEpc ? 'Open EPC' : 'Open Quote' },
-                { label: 'Recommended BESS', value: epc?.loaded ? epc.bessMwh : null, unit: 'MWh', source: 'EPC draft', target: 'epc', action: 'Open EPC' },
-                { label: 'Recommended PCS', value: epc?.loaded ? epc.pcsMw : null, unit: 'MW', source: 'EPC draft', target: 'epc', action: 'Open EPC' },
-                { label: 'Quote total', value: quote?.quoteTotal, unit: '', source: 'Quote snapshot', target: 'quote', action: 'Open Quote', money: true, currency: quote?.currency },
-                { label: 'Payback', value: quote?.payback, unit: '', source: 'Preliminary estimate', target: 'quote', action: 'Load Quote' }
+                { label: presalesText('monthlyConsumption'), value: model.project.intakeBasis.monthlyConsumptionKwh, unit: 'kWh', source: presalesText('intake'), target: 'energy', action: presalesText('defaultNextAction') },
+                { label: presalesText('proposedPv'), value: proposedFromEpc ? epc.pvMwp : quote?.proposedSize, unit: proposedFromEpc ? 'MWp' : 'kWp', source: proposedFromEpc ? presalesText('epcDraft') : presalesText('quoteSnapshot'), target: proposedFromEpc ? 'epc' : 'quote', action: proposedFromEpc ? presalesText('openEpc') : presalesText('openQuote') },
+                { label: presalesText('recommendedBess'), value: epc?.loaded ? epc.bessMwh : null, unit: 'MWh', source: presalesText('epcDraft'), target: 'epc', action: presalesText('openEpc') },
+                { label: presalesText('recommendedPcs'), value: epc?.loaded ? epc.pcsMw : null, unit: 'MW', source: presalesText('epcDraft'), target: 'epc', action: presalesText('openEpc') },
+                { label: presalesText('quoteTotal'), value: quote?.quoteTotal, unit: '', source: presalesText('quoteSnapshot'), target: 'quote', action: presalesText('openQuote'), money: true, currency: quote?.currency },
+                { label: presalesText('payback'), value: quote?.payback, unit: '', source: presalesText('preliminaryEstimate'), target: 'quote', action: presalesText('loadQuote') }
             ];
             const strip = document.getElementById('presales-kpi-strip');
             if (strip) strip.innerHTML = kpis.map(renderPresalesSnapshotKpi).join('');
@@ -21718,11 +21736,11 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const status = document.getElementById('presales-updated-at');
             if (!status) return;
             const labels = {
-                idle: 'Not saved',
-                dirty: 'Unsaved changes',
-                saving: 'Saving...',
-                saved: 'Saved',
-                error: 'Save failed'
+                idle: presalesText('notSaved'),
+                dirty: presalesText('unsavedChanges'),
+                saving: presalesText('saving'),
+                saved: presalesText('saved'),
+                error: presalesText('saveFailed')
             };
             status.dataset.presalesSaveState = state;
             status.textContent = message || labels[state] || labels.idle;
@@ -21733,6 +21751,21 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if (!banner) return;
             banner.classList.toggle('hidden', !visible);
             banner.classList.toggle('flex', visible);
+        }
+
+        function setPresalesSwitchSaving(saving) {
+            const banner = document.getElementById('presales-unsaved-switch-banner');
+            if (banner) banner.setAttribute('aria-busy', String(Boolean(saving)));
+            document.querySelectorAll('#presales-unsaved-switch-banner button').forEach(button => {
+                button.disabled = Boolean(saving);
+            });
+        }
+
+        function setPresalesSwitchError(message = '') {
+            const error = document.getElementById('presales-switch-error');
+            if (!error) return;
+            error.textContent = message;
+            error.classList.toggle('hidden', !message);
         }
 
         function markPresalesDirty() {
@@ -21910,10 +21943,10 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             else presalesProjects.unshift(normalized);
             presalesActiveProjectId = normalized.id;
             presalesSaveLocalSnapshot();
-            persistEntityToD1('presales_project', normalized.id, normalized);
+            const d1Save = persistEntityToD1('presales_project', normalized.id, normalized, { awaitResult: options.awaitD1 === true });
             try { window.__minovaSync?.enqueueSnapshot?.('presales project update'); } catch (e) {}
             renderPresalesWorkbench();
-            return normalized;
+            return options.includeD1Save ? { project: normalized, d1Save } : normalized;
         }
 
         function renderPresalesProjectSelect(activeProject = getActivePresalesProject()) {
@@ -22033,10 +22066,17 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             renderPresalesWorkbench();
         }
 
-        function saveAndSwitchPresalesProject() {
+        async function saveAndSwitchPresalesProject() {
             const nextId = presalesPendingProjectId;
             if (!nextId && nextId !== '') return;
-            if (!saveCurrentPresalesProject()) return;
+            setPresalesSwitchError('');
+            setPresalesSwitchSaving(true);
+            const project = await saveCurrentPresalesProject();
+            setPresalesSwitchSaving(false);
+            if (!project) {
+                setPresalesSwitchError(presalesText('saveFailed'));
+                return;
+            }
             presalesPendingProjectId = '';
             setPresalesSwitchBanner(false);
             presalesActiveProjectId = nextId;
@@ -22074,16 +22114,17 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             return project;
         }
 
-        function saveCurrentPresalesProject() {
+        async function saveCurrentPresalesProject() {
             renderPresalesSaveState('saving');
             try {
-                const project = upsertPresalesProject(currentPresalesDraftFromForm());
+                const { project, d1Save } = upsertPresalesProject(currentPresalesDraftFromForm(), { includeD1Save: true, awaitD1: true });
+                await d1Save;
                 presalesDirty = false;
                 renderPresalesSaveState('saved', `Saved ${new Date(project.updatedAt).toLocaleString()}`);
                 return project;
             } catch (error) {
                 console.error('Presales save failed:', error);
-                renderPresalesSaveState('error', 'Save failed - Retry Save');
+                renderPresalesSaveState('error', presalesText('saveFailed'));
                 return null;
             }
         }
@@ -22157,6 +22198,13 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             window.setTimeout(() => document.getElementById('presales-handoff-close')?.focus(), 0);
         }
 
+        function isPresalesCustomerOutputBlocked() {
+            const project = currentPresalesDraftFromForm();
+            if (getPresalesOpportunityModel(project).readiness?.blocked) return true;
+            const linkedEpcId = String(project.epcDesignProjectId || '').trim();
+            return Boolean(linkedEpcId && window.__lastEpcDesignResult?.reportGate?.blocked);
+        }
+
         function closePresalesHandoff() {
             const drawer = document.getElementById('presales-handoff-drawer');
             if (!drawer || drawer.classList.contains('hidden')) return;
@@ -22179,11 +22227,26 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             customerTab?.classList.toggle('text-slate-900', isCustomer);
             internalTab?.classList.toggle('bg-white', !isCustomer);
             internalTab?.classList.toggle('text-slate-900', !isCustomer);
-            const activeText = isCustomer ? presalesHandoffText.customerSummary : presalesHandoffText.internal;
+            const customerBlocked = isCustomer && isPresalesCustomerOutputBlocked();
+            const activeText = customerBlocked ? presalesText('customerOutputBlockedReason') : (isCustomer ? presalesHandoffText.customerSummary : presalesHandoffText.internal);
             const preview = document.getElementById('presales-handoff-preview');
             const plainText = document.getElementById('presales-handoff-plain-text');
+            const copy = document.getElementById('presales-handoff-copy');
+            const blockReason = document.getElementById('presales-handoff-block-reason');
             if (preview) preview.textContent = activeText;
-            if (plainText) plainText.value = activeText;
+            if (plainText) {
+                plainText.value = activeText;
+                plainText.disabled = customerBlocked;
+            }
+            if (copy) {
+                copy.disabled = customerBlocked;
+                copy.classList.toggle('opacity-50', customerBlocked);
+                copy.classList.toggle('cursor-not-allowed', customerBlocked);
+            }
+            if (blockReason) {
+                blockReason.textContent = customerBlocked ? presalesText('customerOutputBlockedReason') : '';
+                blockReason.classList.toggle('hidden', !customerBlocked);
+            }
         }
 
         function buildPresalesHandoffText(project = currentPresalesDraftFromForm()) {
@@ -22194,26 +22257,27 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             const assumptionLabel = PRESALES_ASSUMPTION_STATUS[project.assumptionStatus] || PRESALES_ASSUMPTION_STATUS.preliminary;
             const riskLabel = PRESALES_RISK_STATUS[project.riskStatus] || PRESALES_RISK_STATUS.open;
             const quoteTotal = quote?.quoteTotal > 0 ? presalesFormatMoney(quote.quoteTotal, quote.currency) : '-';
+            const label = (en, zh) => currentLang === 'zh' ? zh : en;
             const quoteInputs = quote
-                ? `Monthly Usage: ${quote.monthlyUsage || '-'} kWh; Target Generation: ${quote.targetGeneration || '-'} kWh; Export factor: ${quote.exportFactor || '-'}; Proposed PV: ${quote.proposedSize || '-'} kWp`
-                : 'Quote inputs: Not linked';
+                ? `${label('Monthly Usage', '月用电量')}: ${quote.monthlyUsage || '-'} kWh; ${label('Target Generation', '目标发电量')}: ${quote.targetGeneration || '-'} kWh; ${label('Export factor', '上网系数')}: ${quote.exportFactor || '-'}; ${label('Proposed PV', '建议光伏')}: ${quote.proposedSize || '-'} kWp`
+                : `${label('Quote inputs', '报价输入')}: ${presalesText('notLinked')}`;
             const epcRecommendation = epc?.loaded
-                ? `Recommended PV/BESS/PCS: ${formatEpcNumber(epc.pvMwp, 2, 'MWp')} / ${formatEpcNumber(epc.bessMwh, 2, 'MWh')} / ${formatEpcNumber(epc.pcsMw, 2, 'MW')}`
-                : 'Recommended PV/BESS/PCS: Not linked';
+                ? `${presalesText('recommendedPvBessPcs')}: ${formatEpcNumber(epc.pvMwp, 2, 'MWp')} / ${formatEpcNumber(epc.bessMwh, 2, 'MWh')} / ${formatEpcNumber(epc.pcsMw, 2, 'MW')}`
+                : `${presalesText('recommendedPvBessPcs')}: ${presalesText('notLinked')}`;
             const epcRiskSummary = epc?.loaded
-                ? `Open High Risks: ${epc.openHighRiskCount}; Open Risks: ${epc.openRiskCount}/${epc.riskCount}; BOQ Lines: ${epc.boqLines}`
-                : `Unconfirmed risks: ${riskLabel}`;
+                ? `${presalesText('openHighRisks')}: ${epc.openHighRiskCount}; ${label('Open Risks', '未关闭风险')}: ${epc.openRiskCount}/${epc.riskCount}; ${presalesText('boqLines')}: ${epc.boqLines}`
+                : `${presalesText('unconfirmedRisks')}: ${riskLabel}`;
             const customerSummary = [
-                'Customer Summary',
-                `Customer: ${project.customerName || '-'}`,
-                `Location: ${intake.location || intake.siteName || 'Pending customer/site inputs.'}`,
-                `Facility: ${intake.facilityType || '-'}`,
-                `Current stage: ${project.stage}`,
-                `Estimate class: ${assumptionLabel}`,
-                `Quote Total: ${quoteTotal}`,
+                presalesText('customerSummaryTitle'),
+                `${label('Customer', '客户')}: ${project.customerName || '-'}`,
+                `${label('Location', '地点')}: ${intake.location || intake.siteName || presalesText('locationPending')}`,
+                `${label('Facility', '设施')}: ${intake.facilityType || '-'}`,
+                `${label('Current stage', '当前阶段')}: ${project.stage}`,
+                `${label('Estimate class', '估算等级')}: ${assumptionLabel}`,
+                `${presalesText('quoteTotal')}: ${quoteTotal}`,
                 epcRecommendation,
-                ...(model.readiness?.blocked ? ['Customer-facing output blocked by High risk. Resolve or acknowledge the High risk before release.'] : []),
-                'Note: ROI, payback and savings are preliminary until tariff/source date, export factor, CAPEX source and engineering confirmation are reviewed.'
+                ...(model.readiness?.blocked ? [presalesText('customerOutputBlockedReason')] : []),
+                label('Note: ROI, payback and savings are preliminary until tariff/source date, export factor, CAPEX source and engineering confirmation are reviewed.', '说明：在复核电价来源日期、上网系数、CAPEX 来源和工程确认前，ROI、回本期与节省额均为初步估算。')
             ].join('\n');
             const intakeLines = [
                 `Customer/site basis: ${intake.siteName || '-'}; ${intake.location || '-'}; ${intake.facilityType || '-'}`,
@@ -22228,25 +22292,25 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                 .map(gap => `- ${gap.label}: ${gap.actionLabel}`)
                 .join('\n') || '- None';
             const internal = [
-                'Internal Engineering Handoff',
-                `Customer: ${project.customerName || '-'}`,
-                `Stage: ${project.stage}`,
-                'Structured intake:',
+                presalesText('internalHandoffTitle'),
+                `${label('Customer', '客户')}: ${project.customerName || '-'}`,
+                `${label('Stage', '阶段')}: ${project.stage}`,
+                `${label('Structured intake', '结构化采集')}:`,
                 ...intakeLines,
-                `Raw customer and site notes: ${project.siteSummary || '-'}`,
-                'Evidence gaps:',
+                `${label('Raw customer and site notes', '客户与现场原始记录')}: ${project.siteSummary || '-'}`,
+                `${label('Evidence gaps', '证据缺口')}:`,
                 evidenceGaps,
-                `Quote version: ${quote?.quoteNo || quote?.id || 'Not linked'}`,
-                `Approval status: ${quote?.approvalStatus || 'not checked'}`,
-                `Quote Total: ${quoteTotal}`,
+                `${presalesText('quoteVersion')}: ${quote?.quoteNo || quote?.id || presalesText('notLinked')}`,
+                `${presalesText('approvalStatus')}: ${quote?.approvalStatus || presalesText('notChecked')}`,
+                `${presalesText('quoteTotal')}: ${quoteTotal}`,
                 quoteInputs,
-                `Linked EPC design: ${epc?.name || epc?.id || 'Not linked'}`,
+                `${label('Linked EPC design', '关联 EPC 设计')}: ${epc?.name || epc?.id || presalesText('notLinked')}`,
                 epcRecommendation,
                 epcRiskSummary,
-                `Assumption status: ${assumptionLabel}`,
-                `Unconfirmed risks: ${riskLabel}`,
-                'Product certification gaps: review Product Master readiness, certification status, lead time and quote price before firm proposal.',
-                'Engineering review: validate tariff/source date, CAPEX source, export factor, PV performance ratio / loss factor, BOQ and risk acknowledgement.'
+                `${label('Assumption status', '假设状态')}: ${assumptionLabel}`,
+                `${presalesText('unconfirmedRisks')}: ${riskLabel}`,
+                label('Product certification gaps: review Product Master readiness, certification status, lead time and quote price before firm proposal.', '产品认证缺口：正式提案前请复核产品主数据就绪度、认证状态、交期和报价。'),
+                label('Engineering review: validate tariff/source date, CAPEX source, export factor, PV performance ratio / loss factor, BOQ and risk acknowledgement.', '工程复核：验证电价来源日期、CAPEX 来源、上网系数、PV 性能比/损耗系数、BOQ 与风险确认。')
             ].join('\n');
             return { customerSummary, internal };
         }
@@ -22264,10 +22328,15 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         }
 
         async function copyActivePresalesHandoff() {
+            if (presalesHandoffTab === 'customer' && isPresalesCustomerOutputBlocked()) {
+                renderPresalesSaveState('error', presalesText('customerCopyDenied'));
+                return false;
+            }
             const text = (presalesHandoffTab === 'internal' ? presalesHandoffText.internal : presalesHandoffText.customerSummary) || generatePresalesHandoff({ silent: true })[presalesHandoffTab === 'internal' ? 'internal' : 'customerSummary'];
             try {
                 await navigator.clipboard.writeText(text);
                 renderPresalesSaveState('saved', `${presalesHandoffTab === 'internal' ? 'Engineering handoff' : 'Customer summary'} copied`);
+                return true;
             } catch (e) {
                 const el = document.getElementById('presales-handoff-plain-text');
                 if (el) {
@@ -22275,6 +22344,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     el.select();
                     try { document.execCommand('copy'); } catch (err) {}
                 }
+                return false;
             }
         }
 
@@ -22746,7 +22816,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
         };
 
         window.toggleLanguage = () => {
-            currentLang = 'en';
+            currentLang = currentLang === 'en' ? 'zh' : 'en';
             updateLanguageLabels();
         };
 
@@ -23250,6 +23320,7 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
             if(lblAfter) lblAfter.textContent = currentLang === 'zh' ? `安装后月均电费 (${currentCurrency === 'CNY' ? '¥' : 'RM'})` : `Monthly Bill After (${currentCurrency === 'CNY' ? '¥' : 'RM'})`;
             const lblCost = document.getElementById('lbl-roi-cost');
             if(lblCost) lblCost.textContent = currentLang === 'zh' ? `系统总成本 (${currentCurrency === 'CNY' ? '¥' : 'RM'})` : `System Cost (${currentCurrency === 'CNY' ? '¥' : 'RM'})`;
+            if (getActiveTopLevelTab?.() === 'presales') renderPresalesWorkbench();
         };
 
         // --- Quotation逻辑 ---

@@ -16,6 +16,7 @@ import {
   evaluateQuotePriceAdjustment,
   buildWatermarkText
 } from './permission-core.mjs';
+import { getAccountD1Status } from './account-menu-status.mjs';
 
 const AUTH_API_BASE_KEY = 'minova_auth_api_base_v1';
 const AUTH_SESSION_KEY = 'minova_auth_session_v1';
@@ -95,6 +96,7 @@ const businessState = {
   lastError: '',
   retryScheduled: false
 };
+let accountMenuDocumentCleanup = null;
 
 const TAB_LABELS = {
   presales: 'Pre-sales Workspace',
@@ -1295,33 +1297,81 @@ function renderAuthBadge() {
   if (!badge) {
     badge = document.createElement('div');
     badge.id = 'minova-auth-badge';
-    badge.className = 'flex items-center gap-2';
+    badge.className = 'minova-account-menu';
     document.querySelector('.app-shell-actions')?.prepend(badge);
   }
-  const queueCount = Number(businessState.queuedWrites || 0);
-  const pendingCount = Number(businessState.pendingWrites || 0);
-  const failedCount = Number(businessState.failedWrites || 0);
-  const d1Label = queueCount
-    ? `${queueCount} queued`
-    : pendingCount
-      ? `${pendingCount} saving`
-      : failedCount
-        ? `${failedCount} failed`
-        : businessState.lastPersistAt
-          ? 'Saved to D1'
-          : 'D1 ready';
-  const d1Class = queueCount || failedCount
+  const syncRoot = document.getElementById('github-sync-root');
+  syncRoot?.remove();
+  accountMenuDocumentCleanup?.();
+  accountMenuDocumentCleanup = null;
+  const d1Status = getAccountD1Status(businessState);
+  const d1Class = d1Status.tone === 'attention'
     ? 'bg-amber-50 text-amber-700 border-amber-100'
-    : pendingCount
+    : d1Status.tone === 'saving'
       ? 'bg-blue-50 text-blue-700 border-blue-100'
       : 'bg-emerald-50 text-emerald-700 border-emerald-100';
+  const d1DotClass = `minova-account-menu-dot--${d1Status.tone}`;
   badge.innerHTML = `
-    <span class="hidden lg:inline-flex px-3 py-2 rounded-xl bg-purple-50 text-purple-800 border border-purple-100 text-[11px] font-black">
-      ${escapeHtml(state.user?.name || '-')}: ${escapeHtml(state.permission?.roleName || '-')}
-    </span>
-    <span class="hidden xl:inline-flex px-3 py-2 rounded-xl border text-[11px] font-black ${d1Class}" title="${escapeHtml(businessState.lastError || businessState.lastPersistAt || 'D1 business storage')}">${escapeHtml(d1Label)}</span>
-    <button type="button" id="minova-auth-logout" class="px-3 py-2 rounded-xl bg-slate-100 text-slate-600 border border-slate-200 text-[11px] font-black hover:bg-slate-200">Logout</button>
+    <button type="button" id="minova-account-menu-toggle" class="minova-account-menu-toggle rounded-xl px-3 py-2 text-[11px] font-black" aria-haspopup="menu" aria-expanded="false" aria-controls="minova-account-menu-panel" title="Account and system actions">
+      <span class="minova-account-menu-dot ${d1DotClass}" aria-hidden="true"></span>
+      <span class="minova-account-menu-user">${escapeHtml(state.user?.name || '-')} · ${escapeHtml(state.permission?.roleName || '-')}</span>
+      ${d1Status.attentionCount ? `<span class="inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-amber-500 px-1 text-[9px] text-white" aria-label="${d1Status.attentionCount} D1 writes need attention">${d1Status.attentionCount}</span>` : ''}
+      <span aria-hidden="true">▾</span>
+    </button>
+    <div id="minova-account-menu-panel" class="minova-account-menu-panel" role="menu" aria-label="Account and system actions" hidden>
+      <div class="px-2.5 py-2 border-b border-slate-100">
+        <div class="text-xs font-black text-slate-800">${escapeHtml(state.user?.name || '-')}</div>
+        <div class="mt-0.5 text-[10px] font-bold text-purple-700">${escapeHtml(state.permission?.roleName || '-')}</div>
+      </div>
+      <div id="minova-account-menu-d1-status" class="minova-account-menu-status mt-2 ${d1Class}" role="status" title="${escapeHtml(d1Status.detail)}">
+        <span class="minova-account-menu-dot ${d1DotClass}" aria-hidden="true"></span>
+        <span class="min-w-0">
+          <span class="block text-[11px] font-black">${escapeHtml(d1Status.label)}</span>
+          <span class="mt-0.5 block break-words text-[10px] font-bold opacity-80">${escapeHtml(d1Status.detail)}</span>
+        </span>
+      </div>
+      <div id="minova-account-menu-backup" class="minova-account-menu-backup mt-2" role="none"></div>
+      <div class="my-2 border-t border-slate-100"></div>
+      <button type="button" id="minova-auth-logout" role="menuitem" class="w-full rounded-lg px-3 py-2 text-left text-[11px] font-black text-slate-600 hover:bg-slate-100">Logout</button>
+    </div>
   `;
+  const backupSlot = badge.querySelector('#minova-account-menu-backup');
+  if (syncRoot && backupSlot) backupSlot.append(syncRoot);
+  const toggle = badge.querySelector('#minova-account-menu-toggle');
+  const panel = badge.querySelector('#minova-account-menu-panel');
+  const closeMenu = () => {
+    if (!panel || !toggle) return;
+    panel.hidden = true;
+    toggle.setAttribute('aria-expanded', 'false');
+  };
+  const openMenu = () => {
+    if (!panel || !toggle) return;
+    panel.hidden = false;
+    toggle.setAttribute('aria-expanded', 'true');
+  };
+  toggle?.addEventListener('click', () => panel?.hidden ? openMenu() : closeMenu());
+  toggle?.addEventListener('keydown', event => {
+    if (event.key !== 'ArrowDown') return;
+    event.preventDefault();
+    openMenu();
+    Array.from(panel?.querySelectorAll('button') || []).find(button => button.offsetParent !== null)?.focus();
+  });
+  const onDocumentPointerDown = event => {
+    if (!badge.contains(event.target)) closeMenu();
+  };
+  const onDocumentKeyDown = event => {
+    if (event.key !== 'Escape') return;
+    if (!panel?.hidden) {
+      closeMenu();
+      toggle?.focus();
+    }
+  };
+  document.addEventListener('pointerdown', onDocumentPointerDown);
+  document.addEventListener('keydown', onDocumentKeyDown);
+  accountMenuDocumentCleanup = () => {
+    document.removeEventListener('pointerdown', onDocumentPointerDown);
+    document.removeEventListener('keydown', onDocumentKeyDown);
+  };
   badge.querySelector('#minova-auth-logout')?.addEventListener('click', logout);
 }
 

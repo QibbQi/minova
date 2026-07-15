@@ -274,6 +274,80 @@
             line-height: 1rem !important;
         }
 
+        .minova-account-menu {
+            position: relative;
+            flex: 0 0 auto;
+        }
+
+        .minova-account-menu-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            min-height: 2.3rem;
+            color: #582C83;
+            background: #faf5ff;
+            border: 1px solid #f3e8ff;
+        }
+
+        .minova-account-menu-toggle:hover,
+        .minova-account-menu-toggle[aria-expanded="true"] {
+            background: #f3e8ff;
+            border-color: #ddd6fe;
+        }
+
+        .minova-account-menu-dot {
+            width: 0.52rem;
+            height: 0.52rem;
+            border-radius: 9999px;
+            flex: 0 0 auto;
+        }
+
+        .minova-account-menu-dot--saved { background: #10b981; }
+        .minova-account-menu-dot--saving { background: #3b82f6; animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        .minova-account-menu-dot--attention { background: #f59e0b; }
+
+        .minova-account-menu-panel {
+            position: absolute;
+            top: calc(100% + 0.5rem);
+            right: 0;
+            z-index: 250;
+            width: min(19rem, calc(100vw - 2rem));
+            padding: 0.5rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.9rem;
+            background: #fff;
+            box-shadow: 0 16px 34px rgba(15, 23, 42, 0.18);
+        }
+
+        .minova-account-menu-panel[hidden] { display: none; }
+
+        .minova-account-menu-status {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.6rem;
+            padding: 0.65rem 0.7rem;
+            border-radius: 0.7rem;
+            background: #f8fafc;
+        }
+
+        .minova-account-menu-backup > div,
+        .minova-account-menu-backup button {
+            width: 100%;
+        }
+
+        .minova-account-menu-backup button {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            text-align: left;
+        }
+
+        @media (max-width: 760px) {
+            .minova-account-menu-toggle .minova-account-menu-user {
+                display: none;
+            }
+        }
+
         @media (max-width: 760px) {
             .app-shell-header {
                 padding: 0.5rem !important;
@@ -6691,9 +6765,9 @@ VII. Warranty Conditions     : The item is warranted against defects arising fro
                     const dataUnlocked = s.connected || localFileMode || authMode;
                     btn.style.display = syncAuthorized ? '' : 'none';
                     btn.textContent = s.connected
-                        ? `Backup(${s.queueSize})`
+                        ? `GitHub Backup & Publish (${s.queueSize})`
                         : syncAuthorized
-                            ? 'Backup'
+                            ? 'GitHub Backup & Publish'
                             : 'Hidden';
                     btn.className = `${btnBaseClass} ${s.connected ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700' : syncAuthorized ? 'bg-purple-700 hover:bg-purple-800 text-white border-purple-800' : 'bg-red-600 hover:bg-red-700 text-white border-red-700'}`;
                     const restrictedTabs = ['presales', 'quotation', 'costcalc', 'database', 'epcdesign', 'engineering', 'pricelist', 'inventory', 'transport'];
